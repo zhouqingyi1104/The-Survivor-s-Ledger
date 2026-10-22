@@ -51,7 +51,7 @@
     {
       "level": "info",
       "check": "importPairing",
-      "message": "657 个资源与导入元数据配对完整（另有 358 条按规格抑制）",
+      "message": "658 个资源与导入元数据配对完整（另有 359 条按规格抑制）",
       "path": "",
       "hint": "",
       "files": [],
@@ -60,7 +60,7 @@
     {
       "level": "info",
       "check": "sceneRefs",
-      "message": "59 个被引用的资源路径全部存在",
+      "message": "61 个被引用的资源路径全部存在",
       "path": "",
       "hint": "",
       "files": [],
@@ -96,7 +96,7 @@
     {
       "level": "info",
       "check": "gdscript",
-      "message": "检查了 51 个脚本（另有 1 条按规格抑制）",
+      "message": "检查了 53 个脚本（另有 1 条按规格抑制）",
       "path": "",
       "hint": "",
       "files": [],
@@ -141,7 +141,7 @@
   ],
   "scriptVersion": "1.0.0",
   "ignored": {
-    "importPairing": 358,
+    "importPairing": 359,
     "gdscript": 1
   }
 }

@@ -102,15 +102,18 @@ func _inventory(body: VBoxContainer) -> void:
 		if ids.is_empty():
 			continue
 		v.add_child(UI.label(cat, 19, UI.CINNABAR))
-		var g := UI.grid(3, 12, 4)
+		var g := UI.grid(4, 10, 4)
 		for id in ids:
 			var it := Data.item(id)
+			var ico := UI.icon(id, 44)
+			ico.tooltip_text = it.desc
+			g.add_child(ico)
 			var name_label := UI.label("%s ×%d" % [it.name, Inv.count(run.home, id)], 18)
 			name_label.tooltip_text = it.desc
 			name_label.mouse_filter = Control.MOUSE_FILTER_PASS
-			g.add_child(UI.fixed_width(name_label, 240))
+			g.add_child(UI.fixed_width(name_label, 200))
 			var fx: Dictionary = it.get("eat", it.get("use", {}))
-			g.add_child(UI.fixed_width(UI.label(fx_text(fx) if not fx.is_empty() else it.desc, 15, UI.INK_SOFT, true), 460))
+			g.add_child(UI.fixed_width(UI.label(fx_text(fx) if not fx.is_empty() else it.desc, 15, UI.INK_SOFT, true), 430))
 			if fx.is_empty():
 				g.add_child(Control.new())
 			else:
@@ -141,6 +144,7 @@ func _cook(body: VBoxContainer) -> void:
 	for rid in recipes:
 		var r: Dictionary = recipes[rid]
 		var h := UI.hbox(10)
+		h.add_child(UI.icon(rid, 44))
 		var info := UI.vbox(2)
 		UI.expand(info)
 		var dish := Data.item(rid)
@@ -524,14 +528,19 @@ func _furn_card(run: Dictionary, id: String) -> Control:
 	var d := Home.data(id)
 	var v := UI.vbox(4)
 	UI.expand(v)
-	v.add_child(UI.label(d.get("name", id), 19))
+	var top := UI.hbox(8)
+	top.add_child(UI.icon(id, 52, true))
+	var name_col := UI.vbox(2)
+	name_col.add_child(UI.label(d.get("name", id), 19))
 	var where := str(WHERE_TEXT.get(str(d.get("where", "any")), "屋里屋外都行"))
-	v.add_child(UI.label("%s　%s" % [where, str(FN_TEXT.get(str(d.get("fn", "")), ""))], 13, UI.DAI))
+	name_col.add_child(UI.label("%s　%s" % [where, str(FN_TEXT.get(str(d.get("fn", "")), ""))], 13, UI.DAI))
+	top.add_child(name_col)
+	v.add_child(top)
 	var sz := Home.size_of(id, 0)
 	v.add_child(UI.para("用料：%s　占 %.1f×%.1f" % [req_text(run.home, d.get("cost", {})), sz.x, sz.y], 14, UI.INK_SOFT))
 	var block := Home.build_block(run, id)
 	if block == "":
-		v.add_child(UI.seal_button("去摆", func(): _pick_furnish(id)))
+		v.add_child(UI.button("去摆", func(): _pick_furnish(id)))
 	else:
 		v.add_child(UI.label(block, 13, UI.INK_FAINT))
 	var card := UI.panel(v, UI.PAPER)

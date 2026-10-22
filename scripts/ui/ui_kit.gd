@@ -5,6 +5,8 @@ extends RefCounted
 ## 色名不变，值随 use_dark() 切换——main.gd 在 3D 场景上搭弹窗时切到夜色，搭完切回来，
 ## 所以弹窗内容的代码不用管自己在哪种底色上。
 
+const IconView = preload("res://scripts/ui/icon_view.gd")
+
 const PAPER_COLORS := {
 	"paper": Color("#efe6d2"), "paper_light": Color("#f7f0e1"), "paper_dark": Color("#e2d5b8"),
 	"ink": Color("#2b2620"), "ink_soft": Color("#6a5e52"), "ink_faint": Color("#a39785"),
@@ -231,6 +233,17 @@ static func panel(content: Control = null, bg := PANEL) -> PanelContainer:
 	if content != null:
 		p.add_child(content)
 	return p
+
+
+## 物品 / 家具的图标（纯代码画，见 icon_art.gd）。
+static func icon(id: String, px: float, furniture := false) -> Control:
+	var n: Control = IconView.new()
+	n.id = id
+	n.is_furn = furniture
+	n.custom_minimum_size = Vector2(px, px)
+	n.size = Vector2(px, px)
+	n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return n
 
 
 static func vbox(sep := 8) -> VBoxContainer:
