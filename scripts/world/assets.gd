@@ -1,5 +1,5 @@
 extends RefCounted
-## 第三方美术资源（清单和许可证见 docs/03-美术资源清单.md）：
+## 第三方美术资源（清单和许可证见 docs/03-art-assets.md）：
 ##   Poly Haven（CC0）家具模型和 PBR 贴图、cs-studio 中式铺面（免费，不得再分发）、Quaternius 人物和动画（CC0）。
 
 const PH_MODELS := "res://assets/third_party/polyhaven/models/%s/%s.gltf"

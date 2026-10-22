@@ -1,8 +1,8 @@
 # 《劫余录》玩法完善方案 v0.5
 
-> **状态：已被 `docs/06-夜战三式-v0.6.md` 取代其中「守夜方略」一章。** v0.6 把 21:00 的三选一拆成「门 / 窗 / 院墙三面 × 三轮 + 轮间操作 + 三个方针」。本文保留，作为 v0.5 那一步的决策记录与体温 / 尸潮曲线 / 事件 / 功德的依据。
+> **状态：已被 `docs/06-night-defense-v0.6.md` 取代其中「守夜方略」一章。** v0.6 把 21:00 的三选一拆成「门 / 窗 / 院墙三面 × 三轮 + 轮间操作 + 三个方针」。本文保留，作为 v0.5 那一步的决策记录与体温 / 尸潮曲线 / 事件 / 功德的依据。
 
-> 依据：`docs/04-玩法诊断.md` 的实测证据。
+> 依据：`docs/04-gameplay-diagnosis.md` 的实测证据。
 > 范围：只动**劫中（post）**的玩法回路；备劫三日、美术、音频不在本轮。
 > 版本：Godot 4.7.2 / Windows。数值全部可在 `data/*.json` 与 `scripts/core/*.gd` 顶部常量改。
 
@@ -147,7 +147,7 @@ leak(d) = 6 + floor((d−1)/4)          # 第2夜6 … 第20夜10
 ./tools/godot/Godot_v4.7.2-stable_win64_console.exe --headless --path . res://tests/ui_smoke.tscn
 
 # 4) 截图核对布防弹窗版式
-./tools/godot/Godot_v4.7.2-stable_win64_console.exe --path . --resolution 1280x720 -- --demo=plan --shot=res://docs/screenshots/night_plan.png
+./tools/godot/Godot_v4.7.2-stable_win64_console.exe --path . --resolution 1280x720 -- --demo=plan --shot=res://docs/screenshots/night_policy.png
 ```
 
 验收线：

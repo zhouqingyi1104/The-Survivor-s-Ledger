@@ -1,13 +1,13 @@
 # 劫余录 · The Survivor's Ledger（原型 v0.4）
 
-古风尸变 + 写实灾荒 + 一点东方仙侠的生存模拟。玩法结构、界面布局和交互方式参考《Survival Log / 生存日志》（灾前囤货 → 灾后经营 → 轮回），文本、数值、图标都是原创——没有从原版提取或复用任何美术资产。模型和贴图一部分是公开的免费素材（Poly Haven、cs-studio、Quaternius），其余用代码拼；来源和许可证见游戏标题页的"制作名单"和 [docs/03-美术资源清单.md](docs/03-美术资源清单.md)。
+古风尸变 + 写实灾荒 + 一点东方仙侠的生存模拟。玩法结构、界面布局和交互方式参考《Survival Log / 生存日志》（灾前囤货 → 灾后经营 → 轮回），文本、数值、图标都是原创——没有从原版提取或复用任何美术资产。模型和贴图一部分是公开的免费素材（Poly Haven、cs-studio、Quaternius），其余用代码拼；来源和许可证见游戏标题页的"制作名单"和 [docs/03-art-assets.md](docs/03-art-assets.md)。
 
-- 原版逆向分析：[docs/01-原版分析-SurvivalLog.md](docs/01-原版分析-SurvivalLog.md)
-- 中国风设计：[docs/02-中国风设计-劫余录.md](docs/02-中国风设计-劫余录.md)
-- 美术资源清单与接入情况：[docs/03-美术资源清单.md](docs/03-美术资源清单.md)
-- **玩法诊断（v0.4 实测）**：[docs/04-玩法诊断.md](docs/04-玩法诊断.md)
-- **玩法完善方案（v0.5）**：[docs/05-玩法完善方案-v0.5.md](docs/05-玩法完善方案-v0.5.md)
-- **夜战三式（v0.6）**：[docs/06-夜战三式-v0.6.md](docs/06-夜战三式-v0.6.md)
+- 原版逆向分析：[01-survival-log-analysis.md](docs/01-survival-log-analysis.md)
+- 中国风设计：[02-chinese-style-design.md](docs/02-chinese-style-design.md)
+- 美术资源清单与接入情况：[03-art-assets.md](docs/03-art-assets.md)
+- **玩法诊断（v0.4 实测）**：[04-gameplay-diagnosis.md](docs/04-gameplay-diagnosis.md)
+- **玩法完善方案（v0.5）**：[05-gameplay-plan-v0.5.md](docs/05-gameplay-plan-v0.5.md)
+- **夜战三式（v0.6）**：[06-night-defense-v0.6.md](docs/06-night-defense-v0.6.md)
 - 截图：[docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；v0.6 的夜战见 `night_policy.png` 与 `night_panel.png`）
 
 ## 运行
@@ -124,7 +124,7 @@ tests/                     无界面整局模拟、界面冒烟测试、脚本�
 
 ## 素材与仓库
 
-- cs-studio 的铺面**不得再分发素材本身**：打包进游戏可以，但 `assets/third_party/cs_studio/` 和由它转换的 `assets/models/buildings/` 不能放进公开仓库，`.gitignore` 已经排除。别人拿到代码后要自己去 itch.io 领一份（免费），按 docs/03 里的步骤转换；缺了这些文件时，城里的铺子会自动退回代码拼的厅堂。
+- cs-studio 的铺面**不得再分发素材本身**：打包进游戏可以，但 `assets/third_party/cs_studio/` 和由它转换的 `assets/models/buildings/` 不能放进公开仓库，`.gitignore` 已经排除。别人拿到代码后要自己去 itch.io 领一份（免费），按 docs/03-art-assets.md 里的步骤转换；缺了这些文件时，城里的铺子会自动退回代码拼的厅堂。
 - Poly Haven、Quaternius 是 CC0，可以入库；但原始压缩包很大（约 200 MB），`.gitignore` 只排除了压缩包和解包目录，保留游戏实际用到的文件。
 - 人物贴图原图是 2048，导入时限制到 1024（`.import` 里的 `process/size_limit`），屏幕上看不出差别，显存省四分之三。所以 `.import` 文件要跟着入库，不能忽略。
 - 引擎（`tools/godot/`，255 MB）和 `.workbuddy/`（本地工作记忆）不入库。

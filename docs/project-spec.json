@@ -15,7 +15,6 @@
     "res://data/%s.json"
   ],
   "checkAssetSpec": false,
-  "assetManifest": "docs/asset-manifest.json",
   "largeFileScanMB": 4,
   "maxTextReadMB": 256,
   "requireFrozenDesign": false,
