@@ -240,7 +240,7 @@ func sync(run: Dictionary) -> void:
 	_update_window(run)
 	set_time(run)
 	# 灶台、工作台是每次同步重画的，砸掉的那件要重画之后再藏
-	_apply_wrecked()
+	_apply_wrecked(run)
 	# 灶台等是第一次同步时才摆上的，摆好再烘焙导航
 	if not _baked:
 		_baked = true
@@ -333,13 +333,12 @@ func _fit_garden(rows: int) -> void:
 
 
 var _fight_figs := []
-var _wrecked: Dictionary = {}   # 被啃过的目标序号 -> true（家具据此不再摆出来）
 var _debris: Array = []
+var _rubbles: Dictionary = {}   # 砸烂的家具 spot -> 塌料节点
 
-## 院子里的东西被啃了：原地留一堆碎屑；家具直接塌掉（对应构件藏起来）。
-## 存货、柴垛、菜畦靠 sync(run) 重画，这里只管"看得见的那一下"。
+## 院子里的东西被啃了：原地留一堆碎屑。
+## 存货、柴垛、菜畦靠 sync(run) 重画；家具塌不塌由 run.broken 决定（见 _apply_wrecked）。
 func show_wreck(idx: int, pos: Vector3, kind: String) -> void:
-	_wrecked[idx] = true
 	var root := K.node(self, Vector3.ZERO, Vector3.ZERO, "wreck")
 	_debris.append(root)
 	var rng := RandomNumberGenerator.new()
@@ -361,19 +360,39 @@ func show_wreck(idx: int, pos: Vector3, kind: String) -> void:
 			Vector3(0, rng.randf_range(0, 90), rng.randf_range(-20, 20)))
 	# 地上留一片暗渍，远看也知道这块被翻过
 	K.box(root, Vector3(1.7, 0.012, 1.7), K.mat(Color("#3a2a24"), 0.95, 0.0, 0.5), pos + Vector3(0, 0.03, 0))
-	_apply_wrecked()
 
 
-## 被啃掉的家具不再摆出来（这三件的构件是按 sync 重画的，藏了要每次重画后再藏一遍）。
-func _apply_wrecked() -> void:
-	for idx in _wrecked:
-		match int(idx):
-			3:
-				if spot_nodes.has("stove"):
-					spot_nodes["stove"].visible = false
-			4:
-				if spot_nodes.has("bench"):
-					spot_nodes["bench"].visible = false
+## 被砸烂的家具：好的一件藏起来，原处留一堆塌掉的木料——点了还能修。
+## 灶台和工作台都是每次 sync 重画的，所以每次重画后都要再过一遍。
+func _apply_wrecked(run: Dictionary) -> void:
+	var broken: Array = run.get("broken", [])
+	for pair in [["stove", Vector3(-8.9, 0, -1.6)], ["bench", Vector3(9.0, 0, -1.2)]]:
+		if str(pair[0]) in broken:
+			_wreck_spot(str(pair[0]), pair[1])
+		else:
+			_heal_spot(str(pair[0]))
+
+
+func _wreck_spot(spot: String, pos: Vector3) -> void:
+	if spot_nodes.has(spot):
+		spot_nodes[spot].visible = false
+	if _rubbles.has(spot):
+		return
+	var r := K.node(self, pos, Vector3.ZERO, "rubble_" + spot)
+	K.solid(r, Vector3(1.4, 0.26, 1.0), K.WOOD.darkened(0.25), Vector3(0, 0.13, 0))
+	for i in 5:
+		K.box(r, Vector3(0.34, 0.16, 0.22), K.WOOD_LIGHT.darkened(0.25),
+			Vector3((i - 2) * 0.42, 0.1, (i % 2) * 0.36), Vector3(0, i * 27, (i - 2) * 8))
+	_tag_colliders(r, spot)
+	_rubbles[spot] = r
+
+
+func _heal_spot(spot: String) -> void:
+	if spot_nodes.has(spot):
+		spot_nodes[spot].visible = true
+	if _rubbles.has(spot):
+		_rubbles[spot].queue_free()
+		_rubbles.erase(spot)
 
 
 ## 院门口的活人：门开着的时候，这一轮的僵尸会真的走进来。

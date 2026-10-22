@@ -4,10 +4,11 @@ extends RefCounted
 ##   v2：连续时间，run.t 是劫后第一天 6:00 起的分钟数；菜畦记 watered_t。
 ##   v3：守夜布防（posture / posture_due）。
 ##   v4：三面（门/窗/院墙）+ 三轮夜战 + 守夜方针。
+##   v5：被砸烂的家具记进 run.broken（要拿材料重做）。
 
 const Post = preload("res://scripts/core/post.gd")
 
-const VERSION := 4
+const VERSION := 5
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -20,6 +21,8 @@ const ADDED_4 := {
 	"wall": {"cur": 120, "max": 120}, "guard_spot": "", "plan_due": false,
 	"night": {}, "night_policy": "", "fight": {}, "door_open": false,
 }
+## v5 新加的字段
+const ADDED_5 := {"broken": []}
 ## v1 的时段（晨 / 午 / 暮 / 夜）→ 当天第几分钟（从 6:00 起）：8:00、12:00、16:00、18:00
 const SEG_MINUTE := [120, 360, 600, 720]
 
@@ -73,5 +76,10 @@ static func upgrade(run: Dictionary) -> Dictionary:
 			run.night_policy = ""
 		run.erase("posture")
 		run.erase("posture_due")
+	if v < 5:
+		for key in ADDED_5:
+			if not run.has(key):
+				var val = ADDED_5[key]
+				run[key] = val.duplicate() if (val is Dictionary or val is Array) else val
 	run.version = VERSION
 	return run

@@ -506,6 +506,8 @@ func actions_for(id: String) -> Array:
 	var can := Post.can_act(run)
 	match id:
 		"stove":
+			if "stove" in run.get("broken", []):
+				return _fix_menu("stove")
 			return [["生火做饭…", Dialogs.cook, can]]
 		"garden":
 			var tend := can
@@ -529,6 +531,8 @@ func actions_for(id: String) -> Array:
 			var can_mend := Inv.count(run.home, "wood") > 0 or Inv.count(run.home, "firewood") >= 2
 			var mend := "" if can_mend else "没有木料（两捆柴也行）"
 			var out := [["营造守具 · 画符…", Dialogs.build, ""]]
+			if "bench" in run.get("broken", []):
+				out = _fix_menu("bench") + out
 			for row in [["door", "门"], ["window", "窗"], ["wall", "墙"]]:
 				var sid: String = row[0]
 				var part: Dictionary = run[sid]
@@ -546,6 +550,15 @@ func actions_for(id: String) -> Array:
 			list.append(["出门搜寻…", Dialogs.explore_pick, out])
 			return list
 	return []
+
+
+## 被砸烂的家具只剩一件事：拿材料重做。
+func _fix_menu(id: String) -> Array:
+	var run: Dictionary = Game.run
+	var name: String = Data.table("furniture")[id].name
+	var cost := Post.furniture_fix_cost(id)
+	var line := "重修%s（%s，一个半时辰）" % [name, Data.describe_items(cost)]
+	return [[line, _act(func(): return Post.act_fix_furniture(Game.run, id)), Post.furniture_block(run, id)]]
 
 
 func _act(fn: Callable) -> Callable:

@@ -153,6 +153,18 @@ func run_flow() -> void:
 	screen().world.show_wreck(0, Vector3(3.5, 0.0, 1.4), "crop")
 	await _frames()
 	check(not screen().world._debris.is_empty(), "破坏没留下碎屑")
+	# 家具被砸：塌料摆出来，菜单只剩「重修」（验完立刻复原，后面还要做饭）
+	Post.apply_wreck(Game.run, 3)
+	screen().sync_world()
+	await _frames()
+	check("stove" in Game.run.broken, "灶台被砸了没记下来")
+	check(screen().world._rubbles.has("stove"), "灶台塌了却没摆出塌料")
+	var menu: Array = screen().actions_for("stove")
+	check(str(menu[0][0]).begins_with("重修"), "灶台菜单里没有重修：%s" % str(menu[0][0]))
+	Game.run.broken.erase("stove")
+	screen().sync_world()
+	await _frames()
+	check(not screen().world._rubbles.has("stove"), "修好了塌料还在")
 	var sum: Dictionary = NightFight.finish(Game.run.fight)
 	Game.act(func():
 		Post.end_fight(Game.run, sum)

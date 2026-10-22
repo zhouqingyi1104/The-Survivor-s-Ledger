@@ -38,6 +38,7 @@ const RATE := {
 ## 行动：[名称, 分钟, 精力消耗]
 const ACTIONS := {
 	"cook": ["做饭", 60, 6], "garden": ["打理菜畦", 45, 8], "build": ["营造", 90, 10], "repair": ["修缮", 60, 8],
+	"fix_furniture": ["重修家具", 90, 8],
 	"read": ["读书", 120, 4], "craft": ["画符", 60, 6], "rest": ["小憩", 120, 0], "water": ["打水", 15, 2],
 	"travel": ["赶路", 60, 8], "search": ["翻找", 20, 4],
 	"mend": ["夜修", 25, 4], "ward": ["布守具", 20, 6],
@@ -584,12 +585,19 @@ static func apply_wreck(run: Dictionary, idx: int) -> String:
 			else:
 				text = "僵尸在柴垛边打了个转。"
 		_:
-			var gone := ""
-			if not run.get("furniture", []).is_empty():
-				var f: Dictionary = run.furniture[run.furniture.size() - 1]
-				gone = Home.data(f.id).get("name", "")
-				run.furniture.erase(f)
-			text = ("%s被砸烂了。" % gone) if gone != "" else "僵尸在屋里翻了一通，没剩下什么可砸的。"
+			# 家具砸烂了要留在 run.broken 里：塌在当场，等玩家拿材料重做
+			if not run.has("broken"):
+				run.broken = []
+			var want := str(t[4]) if t.size() > 4 else ""
+			var order := [want, "bench" if want == "stove" else "stove"]
+			for cand in order:
+				if str(cand) == "" or cand in run.broken:
+					continue
+				run.broken.append(str(cand))
+				text = "%s被砸烂了，得拿木料和铁钉重做。" % Home.data(str(cand)).get("name", "家具")
+				break
+			if text == "":
+				text = "僵尸在屋里翻了一通，能砸的早砸光了。"
 	if text != "":
 		State.note(run, text)
 	return text
@@ -694,6 +702,11 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 		"mend":
 			_tend_surface(run, str(data.surface))
 			State.add_xp(run, "build", 2)
+		"fix_furniture":
+			var id := str(data.target)
+			run.broken.erase(id)
+			State.add_xp(run, "build", 6)
+			State.note(run, "把%s重新做了起来。" % Home.data(id).get("name", "家具"))
 		"ward":
 			var wd: Dictionary = Data.table("devices").devices[data.device]
 			run.devices.append({"id": data.device, "dur": int(wd.dur)})
@@ -938,6 +951,37 @@ static func act_repair(run: Dictionary, target: String) -> String:
 	else:
 		return "没有木料（两捆柴也能拆着补门板）。"
 	_start(run, "repair", {"target": target})
+	return ""
+
+
+## 重修一件被砸烂的家具要什么料。
+static func furniture_fix_cost(_id: String) -> Dictionary:
+	return {"wood": 2, "nails": 1}
+
+
+## 修这件的拦路理由（没坏 / 正忙 / 缺料）。
+static func furniture_block(run: Dictionary, id: String) -> String:
+	if not id in run.get("broken", []):
+		return "没坏。"
+	var err := can_act(run, 8)
+	if err != "":
+		return err
+	var items: Dictionary = Data.table("items")
+	var cost := furniture_fix_cost(id)
+	for item in cost:
+		var need := int(cost[item])
+		if Inv.count(run.home, item) < need:
+			return "缺%s（要 %d %s）" % [items[item].name, need, items[item].unit]
+	return ""
+
+
+## 重修：木料 2、铁钉 1，一个半时辰。
+static func act_fix_furniture(run: Dictionary, id: String) -> String:
+	var err := furniture_block(run, id)
+	if err != "":
+		return err
+	Inv.take_all(run.home, furniture_fix_cost(id))
+	_start(run, "fix_furniture", {"target": id})
 	return ""
 
 

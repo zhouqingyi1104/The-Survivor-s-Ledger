@@ -73,6 +73,7 @@ func _init() -> void:
 	test_rewind()
 	test_migrate()
 	test_fight()
+	test_broken()
 	print("不变量失败：%d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -414,6 +415,34 @@ func test_fight() -> void:
 		int(s.bashes), s2.wrecked.size(), int(sum.kills), int(sum2.parries)])
 
 
+## 被砸烂的家具：记进 run.broken、存档带走、要材料才修得回来。
+func test_broken() -> void:
+	var run := State.new_run("escort", State.new_meta(), 91)
+	run.phase = "post"
+	run.pday = 3
+	run.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
+	var t: String = Post.apply_wreck(run, 3)
+	check("stove" in run.broken, "灶台被砸了却没记下来：%s" % t)
+	var t2: String = Post.apply_wreck(run, 4)
+	check("bench" in run.broken, "工作台被砸了却没记下来：%s" % t2)
+	Post.apply_wreck(run, 3)
+	check(run.broken.size() == 2, "砸烂的家具记重复了：%s" % str(run.broken))
+	var saved := Migrate.save({"run": run.duplicate(true), "snapshots": {}})
+	check("stove" in saved.run.broken, "存档里丢了被砸的家具")
+	# 没料修不了
+	run.home.erase("wood")
+	run.home.erase("nails")
+	check(Post.furniture_block(run, "stove") != "", "没料也能修")
+	Inv.add(run.home, "wood", 2)
+	Inv.add(run.home, "nails", 1)
+	check(Post.furniture_block(run, "stove") == "", "有料却修不了：%s" % Post.furniture_block(run, "stove"))
+	check(Post.act_fix_furniture(run, "stove") == "", "重修开不了工")
+	Post.advance(run, 100)
+	check(not "stove" in run.broken, "修完了灶台还是烂的")
+	check(Inv.count(run.home, "wood") == 0, "修完了木料没扣")
+	print("家具重修：砸 2 件，修好 1 件，还剩 %s" % str(run.broken))
+
+
 func test_rewind() -> void:
 	var meta := State.new_meta()
 	var run := State.new_run("scholar", meta, 77)
@@ -453,6 +482,7 @@ func test_migrate() -> void:
 	for key in Migrate.ADDED:
 		check(up.has(key), "旧存档迁移后缺 %s" % key)
 	check(int(up.version) == Migrate.VERSION and not up.has("seg"), "旧存档版本没升上去")
+	check(up.has("broken") and up.broken is Array, "v5 的 broken 没补上")
 	check(int(up.t) == 600 and Post.clock_text(up) == "16:00", "旧存档时段换算不对：t=%s" % str(up.get("t")))
 	check(up.plots[0].has("watered_t") and not up.plots[0].has("watered"), "菜畦字段没迁移")
 	check(data.snapshots["1"].has("busy"), "生死簿快照没迁移")
