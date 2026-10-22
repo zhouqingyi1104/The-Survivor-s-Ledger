@@ -25,7 +25,7 @@ const RIGS := {
 		"idle": "Idle", "walk": "Walk", "jog": "Jog_Fwd", "sprint": "Sprint", "work": "Interact", "death": "Death01"},
 	"m": {"head": "mixamorig_Head", "chest": "mixamorig_Spine2", "hips": "mixamorig_Hips",
 		"hand_l": "mixamorig_LeftHand", "hand_r": "mixamorig_RightHand",
-		"top_bone": "mixamorig_HeadTop_End", "head_top": 0.16, "scale": 0.92, "own_hair": true, "own_dress": true,
+		"top_bone": "", "head_top": 0.14, "scale": 0.92, "own_hair": true, "own_dress": true,
 		"idle": "Camp_Idle", "walk": "Camp_Walk", "jog": "Camp_Walk", "sprint": "Camp_Walk",
 		"work": "Camp_Wave", "death": "Camp_Idle"},
 }
@@ -98,6 +98,8 @@ var _step_phase := -1
 var _ribbons: Array = []
 var _dangles: Array = []
 var _motes: Node3D
+## [BoneAttachment3D, 容器]：等着把缩放配回去的挂点
+var _fixes: Array = []
 
 
 static func _scene(path: String) -> PackedScene:
@@ -185,9 +187,10 @@ func _fairy_wear() -> void:
 	var chest := _bone("chest")
 	var hips := _bone("hips")
 	var s := float(_rig.scale)
+	# 链长按身高配：从胸口垂到小腿，往后拖一点，别直愣愣地贴着身子
 	for sx in [-1, 1]:
-		_ribbons.append(Ribbon.make(chest, Vector3(sx * 0.165, 0.02, -0.055) / s, 0.20 / s, 0.10 / s, sash, 1.35, randf() * TAU, 0.045))
-		_ribbons.append(Ribbon.make(hips, Vector3(sx * 0.075, -0.03, -0.05) / s, 0.13 / s, 0.055 / s, sash, 1.85, randf() * TAU, 0.075))
+		_ribbons.append(Ribbon.make(chest, Vector3(sx * 0.185, 0.02, -0.06) / s, 0.145 / s, 0.085 / s, sash, 1.35, randf() * TAU, 0.055))
+		_ribbons.append(Ribbon.make(hips, Vector3(sx * 0.075, -0.03, -0.05) / s, 0.105 / s, 0.05 / s, sash, 1.85, randf() * TAU, 0.07))
 	if not _rig.get("own_hair", false):
 		_hair()
 	if not _rig.get("own_dress", false):
@@ -288,20 +291,53 @@ func _bone_node(bone: String) -> BoneAttachment3D:
 	return b
 
 
-## 按骨骼取挂件用的骨头：head / chest / hips / hand_l / hand_r
-func _bone(key: String) -> BoneAttachment3D:
-	return _bone_node(str(_rig.get(key, "Head")))
+## 按骨骼取挂件用的容器：head / chest / hips / hand_l / hand_r
+## 骨架可能带着缩放导进来（413games 那套是 MMD 单位，骨头上约 1/100），挂在骨头上的东西会被一起缩小。
+## 所以在骨头下面垫一层容器，每帧按骨头的实际缩放配个反的，挂件就一律按米来写。
+func _bone(key: String) -> Node3D:
+	var b := BoneAttachment3D.new()
+	b.bone_name = str(_rig.get(key, "Head"))
+	_skel.add_child(b)
+	var w := Node3D.new()
+	b.add_child(w)
+	_fixes.append([b, w])
+	return w
+
+
+## 把挂点容器的缩放配成骨头缩放的反数，抵消骨架自带的缩放。
+func _fix_bone_scale() -> void:
+	for pair in _fixes:
+		var b: BoneAttachment3D = pair[0]
+		var w: Node3D = pair[1]
+		var s: Vector3 = b.global_transform.basis.get_scale()
+		w.scale = Vector3(
+			1.0 / s.x if absf(s.x) > 0.0001 else 1.0,
+			1.0 / s.y if absf(s.y) > 0.0001 else 1.0,
+			1.0 / s.z if absf(s.z) > 0.0001 else 1.0)
 
 
 ## 头顶离头骨原点有多高。有 HeadTop_End 的骨骼（Mixamo）直接量，量不到就按体型给的数。
+## 注意量出来的是骨架自己的单位，要先乘骨架的缩放才是米。
 func _head_top() -> float:
 	var tb := str(_rig.get("top_bone", ""))
 	if tb != "":
 		var i := _skel.find_bone(tb)
 		var h := _skel.find_bone(str(_rig.head))
 		if i >= 0 and h >= 0:
-			return (_skel.get_bone_global_pose(i).origin - _skel.get_bone_global_pose(h).origin).y
+			var s := _skeleton_scale()
+			return (_skel.get_bone_global_pose(i).origin - _skel.get_bone_global_pose(h).origin).y * s
 	return float(_rig.get("head_top", 0.235))
+
+
+## 骨架自身带着的缩放（Mixamo 那套约 1/100）
+func _skeleton_scale() -> float:
+	var n: Node = _skel
+	var s := 1.0
+	while n != null and n != self:
+		if n is Node3D:
+			s *= (n as Node3D).scale.y
+		n = n.get_parent()
+	return s
 
 
 ## 动作名按骨骼选：这一套没有（比如 UAL 的 Interact）就退回本套的对应动作。
@@ -413,6 +449,7 @@ func _process(delta: float) -> void:
 
 ## 飘带、灵光、步摇坠子的每帧摆动。站着摆得小，走起来摆得开。
 func _tick_fairy(delta: float, walking: bool) -> void:
+	_fix_bone_scale()
 	if _ribbons.is_empty() and _dangles.is_empty() and _motes == null:
 		return
 	var wind := 1.0 if walking else 0.42
@@ -471,16 +508,16 @@ func face(dir: Vector3, weight := 1.0) -> void:
 	rotation.y = lerp_angle(rotation.y, atan2(dir.x, dir.z), weight)
 
 
-## 飘带（披帛 / 腰绦）：一串首尾相接的小片，每节错开一点相位摆，看着像被风带着飘。
-## lean 是每节往后垂的角度，串起来就是一条往后拖的弧；wind 越大摆得越开。
+## 飘带（披帛 / 腰绦）：一串首尾相接的小片，靠每节错开一点相位摆，看着像被风带着飘。
+## 关键：相位差要小（行波，不是正负交替），幅度也要小——否则链子会自己折回来团成一团。
 class Ribbon extends Node3D:
 	const SEGS := 7
 
 	var _segs: Array[Node3D] = []
-	var _amp := 0.22
-	var _freq := 1.6
+	var _amp := 0.05
+	var _freq := 1.5
 	var _phase := 0.0
-	var _lean := 0.12
+	var _lean := 0.035
 
 	static func make(parent: Node3D, pos: Vector3, seg_len: float, width: float, mat: Material,
 			freq: float, phase: float, lean: float) -> Ribbon:
@@ -491,7 +528,7 @@ class Ribbon extends Node3D:
 		r._lean = lean
 		parent.add_child(r)
 		var node: Node3D = r
-		for i in SEGS:
+		for i in range(SEGS):
 			var seg := Node3D.new()
 			if i > 0:
 				seg.position = Vector3(0, -seg_len, 0)
@@ -506,9 +543,10 @@ class Ribbon extends Node3D:
 		for i in _segs.size():
 			var s := _segs[i]
 			var k := float(i) / float(_segs.size() - 1)
-			var ph := t * _freq - k * 1.2 + _phase
-			s.rotation.x = _lean * (0.4 + 0.6 * k) + sin(ph) * _amp * wind * (0.3 + k)
-			s.rotation.z = sin(ph * 0.7 + 1.3) * _amp * 0.6 * wind * (0.3 + k)
+			# 每节只错 0.45 弧度，从根到尖传一遍，像鞭子那样甩
+			var ph := t * _freq - k * 0.45 + _phase
+			s.rotation.x = _lean + _amp * wind * sin(ph) * (0.25 + 0.75 * k)
+			s.rotation.z = _amp * 0.7 * wind * sin(ph * 0.8 + 1.1) * (0.25 + 0.75 * k)
 
 
 ## 灵光：绕着人慢慢转的一圈小光点，各自上下浮、忽明忽暗。
