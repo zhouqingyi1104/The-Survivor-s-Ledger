@@ -1,0 +1,38 @@
+# 统一行尾：仓库里一律 LF，检出到哪个系统都不变。
+# 不写这一条时，Windows 上 core.autocrlf=true 会在检出时把 .gd / .md 换成 CRLF，
+# 每次提交都刷一串 "LF will be replaced by CRLF" 警告，diff 也会出现假改动。
+* text=auto eol=lf
+
+# 代码与文本：显式声明，避免被当成二进制
+*.gd      text eol=lf
+*.tscn    text eol=lf
+*.tres    text eol=lf
+*.godot   text eol=lf
+*.cfg     text eol=lf
+*.import  text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.py      text eol=lf
+*.sh      text eol=lf
+*.gitignore text eol=lf
+
+# 资源：明确标成二进制，Git 不做行尾转换、不尝试合并
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.webp    binary
+*.exr     binary
+*.hdr     binary
+*.ttf     binary
+*.otf     binary
+*.glb     binary
+*.gltf    binary
+*.bin     binary
+*.ogg     binary
+*.wav     binary
+*.mp3     binary
+*.zip     binary
+
+# 第三方原始素材：GitHub 语言统计里不计入，免得把仓库标成"素材库"
+assets/third_party/** linguist-vendored
+docs/screenshots/**   linguist-documentation
