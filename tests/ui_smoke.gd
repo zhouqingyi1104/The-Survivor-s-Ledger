@@ -8,6 +8,8 @@ extends Node
 const State = preload("res://scripts/core/state.gd")
 const Post = preload("res://scripts/core/post.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
+const Inv = preload("res://scripts/core/inv.gd")
+const Home = preload("res://scripts/core/home.gd")
 
 var failures := 0
 var main: Control
@@ -95,6 +97,23 @@ func run_flow() -> void:
 	await _frames()
 	await press("吃")
 	await press("合上")
+	# 添置家具：弹窗 → 选中 → 点地面放下 → 做完出现
+	Inv.add(Game.run.home, "wood", 4)
+	Inv.add(Game.run.home, "nails", 2)
+	Dialogs.furnish()
+	await _frames()
+	check(UI_has("去摆"), "没打开添置家具")
+	Dialogs._pick_furnish("armchair")
+	await _frames()
+	check(Game.placing == "armchair", "没进摆放模式")
+	var chairs := Home.count(Game.run, "armchair")
+	screen()._place_at(Vector3(-4.5, 0.0, 3.5))
+	await _frames()
+	check(Post.is_busy(Game.run) and str(Game.run.busy.kind) == "furnish", "摆放没开工：%s" % str(Game.run.busy))
+	check(Game.placing == "", "放完了还在摆放模式")
+	home.advance(60)
+	await _frames()
+	check(Home.count(Game.run, "armchair") == chairs + 1, "圈椅没摆出来")
 	# 出门搜寻
 	act_now("gate", "出门")
 	await _frames()

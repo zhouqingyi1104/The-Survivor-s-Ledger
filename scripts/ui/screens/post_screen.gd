@@ -16,6 +16,7 @@ const CamRig = preload("res://scripts/world/cam_rig.gd")
 const WaveShow = preload("res://scripts/world/wave_show.gd")
 const Outline = preload("res://scripts/world/outline.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
+const Home = preload("res://scripts/core/home.gd")
 
 ## 每档流速：游戏分钟 / 现实秒
 const SPEEDS := [0.0, 4.0, 10.0, 24.0]
@@ -138,6 +139,18 @@ func _swing() -> void:
 			Sfx.play("ling", -10.0, 0.12)
 	else:
 		Sfx.play("cloth", -10.0, 0.02)
+
+
+## 摆放模式：点地面把选中的家具放下去。
+func _place_at(p: Vector3) -> void:
+	var id := Game.placing
+	Game.placing = ""
+	var res = Game.act(func(): return Post.act_furnish(Game.run, id, p.x, p.z, Game.placing_rot))
+	if typeof(res) == TYPE_STRING and res != "":
+		Game.placing = id       # 放不下：留着继续试
+		Game.toast.emit(res)
+		return
+	Sfx.play("hammer", -6.0)
 
 
 ## 架一刀（K / 右键单击；测试也走这里）。挡住那一口，咬你的被推开。
@@ -476,11 +489,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_K:
 			if not Game.run.get("fight", {}).is_empty():
 				_guard()
+		KEY_R:
+			if Game.placing != "":
+				Game.placing_rot = (Game.placing_rot + 90) % 360
+				Game.toast.emit("转了个方向。")
 		KEY_F:
 			if Post.in_night(Game.run):
 				Dialogs.night_panel()
 		KEY_ESCAPE:
-			if _menu.visible:
+			if Game.placing != "":
+				Game.placing = ""
+				Game.toast.emit("先不摆了。")
+			elif _menu.visible:
 				_close_menu()
 			else:
 				Dialogs.settings(true)
@@ -488,6 +508,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _click(pos: Vector2) -> void:
 	if modal_open():
+		return
+	if Game.placing != "":
+		var spot: Dictionary = world.pick(rig.cam, pos)
+		if spot.has("ground"):
+			_place_at(spot.ground)
+		else:
+			Game.toast.emit("得点在空地上。")
 		return
 	if _menu.visible:
 		_close_menu()
@@ -504,6 +531,11 @@ func _click(pos: Vector2) -> void:
 func actions_for(id: String) -> Array:
 	var run: Dictionary = Game.run
 	var can := Post.can_act(run)
+	if id.begins_with("f_"):
+		var uid := int(id.substr(2))
+		if Home.find(run, uid).is_empty():
+			return []
+		return [["拆掉（退一半料）", _act(func(): return Post.act_unfurnish(Game.run, uid)), can]]
 	match id:
 		"stove":
 			if "stove" in run.get("broken", []):
@@ -530,7 +562,7 @@ func actions_for(id: String) -> Array:
 		"bench":
 			var can_mend := Inv.count(run.home, "wood") > 0 or Inv.count(run.home, "firewood") >= 2
 			var mend := "" if can_mend else "没有木料（两捆柴也行）"
-			var out := [["营造守具 · 画符…", Dialogs.build, ""]]
+			var out := [["营造守具 · 画符…", Dialogs.build, ""], ["添置家具…", Dialogs.furnish, ""]]
 			if "bench" in run.get("broken", []):
 				out = _fix_menu("bench") + out
 			for row in [["door", "门"], ["window", "窗"], ["wall", "墙"]]:
@@ -810,6 +842,12 @@ func _left_top(run: Dictionary) -> void:
 		f.add_child(Hud.text(guard_line, 13, Hud.GOLD if NightFight.can_guard(fight) else Hud.SUB))
 	elif Post.in_night(run):
 		f.add_child(Hud.text("院门%s" % ("开着" if bool(run.door_open) else "闩着"), 13, Hud.GOLD if bool(run.door_open) else Hud.SUB))
+	# 摆放家具：选好了就提示怎么放
+	if Game.placing != "":
+		var fd: Dictionary = Home.data(Game.placing)
+		var fsz := Home.size_of(Game.placing, Game.placing_rot)
+		f.add_child(Hud.text("摆放 %s（%.1f×%.1f）· 左键放下 · R 转向 · Esc 取消" % [
+			fd.get("name", ""), fsz.x, fsz.y], 13, Hud.GOLD))
 	# 守具按面挂；夜战时显示第几轮和这一轮各面来几只
 	var parts := []
 	for sid in Defense.SURFACES:

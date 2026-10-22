@@ -51,6 +51,7 @@
    - **架刀**：`K` 或右键单击（右键拖动仍是转视角）。抬起后 0.35 秒内咬进来的那一口被架住——不掉血、把僵尸推开 1.4 米并让它趔趄；收刀 1.15 秒，架成功只算 0.6 秒。一次只挡一口，被四五只围住时只能救自己一回。
    - 被啃过的院子**看得见**：原地留碎屑和暗渍，砸掉的家具当场塌成一堆木料，米袋、柴垛、菜畦按新数量重画。
    - **砸烂的家具要重做**：灶台 / 工作台塌了会一直塌着（存档也带着），点它只剩「重修」——木料 2 + 铁钉 1、一个半时辰。修好之前做不了饭、也修不了门窗。**开门放僵尸进来，代价能延续到第二天。**
+   - **添置家具**：工作台 →「添置家具…」，18 件里挑一件，回到院里**点地面放下**（`R` 转向、`Esc` 取消）。屋里院里的空地都能摆，只是不能堵住门口到正屋的中路、不能和已有家具挤在一起；料不够或已到上限的会直接写出来。摆好的点它就能**拆掉，退一半料**（向下取整）。
    - 演出仍是「先算后演」：第一轮有 3D 演出（可以跳过），后两轮以面板和战报呈现。功德可以在**神龛求签**（同一天求得越多越贵）。
 4. **死亡**：翻**生死簿残页**——翻回昨日（折寿元）、翻回扉页（结算道心重来），或者合上此录。
 5. **劫满**：熬过第二十夜，可以守宅（转无尽）、再入轮回或合上此录。道心用来参悟**心法**（永久能力）。
@@ -119,7 +120,7 @@ tests/                     无界面整局模拟、界面冒烟测试、脚本�
 ./tools/godot/Godot_v4.7.2-stable_win64_console.exe --path . --resolution 1280x720 -- --demo=post --shot=res://docs/screenshots/post.png
 ```
 
-可用的 demo：`title credits roles talents pre crowd post closeup hall kitchen menu night sleep wave wave_blood dawn cook garden build omens inventory explore_pick explore plan night_panel gate_fight wreck event dead ending`。演出类的加 `--delay=6` 截到中途。
+可用的 demo：`title credits roles talents pre crowd post closeup hall kitchen menu night sleep wave wave_blood dawn cook garden build omens inventory explore_pick explore plan night_panel gate_fight wreck furnish event dead ending`。演出类的加 `--delay=6` 截到中途。
 
 ## 导出注意
 

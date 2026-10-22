@@ -4,6 +4,7 @@ extends SceneTree
 
 const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
+const Home = preload("res://scripts/core/home.gd")
 const State = preload("res://scripts/core/state.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Post = preload("res://scripts/core/post.gd")
@@ -74,6 +75,7 @@ func _init() -> void:
 	test_migrate()
 	test_fight()
 	test_broken()
+	test_furnish()
 	print("不变量失败：%d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -441,6 +443,36 @@ func test_broken() -> void:
 	check(not "stove" in run.broken, "修完了灶台还是烂的")
 	check(Inv.count(run.home, "wood") == 0, "修完了木料没扣")
 	print("家具重修：砸 2 件，修好 1 件，还剩 %s" % str(run.broken))
+
+
+## 添置家具：占地检查、扣料、要等做完才出现、拆掉退一半（向下取整）。
+func test_furnish() -> void:
+	var run := State.new_run("escort", State.new_meta(), 93)
+	run.phase = "post"
+	run.pday = 1
+	run.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
+	Home.ensure_layout(run)
+	check(Home.count(run, "bed") == 1 and Home.count(run, "stove") == 1, "开局家具没摆出来")
+	# 中路不许摆
+	check(Home.spot_block(run, "tea_table", 0.0, 2.0, 0) != "", "中路居然能摆")
+	# 料不够就造不了
+	check(Home.build_block(run, "armchair") != "", "没料也能造圈椅")
+	Inv.add(run.home, "wood", 5)
+	Inv.add(run.home, "nails", 2)
+	check(Home.build_block(run, "armchair") == "", "有料却造不了圈椅")
+	# 开工：料先扣，东西要等做完才出现
+	var before := Home.count(run, "armchair")
+	check(Post.act_furnish(run, "armchair", -3.2, 1.0, 0) == "", "摆放开不了工")
+	check(Home.count(run, "armchair") == before, "没等做完就出现了")
+	Post.advance(run, 60)
+	check(Home.count(run, "armchair") == before + 1, "做完了没摆出来")
+	# 拆掉退一半（3 木料 → 退 1）
+	var f: Dictionary = Home.list(run, "armchair")[0]
+	var wood_now := Inv.count(run.home, "wood")
+	check(Post.act_unfurnish(run, int(f.uid)) == "", "拆不掉")
+	check(Home.count(run, "armchair") == before, "拆了还在")
+	check(Inv.count(run.home, "wood") == wood_now + 1, "退料不对：%d → %d" % [wood_now, Inv.count(run.home, "wood")])
+	print("添置家具：开局 %d 件，圈椅摆上又拆掉，木料退回 1 根" % Home.list(run).size())
 
 
 func test_rewind() -> void:

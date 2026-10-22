@@ -11,6 +11,16 @@ const Events = preload("res://scripts/core/events.gd")
 const Ledger = preload("res://scripts/core/ledger.gd")
 const Defense = preload("res://scripts/core/defense.gd")
 const Pre = preload("res://scripts/core/pre.gd")
+const Home = preload("res://scripts/core/home.gd")
+
+## 家具的功用，摆出来能做什么（写给人看的）
+const FN_TEXT := {
+	"cook": "能做饭", "sleep": "能就寝", "read": "能读书", "craft": "能营造",
+	"store": "能存货", "pickle": "能腌菜", "smoke": "能熏肉", "heat": "夜里更暖",
+	"trap": "能捕鼠", "plant": "能种菜", "incense": "能上香", "books": "能藏书",
+	"water": "能取水",
+}
+const WHERE_TEXT := {"indoor": "摆屋里", "outdoor": "摆院里"}
 
 static var GRADE_COLORS := {"不足": UI.CINNABAR, "适当": UI.GOLD, "宽裕": UI.JADE}
 static var STATUS_COLORS := {"正常": UI.JADE, "拥挤": UI.GOLD, "哄抢": UI.CINNABAR, "关门": UI.INK_FAINT}
@@ -473,6 +483,72 @@ func _charm_do(sid: String, id: String) -> void:
 	if typeof(res) == TYPE_STRING and res == "":
 		UI.close_modal("charm")
 		UI.close_modal("night")
+
+
+# ---------- 添置家具 ----------
+
+func furnish() -> void:
+	UI.open_modal("furnish", "添置家具", _furnish, true, 960)
+
+
+func _furnish(body: VBoxContainer) -> void:
+	var run := _run()
+	body.add_child(UI.para("挑一件，回到院里点地面放下。R 转方向，Esc 取消。屋里院里的空地都能摆，只是不能堵中路、不能和别的东西挤在一起。", 16))
+	body.add_child(UI.sep())
+	var items: Dictionary = Data.table("furniture")
+	var keys := items.keys()
+	var row: HBoxContainer = null
+	for i in keys.size():
+		if i % 2 == 0:
+			row = UI.hbox(10)
+			body.add_child(row)
+		row.add_child(_furn_card(run, str(keys[i])))
+	var placed := Home.list(run)
+	if not placed.is_empty():
+		body.add_child(UI.sep())
+		body.add_child(UI.label("已经摆着的（拆掉退一半料）", 18, UI.CINNABAR))
+		for f in placed:
+			var uid := int(f.uid)
+			var h := UI.hbox(10)
+			UI.expand(h)
+			var line := "%s　(%d, %d)" % [Home.data(str(f.id)).get("name", ""), int(f.x), int(f.z)]
+			if str(f.id) in ["bed", "desk", "storage", "stove", "bench"]:
+				line += "　·　固定的"
+			h.add_child(UI.expand(UI.label(line, 16)))
+			if not str(f.id) in ["bed", "desk", "storage", "stove", "bench"]:
+				h.add_child(UI.button("拆掉", func(): _remove_furn(uid)))
+			body.add_child(h)
+
+
+func _furn_card(run: Dictionary, id: String) -> Control:
+	var d := Home.data(id)
+	var v := UI.vbox(4)
+	UI.expand(v)
+	v.add_child(UI.label(d.get("name", id), 19))
+	var where := str(WHERE_TEXT.get(str(d.get("where", "any")), "屋里屋外都行"))
+	v.add_child(UI.label("%s　%s" % [where, str(FN_TEXT.get(str(d.get("fn", "")), ""))], 13, UI.DAI))
+	var sz := Home.size_of(id, 0)
+	v.add_child(UI.para("用料：%s　占 %.1f×%.1f" % [req_text(run.home, d.get("cost", {})), sz.x, sz.y], 14, UI.INK_SOFT))
+	var block := Home.build_block(run, id)
+	if block == "":
+		v.add_child(UI.seal_button("去摆", func(): _pick_furnish(id)))
+	else:
+		v.add_child(UI.label(block, 13, UI.INK_FAINT))
+	var card := UI.panel(v, UI.PAPER)
+	UI.expand(card)
+	return card
+
+
+func _pick_furnish(id: String) -> void:
+	UI.close_modal("furnish")
+	Game.placing = id
+	Game.placing_rot = 0
+	Game.toast.emit("点地面放下%s（R 转方向，Esc 取消）" % Home.data(id).get("name", "家具"))
+
+
+func _remove_furn(uid: int) -> void:
+	UI.close_modal("furnish")
+	_act_sfx(func(): return Post.act_unfurnish(Game.run, uid), "hit_plank")
 
 
 # ---------- 战报 / 天亮结算 ----------

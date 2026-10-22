@@ -128,6 +128,9 @@ static func setup(scene: String) -> void:
 			_to_post()
 			Game.run.pending_event = "taoist"
 			Game.act(func(): return "")
+		"furnish":
+			_to_post()
+			Game.act(func(): return "")
 		"wave", "wave_blood", "night", "dawn":
 			_to_post()
 			var run: Dictionary = Game.run
@@ -201,6 +204,8 @@ static func after_screen(scene: String, screen: Node) -> void:
 			screen.rig.snap()
 		"menu":
 			screen.open_menu("garden", screen.rig.cam.unproject_position(Vector3(3.5, 1.4, 2.3)))
+		"furnish":
+			Dialogs.furnish()
 		"gate_fight":
 			screen.player.position = Vector3(0, 0, 4.2)
 			screen.rig.dist = 12.0

@@ -30,6 +30,9 @@ var hold_screen := false
 ## 存档位置（测试时会改到别的文件）。
 var save_path := SAVE_PATH
 var meta_path := META_PATH
+## 正在摆放的家具（空 = 不在摆放）：界面选好家具后置上，点地面放下。
+var placing := ""
+var placing_rot := 0
 
 
 func _ready() -> void:

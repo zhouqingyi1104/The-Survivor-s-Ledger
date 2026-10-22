@@ -7,6 +7,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 const Post = preload("res://scripts/core/post.gd")
+const Home = preload("res://scripts/core/home.gd")
 
 const STATUS := ["正常", "拥挤", "哄抢"]
 const DEPLETE := {2: 0.7, 3: 0.4}
@@ -252,6 +253,8 @@ static func start_disaster(run: Dictionary) -> void:
 	for k in plots:
 		run.plots.append({"crop": "", "days": 0.0, "watered_t": 0})
 	Inv.add(run.home, "water", 4)
+	# 进屋前把家里的家具摆出来（床、书案、柜子、灶台、工作台……），之后可以自己添置、挪动
+	Home.ensure_layout(run)
 	State.note(run, "第三日夜里，城北的钟乱敲起来。停尸三日的尸瘟死者，一个接一个坐了起来——尸劫降临。")
 	run.t = 0
 	Post.begin_day(run)

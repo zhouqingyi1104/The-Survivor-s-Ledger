@@ -51,7 +51,7 @@
     {
       "level": "info",
       "check": "importPairing",
-      "message": "656 个资源与导入元数据配对完整（另有 357 条按规格抑制）",
+      "message": "657 个资源与导入元数据配对完整（另有 358 条按规格抑制）",
       "path": "",
       "hint": "",
       "files": [],
@@ -141,7 +141,7 @@
   ],
   "scriptVersion": "1.0.0",
   "ignored": {
-    "importPairing": 357,
+    "importPairing": 358,
     "gdscript": 1
   }
 }

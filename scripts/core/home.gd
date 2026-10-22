@@ -155,6 +155,14 @@ static func build_block(run: Dictionary, id: String) -> String:
 	return ""
 
 
+## 添置前的总检查：料够不够、这个位置摆不摆得下。
+static func place_block(run: Dictionary, id: String, x: float, z: float, rot: int, ignore_uid := -1) -> String:
+	var err := build_block(run, id)
+	if err != "":
+		return err
+	return spot_block(run, id, x, z, rot, ignore_uid)
+
+
 ## 营造要多久（分钟）：营造熟练每级快一成。
 static func build_minutes(run: Dictionary, id: String) -> int:
 	var lv := State.prof_level(run, "build")
@@ -198,7 +206,7 @@ static func remove(run: Dictionary, uid: int) -> String:
 	var d := data(f.id)
 	var back := {}
 	for item in d.get("cost", {}):
-		var n := int(d.cost[item]) / 2
+		var n := int(floor(float(d.cost[item]) / 2.0))
 		if n > 0:
 			back[item] = n
 	Inv.add_all(run.home, back)

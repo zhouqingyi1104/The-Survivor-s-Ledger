@@ -39,6 +39,7 @@ const RATE := {
 const ACTIONS := {
 	"cook": ["做饭", 60, 6], "garden": ["打理菜畦", 45, 8], "build": ["营造", 90, 10], "repair": ["修缮", 60, 8],
 	"fix_furniture": ["重修家具", 90, 8],
+	"furnish": ["安放家具", 45, 6],
 	"read": ["读书", 120, 4], "craft": ["画符", 60, 6], "rest": ["小憩", 120, 0], "water": ["打水", 15, 2],
 	"travel": ["赶路", 60, 8], "search": ["翻找", 20, 4],
 	"mend": ["夜修", 25, 4], "ward": ["布守具", 20, 6],
@@ -707,6 +708,11 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 			run.broken.erase(id)
 			State.add_xp(run, "build", 6)
 			State.note(run, "把%s重新做了起来。" % Home.data(id).get("name", "家具"))
+		"furnish":
+			var fid := str(data.id)
+			Home.add(run, fid, float(data.x), float(data.z), int(data.rot))
+			State.add_xp(run, "build", 3)
+			State.note(run, "%s摆好了。" % Home.data(fid).get("name", "家具"))
 		"ward":
 			var wd: Dictionary = Data.table("devices").devices[data.device]
 			run.devices.append({"id": data.device, "dur": int(wd.dur)})
@@ -983,6 +989,29 @@ static func act_fix_furniture(run: Dictionary, id: String) -> String:
 	Inv.take_all(run.home, furniture_fix_cost(id))
 	_start(run, "fix_furniture", {"target": id})
 	return ""
+
+
+## 添置一件家具：先扣料，再花时间摆进去（摆在哪儿由界面点地面给）。
+static func act_furnish(run: Dictionary, id: String, x: float, z: float, rot: int) -> String:
+	var err := can_act(run, 6)
+	if err != "":
+		return err
+	err = Home.place_block(run, id, x, z, rot)
+	if err != "":
+		return err
+	Inv.take_all(run.home, Home.data(id).get("cost", {}))
+	_start(run, "furnish", {"id": id, "x": x, "z": z, "rot": rot})
+	return ""
+
+
+## 拆掉一件家具（退一半料，立刻完成）。
+static func act_unfurnish(run: Dictionary, uid: int) -> String:
+	var err := can_act(run, 4)
+	if err != "":
+		return err
+	if Home.find(run, uid).is_empty():
+		return "找不到这件家具。"
+	return Home.remove(run, uid)
 
 
 static func craft_block(run: Dictionary, craft_id: String) -> String:

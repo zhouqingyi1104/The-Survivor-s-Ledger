@@ -12,6 +12,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const State = preload("res://scripts/core/state.gd")
 const Post = preload("res://scripts/core/post.gd")
+const Home = preload("res://scripts/core/home.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const Figure = preload("res://scripts/world/character.gd")
 
@@ -54,7 +55,7 @@ func _ready() -> void:
 	_buildings()
 	_furniture()
 	_decor()
-	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras"]:
+	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish"]:
 		_dynamic[key] = K.node(self, Vector3.ZERO, Vector3.ZERO, key)
 	# 菜畦整块的拾取碰撞（菜苗每次重画，碰撞固定在这里；大小随画出来的畦数变，见 _fit_garden）
 	var garden_root := K.node(self, Vector3.ZERO, Vector3.ZERO, "spot_garden")
@@ -236,6 +237,7 @@ func sync(run: Dictionary) -> void:
 	_rebuild_garden(run)
 	_rebuild_devices(run)
 	_rebuild_extras(run)
+	_rebuild_furniture(run)
 	_update_gate(run)
 	_update_window(run)
 	set_time(run)
@@ -271,6 +273,93 @@ func _rebuild_garden(run: Dictionary) -> void:
 			Props.garden_plot(_dynamic.garden, PLOT_POS[k], plot.crop, growth, Post.plot_dry(run, plot))
 		else:
 			Props.garden_plot(_dynamic.garden, PLOT_POS[k], "", 0, true)
+
+
+## 玩家自己添置的家具：按 run.furniture 摆，位置和朝向都听数据。
+## 默认那六件是场景里固定的，这里只画多出来的，免得画两遍。
+func _rebuild_furniture(run: Dictionary) -> void:
+	for spot in _furn_spots.keys():
+		spot_nodes.erase(spot)
+	_furn_spots.clear()
+	K.clear(_dynamic.furnish)
+	for f in run.get("furniture", []):
+		var id := str(f.id)
+		if id in STATIC_FURN:
+			continue
+		var spot := "f_%d" % int(f.uid)
+		var root := K.node(_dynamic.furnish, Vector3(float(f.x), 0.0, float(f.z)), Vector3(0, float(f.rot), 0), spot)
+		_furn_mesh(root, id)
+		var sz := Home.size_of(id, int(f.rot))
+		K.collider(root, Vector3(sz.x, 0.9, sz.y), Vector3(0, 0.45, 0), {"spot": spot})
+		_register(spot, root)
+		_furn_spots[spot] = int(f.uid)
+
+
+## 各类家具的样子：够看就行，都是基本体拼的。
+func _furn_mesh(root: Node3D, id: String) -> void:
+	match id:
+		"bookshelf":
+			K.box(root, Vector3(1.2, 1.8, 0.42), K.WOOD, Vector3(0, 0.9, 0))
+			for y in [0.55, 0.95, 1.35, 1.72]:
+				K.box(root, Vector3(1.1, 0.06, 0.4), K.WOOD_LIGHT, Vector3(0, y, 0))
+			for i in 3:
+				K.box(root, Vector3(0.28, 0.24, 0.3), K.CLOTH_BLUE if i % 2 else K.PAPER,
+					Vector3(-0.38 + i * 0.36, 0.68 + (i % 2) * 0.4, 0))
+		"rice_jar":
+			K.box(root, Vector3(0.72, 0.7, 0.72), K.EARTH, Vector3(0, 0.35, 0))
+			K.box(root, Vector3(0.8, 0.08, 0.8), K.STONE_DARK, Vector3(0, 0.72, 0))
+			K.box(root, Vector3(0.5, 0.04, 0.5), K.RICE_SACK, Vector3(0, 0.76, 0))
+		"pickle_jar":
+			K.box(root, Vector3(0.52, 0.5, 0.52), K.EARTH, Vector3(0, 0.25, 0))
+			K.box(root, Vector3(0.58, 0.06, 0.58), K.STONE_DARK, Vector3(0, 0.52, 0))
+		"water_vat":
+			Props.water_vat(root, Vector3.ZERO)
+		"planter":
+			K.box(root, Vector3(1.4, 0.36, 0.6), K.WOOD, Vector3(0, 0.18, 0))
+			K.box(root, Vector3(1.24, 0.06, 0.46), K.EARTH, Vector3(0, 0.36, 0))
+			for i in 3:
+				K.box(root, Vector3(0.16, 0.22, 0.16), K.GREEN, Vector3(-0.42 + i * 0.42, 0.48, 0))
+		"brazier":
+			K.box(root, Vector3(0.7, 0.26, 0.7), K.STONE_DARK, Vector3(0, 0.13, 0))
+			K.box(root, Vector3(0.5, 0.08, 0.5), K.mat(Color("#3a2a24"), 0.9), Vector3(0, 0.28, 0))
+			for i in 3:
+				K.box(root, Vector3(0.12, 0.06, 0.12), K.mat(K.CINNABAR, 0.6, 1.2),
+					Vector3(-0.14 + i * 0.14, 0.33, 0.02 * i))
+		"rat_trap":
+			K.box(root, Vector3(0.5, 0.12, 0.36), K.WOOD_LIGHT, Vector3(0, 0.06, 0))
+			K.box(root, Vector3(0.44, 0.04, 0.06), K.STONE_DARK, Vector3(0, 0.14, 0))
+		"smoke_rack":
+			for sx in [-0.5, 0.5]:
+				K.box(root, Vector3(0.1, 1.5, 0.1), K.WOOD, Vector3(sx, 0.75, 0))
+			K.box(root, Vector3(1.2, 0.1, 0.12), K.WOOD_LIGHT, Vector3(0, 1.45, 0))
+			for i in 2:
+				K.box(root, Vector3(0.18, 0.4, 0.18), K.CINNABAR.darkened(0.2), Vector3(-0.2 + i * 0.4, 1.18, 0))
+		"incense":
+			K.box(root, Vector3(0.34, 0.5, 0.34), K.WOOD, Vector3(0, 0.25, 0))
+			K.box(root, Vector3(0.42, 0.06, 0.42), K.GOLD, Vector3(0, 0.53, 0))
+		"screen":
+			for i in 3:
+				K.box(root, Vector3(0.42, 1.5, 0.06), K.WOOD, Vector3(-0.42 + i * 0.42, 0.75, 0))
+				K.box(root, Vector3(0.34, 1.3, 0.03), K.PAPER, Vector3(-0.42 + i * 0.42, 0.75, 0.05))
+		"armchair":
+			K.box(root, Vector3(0.7, 0.1, 0.68), K.WOOD, Vector3(0, 0.45, 0))
+			K.box(root, Vector3(0.7, 0.7, 0.1), K.WOOD, Vector3(0, 0.8, -0.3))
+			for sx in [-0.35, 0.35]:
+				K.box(root, Vector3(0.06, 0.45, 0.68), K.WOOD_LIGHT, Vector3(sx, 0.22, 0))
+		"tea_table":
+			K.box(root, Vector3(0.86, 0.08, 0.86), K.WOOD_LIGHT, Vector3(0, 0.52, 0))
+			for sx in [-0.34, 0.34]:
+				for sz in [-0.34, 0.34]:
+					K.box(root, Vector3(0.08, 0.5, 0.08), K.WOOD, Vector3(sx, 0.25, sz))
+			K.box(root, Vector3(0.16, 0.12, 0.16), K.PAPER, Vector3(0.1, 0.62, 0.05))
+		"bamboo":
+			K.box(root, Vector3(0.44, 0.36, 0.44), K.EARTH, Vector3(0, 0.18, 0))
+			for i in 3:
+				K.box(root, Vector3(0.06, 1.3 - i * 0.2, 0.06), K.LEAF.darkened(0.2),
+					Vector3(-0.1 + i * 0.1, 0.65, 0.02 * i), Vector3(0, 0, (i - 1) * 8))
+		_:
+			var sz := Home.size_of(id, 0)
+			K.box(root, Vector3(sz.x * 0.8, 0.7, sz.y * 0.8), K.WOOD_LIGHT, Vector3(0, 0.35, 0))
 
 
 func _rebuild_devices(run: Dictionary) -> void:
@@ -335,6 +424,9 @@ func _fit_garden(rows: int) -> void:
 var _fight_figs := []
 var _debris: Array = []
 var _rubbles: Dictionary = {}   # 砸烂的家具 spot -> 塌料节点
+var _furn_spots: Dictionary = {}  # 玩家添置的家具 spot -> uid
+## 场景里本来就有的六件（床、书案、柜子、灶台、工作台，位置固定），添置的只画多出来的
+const STATIC_FURN := ["bed", "desk", "storage", "stove", "bench"]
 
 ## 院子里的东西被啃了：原地留一堆碎屑。
 ## 存货、柴垛、菜畦靠 sync(run) 重画；家具塌不塌由 run.broken 决定（见 _apply_wrecked）。
