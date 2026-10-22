@@ -145,6 +145,14 @@ func run_flow() -> void:
 	check(not Game.run.fight.is_empty(), "院门没起战")
 	screen()._swing()
 	await _frames()
+	# 架刀：抬得起来就进冷却
+	screen()._guard()
+	await _frames()
+	check(float(Game.run.fight.get("block_cd", 0.0)) > 0.0, "架刀没生效")
+	# 被啃的东西要在场景里留下痕迹
+	screen().world.show_wreck(0, Vector3(3.5, 0.0, 1.4), "crop")
+	await _frames()
+	check(not screen().world._debris.is_empty(), "破坏没留下碎屑")
 	var sum: Dictionary = NightFight.finish(Game.run.fight)
 	Game.act(func():
 		Post.end_fight(Game.run, sum)

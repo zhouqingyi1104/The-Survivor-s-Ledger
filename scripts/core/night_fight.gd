@@ -15,6 +15,13 @@ const HIT_DMG := 5          # 咬一口掉多少气血
 const BASH_DMG := 2         # 撞一下门掉多少耐久
 const REACH := 2.2
 const SWING_CD := 0.5
+## 架刀：抬起来只有这么短一段能挡住，收回去要等冷却。
+## 一次只挡一口——四五只同时围上来时，你只能救自己一回。
+const BLOCK_TIME := 0.35
+const BLOCK_CD := 1.15
+const BLOCK_EARLY := 0.6    # 架住之后，冷却只算这么久（挡住有回报，敢架）
+const PARRY_STAGGER := 1.0  # 被架住的那只往后趔趄多久
+const PARRY_PUSH := 1.4     # 推开多远
 const MAX_LIVE := 5         # 门外同时最多站这么多只
 const MAX_SECONDS := 45.0   # 打这么久还没清完，它们自己散了
 const GATE := Vector2(0.0, 7.2)
@@ -50,6 +57,7 @@ static func begin(count: int, armored: bool) -> Dictionary:
 		"t": 0.0, "foes": foes, "total": n, "armored": armored,
 		"kills": 0, "hp_loss": 0, "contacts": 0, "bashes": 0,
 		"wrecked": [], "done": false, "swing": 0.0,
+		"block": 0.0, "block_cd": 0.0, "parries": 0,
 	}
 
 
@@ -63,6 +71,8 @@ static func step(s: Dictionary, dt: float, px: float, pz: float, door_open: bool
 		s.done = true
 		return events
 	s.swing = maxf(0.0, float(s.swing) - dt)
+	s.block = maxf(0.0, float(s.block) - dt)
+	s.block_cd = maxf(0.0, float(s.block_cd) - dt)
 	for f in s.foes:
 		if bool(f.dead):
 			continue
@@ -106,17 +116,30 @@ static func step(s: Dictionary, dt: float, px: float, pz: float, door_open: bool
 			f.cd = Z_TICK
 			s.wrecked.append(int(f.target))
 			events.append(["wreck", f])
-	# 贴到人身上就咬（不管它是不是在院里）
+	# 贴到人身上就咬（不管它是不是在院里）。架着刀的那一下，咬不进来。
 	for f in s.foes:
 		if bool(f.dead):
 			continue
 		var dx2: float = px - float(f.x)
 		var dz2: float = pz - float(f.z)
-		if sqrt(dx2 * dx2 + dz2 * dz2) <= Z_REACH and float(f.cd) <= 0.0:
-			f.cd = Z_TICK
-			s.hp_loss = int(s.hp_loss) + HIT_DMG
-			s.contacts = int(s.contacts) + 1
-			events.append(["bite", f])
+		var d2 := sqrt(dx2 * dx2 + dz2 * dz2)
+		if d2 > Z_REACH or float(f.cd) > 0.0:
+			continue
+		if float(s.block) > 0.0:
+			# 架住：这一口白咬，它反被推开、趔趄一下
+			s.block = 0.0
+			s.block_cd = minf(float(s.block_cd), BLOCK_EARLY)
+			s.parries = int(s.parries) + 1
+			f.cd = Z_TICK + PARRY_STAGGER
+			if d2 > 0.001:
+				f.x = float(f.x) - dx2 / d2 * PARRY_PUSH
+				f.z = float(f.z) - dz2 / d2 * PARRY_PUSH
+			events.append(["parry", f])
+			continue
+		f.cd = Z_TICK
+		s.hp_loss = int(s.hp_loss) + HIT_DMG
+		s.contacts = int(s.contacts) + 1
+		events.append(["bite", f])
 	# 互相挤开
 	for i in s.foes.size():
 		var a: Dictionary = s.foes[i]
@@ -138,6 +161,30 @@ static func step(s: Dictionary, dt: float, px: float, pz: float, door_open: bool
 	if alive(s) == 0:
 		s.done = true
 	return events
+
+
+## 架刀。抬得起来就 true；刀还在收回来的路上（冷却中）返回 false。
+static func guard(s: Dictionary) -> bool:
+	if bool(s.done) or float(s.block_cd) > 0.0:
+		return false
+	s.block = BLOCK_TIME
+	s.block_cd = BLOCK_CD
+	return true
+
+
+## 现在能不能架（HUD 用）。
+static func can_guard(s: Dictionary) -> bool:
+	return not bool(s.done) and float(s.block_cd) <= 0.0
+
+
+## 架着的那一段还剩多少（0~1）。
+static func block_window(s: Dictionary) -> float:
+	return clampf(float(s.block) / BLOCK_TIME, 0.0, 1.0)
+
+
+## 还要等多久才能再架（秒）。
+static func block_wait(s: Dictionary) -> float:
+	return maxf(0.0, float(s.block_cd))
 
 
 static func strike(s: Dictionary, px: float, pz: float) -> Dictionary:
@@ -194,5 +241,5 @@ static func finish(s: Dictionary) -> Dictionary:
 	return {
 		"kills": int(s.kills), "hp_loss": int(s.hp_loss), "contacts": int(s.contacts),
 		"bashes": int(s.bashes), "wrecked": s.wrecked.duplicate(), "plague": plague,
-		"left": alive(s), "inside": inside_count(s),
+		"left": alive(s), "inside": inside_count(s), "parries": int(s.parries),
 	}

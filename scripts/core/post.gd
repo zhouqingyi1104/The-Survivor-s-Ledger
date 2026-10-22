@@ -527,6 +527,13 @@ static func start_fight(run: Dictionary, count: int, armored: bool) -> void:
 	State.note(run, "%d 只摸到了街上——门没关。" % int(run.fight.total))
 
 
+## 架刀格挡。抬得起来返回 true（刀在收的时候 false）。
+static func guard(run: Dictionary) -> bool:
+	if run.fight.is_empty():
+		return false
+	return NightFight.guard(run.fight)
+
+
 ## 场上清干净了（或者天亮）：结算这一场的伤和尸毒。
 static func end_fight(run: Dictionary, sum: Dictionary) -> void:
 	if run.fight.is_empty():
@@ -543,6 +550,8 @@ static func end_fight(run: Dictionary, sum: Dictionary) -> void:
 		run.today["kills"] = int(run.today.get("kills", 0)) + kills
 		State.add_xp(run, "guard", int(kills / 3.0) + 1)
 	var text := "院门口清干净了：斩 %d 只" % kills
+	if int(sum.get("parries", 0)) > 0:
+		text += "，架住 %d 下" % int(sum.parries)
 	if int(sum.get("hp_loss", 0)) > 0:
 		text += "，气血 -%d" % int(sum.hp_loss)
 	if bool(sum.get("plague", false)):

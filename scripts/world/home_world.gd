@@ -239,6 +239,8 @@ func sync(run: Dictionary) -> void:
 	_update_gate(run)
 	_update_window(run)
 	set_time(run)
+	# 灶台、工作台是每次同步重画的，砸掉的那件要重画之后再藏
+	_apply_wrecked()
 	# 灶台等是第一次同步时才摆上的，摆好再烘焙导航
 	if not _baked:
 		_baked = true
@@ -331,6 +333,48 @@ func _fit_garden(rows: int) -> void:
 
 
 var _fight_figs := []
+var _wrecked: Dictionary = {}   # 被啃过的目标序号 -> true（家具据此不再摆出来）
+var _debris: Array = []
+
+## 院子里的东西被啃了：原地留一堆碎屑；家具直接塌掉（对应构件藏起来）。
+## 存货、柴垛、菜畦靠 sync(run) 重画，这里只管"看得见的那一下"。
+func show_wreck(idx: int, pos: Vector3, kind: String) -> void:
+	_wrecked[idx] = true
+	var root := K.node(self, Vector3.ZERO, Vector3.ZERO, "wreck")
+	_debris.append(root)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(absf(pos.x) * 131.0 + absf(pos.z) * 17.0) + idx * 977
+	var col := K.EARTH
+	match kind:
+		"crop":
+			col = K.GREEN
+		"grain":
+			col = K.RICE_SACK
+		"fuel":
+			col = K.WOOD_LIGHT
+		"furniture":
+			col = K.WOOD
+	for i in 7:
+		var p := pos + Vector3(rng.randf_range(-0.85, 0.85), 0.045, rng.randf_range(-0.85, 0.85))
+		var size := Vector3(rng.randf_range(0.08, 0.3), rng.randf_range(0.04, 0.1), rng.randf_range(0.08, 0.26))
+		K.box(root, size, col if i % 3 != 0 else col.darkened(0.3), p,
+			Vector3(0, rng.randf_range(0, 90), rng.randf_range(-20, 20)))
+	# 地上留一片暗渍，远看也知道这块被翻过
+	K.box(root, Vector3(1.7, 0.012, 1.7), K.mat(Color("#3a2a24"), 0.95, 0.0, 0.5), pos + Vector3(0, 0.03, 0))
+	_apply_wrecked()
+
+
+## 被啃掉的家具不再摆出来（这三件的构件是按 sync 重画的，藏了要每次重画后再藏一遍）。
+func _apply_wrecked() -> void:
+	for idx in _wrecked:
+		match int(idx):
+			3:
+				if spot_nodes.has("stove"):
+					spot_nodes["stove"].visible = false
+			4:
+				if spot_nodes.has("bench"):
+					spot_nodes["bench"].visible = false
+
 
 ## 院门口的活人：门开着的时候，这一轮的僵尸会真的走进来。
 func show_fight(fight: Dictionary) -> void:
@@ -338,6 +382,9 @@ func show_fight(fight: Dictionary) -> void:
 		for f in _fight_figs:
 			f.queue_free()
 		_fight_figs = []
+		for d in _debris:
+			d.queue_free()
+		_debris = []
 		return
 	while _fight_figs.size() < fight.foes.size():
 		var fig: Node3D = Figure.new()

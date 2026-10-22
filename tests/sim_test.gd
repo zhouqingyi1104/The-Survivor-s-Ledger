@@ -387,7 +387,31 @@ func test_fight() -> void:
 	check(bool(f2.dead), "铜甲第二刀没砍死")
 	var sum := NightFight.finish(a)
 	check(int(sum.kills) == 1, "收场时斩获不对")
-	print("院门攻防：撞门 %d 次、进院啃了 %d 次、斩 %d" % [int(s.bashes), s2.wrecked.size(), int(sum.kills)])
+	# 架刀：抬起来的那一下能挡下一口，咬人的被推开；抬不起来时照咬
+	# （人站在院子中间，别让僵尸先去撞门——撞门会把它的出手间隔占掉）
+	var b := NightFight.begin(1, false)
+	var pz := 4.0
+	var biter: Dictionary = b.foes[0]
+	biter.x = 0.0
+	biter.z = 4.6
+	biter.cd = 0.0
+	NightFight.step(b, 0.05, 0.0, pz, false)
+	check(int(b.hp_loss) == NightFight.HIT_DMG, "没架住却没挨咬：%d" % int(b.hp_loss))
+	biter.cd = 0.0
+	check(NightFight.guard(b), "刀抬不起来")
+	check(not NightFight.guard(b), "冷却中还能再架一次")
+	NightFight.step(b, 0.05, 0.0, pz, false)
+	check(int(b.hp_loss) == NightFight.HIT_DMG, "架住了还在掉血")
+	check(int(b.parries) == 1, "架住没记上：%d" % int(b.parries))
+	var pushed := Vector2(float(biter.x), float(biter.z) - pz).length()
+	check(pushed > 0.5, "架住之后没把它推开：%.2f" % pushed)
+	check(not NightFight.can_guard(b), "架住之后立刻又能架")
+	NightFight.step(b, 0.7, 0.0, pz, false)
+	check(NightFight.can_guard(b), "架住之后收刀太久")
+	var sum2 := NightFight.finish(b)
+	check(int(sum2.parries) == 1, "收场时架住次数没带上")
+	print("院门攻防：撞门 %d 次、进院啃了 %d 次、斩 %d、架住 %d" % [
+		int(s.bashes), s2.wrecked.size(), int(sum.kills), int(sum2.parries)])
 
 
 func test_rewind() -> void:

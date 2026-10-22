@@ -49,6 +49,7 @@ var _pending := Callable()
 var _pending_spot := ""
 var _acc := 0.0
 var _press_pos := Vector2.ZERO
+var _rpress := Vector2.ZERO
 var _live := {}
 ## 上次按时辰给光的时刻（游戏分钟）
 var _lit_t := -1
@@ -139,6 +140,21 @@ func _swing() -> void:
 		Sfx.play("cloth", -10.0, 0.02)
 
 
+## 架一刀（K / 右键单击；测试也走这里）。挡住那一口，咬你的被推开。
+func _guard() -> void:
+	var fight: Dictionary = Game.run.get("fight", {})
+	if fight.is_empty():
+		return
+	if not NightFight.guard(fight):
+		# 刀还没收回来，抬不起来
+		Sfx.play("cloth", -16.0, 0.05)
+		return
+	Sfx.play("knife", -7.0, 0.03)
+	player.figure.working = true
+	player.figure.work_anim = "Interact"
+	get_tree().create_timer(0.16).timeout.connect(func(): player.figure.working = false)
+
+
 ## 院门的活人：走位、撞门、进院砸东西。
 func _step_fight(run: Dictionary, delta: float) -> void:
 	if run.fight.is_empty() or _ending_fight:
@@ -155,11 +171,21 @@ func _step_fight(run: Dictionary, delta: float) -> void:
 			"bite":
 				Sfx.play("punch", -4.0)
 				rig.shake = maxf(rig.shake, 0.45)
+			"parry":
+				Sfx.play("latch", -4.0)
+				rig.shake = maxf(rig.shake, 0.12)
 			"enter":
 				Game.toast.emit("有东西挤进院子了！")
 				Sfx.play("creak", -5.0)
 			"wreck":
-				var text: String = Post.apply_wreck(run, int(e[1].target))
+				var idx: int = int(e[1].target)
+				var text: String = Post.apply_wreck(run, idx)
+				var t: Array = NightFight.TARGETS[idx]
+				world.show_wreck(idx, Vector3(float(t[1]), 0.0, float(t[2])), str(t[3]))
+				# 存货、柴垛、菜畦按新状态重画（米袋少了、菜畦空了，一眼能看见）
+				world.sync(run)
+				Sfx.play("hit_plank", -8.0)
+				rig.shake = maxf(rig.shake, 0.2)
 				if text != "":
 					Game.toast.emit(text)
 	world.show_fight(run.fight)
@@ -408,6 +434,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _show != null:
 		return
 	var mb := event as InputEventMouseButton
+	if mb != null and mb.button_index == MOUSE_BUTTON_RIGHT:
+		# 右键单击 = 架刀；右键拖动仍然是转视角（靠按下到抬起的位移区分）
+		if mb.pressed:
+			_rpress = mb.position
+		elif mb.position.distance_to(_rpress) < 6.0 and not Game.run.get("fight", {}).is_empty():
+			_guard()
+		return
 	if mb != null and mb.button_index == MOUSE_BUTTON_LEFT:
 		if mb.pressed and not modal_open() and not Game.run.get("fight", {}).is_empty():
 			_swing()
@@ -440,6 +473,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				_swing()
 			else:
 				Dialogs.journal()
+		KEY_K:
+			if not Game.run.get("fight", {}).is_empty():
+				_guard()
 		KEY_F:
 			if Post.in_night(Game.run):
 				Dialogs.night_panel()
@@ -506,7 +542,7 @@ func actions_for(id: String) -> Array:
 			var list := []
 			if Post.in_night(run):
 				list.append(["关门（闩上就不出去了）" if bool(run.door_open) else "开门（出去打，也会放它们进来）",
-					_act(func(): return Post.toggle_gate(Game.run)), ""])
+					func(): _toggle_gate(), ""])
 			list.append(["出门搜寻…", Dialogs.explore_pick, out])
 			return list
 	return []
@@ -514,6 +550,13 @@ func actions_for(id: String) -> Array:
 
 func _act(fn: Callable) -> Callable:
 	return func(): Game.act(fn)
+
+
+## 开关院门：拉开是门轴响，闩上是闩子响。
+func _toggle_gate() -> void:
+	var res = Game.act(func(): return Post.toggle_gate(Game.run))
+	if typeof(res) == TYPE_STRING and res == "":
+		Sfx.play("door_open" if bool(Game.run.door_open) else "latch", -5.0)
 
 
 func open_menu(id: String, screen_pos: Vector2) -> void:
@@ -743,6 +786,15 @@ func _left_top(run: Dictionary) -> void:
 		f.add_child(Hud.text("院门%s · 门外 %d 只 · 进院 %d 只 · 左键挥刀" % [
 			"开着" if bool(run.door_open) else "关着", maxi(0, outside), NightFight.inside_count(fight)],
 			13, Hud.RED if NightFight.alive(fight) > 0 else Hud.GREEN))
+		# 架刀：亮着就是能架，暗着是还在收刀
+		var guard_line := "K / 右键：架刀"
+		if NightFight.can_guard(fight):
+			guard_line += "（就绪）"
+		else:
+			guard_line += "（收刀 %.1f 秒）" % NightFight.block_wait(fight)
+		if int(fight.get("parries", 0)) > 0:
+			guard_line += "　已架住 %d" % int(fight.parries)
+		f.add_child(Hud.text(guard_line, 13, Hud.GOLD if NightFight.can_guard(fight) else Hud.SUB))
 	elif Post.in_night(run):
 		f.add_child(Hud.text("院门%s" % ("开着" if bool(run.door_open) else "闩着"), 13, Hud.GOLD if bool(run.door_open) else Hud.SUB))
 	# 守具按面挂；夜战时显示第几轮和这一轮各面来几只

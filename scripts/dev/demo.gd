@@ -104,7 +104,7 @@ static func setup(scene: String) -> void:
 			run.wave_report = {}
 			Game.act(func(): return "")
 			Dialogs.night_panel()
-		"gate_fight":
+		"gate_fight", "wreck":
 			_to_post()
 			var run: Dictionary = Game.run
 			run.pday = 14
@@ -119,6 +119,10 @@ static func setup(scene: String) -> void:
 			run.wave_report = {}
 			for k in 110:
 				NightFight.step(run.fight, 0.05, 0.0, 4.2, true)
+			# 假装已经啃过一轮：截图里能看见碎屑、少了的米袋和塌掉的灶台
+			Post.apply_wreck(run, 1)
+			Post.apply_wreck(run, 3)
+			run["demo_wreck"] = true
 			Game.act(func(): return "")
 		"event":
 			_to_post()
@@ -202,6 +206,21 @@ static func after_screen(scene: String, screen: Node) -> void:
 			screen.rig.dist = 12.0
 			screen.rig.pitch = -46.0
 			screen.rig.snap()
+			if bool(Game.run.get("demo_wreck", false)):
+				screen.world.show_wreck(1, Vector3(-9.0, 0.0, 1.5), "grain")
+				screen.world.show_wreck(3, Vector3(-8.0, 0.0, -1.6), "furniture")
+				screen.world.sync(Game.run)
+		"wreck":
+			# 专门拍"院子被啃过"：米袋、柴垛、灶台各留一堆碎屑（拉高拉远，避开屋檐）
+			screen.player.position = Vector3(-4.6, 0, 2.4)
+			screen.rig.dist = 20.0
+			screen.rig.pitch = -62.0
+			screen.rig.yaw = 0.0
+			screen.rig.snap()
+			screen.world.show_wreck(1, Vector3(-9.0, 0.0, 1.5), "grain")
+			screen.world.show_wreck(2, Vector3(-8.6, 0.0, 2.6), "fuel")
+			screen.world.show_wreck(3, Vector3(-8.0, 0.0, -1.6), "furniture")
+			screen.world.sync(Game.run)
 
 
 ## 按一份像样的采购单买完三日，进入劫中第一日。
