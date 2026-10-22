@@ -128,7 +128,7 @@ static func setup(scene: String) -> void:
 			_to_post()
 			Game.run.pending_event = "taoist"
 			Game.act(func(): return "")
-		"furnish":
+		"furnish", "placing":
 			_to_post()
 			Game.act(func(): return "")
 		"wave", "wave_blood", "night", "dawn":
@@ -206,6 +206,18 @@ static func after_screen(scene: String, screen: Node) -> void:
 			screen.open_menu("garden", screen.rig.cam.unproject_position(Vector3(3.5, 1.4, 2.3)))
 		"furnish":
 			Dialogs.furnish()
+		"placing":
+			# 摆放预览：给点料，选一件，把鼠标停在院子里
+			Inv.add(Game.run.home, "wood", 8)
+			Inv.add(Game.run.home, "nails", 4)
+			Game.placing = "armchair"
+			Game.placing_rot = 0
+			screen.player.position = Vector3(-1.0, 0, 3.4)
+			screen.rig.dist = 11.0
+			screen.rig.pitch = -44.0
+			screen.rig.snap()
+			Game.placing_at = Vector3(-1.8, 0.0, 4.4)
+			print("DEMO placing=", Game.placing, " at=", Game.placing_rot)
 		"gate_fight":
 			screen.player.position = Vector3(0, 0, 4.2)
 			screen.rig.dist = 12.0

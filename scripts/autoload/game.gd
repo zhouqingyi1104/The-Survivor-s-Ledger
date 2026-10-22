@@ -33,6 +33,8 @@ var meta_path := META_PATH
 ## 正在摆放的家具（空 = 不在摆放）：界面选好家具后置上，点地面放下。
 var placing := ""
 var placing_rot := 0
+## 摆放预览的固定落点（截图和测试用；null 时跟着鼠标）
+var placing_at = null
 
 
 func _ready() -> void:

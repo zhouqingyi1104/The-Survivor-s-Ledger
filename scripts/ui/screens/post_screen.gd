@@ -58,6 +58,9 @@ var _lit_t := -1
 var _busy_kind := ""
 var _busy_beat := 0.0
 var _ending_fight := false
+var _ghost: MeshInstance3D
+var _ghost_mat: StandardMaterial3D
+var _ghost_key := ""
 ## 夜里偶尔一阵风、远处一声铃
 var _night_sfx_in := 6.0
 
@@ -111,6 +114,7 @@ func _process(delta: float) -> void:
 	_work_sounds(run, delta)
 	_night_sounds(run, delta)
 	_update_hover(ui_blocked)
+	_update_ghost()
 	if not ui_blocked:
 		_step_fight(run, delta)
 		# 院门口打着的时候，时辰先不走，免得下一轮叠上来
@@ -139,6 +143,53 @@ func _swing() -> void:
 			Sfx.play("ling", -10.0, 0.12)
 	else:
 		Sfx.play("cloth", -10.0, 0.02)
+
+
+## 摆放预览：半透明方块跟着鼠标走，绿=放得下，红=不行（堵路、挤在一起、料不够）。
+func _update_ghost() -> void:
+	if Game.placing == "":
+		if _ghost != null:
+			_ghost.visible = false
+		return
+	if _ghost == null:
+		_ghost = MeshInstance3D.new()
+		var m := BoxMesh.new()
+		m.size = Vector3(1, 0.9, 1)
+		_ghost.mesh = m
+		_ghost_mat = StandardMaterial3D.new()
+		_ghost_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_ghost_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_ghost_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_ghost_mat.albedo_color = Color(0.42, 0.85, 0.52, 0.30)
+		_ghost.material_override = _ghost_mat
+		_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		world.add_child(_ghost)
+	var hit: Dictionary = world.pick(rig.cam, get_viewport().get_mouse_position())
+	if Game.placing_at != null:
+		_ghost_at(Game.placing_at)
+	elif hit.has("ground"):
+		_ghost_at(hit.ground)
+	elif Game.no_save:
+		# 截图 / 演示时没有真实鼠标位置，就摆在人前面
+		_ghost_at(player.global_position + Vector3(0.0, 0.0, 2.4))
+	else:
+		_ghost.visible = false
+
+
+func _ghost_at(p: Vector3) -> void:
+	var gx := Home.snap(p.x)
+	var gz := Home.snap(p.z)
+	var key := "%s_%d" % [Game.placing, Game.placing_rot]
+	if key != _ghost_key:
+		_ghost_key = key
+		var box: BoxMesh = _ghost.mesh
+		var sz := Home.size_of(Game.placing, 0)
+		box.size = Vector3(sz.x, 0.9, sz.y)
+	_ghost.visible = true
+	_ghost.global_position = Vector3(gx, 0.45, gz)
+	_ghost.rotation.y = deg_to_rad(float(Game.placing_rot))
+	var block := Home.place_block(Game.run, Game.placing, gx, gz, Game.placing_rot)
+	_ghost_mat.albedo_color = Color(0.92, 0.35, 0.28, 0.30) if block != "" else Color(0.42, 0.85, 0.52, 0.30)
 
 
 ## 摆放模式：点地面把选中的家具放下去。
@@ -842,12 +893,11 @@ func _left_top(run: Dictionary) -> void:
 		f.add_child(Hud.text(guard_line, 13, Hud.GOLD if NightFight.can_guard(fight) else Hud.SUB))
 	elif Post.in_night(run):
 		f.add_child(Hud.text("院门%s" % ("开着" if bool(run.door_open) else "闩着"), 13, Hud.GOLD if bool(run.door_open) else Hud.SUB))
-	# 摆放家具：选好了就提示怎么放
-	if Game.placing != "":
-		var fd: Dictionary = Home.data(Game.placing)
-		var fsz := Home.size_of(Game.placing, Game.placing_rot)
-		f.add_child(Hud.text("摆放 %s（%.1f×%.1f）· 左键放下 · R 转向 · Esc 取消" % [
-			fd.get("name", ""), fsz.x, fsz.y], 13, Hud.GOLD))
+	# 摆放家具：这一行常驻，进摆放模式后才显示（面板是建界面时搭的，之后改不了内容）
+	var place_line := Hud.text("", 13, Hud.GOLD)
+	place_line.visible = false
+	f.add_child(place_line)
+	_live["place"] = place_line
 	# 守具按面挂；夜战时显示第几轮和这一轮各面来几只
 	var parts := []
 	for sid in Defense.SURFACES:
@@ -1056,6 +1106,14 @@ func _update_live() -> void:
 			(r.bar as ProgressBar).max_value = mx
 			(r.bar as ProgressBar).value = float(run.attrs[k])
 			(r.value as Label).text = "%d/%d" % [State.attr(run, k), mx]
+	if _live.has("place"):
+		var pl: Label = _live.place
+		pl.visible = Game.placing != ""
+		if pl.visible:
+			var fd: Dictionary = Home.data(Game.placing)
+			var fsz := Home.size_of(Game.placing, Game.placing_rot)
+			pl.text = "摆放 %s（%.1f×%.1f）· 左键放下 · R 转向 · Esc 取消" % [
+				fd.get("name", ""), fsz.x, fsz.y]
 	if _live.has("speed_status"):
 		var s := ""
 		if Game.speed == 0:

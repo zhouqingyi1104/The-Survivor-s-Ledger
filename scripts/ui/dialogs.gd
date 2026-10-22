@@ -96,31 +96,41 @@ func inventory() -> void:
 
 func _inventory(body: VBoxContainer) -> void:
 	var run := _run()
-	var v := UI.vbox(6)
+	var v := UI.vbox(8)
 	for cat in CAT_ORDER:
 		var ids := Inv.ids_in_cat(run.home, cat)
 		if ids.is_empty():
 			continue
 		v.add_child(UI.label(cat, 19, UI.CINNABAR))
-		var g := UI.grid(4, 10, 4)
+		var g := UI.grid(4, 10, 8)
 		for id in ids:
-			var it := Data.item(id)
-			var ico := UI.icon(id, 44)
-			ico.tooltip_text = it.desc
-			g.add_child(ico)
-			var name_label := UI.label("%s ×%d" % [it.name, Inv.count(run.home, id)], 18)
-			name_label.tooltip_text = it.desc
-			name_label.mouse_filter = Control.MOUSE_FILTER_PASS
-			g.add_child(UI.fixed_width(name_label, 200))
-			var fx: Dictionary = it.get("eat", it.get("use", {}))
-			g.add_child(UI.fixed_width(UI.label(fx_text(fx) if not fx.is_empty() else it.desc, 15, UI.INK_SOFT, true), 430))
-			if fx.is_empty():
-				g.add_child(Control.new())
-			else:
-				var verb := "喝" if id == "water" else ("吃" if it.has("eat") else "用")
-				g.add_child(UI.button(verb, func(): _use(id)))
+			g.add_child(_item_card(run, id))
 		v.add_child(g)
-	body.add_child(UI.scroll(v, 460))
+	body.add_child(UI.scroll(v, 470))
+
+
+## 一件物品的卡片：在图下面写名字、数量、能做什么。
+func _item_card(run: Dictionary, id: String) -> Control:
+	var it := Data.item(id)
+	var n := Inv.count(run.home, id)
+	var v := UI.vbox(3)
+	UI.expand(v)
+	var top := UI.hbox(6)
+	top.add_child(UI.icon(id, 46))
+	var name_col := UI.vbox(0)
+	name_col.add_child(UI.label(it.name, 17))
+	name_col.add_child(UI.label("×%d" % n, 15, UI.INK_SOFT if n > 0 else UI.INK_FAINT))
+	top.add_child(name_col)
+	v.add_child(top)
+	var fx: Dictionary = it.get("eat", it.get("use", {}))
+	v.add_child(UI.label(fx_text(fx) if not fx.is_empty() else it.cat, 13, UI.INK_SOFT))
+	if not fx.is_empty():
+		var verb := "喝" if id == "water" else ("吃" if it.has("eat") else "用")
+		v.add_child(UI.button(verb, func(): _use(id)))
+	var card := UI.panel(v, UI.PAPER)
+	card.tooltip_text = it.desc
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
+	return UI.fixed_width(card, 196)
 
 
 func _use(id: String) -> void:
@@ -537,7 +547,19 @@ func _furn_card(run: Dictionary, id: String) -> Control:
 	top.add_child(name_col)
 	v.add_child(top)
 	var sz := Home.size_of(id, 0)
-	v.add_child(UI.para("用料：%s　占 %.1f×%.1f" % [req_text(run.home, d.get("cost", {})), sz.x, sz.y], 14, UI.INK_SOFT))
+	# 用料也用图标：木料 3、铁钉 2 一眼看得出来
+	var cost_row := UI.hbox(10)
+	cost_row.add_child(UI.label("用料", 14, UI.INK_SOFT))
+	var cost: Dictionary = d.get("cost", {})
+	for item in cost:
+		var unit := UI.hbox(2)
+		unit.add_child(UI.icon(str(item), 22))
+		var have := Inv.count(run.home, item)
+		unit.add_child(UI.label("×%d（有 %d）" % [int(cost[item]), have], 14,
+			UI.INK_SOFT if have >= int(cost[item]) else UI.CINNABAR))
+		cost_row.add_child(unit)
+	cost_row.add_child(UI.label("占 %.1f×%.1f" % [sz.x, sz.y], 14, UI.INK_FAINT))
+	v.add_child(cost_row)
 	var block := Home.build_block(run, id)
 	if block == "":
 		v.add_child(UI.button("去摆", func(): _pick_furnish(id)))

@@ -106,6 +106,16 @@ func run_flow() -> void:
 	Dialogs._pick_furnish("armchair")
 	await _frames()
 	check(Game.placing == "armchair", "没进摆放模式")
+	# 摆放预览：绿=放下，红=放不下
+	Game.placing_at = Vector3(-4.5, 0.0, 3.5)
+	await _frames()
+	check(screen()._ghost != null and screen()._ghost.visible, "摆放预览没显示")
+	var green: Color = screen()._ghost_mat.albedo_color
+	Game.placing_at = Vector3(0.0, 0.0, 2.0)   # 中路：不许摆
+	await _frames()
+	var red: Color = screen()._ghost_mat.albedo_color
+	check(red.g < green.g, "放不下的位置没变红")
+	Game.placing_at = null
 	var chairs := Home.count(Game.run, "armchair")
 	screen()._place_at(Vector3(-4.5, 0.0, 3.5))
 	await _frames()
