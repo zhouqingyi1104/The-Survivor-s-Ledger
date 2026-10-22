@@ -1,0 +1,11 @@
+Source: Anime Maid Character by 413 Games
+Official source: https://413games.itch.io/maid-character
+Source license: CC0 1.0 Universal (see SOURCE-LICENSE.txt).
+Acquired: 2026-09-12T18:04:28.4421927Z
+Archive SHA-256: 4c8c04d3122ac7510e961e36f5dd768c15ba34856aaacd544142a07f5dff2ad9
+Base conversion: texture rebinding and GLB conversion, original geometry retained.
+Moon modification: project-authored material colors and witch hat. The hat is
+project-owned, not a third-party asset and not newly released under CC0.
+Both GLBs are static pose previews; no validated walking/facial animation.
+The downloaded MMD archives in output/character-library are NOT these assets
+and are NOT included or cleared for commercial game distribution.

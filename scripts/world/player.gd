@@ -32,6 +32,7 @@ func setup(kind: String) -> void:
 	add_child(cs)
 	figure = Figure.new()
 	figure.xray = true
+	figure.hero = true
 	add_child(figure)
 	figure.setup(kind)
 

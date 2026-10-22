@@ -57,6 +57,7 @@ func _ready() -> void:
 	K.merge_static(self, _boards.values() + _crowds.values())
 	walker = Figure.new()
 	walker.step_sound = "step_snow"
+	walker.hero = true
 	add_child(walker)
 
 
