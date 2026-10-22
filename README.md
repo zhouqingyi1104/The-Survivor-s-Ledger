@@ -12,7 +12,7 @@
 
 ## 运行
 
-引擎是 Godot 4.7.2（Forward+ 渲染器，需要支持 Vulkan 的显卡），已经放在 `tools/godot/`。
+引擎是 Godot 4.7.2（Forward+ 渲染器，需要支持 Vulkan 的显卡）。本地开发时放在 `tools/godot/`；这个目录 255 MB，**不在仓库里**，克隆后要自己下一份（[godotengine.org](https://godotengine.org/download) 的 4.7.2 stable，Windows 版解开后把可执行文件放进 `tools/godot/`），或者直接用你装好的 Godot 打开 `project.godot`。
 
 用编辑器打开：
 
@@ -127,6 +127,8 @@ tests/                     无界面整局模拟、界面冒烟测试、脚本�
 - cs-studio 的铺面**不得再分发素材本身**：打包进游戏可以，但 `assets/third_party/cs_studio/` 和由它转换的 `assets/models/buildings/` 不能放进公开仓库，`.gitignore` 已经排除。别人拿到代码后要自己去 itch.io 领一份（免费），按 docs/03 里的步骤转换；缺了这些文件时，城里的铺子会自动退回代码拼的厅堂。
 - Poly Haven、Quaternius 是 CC0，可以入库；但原始压缩包很大（约 200 MB），`.gitignore` 只排除了压缩包和解包目录，保留游戏实际用到的文件。
 - 人物贴图原图是 2048，导入时限制到 1024（`.import` 里的 `process/size_limit`），屏幕上看不出差别，显存省四分之三。所以 `.import` 文件要跟着入库，不能忽略。
+- 引擎（`tools/godot/`，255 MB）和 `.workbuddy/`（本地工作记忆）不入库。
+- 仓库：[github.com/zhouqingyi1104/The-Survivor-s-Ledger](https://github.com/zhouqingyi1104/The-Survivor-s-Ledger)
 
 ## 原型的边界
 
