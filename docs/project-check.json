@@ -1,0 +1,147 @@
+{
+  "projectDir": "D:\\Projects\\unknownGame",
+  "errorCount": 0,
+  "warningCount": 2,
+  "items": [
+    {
+      "level": "info",
+      "check": "spec",
+      "message": "已加载规格文件: project-spec.json",
+      "path": "",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "warn",
+      "check": "layout",
+      "message": "缺少建议目录: addons（不阻塞，但按规范应有）",
+      "path": "addons",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "projectConfig",
+      "message": "工程配置合法（配置版本 5，应用名 劫余录，主场景 res://scenes/main.tscn）",
+      "path": "project.godot",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "projectConfig",
+      "message": "工程声明的引擎特性: PackedStringArray(\"4.7\", \"Forward Plus\")",
+      "path": "project.godot",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "gitignore",
+      "message": "已忽略引擎缓存目录 .godot/",
+      "path": ".gitignore",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "importPairing",
+      "message": "656 个资源与导入元数据配对完整（另有 357 条按规格抑制）",
+      "path": "",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "sceneRefs",
+      "message": "59 个被引用的资源路径全部存在",
+      "path": "",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "extResourceIds",
+      "message": "5 个场景/资源的资源 id 定义与引用闭合",
+      "path": "",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "autoload",
+      "message": "3 个自动加载项路径均存在",
+      "path": "project.godot",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "warn",
+      "check": "inputMap",
+      "message": "工程没有定义任何输入动作，输入只能靠裸按键判断",
+      "path": "project.godot",
+      "hint": "建议在输入映射里定义逻辑动作名，代码只读动作名",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "gdscript",
+      "message": "检查了 51 个脚本（另有 1 条按规格抑制）",
+      "path": "",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "traceability",
+      "message": "未提供设计冻结清单，跳过可追溯性检查（加 --freeze 启用）",
+      "path": "",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "absolutePaths",
+      "message": "未发现机器绝对路径",
+      "path": "",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "checkLog",
+      "message": "未提供日志，跳过（加 --check-log 可校验脚本检查或构建结果）",
+      "path": "",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    },
+    {
+      "level": "info",
+      "check": "assetSpec",
+      "message": "按规格设置跳过资源清单核对",
+      "path": "",
+      "hint": "",
+      "files": [],
+      "isNew": false
+    }
+  ],
+  "scriptVersion": "1.0.0",
+  "ignored": {
+    "importPairing": 357,
+    "gdscript": 1
+  }
+}

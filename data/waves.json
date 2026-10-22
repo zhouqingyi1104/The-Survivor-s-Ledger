@@ -1,0 +1,42 @@
+{
+  "waves": [
+    {"day": 2,  "count": 8,  "mods": []},
+    {"day": 5,  "count": 14, "mods": ["dark"]},
+    {"day": 8,  "count": 18, "mods": ["horde"]},
+    {"day": 11, "count": 24, "mods": ["armored"]},
+    {"day": 14, "count": 34, "mods": ["pincer", "dark"]},
+    {"day": 17, "count": 46, "mods": ["armored"]},
+    {"day": 20, "count": 58, "mods": ["blood_moon"]}
+  ],
+  "endless": {"every": 3, "base": 48, "step": 6},
+
+  "surfaces": {
+    "gate":   {"name": "院门", "short": "门", "desc": "正门。僵尸最认这条路，也最扛得住。"},
+    "window": {"name": "窗",   "short": "窗", "desc": "西厢的窗。木板钉死了，但经不起砸。"},
+    "wall":   {"name": "院墙", "short": "墙", "desc": "夯土的院墙。没人管的地方，塌了就全从这儿进。"}
+  },
+  "rounds": [0.40, 0.35, 0.25],
+  "split": {
+    "default": {"gate": 0.50, "window": 0.25, "wall": 0.25},
+    "pincer":  {"gate": 0.30, "window": 0.45, "wall": 0.25}
+  },
+
+  "policies": {
+    "hold":   {"name": "稳守", "short": "守", "spot": "gate", "auto": "mend",
+               "desc": "亲守院门，间隙里自动修最破的一面。不出门、不乱贴符——把东西省下来过日子。适合只想种菜做饭的人。"},
+    "fight":  {"name": "亲战", "short": "战", "spot": "weak", "auto": "sortie",
+               "desc": "亲守最吃紧的一面，每到间隙提刀出门，专砍会漏的那一路。用气血换安全，打得狠也容易带伤。"},
+    "manual": {"name": "亲自调度", "short": "手", "spot": "weak", "auto": "",
+               "desc": "不自动做任何事。修哪面、贴什么符、出不出门，全由你自己在夜战面板里定。"}
+  },
+
+  "mods": {
+    "horde":      {"name": "尸海", "omen": "群鸦夜鸣不止，城北黑压压一片。", "count_mul": 1.5},
+    "armored":    {"name": "铜甲", "omen": "义庄方向传来金铁相击之声。", "cost": 1.6},
+    "dark":       {"name": "月黑", "omen": "天色阴沉，今夜无月。", "dark": true},
+    "pincer":     {"name": "夹击", "omen": "后巷的野狗也狂吠起来。", "split": "pincer"},
+    "blood_moon": {"name": "血月", "omen": "月色殷红如血——劫数到了最后一夜。", "count_mul": 1.2, "cost": 1.3}
+  },
+  "omen_plain": "远处隐约有铃声，像是有人在赶尸。",
+  "raid": {"name": "溃兵夜袭", "power": 10}
+}

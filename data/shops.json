@@ -1,0 +1,47 @@
+{
+  "rice_shop": {
+    "name": "米行", "travel": 1, "kind": "goods", "famine": true,
+    "desc": "城南最大的米行。粮价一天三涨，去晚了就只剩空仓。",
+    "close": {"day": 3, "hour": 6, "text": "米行掌柜卷了银子跑了，门板钉得死死的。"},
+    "stock": {"rice": 14, "millet": 12, "flatbread": 30, "pickles": 6, "salt": 8}
+  },
+  "market": {
+    "name": "菜市", "travel": 1, "kind": "goods", "famine": true,
+    "desc": "鸡鸭菜蔬都在这里。要想劫后自己种菜，种子也得在这里买。",
+    "stock": {"cabbage": 12, "radish": 12, "egg": 30, "jerky": 6, "seed_cabbage": 6, "seed_radish": 6, "seed_chive": 6}
+  },
+  "grocery": {
+    "name": "杂货铺", "travel": 1, "kind": "goods",
+    "desc": "柴米油盐，样样都有。还有独轮车卖。",
+    "stock": {"firewood": 20, "charcoal": 10, "lamp_oil": 8, "cart": 2, "talisman_paper": 10}
+  },
+  "smithy": {
+    "name": "铁匠铺", "travel": 1, "kind": "goods",
+    "desc": "叮叮当当一刻不停，听说城里的铁器都快卖空了。",
+    "stock": {"nails": 12, "chopper": 3, "iron_lock": 3, "caltrops": 6, "wood": 10}
+  },
+  "pharmacy": {
+    "name": "药铺", "travel": 1, "kind": "goods",
+    "desc": "回春堂。门口排着长队，咳嗽声不断。",
+    "stock": {"salve": 6, "plague_powder": 6, "mugwort": 15, "calm_soup": 6, "cinnabar": 4}
+  },
+  "builder": {
+    "name": "营造坊", "travel": 2, "kind": "facility", "must": true,
+    "desc": "★ 必去。订下的营造活计会在尸劫来临前装好。工期一日，第三日再订就来不及了。",
+    "order_last_day": 2
+  },
+  "temple": {
+    "name": "青云观", "travel": 2, "kind": "goods",
+    "desc": "城外半山的道观。观主说今年冬天'阴气太重'，劝人多备糯米符箓。",
+    "stock": {"glutinous": 8, "talisman": 8, "ink_line": 3, "peach_sword": 2, "dog_blood": 4, "book_daoist": 2}
+  },
+  "bookshop": {
+    "name": "书肆", "travel": 1, "kind": "goods",
+    "desc": "冷清得很。乱世里谁还买书？可书里有活命的法子。",
+    "stock": {"book_farm": 1, "book_cook": 1, "book_guard": 1, "book_build": 1}
+  },
+  "pawnshop": {
+    "name": "当铺", "travel": 1, "kind": "pawn",
+    "desc": "高柜台，铁栅栏。值钱的物件能在这里换成银子。"
+  }
+}

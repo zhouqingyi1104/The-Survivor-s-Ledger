@@ -1,0 +1,48 @@
+{
+	"game": {
+		"name": "劫余录",
+		"lines": [
+			"同人原型。玩法结构参考 Steam《生存日志 Survival Log》，文本、数值、界面均为原创，未使用原版任何美术资产。",
+			"引擎：Godot Engine 4.7（MIT 许可）。godotengine.org"
+		]
+	},
+	"polyhaven": {
+		"name": "Poly Haven（CC0）",
+		"lines": [
+			"中式家具：罗汉榻、立柜、条案、茶几、屏风、圈椅、方凳、宫灯；陶瓷瓶罐、木折凳、枯树干。",
+			"贴图：白灰墙、积雪、卵石地、方砖地、木板、灰瓦。",
+			"polyhaven.com"
+		]
+	},
+	"cs_studio": {
+		"name": "cs-studio · Low Poly Chinese Style Building Set 1",
+		"lines": [
+			"临川城的书肆、菜市、当铺、杂货铺、营造坊、青云观和河边凉亭（配色、朝向有改动）。",
+			"可用于免费与商业项目、可修改；素材本身不得再分发或转售。",
+			"cs-studio.itch.io/cs-building-set1"
+		]
+	},
+	"quaternius": {
+		"name": "Quaternius（CC0）",
+		"lines": [
+			"人物底模与发型：Universal Base Characters；衣裳由底模派生、按身份配色。",
+			"动作：Universal Animation Library。",
+			"quaternius.com"
+		]
+	},
+	"audio": {
+		"name": "声音（CC0）",
+		"lines": [
+			"配乐：BiteMe Games《Chinese Game Music》（Lotus Pond、Dragon Dance，古筝、笛、鼓）。bitemegames.itch.io",
+			"音效：Kenney（RPG Audio、Impact Sounds、Interface Sounds）kenney.nl；OpenGameArt：artisticdude（Zombies Sound Pack）、IgnasD（Wind）、PagDev（Fireplace Sound Loop）。",
+			"梆子、更鼓、赶尸铃、铜锣、风雪、打水声由程序合成（tools/pipeline/synth_sfx.py）。"
+		]
+	},
+	"tools": {
+		"name": "工具",
+		"lines": [
+			"Blender 5.2：格式转换、人物换装。",
+			"冠帽、黄符、灯笼、徽派建筑构件等其余模型都是代码拼的。"
+		]
+	}
+}

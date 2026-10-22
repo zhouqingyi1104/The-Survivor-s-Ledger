@@ -1,0 +1,133 @@
+{
+  "refugee": {
+    "title": "流民叩门", "min_day": 2, "max_day": 19, "weight": 3,
+    "text": "门外有人一下一下地拍门。隔着门缝看，是一对逃难的母子，孩子的嘴唇冻得发紫。",
+    "choices": [
+      {"text": "从门缝递出两份吃食", "req": {"any_food": 2}, "fx": {"merit": 3, "mood": 6}, "result": "那妇人隔着门磕了个头，拉着孩子走远了。"},
+      {"text": "舀一斗米给他们", "req": {"any_grain": 1}, "fx": {"merit": 4, "mood": 6}, "result": "米袋子被紧紧抱走。你心里踏实了些。"},
+      {"text": "隔着门劝他们去城隍庙", "fx": {"mood": -5}, "result": "拍门声停了。你在门后站了很久。"}
+    ]
+  },
+  "deserters": {
+    "title": "溃兵勒索", "min_day": 3, "max_day": 17, "weight": 2,
+    "text": "巷口来了几个披着破甲的溃兵，刀没入鞘。领头的冲你院子喊：'交三斗粮出来，饶你一条命！'",
+    "choices": [
+      {"text": "交出三斗粮", "req": {"any_grain": 3}, "fx": {"mood": -6}, "result": "他们骂骂咧咧地扛着粮走了。"},
+      {"text": "扔出三两银子", "req": {"silver": 3000}, "fx": {"mood": -3}, "result": "银子在乱世里还有点用，他们捡了银子散去。"},
+      {"text": "闭门不理", "fx": {"raid": 1, "mood": -3}, "result": "领头的冷笑：'今晚再来拜访。'"}
+    ]
+  },
+  "neighbor_girl": {
+    "title": "隔墙吊篮", "min_day": 2, "max_day": 12, "weight": 3, "once": true,
+    "text": "隔壁墙头垂下一只竹篮，篮里压着一张纸条，字迹秀气：'家中断粮三日，阿爹病着，能否……'",
+    "choices": [
+      {"text": "放两份吃食进篮子", "req": {"any_food": 2}, "fx": {"merit": 3, "mood": 5, "flag": "girl_helped"}, "result": "竹篮慢慢地升了回去。墙那边传来一声很轻的'谢谢'。"},
+      {"text": "当作没看见", "fx": {"mood": -6}, "result": "竹篮在墙头挂了一夜，第二天早上不见了。"}
+    ]
+  },
+  "girl_gift": {
+    "title": "竹篮又来了", "min_day": 4, "max_day": 20, "weight": 6, "once": true, "req_flag": "girl_helped",
+    "text": "那只竹篮又垂下来了，里面是几包菜种，还有一张字条：'阿爹好些了。种子是去年留的，给你。'",
+    "choices": [
+      {"text": "收下", "fx": {"seeds": 3, "mood": 8}, "result": "你把种子揣进怀里，暖乎乎的。"}
+    ]
+  },
+  "taoist": {
+    "title": "游方道士", "min_day": 3, "max_day": 12, "weight": 3, "once": true,
+    "text": "昨天半夜，一个背着桃木剑的道士翻墙进了院子。他满身是血，只说借宿一夜，天亮就走。",
+    "choices": [
+      {"text": "让他进屋，烧碗热水", "fx": {"flag": "learned_talisman", "items": {"talisman": 2, "talisman_paper": 2}, "unlock": "temple_open", "clue": "c_taoist", "mood": 5}, "result": "道士教了你画符的法子，临走前说：'城外义庄有人夜夜点着七盏灯——这场瘟，不是天灾。'"},
+      {"text": "举着柴刀把他赶出去", "fx": {"mood": -2}, "result": "他叹了口气，翻墙走了。"}
+    ]
+  },
+  "old_neighbor": {
+    "title": "对门张婆婆", "min_day": 2, "max_day": 10, "weight": 2, "once": true,
+    "text": "对门的张婆婆昨夜没了声息。照尸瘟的规矩，停尸三日就要起尸。",
+    "choices": [
+      {"text": "带一张镇尸符去帮她收殓", "req": {"talisman": 1}, "fx": {"merit": 4, "clue": "c_neighbor"}, "result": "你把符贴在她额上，看见她腕上有一道朱红的符印——像是有人做的记号。"},
+      {"text": "锁紧门户，不去管", "fx": {"mood": -4}, "result": "三天后的夜里，对门传来了指甲刮门的声音。"}
+    ]
+  },
+  "paper_crane": {
+    "title": "纸鹤传书", "min_day": 3, "max_day": 99, "weight": 2,
+    "text": "一只纸鹤扑棱棱落在窗棂上，展开是城东幸存者的信：'愿以金创药一瓶，换米两斗。'",
+    "choices": [
+      {"text": "交换", "req": {"rice": 2}, "fx": {"items": {"salve": 1}, "merit": 1}, "result": "你把米系在纸鹤上。它摇摇晃晃地飞走了，第二天窗台上多了一瓶药。"},
+      {"text": "回信婉拒", "fx": {}, "result": "纸鹤带着回信飞走了。"}
+    ]
+  },
+  "paper_crane_wood": {
+    "title": "纸鹤传书", "min_day": 4, "max_day": 99, "weight": 2,
+    "text": "又一只纸鹤落在窗台上：'木料场的老周还活着，愿以木料四根、铁钉一包换腊肉一条。'",
+    "choices": [
+      {"text": "交换", "req": {"jerky": 1}, "fx": {"items": {"wood": 4, "nails": 1}}, "result": "第二天一早，门口码着四根木料。"},
+      {"text": "回信婉拒", "fx": {}, "result": "纸鹤带着回信飞走了。"}
+    ]
+  },
+  "plague_cough": {
+    "title": "尸瘟入户", "min_day": 3, "max_day": 99, "weight": 2,
+    "text": "夜里你咳了几声，喉头腥甜。摸摸额头，烫得厉害。",
+    "choices": [
+      {"text": "服一包避瘟散", "req": {"plague_powder": 1}, "fx": {}, "result": "一身大汗出透，烧退了。"},
+      {"text": "烧艾草熏屋", "req": {"mugwort": 2}, "fx": {"roll": {"p": 0.7, "ok": {"result": "艾烟呛得你直流泪，烧慢慢退了。"}, "fail": {"plague": 1, "result": "烧没退。你染上了尸瘟。"}}}, "result": ""},
+      {"text": "硬扛过去", "fx": {"roll": {"p": 0.5, "ok": {"result": "捂着被子睡了一觉，居然好了。"}, "fail": {"plague": 1, "result": "第二天你起不来床。你染上了尸瘟。"}}}, "result": ""}
+    ]
+  },
+  "foul_well": {
+    "title": "井水发浑", "min_day": 6, "max_day": 99, "weight": 1,
+    "text": "今早打上来的井水发浑，漂着一股腥气。",
+    "choices": [
+      {"text": "烧两捆柴把水煮开", "req": {"firewood": 2}, "fx": {}, "result": "水滚了三滚，喝着才放心。"},
+      {"text": "将就着喝", "fx": {"roll": {"p": 0.7, "ok": {"result": "好像没什么事。"}, "fail": {"plague": 1, "result": "半天后肚子绞痛。你染上了尸瘟。"}}}, "result": ""}
+    ]
+  },
+  "stray_dog": {
+    "title": "饿犬", "min_day": 2, "max_day": 14, "weight": 2, "once": true, "not_flag": "dog",
+    "text": "一条瘦骨嶙峋的黄狗缩在你门口，一声不吭，只是看着你。",
+    "choices": [
+      {"text": "喂它一条腊肉", "req": {"jerky": 1}, "fx": {"flag": "dog", "mood": 8}, "result": "你叫它阿黄。阿黄夜里会替你守门，尸潮来前也会先叫。（守力 +3）"},
+      {"text": "喂它一张炊饼", "req": {"flatbread": 1}, "fx": {"flag": "dog", "mood": 6}, "result": "它吃得很慢，像是怕你收回去。你叫它阿黄。（守力 +3）"},
+      {"text": "把它赶走", "fx": {"mood": -4}, "result": "它一瘸一拐地走了。"}
+    ]
+  },
+  "bell": {
+    "title": "赶尸铃", "min_day": 15, "max_day": 20, "weight": 3, "once": true, "req_flag": "temple_open",
+    "text": "夜里，赶尸铃从青云山上一路响下来，一直响到天亮。",
+    "choices": [
+      {"text": "记在劫余录上", "fx": {"clue": "c_last", "mood": -4}, "result": "你一笔一笔写下来。手在抖。"}
+    ]
+  },
+  "grain_moths": {
+    "title": "存粮生虫", "min_day": 7, "max_day": 99, "weight": 2,
+    "text": "米袋底下翻出一层黑虫，簌簌地爬。屋里潮气重，再放下去就要霉了。",
+    "choices": [
+      {"text": "把虫蛀的一斗挑出去", "req": {"any_grain": 1}, "fx": {"mood": -2}, "result": "筛了半天，剩半升好米。心疼，总比全坏强。"},
+      {"text": "撒一把盐封缸", "req": {"salt": 1}, "fx": {"mood": 3}, "result": "盐封住缸口，虫子爬不出来了。"},
+      {"text": "不管它", "fx": {"mood": -4}, "result": "你把袋口一扎。眼不见为净。"}
+    ]
+  },
+  "night_knock": {
+    "title": "夜半叩门", "min_day": 8, "max_day": 99, "weight": 2,
+    "text": "三更天，门上响了三下，很轻，很匀。不像僵尸，倒像人。",
+    "choices": [
+      {"text": "隔着门应一声", "fx": {"roll": {"p": 0.55, "ok": {"merit": 2, "mood": 3, "result": "是巡夜的更夫来讨口热水。他说城西已经没人了，只剩灯。"}, "fail": {"hp": -8, "result": "门外一声怪叫扑上来撞门，指甲在门板上刮出白痕。"}}}, "result": ""},
+      {"text": "吹灯，不作声", "fx": {"mood": -3}, "result": "敲门声停了。你贴着门板听了很久，只有风声。"}
+    ]
+  },
+  "drift_horde": {
+    "title": "游荡的尸群", "min_day": 10, "max_day": 99, "weight": 2,
+    "text": "巷口有三四只落单的僵尸在打转，像是闻到了什么，又找不到门。",
+    "choices": [
+      {"text": "提刀出去清掉", "fx": {"roll": {"p": 0.7, "ok": {"merit": 3, "mood": 4, "items": {"jerky": 1}, "result": "一刀一个，从它们身上摸出半条腊肉。"}, "fail": {"hp": -12, "plague": 1, "result": "被最后一只抓伤了胳膊。"}}}, "result": ""},
+      {"text": "关门熄火，等它们走", "fx": {"energy": -5, "mood": -3}, "result": "你在黑屋里坐到天亮，听着脚步一下一下过去。"}
+    ]
+  },
+  "frozen_river": {
+    "title": "河面封冻", "min_day": 12, "max_day": 99, "weight": 1,
+    "text": "城西的河冻实了。井口也结了冰，打水要多花半个时辰。",
+    "choices": [
+      {"text": "凿冰取水", "fx": {"energy": -8, "items": {"water": 3}}, "result": "凿开一个窟窿，提了三瓢水回来，手冻得没了知觉。"},
+      {"text": "省着喝，不去了", "fx": {"mood": -2}, "result": "你把水缸盖上，想着明天再说。"}
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "stove":      {"name": "灶台", "size": [1.6, 0.9], "h": 1.0, "cost": {"wood": 1, "nails": 1}, "build": 90, "fn": "cook", "max": 2, "where": "any", "desc": "生火做饭。没有灶台就只能啃干粮。"},
+  "bed":        {"name": "床榻", "size": [2.3, 1.0], "h": 0.9, "cost": {"wood": 3, "nails": 2}, "build": 120, "fn": "sleep", "max": 1, "where": "indoor", "comfort": 2, "desc": "就寝、小憩。没有床只能打地铺，睡不踏实。"},
+  "desk":       {"name": "书案", "size": [1.0, 1.4], "h": 0.8, "cost": {"wood": 2}, "build": 60, "fn": "read", "max": 1, "where": "indoor", "comfort": 1, "desc": "读书。"},
+  "bench":      {"name": "工作台", "size": [1.8, 0.9], "h": 1.0, "cost": {"wood": 2, "nails": 2}, "build": 90, "fn": "craft", "max": 1, "where": "any", "desc": "营造守具、画符、修门窗都在这儿。"},
+  "storage":    {"name": "储物柜", "size": [1.3, 0.6], "h": 2.0, "cost": {"wood": 3, "nails": 2}, "build": 90, "fn": "store", "grid": [6, 5], "max": 3, "where": "indoor", "desc": "六列五层的格子柜。放不下的只能堆在地上，坏得快、招老鼠。"},
+  "rice_jar":   {"name": "米缸", "size": [0.9, 0.9], "h": 0.9, "cost": {"wood": 1, "nails": 1}, "build": 45, "fn": "store", "grid": [4, 4], "only": ["粮"], "ratproof": true, "max": 2, "where": "any", "desc": "只装米粮，加了盖，老鼠钻不进去。"},
+  "pickle_jar": {"name": "腌菜坛", "size": [0.7, 0.7], "h": 0.7, "cost": {"salt": 1}, "build": 30, "fn": "pickle", "max": 3, "where": "any", "desc": "鲜菜加一把盐封坛，两天后成咸菜，能放两个月。"},
+  "smoke_rack": {"name": "熏架", "size": [1.2, 0.7], "h": 1.8, "cost": {"wood": 2}, "build": 45, "fn": "smoke", "max": 2, "where": "outdoor", "desc": "鲜肉挂上去，一捆柴熏一天，成腊肉，不容易坏。"},
+  "brazier":    {"name": "炭盆", "size": [0.8, 0.8], "h": 0.7, "cost": {"nails": 1, "charcoal": 1}, "build": 30, "fn": "heat", "max": 2, "where": "indoor", "comfort": 1, "desc": "夜里生火时屋里更暖，睡得安稳（每夜心神 +2）。"},
+  "rat_trap":   {"name": "捕鼠笼", "size": [0.6, 0.5], "h": 0.4, "cost": {"wood": 1}, "build": 30, "fn": "trap", "max": 3, "where": "any", "desc": "每夜自取一把粮作饵，天亮时可能逮到一只老鼠（鼠肉）；也少丢粮。"},
+  "planter":    {"name": "木槽花盆", "size": [1.4, 0.6], "h": 0.5, "cost": {"wood": 2}, "build": 45, "fn": "plant", "max": 4, "where": "any", "desc": "多一块能种菜的地。香菇只能种在屋里的木槽里。"},
+  "incense":    {"name": "香炉", "size": [0.6, 0.6], "h": 1.0, "cost": {"nails": 1}, "build": 20, "fn": "incense", "max": 1, "where": "indoor", "comfort": 2, "desc": "早晚一炷香：每天心神 +3、功德 +1。"},
+  "bookshelf":  {"name": "书架", "size": [1.2, 0.5], "h": 1.9, "cost": {"wood": 3, "nails": 1}, "build": 60, "fn": "books", "max": 1, "where": "indoor", "comfort": 1, "desc": "读书快三成，熟练多得 2 点。"},
+  "water_vat":  {"name": "水缸", "size": [1.0, 1.0], "h": 0.9, "cost": {"wood": 2, "nails": 1}, "build": 60, "fn": "water", "max": 2, "where": "any", "desc": "每口缸每次打水多存 1 瓢。"},
+  "screen":     {"name": "屏风", "size": [1.3, 0.4], "h": 1.6, "cost": {"wood": 2}, "build": 45, "fn": "", "max": 3, "where": "indoor", "comfort": 2, "desc": "摆设。屋里越像个家，每天心神越好。"},
+  "armchair":   {"name": "圈椅", "size": [0.8, 0.8], "h": 1.0, "cost": {"wood": 2}, "build": 45, "fn": "", "max": 4, "where": "any", "comfort": 1, "desc": "摆设。"},
+  "tea_table":  {"name": "茶几", "size": [0.9, 0.9], "h": 0.5, "cost": {"wood": 1}, "build": 30, "fn": "", "max": 2, "where": "any", "comfort": 1, "desc": "摆设。"},
+  "bamboo":     {"name": "盆竹", "size": [0.6, 0.6], "h": 1.5, "cost": {"wood": 1}, "build": 15, "fn": "", "max": 4, "where": "any", "comfort": 1, "desc": "摆设。"}
+}

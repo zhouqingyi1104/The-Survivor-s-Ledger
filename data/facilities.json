@@ -1,0 +1,9 @@
+{
+  "door_bar":     {"name": "加固门闩", "price": 1500, "effect": {"door_max": 60}, "desc": "换上枣木门闩、包上铁皮。门耐久上限 +60。"},
+  "window_board": {"name": "封窗木板", "price": 800, "effect": {"window_max": 40}, "desc": "窗户用厚木板钉死。窗耐久上限 +40。"},
+  "water_vat":    {"name": "大水缸", "price": 600, "effect": {"well_bonus": 1, "water": 4}, "desc": "每日打水多 1 瓢，另外先存满 4 瓢。"},
+  "garden_bed":   {"name": "扩建菜畦", "price": 800, "effect": {"plots": 2}, "desc": "院里多开两块菜畦。"},
+  "stove":        {"name": "改砌灶台", "price": 1000, "effect": {"cook_bonus": 1}, "desc": "双眼灶，每锅多出 1 份。"},
+  "cellar":       {"name": "挖地窖", "price": 2000, "effect": {"cellar": 1}, "desc": "冷夜躲进地窖少受冻；溃兵进门也找不全存粮。"},
+  "watchtower":   {"name": "搭望楼", "price": 1200, "effect": {"watch": 1, "defense": 4}, "desc": "提前两日看见尸潮，守夜守力 +4。"}
+}

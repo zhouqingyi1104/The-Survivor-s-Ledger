@@ -1,0 +1,10 @@
+{
+  "congee":         {"name": "白粥", "in": {"rice": 1, "water": 1}, "fuel": 1, "out": 2, "lv": 0},
+  "millet_cake":    {"name": "杂粮饼", "in": {"millet": 1}, "fuel": 1, "out": 2, "lv": 0},
+  "veg_soup":       {"name": "菜汤", "in": {"cabbage": 1, "water": 1}, "alt": {"cabbage": "radish"}, "fuel": 1, "out": 2, "lv": 0},
+  "rice_cake":      {"name": "糯米糍", "in": {"glutinous": 1}, "fuel": 1, "out": 2, "lv": 0},
+  "egg_soup":       {"name": "蛋花汤", "in": {"egg": 2, "water": 1}, "fuel": 1, "out": 2, "lv": 1},
+  "fried_rice":     {"name": "腊肉炒饭", "in": {"rice": 1, "jerky": 1}, "fuel": 1, "out": 3, "lv": 1},
+  "eight_treasure": {"name": "八宝饭", "in": {"glutinous": 1, "millet": 1, "jerky": 1}, "fuel": 2, "out": 4, "lv": 2},
+  "lingzhi_soup":   {"name": "灵芝汤", "in": {"lingzhi": 1, "water": 1}, "fuel": 1, "out": 2, "lv": 2}
+}

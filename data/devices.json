@@ -1,0 +1,15 @@
+{
+  "devices": {
+    "peach_stake":  {"name": "桃木桩", "cost": {"wood": 2, "nails": 1}, "power": 4, "dur": 3, "time": 1, "surface": "gate", "desc": "院里埋一排削尖的木桩。守院门。"},
+    "barricade":    {"name": "拒马", "cost": {"wood": 3, "nails": 2}, "power": 7, "dur": 3, "time": 1, "lv": 1, "surface": "gate", "desc": "交叉的木桩堵住巷口。守院门，需营造熟练 1 级。"},
+    "ink_line":     {"name": "墨斗线", "cost": {"ink_line": 1}, "power": 6, "dur": 4, "time": 1, "surface": "window", "desc": "窗框、窗台弹满墨线。"},
+    "talisman_wall":{"name": "符阵", "cost": {"talisman": 3}, "power": 12, "dur": 1, "time": 0, "surface": "wall", "desc": "三张镇尸符沿院墙布成一阵，管一夜。"},
+    "rice_scatter": {"name": "撒糯米", "cost": {"glutinous": 1}, "power": 4, "dur": 1, "time": 0, "surface": "window", "desc": "窗台、窗缝撒满糯米，管一夜。"},
+    "blood_sill":   {"name": "黑狗血门槛", "cost": {"dog_blood": 1}, "power": 8, "dur": 2, "time": 0, "surface": "gate", "desc": "泼在正门槛上。管两夜。"},
+    "caltrop_field":{"name": "铁蒺藜阵", "cost": {"caltrops": 1}, "power": 4, "dur": 2, "time": 0, "surface": "wall", "desc": "院墙根下撒一圈。管两夜。"},
+    "bagua_mirror": {"name": "八卦镜", "cost": {"bagua": 1}, "power": 10, "dur": 99, "time": 0, "surface": "*", "desc": "挂在门楣上，三面都沾光，一直管用。"}
+  },
+  "crafts": {
+    "draw_talisman": {"name": "画符", "in": {"talisman_paper": 2, "cinnabar": 1}, "out": {"talisman": 2}, "time": 1, "flag": "learned_talisman", "desc": "黄纸朱砂，画两张镇尸符。需要先学会画符。"}
+  }
+}

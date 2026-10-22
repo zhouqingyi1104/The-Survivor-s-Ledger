@@ -1,0 +1,41 @@
+{
+  "requiredDirs": ["assets", "data", "docs", "scenes", "scripts", "tests", "tools"],
+  "recommendedDirs": ["addons"],
+  "requiredFiles": ["project.godot"],
+  "requireImportMeta": true,
+  "scanAbsolutePaths": true,
+  "scanDanglingRefs": true,
+  "refAllowlist": [
+    "res://assets/audio/amb/%s.ogg",
+    "res://assets/audio/music/%s.ogg",
+    "res://assets/audio/sfx/%s.ogg",
+    "res://assets/models/buildings/%s.glb",
+    "res://assets/third_party/polyhaven/models/%s/%s.gltf",
+    "res://assets/third_party/polyhaven/textures/%s/%s_%s.jpg",
+    "res://data/%s.json"
+  ],
+  "checkAssetSpec": false,
+  "assetManifest": "docs/asset-manifest.json",
+  "largeFileScanMB": 4,
+  "maxTextReadMB": 256,
+  "requireFrozenDesign": false,
+  "traceMarker": "@trace",
+  "checkLogPath": "",
+  "ignore": [
+    {
+      "check": "importPairing",
+      "path": "assets/third_party/**",
+      "reason": "第三方素材原始包（Kenney / BiteMe / Poly Haven）整包留档，只有实际用到的部分被编辑器导入；原始 wav/ogg 没有 .import 属正常，游戏不直接读这些路径"
+    },
+    {
+      "check": "gdscript",
+      "path": "scripts/world/outline.gd",
+      "reason": "着色器代码放在三引号字符串里，检查器的括号/引号配平启发式不支持三引号，编译本身通过"
+    },
+    {
+      "check": "importPairing",
+      "path": "docs/screenshots/**",
+      "reason": "文档用截图，只给人看，不被任何场景或脚本引用，不需要导入元数据"
+    }
+  ]
+}

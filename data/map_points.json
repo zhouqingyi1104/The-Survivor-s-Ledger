@@ -1,0 +1,52 @@
+{
+  "rice_ruin": {
+    "name": "废弃米行", "danger": 2, "restock": 5, "fall_day": 13,
+    "desc": "城南米行，门板早被砸开了。仓里兴许还剩些底子。",
+    "spots": ["柜台", "米仓", "账房", "后院粮袋", "伙计铺盖"],
+    "loot": [["rice", 30, 1, 1], ["millet", 30, 1, 1], ["flatbread", 25, 1, 2], ["salt", 10, 1, 1], ["pickles", 10, 1, 1]]
+  },
+  "city_god": {
+    "name": "城隍庙", "danger": 1, "restock": 3, "fall_day": 16,
+    "desc": "香火断了，供桌上还摆着糕饼。庙祝不知去向。",
+    "spots": ["供桌", "功德箱", "偏殿", "香案下"],
+    "loot": [["glutinous", 20, 1, 1], ["talisman_paper", 25, 1, 2], ["mugwort", 25, 1, 2], ["flatbread", 20, 1, 2], ["firewood", 15, 1, 1]]
+  },
+  "school": {
+    "name": "县学", "danger": 1, "restock": 5, "fall_day": 18,
+    "desc": "讲堂空荡荡的，书架倒了一地。",
+    "spots": ["讲堂", "藏书阁", "教谕书房", "斋舍"],
+    "loot": [["book_farm", 8, 1, 1], ["book_cook", 8, 1, 1], ["book_guard", 8, 1, 1], ["book_build", 8, 1, 1], ["book_daoist", 10, 1, 1], ["talisman_paper", 15, 1, 2], ["wood", 25, 1, 1], ["firewood", 20, 1, 2]]
+  },
+  "pharmacy_ruin": {
+    "name": "药铺废墟", "danger": 2, "restock": 5, "fall_day": 12,
+    "desc": "回春堂。药柜被翻得乱七八糟，地上有拖拽的血迹。",
+    "spots": ["药柜", "后堂", "炮制间", "掌柜卧房"],
+    "loot": [["salve", 20, 1, 1], ["plague_powder", 20, 1, 1], ["mugwort", 30, 1, 3], ["calm_soup", 15, 1, 1], ["cinnabar", 15, 1, 1]]
+  },
+  "lumber": {
+    "name": "木料场", "danger": 2, "restock": 3, "fall_day": 15,
+    "desc": "河边的木料场，堆着成垛的杉木。",
+    "spots": ["木垛", "工棚", "铁匠角", "看场人屋"],
+    "loot": [["wood", 45, 1, 2], ["nails", 25, 1, 1], ["firewood", 30, 1, 2], ["charcoal", 10, 1, 1]]
+  },
+  "mortuary": {
+    "name": "义庄", "danger": 4, "restock": 6, "unlock_day": 4, "dim": true,
+    "desc": "停尸的地方。棺材盖都开着。这里的东西，是镇尸用的。",
+    "spots": ["前厅棺木", "守庄人屋", "后堂供案", "地下停尸间"],
+    "loot": [["talisman", 30, 1, 2], ["dog_blood", 20, 1, 1], ["ink_line", 15, 1, 1], ["lamp_oil", 20, 1, 1], ["bagua", 5, 1, 1]],
+    "clue": "c_mortuary"
+  },
+  "granary": {
+    "name": "衙门粮仓", "danger": 4, "restock": 8, "unlock_day": 6,
+    "desc": "官仓。溃兵来抢过一回，尸群也围过一回。",
+    "spots": ["东仓", "西仓", "仓吏房", "粮车"],
+    "loot": [["rice", 40, 1, 1], ["millet", 35, 1, 1], ["glutinous", 20, 1, 1], ["jerky", 10, 1, 1]]
+  },
+  "taoist_temple": {
+    "name": "青云观", "danger": 3, "restock": 5, "unlock_flag": "temple_open",
+    "desc": "道士说的观，就在城外半山。丹房的门虚掩着。",
+    "spots": ["丹房", "经阁", "灵田", "观主静室"],
+    "loot": [["talisman", 25, 1, 2], ["cinnabar", 20, 1, 1], ["seed_lingzhi", 12, 1, 1], ["lingzhi", 10, 1, 1], ["bagua", 6, 1, 1], ["book_daoist", 10, 1, 1]],
+    "clue": "c_temple"
+  }
+}

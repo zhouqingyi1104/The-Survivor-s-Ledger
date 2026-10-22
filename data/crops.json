@@ -1,0 +1,6 @@
+{
+  "cabbage": {"name": "白菜", "seed": "seed_cabbage", "days": 4, "yield": [2, 3], "item": "cabbage"},
+  "radish":  {"name": "萝卜", "seed": "seed_radish", "days": 5, "yield": [3, 4], "item": "radish"},
+  "chive":   {"name": "韭菜", "seed": "seed_chive", "days": 3, "yield": [2, 2], "item": "chive", "regrow": true},
+  "lingzhi": {"name": "灵芝", "seed": "seed_lingzhi", "days": 6, "yield": [1, 2], "item": "lingzhi"}
+}

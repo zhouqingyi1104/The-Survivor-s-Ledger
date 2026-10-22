@@ -1,0 +1,27 @@
+{
+  "scholar": {
+    "name": "落第书生", "silver": 22000, "fight": 3, "carry": 35, "hp_max": 100,
+    "items": {"flatbread": 3, "inkstone": 1},
+    "trait": "博闻", "trait_desc": "读书所得熟练翻倍；县学里能多翻出书来。",
+    "bio": "三试不第，靠替人写信过活。银子攒得最多，力气最小。"
+  },
+  "escort": {
+    "name": "镖局趟子手", "silver": 15000, "fight": 9, "carry": 55, "hp_max": 110,
+    "items": {"flatbread": 4, "chopper": 1, "bracelet": 1},
+    "trait": "武艺", "trait_desc": "武力高、背得多；气血上限 110。",
+    "bio": "跟着镖车走南闯北，刀口舔血惯了。"
+  },
+  "herbalist": {
+    "name": "药铺学徒", "silver": 18000, "fight": 4, "carry": 40, "hp_max": 100,
+    "items": {"salve": 2, "plague_powder": 1, "mugwort": 3},
+    "trait": "识药", "trait_desc": "染尸瘟、尸毒的概率减半；用药效果 +50%。",
+    "bio": "回春堂的学徒，认得百草，也见过尸瘟病人的样子。"
+  },
+  "watchman": {
+    "name": "打更人", "silver": 12000, "fight": 6, "carry": 45, "hp_max": 100,
+    "items": {"lamp_oil": 2, "flatbread": 3, "jade": 1},
+    "trait": "夜行", "trait_desc": "外出阳气外泄 -20%；守夜守力 +4，不怕月黑。",
+    "bio": "梆子一敲走遍全城，最熟悉夜里的临川。",
+    "unlock": "first_death", "unlock_desc": "翻过一次生死簿后解锁"
+  }
+}

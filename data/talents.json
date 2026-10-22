@@ -1,0 +1,12 @@
+{
+  "tuna":       {"name": "吐纳术", "cost": 12, "desc": "屏息敛气。外出阳气外泄 -20%。"},
+  "bigu":       {"name": "辟谷", "cost": 16, "desc": "饱腹消耗 -25%。"},
+  "paoding":    {"name": "庖丁", "cost": 12, "desc": "每锅多出 1 份。"},
+  "shennong":   {"name": "神农", "cost": 12, "desc": "每次收成多 1 份。"},
+  "jinzhong":   {"name": "金钟罩", "cost": 20, "desc": "气血上限 +20。"},
+  "hoarder":    {"name": "囤积癖", "cost": 10, "desc": "备劫时负重 +20 斤。"},
+  "thrifty":    {"name": "精打细算", "cost": 16, "desc": "备劫时物价 -10%。"},
+  "talisman":   {"name": "符箓入门", "cost": 12, "desc": "开局会画符，并带 3 张镇尸符。"},
+  "lingjue":    {"name": "灵觉", "cost": 8, "desc": "预兆里能看出尸潮的数量。"},
+  "jishan":     {"name": "积善之家", "cost": 16, "desc": "功过格每日 +2 功德。"}
+}

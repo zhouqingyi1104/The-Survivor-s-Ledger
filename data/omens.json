@@ -1,0 +1,12 @@
+{
+  "wugu":     {"tier": "上上签", "name": "五谷丰登", "cost": 4, "effect": {"grow": 1}, "verse": "春种一粒粟，秋收万颗子。", "desc": "菜畦里的作物立刻长一日。"},
+  "jingang":  {"tier": "上签", "name": "金刚不坏", "cost": 3, "effect": {"door": 30, "window": 20}, "verse": "门户坚牢，邪祟难侵。", "desc": "门耐久 +30，窗耐久 +20。"},
+  "zhishui":  {"tier": "中签", "name": "心如止水", "cost": 2, "effect": {"mood": 15}, "verse": "风来疏竹，风过而竹不留声。", "desc": "心神 +15。"},
+  "liuding":  {"tier": "上签", "name": "六丁六甲", "cost": 4, "effect": {"buff": "guard_plus"}, "verse": "神将护宅，今夜无虞。", "desc": "今夜守力 +10。"},
+  "ercong":   {"tier": "中签", "name": "耳聪目明", "cost": 2, "effect": {"buff": "stealth"}, "verse": "听于无声，视于无形。", "desc": "今日外出阳气外泄 -40%。"},
+  "xianyun":  {"tier": "中签", "name": "闲云野鹤", "cost": 2, "effect": {"energy": 30}, "verse": "心闲身自在。", "desc": "精力 +30。"},
+  "cangling": {"tier": "上签", "name": "仓廪实", "cost": 4, "effect": {"items": {"rice": 1, "flatbread": 2}}, "verse": "墙角掘得旧瓮一口。", "desc": "得米 1 斗、炊饼 2 张。"},
+  "huichun":  {"tier": "上上签", "name": "妙手回春", "cost": 5, "effect": {"hp": 25, "cure": 1}, "verse": "枯木逢春，病去如抽丝。", "desc": "气血 +25，祛除尸瘟。"},
+  "zaoshen":  {"tier": "上签", "name": "灶君庇佑", "cost": 3, "effect": {"buff": "cook_plus"}, "verse": "上天言好事，下界保平安。", "desc": "今日每锅多出 2 份。"},
+  "wuchang":  {"tier": "中签", "name": "无常勿近", "cost": 3, "effect": {"buff": "ward"}, "verse": "黑白无常，过门不入。", "desc": "今夜门破后受到的伤害减半。"}
+}

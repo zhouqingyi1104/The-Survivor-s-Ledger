@@ -1,0 +1,12 @@
+{
+  "hot_congee":   {"text": "想喝一口热粥。", "type": "eat", "target": "congee"},
+  "fried_rice":   {"text": "梦里闻到了腊肉炒饭的香味。", "type": "eat", "target": "fried_rice"},
+  "egg_soup":     {"text": "想喝娘做的蛋花汤。", "type": "eat", "target": "egg_soup"},
+  "rice_cake":    {"text": "想吃块甜的。", "type": "eat", "target": "rice_cake"},
+  "veg_soup":     {"text": "嘴里发苦，想喝口菜汤。", "type": "eat", "target": "veg_soup"},
+  "read":         {"text": "想静下心来读几页书。", "type": "action", "target": "read"},
+  "garden":       {"text": "想去看看菜畦里的苗。", "type": "action", "target": "garden"},
+  "rest":         {"text": "想什么也不做，好好歇一会儿。", "type": "action", "target": "rest"},
+  "explore":      {"text": "想出去看看外面成了什么样子。", "type": "action", "target": "explore"},
+  "build":        {"text": "想把院子再收拾得牢靠些。", "type": "action", "target": "build"}
+}

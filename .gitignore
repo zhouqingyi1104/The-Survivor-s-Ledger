@@ -1,0 +1,19 @@
+# Godot（.import 记着导入设置，要入库）
+.godot/
+export_presets.cfg
+/build/
+
+# 本地引擎（太大，不入库；下载地址见 README）
+/tools/godot/
+
+# 第三方素材（见 README "素材与仓库"）
+# cs-studio 的许可证不允许再分发素材本身：原始包和转换后的铺面都不入公开仓库
+/assets/third_party/cs_studio/
+/assets/models/buildings/
+# 下载的原始压缩包和解包目录（太大；游戏只用到其中转换好的文件）
+/assets/third_party/quaternius/*.zip
+/assets/third_party/quaternius/raw/
+/assets/third_party/audio/
+
+# WorkBuddy 的本地工作记忆（不属于游戏源码）
+.workbuddy/
