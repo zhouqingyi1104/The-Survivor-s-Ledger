@@ -143,6 +143,10 @@ func _building(id: String) -> void:
 	boards.visible = false
 	_boards[id] = boards
 	_labels[id] = K.text3d(self, "", center + Vector3(0, h + 3.2, 0), 44, Color.WHITE, true, 0.009)
+	# 卯时的天光本来就发白，淡色字压在上面几乎看不清：描边加粗到不透明，字再亮一点
+	var lab: Label3D = _labels[id]
+	lab.outline_size = 16
+	lab.outline_modulate = Color(0.06, 0.05, 0.04, 1.0)
 	_crowds[id] = K.node(self, spot - dir * 0.6, Vector3(0, facing, 0))
 
 
@@ -220,7 +224,7 @@ func _sync_place(run: Dictionary, id: String) -> void:
 	else:
 		label.text = "%s%s" % ["★ " if Pre.shop(id).get("must", false) else "", Pre.shop(id).name]
 		label.font_size = 44
-	var colors := {"正常": Color("#cfe3c0"), "拥挤": Color("#f0d48a"), "哄抢": Color("#ff9a8a"), "关门": Color("#b8b0a4")}
+	var colors := {"正常": Color("#d6f0c4"), "拥挤": Color("#ffdb8a"), "哄抢": Color("#ffb3a2"), "关门": Color("#d8d0c2")}
 	label.modulate = colors.get(status, Color.WHITE)
 	_boards[id].visible = status == "关门"
 	var n: int = {"正常": 1, "拥挤": 5, "哄抢": 10, "关门": 0}.get(status, 0)
