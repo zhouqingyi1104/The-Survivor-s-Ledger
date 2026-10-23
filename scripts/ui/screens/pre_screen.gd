@@ -8,6 +8,17 @@ const CamRig = preload("res://scripts/world/cam_rig.gd")
 static var STATUS_COLORS := {"正常": UI.JADE, "拥挤": UI.GOLD, "哄抢": UI.CINNABAR, "关门": UI.INK_FAINT}
 
 var rig: Node3D
+## 上一次按地点摆好的机位（用来判断"换地方了，该重新取景"）
+var _framed_loc := ""
+
+
+## 不同地点要不同的机位，原因见 _frame()。
+func _frame(loc: String) -> void:
+	# 屋子都建在站位北侧 4 米。站在家门前时，正南机位（yaw 0）的视线正好从自家屋脊穿过，
+	# 角色永远在屏幕正中、被屋顶盖住；改成从东侧看（yaw 90），射线全程不进屋子所在的 z 段。
+	# 铺子却是沿 x 一字排开的，侧看会顺着屋脊望过去，所以街上仍用正南机位。
+	rig.yaw = 90.0 if loc == "home" else 0.0
+	rig.snap()
 
 
 func build_world() -> void:
@@ -17,8 +28,8 @@ func build_world() -> void:
 	world.arrived.connect(_on_arrived)
 	rig = CamRig.new()
 	rig.target = world.walker
-	rig.pitch = -42.0
-	rig.dist = 28.0
+	rig.pitch = -46.0
+	rig.dist = 30.0
 	rig.max_dist = 48.0
 	world.add_child(rig)
 
@@ -26,6 +37,10 @@ func build_world() -> void:
 func sync_world() -> void:
 	world.sync(Game.run)
 	if not world.walking:
+		# 只在换地点时重新取景，玩家自己转过的角度不会被每帧重置
+		if _framed_loc != str(Game.run.loc):
+			_framed_loc = str(Game.run.loc)
+			_frame(_framed_loc)
 		rig.snap()
 
 
@@ -112,7 +127,8 @@ func build_hud() -> void:
 	help.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	help.add_theme_constant_override("outline_size", 4)
 	hud.add_child(help)
-	help.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 12)
+	# 左下角有日志框，提示语不能贴着底边放（原来 12px 会被日志压住），抬到日志上方
+	help.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 76)
 	help.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	help.grow_vertical = Control.GROW_DIRECTION_BEGIN
 

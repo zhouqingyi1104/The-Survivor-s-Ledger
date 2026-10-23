@@ -142,7 +142,7 @@ func _building(id: String) -> void:
 		K.box(boards, Vector3(w - 0.4, 0.3, 0.08), K.WOOD_LIGHT, Vector3(0, 0.4 + k * 0.55, 0), Vector3(0, 0, -6 + (k % 2) * 12))
 	boards.visible = false
 	_boards[id] = boards
-	_labels[id] = K.text3d(self, "", center + Vector3(0, h + 3.2, 0), 72, Color.WHITE, true, 0.009)
+	_labels[id] = K.text3d(self, "", center + Vector3(0, h + 3.2, 0), 44, Color.WHITE, true, 0.009)
 	_crowds[id] = K.node(self, spot - dir * 0.6, Vector3(0, facing, 0))
 
 
@@ -212,7 +212,14 @@ func _sync_place(run: Dictionary, id: String) -> void:
 	var status := Pre.status(run, id)
 	var cost := Pre.travel_cost(run, id)
 	var here: bool = run.loc == id
-	label.text = "%s%s\n%s · %d时辰" % ["★ " if Pre.shop(id).get("must", false) else "", Pre.shop(id).name, status, cost] if not here else "%s（在此）\n%s" % [Pre.shop(id).name, status]
+	# 所有铺子都挂两行字会挤成一片（尤其斜着看一排铺子时），所以只有当前所在的那家写全，
+	# 其余只留个名字；字号也收小一点。
+	if here:
+		label.text = "%s（在此）\n%s" % [Pre.shop(id).name, status]
+		label.font_size = 56
+	else:
+		label.text = "%s%s" % ["★ " if Pre.shop(id).get("must", false) else "", Pre.shop(id).name]
+		label.font_size = 44
 	var colors := {"正常": Color("#cfe3c0"), "拥挤": Color("#f0d48a"), "哄抢": Color("#ff9a8a"), "关门": Color("#b8b0a4")}
 	label.modulate = colors.get(status, Color.WHITE)
 	_boards[id].visible = status == "关门"
