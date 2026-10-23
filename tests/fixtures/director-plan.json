@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "days": [
+    {"day": 1, "actor": "zhou", "title": "工棚的缺口", "text": "老周想在寒夜前堵好工棚，借你一根木料，许诺次日送来两捆干柴。",
+      "choices": [
+        {"id": "lend", "text": "借出木料", "result": "你交出木料，老周记下了这份人情。", "req": {"wood": 1}, "relation": 1, "after": {"days": 1, "give": {"firewood": 2}, "text": "老周按约送来干柴。"}},
+        {"id": "keep", "text": "留木修门", "result": "你保留木料，老周另寻帮助。", "relation": -1}
+      ]},
+    {"day": 2, "actor": "traveler", "title": "换一顿热饭", "text": "过路客拿来几束艾草，想换些米。你可以做这笔买卖，也可以留下粮食。",
+      "choices": [
+        {"id": "trade", "text": "拿米换艾草", "result": "米袋轻了一点，药匣里有了艾草。", "req": {"rice": 1}, "give": {"mugwort": 2}, "relation": 1},
+        {"id": "decline", "text": "留下口粮", "result": "你留下口粮，过路客失望离开。", "relation": -1}
+      ]},
+    {"day": 3, "actor": "ning", "title": "墙外的一声问候", "text": "阿宁捎来消息，问你是否愿意分一份炊饼给送信人。你仍能自由决定。",
+      "choices": [
+        {"id": "feed", "text": "分一份炊饼", "result": "送信人吃了饼，也记住了这座院子。", "req": {"flatbread": 1}, "relation": 1},
+        {"id": "decline", "text": "只收下消息", "result": "你收下消息，暂且省下食物。", "mood": -1}
+      ]}
+  ]
+}

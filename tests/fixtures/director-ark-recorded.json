@@ -1,0 +1,202 @@
+{
+  "snapshot": {
+    "schema": 1,
+    "session": "probe-1792786457823",
+    "request_id": "probe-1792786457823-0-3",
+    "revision": 0,
+    "current_day": 3,
+    "time": 3000,
+    "state": {
+      "role": "escort",
+      "stock": {
+        "rice": 12,
+        "wood": 1,
+        "firewood": 0,
+        "water": 4,
+        "nails": 0,
+        "mugwort": 1,
+        "flatbread": 0
+      },
+      "mood": 45,
+      "neighbor": {
+        "stage": "aftermath",
+        "resolution": "refused",
+        "ending": ""
+      },
+      "relations": {
+        "ning": -1,
+        "zhou": 1,
+        "traveler": 0
+      },
+      "history": [
+        {
+          "day": 2,
+          "title": "隔墙求药 · refuse",
+          "result": "你留下药品防身，没有答应阿宁。父女另寻医馆。"
+        },
+        {
+          "day": 3,
+          "title": "守宅",
+          "result": "米够吃，修门和取暖的柴木却不够。"
+        }
+      ],
+      "promises": []
+    }
+  },
+  "status": 200,
+  "result": {
+    "plan": {
+      "schema": 1,
+      "days": [
+        {
+          "day": 4,
+          "actor": "zhou",
+          "title": "以粮换工",
+          "text": "木料场老周路过，见你门前冷灶，说场里正劈旧料，碎柴可以分出一些。只是帮工的人还没吃饭，他想先用两升米垫锅，再让你把柴抱走。",
+          "choices": [
+            {
+              "id": "rice_firewood",
+              "text": "给米两升，换柴两捆",
+              "result": "老周让帮工停下片刻，给你捆好两捆干燥碎柴。",
+              "req": {
+                "rice": 2
+              },
+              "give": {
+                "firewood": 2
+              },
+              "relation": 0,
+              "mood": 0
+            },
+            {
+              "id": "lend_plank",
+              "text": "给米一升并借出木板",
+              "result": "老周说正好用木板垫滑车，明晚多送些柴来。",
+              "req": {
+                "rice": 1,
+                "wood": 1
+              },
+              "give": {},
+              "relation": 1,
+              "mood": 0,
+              "after": {
+                "days": 1,
+                "give": {
+                  "firewood": 3
+                },
+                "text": "老周把木板送回，另带来三捆柴。"
+              }
+            },
+            {
+              "id": "refuse",
+              "text": "回绝老周",
+              "result": "你保住存粮和木料，老周点点头，回木料场另想办法。",
+              "req": {},
+              "give": {},
+              "relation": -1,
+              "mood": 0
+            }
+          ]
+        },
+        {
+          "day": 5,
+          "actor": "ning",
+          "title": "阿宁的信",
+          "text": "迁居后的阿宁托人捎来一封短信，说父女已在别处落脚，此信只问旧巷是否平安，并未再提求药的事。信纸干净，字里却仍有些生疏。",
+          "choices": [
+            {
+              "id": "gift_rice",
+              "text": "回信并附上两升米",
+              "result": "捎信人把米和回信带走，阿宁应能明白你的歉意。",
+              "req": {
+                "rice": 2
+              },
+              "give": {},
+              "relation": 1,
+              "mood": 1,
+              "after": {
+                "days": 1,
+                "give": {
+                  "flatbread": 1
+                },
+                "text": "阿宁回信答谢，夹来一块她父亲做的干饼。"
+              }
+            },
+            {
+              "id": "warm_reply",
+              "text": "你在信里说明旧巷近况，也祝她父亲安好。",
+              "result": "信被带走，没有米粮做礼，但话写得实在。",
+              "req": {},
+              "give": {},
+              "relation": 1,
+              "mood": 0
+            },
+            {
+              "id": "cold_reply",
+              "text": "草草回信了事",
+              "result": "你只回了几句平安话，捎信人很快离开。",
+              "req": {},
+              "give": {},
+              "relation": -1,
+              "mood": -1
+            }
+          ]
+        },
+        {
+          "day": 6,
+          "actor": "traveler",
+          "title": "过路客的柴粮交易",
+          "text": "那名过路客背着一小捆干柴回来，说城外林子难走，他想多带些米赶路。他愿拿柴换米，也想打听木料场还要不要短工。",
+          "choices": [
+            {
+              "id": "trade_rice",
+              "text": "用三升米换三捆柴",
+              "result": "过路客数过米，把干柴递给你，双方各取所需。",
+              "req": {
+                "rice": 3
+              },
+              "give": {
+                "firewood": 3
+              },
+              "relation": 0,
+              "mood": 0
+            },
+            {
+              "id": "refer_zhou",
+              "text": "介绍他去木料场",
+              "result": "过路客按你指的路去找老周，临走时记下了这份人情。",
+              "req": {},
+              "give": {},
+              "relation": 1,
+              "mood": 0,
+              "after": {
+                "days": 1,
+                "give": {
+                  "firewood": 1
+                },
+                "text": "过路客在木料场做完短工，给你捎来一捆柴。"
+              }
+            },
+            {
+              "id": "send_away",
+              "text": "催他离开",
+              "result": "你不愿多谈，过路客皱了皱眉，转身往巷外去了。",
+              "req": {},
+              "give": {},
+              "relation": -1,
+              "mood": -1
+            }
+          ]
+        }
+      ]
+    },
+    "source": "ark-plan",
+    "model": "auto",
+    "response_id": "resp_021792786447411a6cdd8247c48d753298cd4bcf5eec90efebc05",
+    "usage": {
+      "prompt_tokens": 860,
+      "completion_tokens": 1906,
+      "total_tokens": 2766
+    },
+    "reasoning_effort": "low"
+  }
+}
