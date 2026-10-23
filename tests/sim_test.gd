@@ -103,6 +103,7 @@ func _init() -> void:
 	test_furnish()
 	test_power()
 	test_difficulty()
+	test_vehicle()
 	print("不变量失败：%d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -570,6 +571,49 @@ func cold_night(role_id: String, seed_value: int) -> Dictionary:
 	run.t = (int(run.pday) - 1) * Post.DAY
 	run.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
 	return run
+
+
+## 载具：负重和赶路时辰都按 data/items.json 的 vehicle 块算；几辆同时有取最快的一辆，不叠加。
+func test_vehicle() -> void:
+	var meta := State.new_meta()
+	var r := State.new_run("escort", meta, 77)
+	var walk_cap := int(State.role(r).carry)
+	var walk_cost := Pre.travel_cost(r, "rice_shop")
+	check(Pre.vehicle_id(r) == "", "开局就有载具：%s" % Pre.vehicle_id(r))
+	check(Pre.capacity(r) == walk_cap, "徒步负重不该有加成：%d" % Pre.capacity(r))
+	# 板车：+20 斤、路程不变（板车不提速，只便宜）
+	Inv.add(r.home, "barrow", 1)
+	check(Pre.vehicle_id(r) == "barrow", "板车没被认出来")
+	check(Pre.capacity(r) == walk_cap + 20, "板车负重不对：%d" % Pre.capacity(r))
+	check(Pre.travel_cost(r, "rice_shop") == walk_cost, "板车不该改路程")
+	# 独轮车：+40 斤，载重更大，所以盖过板车（不是叠加）
+	Inv.add(r.home, "cart", 1)
+	check(Pre.vehicle_id(r) == "cart", "独轮车没盖过板车：%s" % Pre.vehicle_id(r))
+	check(Pre.capacity(r) == walk_cap + 40, "独轮车负重不对：%d" % Pre.capacity(r))
+	check(Pre.travel_cost(r, "rice_shop") == walk_cost, "独轮车不该改路程")
+	# 驴车：+70 斤、路程 ×0.6；三辆同时在也只按载重最大的那辆算
+	Inv.add(r.home, "donkey_cart", 1)
+	check(Pre.vehicle_id(r) == "donkey_cart", "驴车没被认出来")
+	check(Pre.capacity(r) == walk_cap + 70, "几辆载具的负重被叠加了：%d" % Pre.capacity(r))
+	# 提速只在远路上兑现：营造坊 2 时辰 × 0.6 = 1.2 → 1 个时辰，近处 1 × 0.6 还是 1（不能低于一个时辰）
+	var far := maxi(1, int(round(2 * 0.6)))
+	check(Pre.travel_cost(r, "builder") == far, "驴车去营造坊不对：%d，应为 %d" % [Pre.travel_cost(r, "builder"), far])
+	check(far < 2, "驴车没把营造坊的路程压下来")
+	check(Pre.travel_cost(r, "rice_shop") == walk_cost, "驴车不该把近路压到 0：%d" % Pre.travel_cost(r, "rice_shop"))
+	# 车上带着也算：把驴车挪到车上，仍然生效
+	Inv.add(r.home, "donkey_cart", -1)
+	Inv.add(r.cart, "donkey_cart", 1)
+	check(Pre.vehicle_id(r) == "donkey_cart", "车上的驴车不算数")
+	check(Pre.capacity(r) == walk_cap + 70, "车上的载具没加负重")
+	# 打折后不能低于一个时辰：近路 1 × 0.6 仍是 1
+	check(Pre.travel_cost(r, "rice_shop") >= 1, "路程被折到 0 个时辰了")
+	# 灾后清空所有载具（原来只清独轮车）
+	Pre.start_disaster(r)
+	check(Pre.vehicle_id(r) == "", "灾后还留着载具：%s" % Pre.vehicle_id(r))
+	check(Inv.count(r.home, "donkey_cart") + Inv.count(r.cart, "donkey_cart") == 0, "灾后驴车没清掉")
+	check(Inv.count(r.home, "cart") + Inv.count(r.cart, "cart") == 0, "灾后独轮车没清掉")
+	print("载具：徒步 %d 斤 / 近处 %d 时辰 / 营造坊 %d 时辰；板车 +20、独轮车 +40、驴车 +70 且远路 %d 时辰" % [
+		walk_cap, walk_cost, int(Pre.shop("builder").travel), far])
 
 
 ## 难度预设：参数乘数要真的落到开局数值、消耗、寒冷和尸潮上；乱写的 id 要能退回寻常。

@@ -139,6 +139,24 @@ static func _item(c, id: String) -> void:
 			_jar(c, FIRE.darkened(0.15), false)
 		"cart":
 			_cart(c)
+		"barrow":
+			# 板车：一块平板 + 两个轮子 + 一根扶手
+			_r(c, WOOD, 10, 20, 24, 4)
+			_r(c, WOOD_D, 10, 24, 24, 2)
+			_c(c, WOOD_D, 16, 32, 6)
+			_c(c, WOOD, 16, 32, 3.5)
+			_c(c, WOOD_D, 27, 32, 6)
+			_c(c, WOOD, 27, 32, 3.5)
+			_l(c, WOOD_D, 34, 20, 38, 14, 2.2)
+		"donkey_cart":
+			# 驴车：车厢 + 篷 + 前面一只驴头
+			_r(c, WOOD, 14, 22, 18, 8)
+			c.draw_arc(Vector2(23, 22), 9, PI, TAU, 14, WOOD_D, 2.0)
+			_c(c, WOOD_D, 18, 33, 5)
+			_c(c, WOOD_D, 28, 33, 5)
+			_l(c, WOOD_D, 32, 26, 36, 26, 2.0)
+			_p(c, Color("#6b5a4a"), [[36, 26], [42, 20], [44, 22], [40, 28]])
+			_l(c, Color("#6b5a4a"), 43, 19, 42, 14, 2.0)
 		"chopper":
 			_blade(c, IRON, true)
 		"peach_sword":

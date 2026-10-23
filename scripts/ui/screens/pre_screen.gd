@@ -122,7 +122,9 @@ func _status(run: Dictionary) -> void:
 	v.add_child(UI.heading("备劫 · 第 %d 日 · %s时" % [run.day, State.HOURS[run.hour % 12]], 24))
 	var left := Pre.hours_left(run)
 	v.add_child(UI.label("距宵禁 %d 个时辰 · 距尸劫 %d 日 · %s" % [left, State.PRE_DAYS - int(run.day) + 1, State.diff_name(run)], 17, UI.CINNABAR if left <= 2 else UI.INK_SOFT))
-	v.add_child(UI.label("银两 %s　负重 %.0f / %d 斤" % [Pre.money(int(run.silver)), Pre.cart_weight(run), Pre.capacity(run)], 17))
+	var vid := Pre.vehicle_id(run)
+	var veh_text := "　徒步" if vid == "" else "　%s（路程 ×%.1f）" % [Data.item(vid).name, float(Pre.vehicle(run).get("travel", 1.0))]
+	v.add_child(UI.label("银两 %s　负重 %.0f / %d 斤%s" % [Pre.money(int(run.silver)), Pre.cart_weight(run), Pre.capacity(run), veh_text], 17))
 	corner_panel(v, Control.PRESET_TOP_LEFT)
 
 

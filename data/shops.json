@@ -12,8 +12,8 @@
   },
   "grocery": {
     "name": "杂货铺", "travel": 1, "kind": "goods",
-    "desc": "柴米油盐，样样都有。还有独轮车卖。",
-    "stock": {"firewood": 20, "charcoal": 10, "lamp_oil": 8, "diesel": 6, "cart": 2, "talisman_paper": 10}
+    "desc": "柴米油盐，样样都有。门口还停着几辆车。",
+    "stock": {"firewood": 20, "charcoal": 10, "lamp_oil": 8, "diesel": 6, "cart": 2, "barrow": 2, "donkey_cart": 1, "talisman_paper": 10}
   },
   "smithy": {
     "name": "铁匠铺", "travel": 1, "kind": "goods",

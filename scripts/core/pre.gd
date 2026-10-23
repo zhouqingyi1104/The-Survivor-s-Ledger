@@ -52,10 +52,35 @@ static func price(run: Dictionary, shop_id: String, item_id: String) -> int:
 	return int(round(base * mul / 10.0)) * 10
 
 
+## 手上最顶用的一件载具（在家里或车上都算），没有就空字典。
+## 载具在 data/items.json 里写 vehicle: {"travel": 路程乘数, "carry": 多装的斤数}。
+## 按**载重**挑最高的一辆：玩家一趟只推一辆车，装了独轮车就不会再回头推板车。
+## 路程乘数取这辆车自己的——所以数据上要让"载重最大"的车同时"不更慢"，
+## 否则买贵车反而降级（板车/独轮车都给 1.0、只有驴车 0.6，就是这个原因）。
+static func vehicle_id(run: Dictionary) -> String:
+	var best := ""
+	var best_carry := -1
+	for store in [run.home, run.cart]:
+		for id in store:
+			if Inv.count(store, id) <= 0:
+				continue
+			var v: Dictionary = Data.item(id).get("vehicle", {})
+			if v.is_empty():
+				continue
+			var c := int(v.get("carry", 0))
+			if c > best_carry:
+				best = id
+				best_carry = c
+	return best
+
+
+static func vehicle(run: Dictionary) -> Dictionary:
+	var id := vehicle_id(run)
+	return {} if id == "" else Data.item(id).get("vehicle", {})
+
+
 static func capacity(run: Dictionary) -> int:
-	var c := int(State.role(run).carry)
-	if Inv.count(run.cart, "cart") + Inv.count(run.home, "cart") > 0:
-		c += 40
+	var c := int(State.role(run).carry) + int(vehicle(run).get("carry", 0))
 	if State.has_talent(run, "hoarder"):
 		c += 20
 	return c
@@ -65,12 +90,12 @@ static func cart_weight(run: Dictionary) -> float:
 	return Inv.weight(run.cart)
 
 
+## 走一趟要几个时辰。载具按路程乘数打折，最少一个时辰（再快也是走过去的）。
 static func travel_cost(run: Dictionary, dest: String) -> int:
 	if dest == run.loc:
 		return 0
-	if dest == "home":
-		return int(shop(run.loc).travel)
-	return int(shop(dest).travel)
+	var base := int(shop(run.loc).travel) if dest == "home" else int(shop(dest).travel)
+	return maxi(1, int(round(float(base) * float(vehicle(run).get("travel", 1.0)))))
 
 
 static func hours_left(run: Dictionary) -> int:
@@ -247,7 +272,13 @@ static func start_disaster(run: Dictionary) -> void:
 	if locks > 0:
 		run.door.max = int(run.door.max) + 20 * locks
 		Inv.add(run.home, "iron_lock", -locks)
-	Inv.add(run.home, "cart", -Inv.count(run.home, "cart"))
+	# 载具只在备劫三日有用，灾后一并清掉（原来只清家里的独轮车；车上的也要清，不然留着还能加负重）
+	for id in Data.table("items"):
+		if not Data.item(id).get("vehicle", {}).is_empty():
+			for store in [run.home, run.cart]:
+				var n := Inv.count(store, id)
+				if n > 0:
+					Inv.add(store, id, -n)
 	run.door.cur = run.door.max
 	run.window.cur = run.window.max
 	for k in plots:
