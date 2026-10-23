@@ -132,14 +132,31 @@ static func daoxin_gain(run: Dictionary, bonus := 0) -> Dictionary:
 		lines.append(["新得残卷 %d 篇" % run.clues_new.size(), run.clues_new.size() * 5])
 	if bonus > 0:
 		lines.append(["劫满", bonus])
+	# 挑战倍率先乘在这一局的表现上（誓约抬、凭仗压），了愿是固定加分、不参与乘法
+	var base := 0
+	for l in lines:
+		base += int(l[1])
+	var mul := challenge_mul(run)
+	var total := int(round(base * mul))
+	if not is_equal_approx(mul, 1.0):
+		lines.append(["挑战 ×%.2f" % mul, total - base])
 	# 了愿：挑了的都列出来，达成的给分、没达成的标"未成"给 0——
 	# 不达成就悄无声息地少了 20 道心，玩家会以为出了 bug
 	for g in goal_results(run):
 		lines.append([("了愿·" + str(g.name)) if bool(g.met) else ("了愿·%s（未成）" % str(g.name)), int(g.bonus)])
-	var total := 0
-	for l in lines:
-		total += int(l[1])
+		total += int(g.bonus)
 	return {"lines": lines, "total": total, "days": days}
+
+
+## 挑战倍率：誓约抬、凭仗压，夹在 0.5–1.5。
+## 上下限是为了两头都不失控——三个誓约叠满不能变 3 倍，三个凭仗叠满也不该只剩三成。
+static func challenge_mul(run: Dictionary) -> float:
+	var m := 1.0
+	for v in Data.table("challenge").get("vows", []):
+		if str(v.get("id", "")) in State.tally(run).get("vows", []):
+			m += float(v.get("mul", 1.0)) - 1.0
+	m -= State.boon_malus(run)
+	return clampf(m, 0.5, 1.5)
 
 
 ## 这一局挑了的愿，各自达成没有。返回 [{id, name, met, bonus}]。

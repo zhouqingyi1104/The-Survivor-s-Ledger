@@ -105,6 +105,7 @@ func _init() -> void:
 	test_difficulty()
 	test_vehicle()
 	test_goals()
+	test_boons()
 	print("不变量失败：%d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -633,7 +634,50 @@ func test_goals() -> void:
 		int(g0.total), int(g1.total), goal_part, int(g2.total)])
 
 
-## 载具：负重和赶路时辰都按 data/items.json 的 vehicle 块算；几辆同时有取最快的一辆，不叠加。
+## 凭仗：开局真的发东西、倍率真的打折、三个凭仗扣到底也不破 0.5 的下限；
+## 设施类凭仗要等尸劫降临才落地，不能开局就有。
+func test_boons() -> void:
+	var meta := State.new_meta()
+	var plain := State.new_run("escort", meta, 77)
+	var silver0 := int(plain.silver)
+	check(is_equal_approx(Ledger.challenge_mul(plain), 1.0), "没挑凭仗却改了倍率")
+	# 多带盘缠：+800 文；倍率 1.0 - 0.10 = 0.90
+	var money := State.new_run("escort", meta, 77, "normal", [], ["extra_silver"])
+	check(int(money.silver) == silver0 + 800, "盘缠没发：%d vs %d" % [int(money.silver), silver0])
+	check(is_equal_approx(Ledger.challenge_mul(money), 0.90), "盘缠的倍率不对：%.2f" % Ledger.challenge_mul(money))
+	# 多带油：+2 桶柴油
+	var oil := State.new_run("escort", meta, 77, "normal", [], ["extra_oil"])
+	check(Inv.count(oil.home, "diesel") == 2, "柴油没发：%d" % Inv.count(oil.home, "diesel"))
+	# 现成屋：开局不该有设施，尸劫降临后才并进来
+	var room := State.new_run("escort", meta, 77, "normal", [], ["free_room"])
+	check(room.facilities.is_empty(), "设施凭仗开局就生效了")
+	check(is_equal_approx(Ledger.challenge_mul(room), 0.85), "现成屋的倍率不对：%.2f" % Ledger.challenge_mul(room))
+	Pre.start_disaster(room)
+	check("water_vat" in room.facilities and "garden_bed" in room.facilities,
+		"尸劫降临后没并进设施：%s" % str(room.facilities))
+	check(int(room.plots.size()) == 4, "扩建菜畦没多两块：%d" % room.plots.size())
+	# 三个凭仗全挑：0.10+0.10+0.15 = 0.35 → 0.65，没到下限
+	var all := State.new_run("escort", meta, 77, "normal", [], ["extra_silver", "extra_oil", "free_room"])
+	check(is_equal_approx(Ledger.challenge_mul(all), 0.65), "三个凭仗的倍率不对：%.2f" % Ledger.challenge_mul(all))
+	# 倍率真的乘到结算上：同一局表现，挑了凭仗道心变少，但了愿的固定分不参与乘法
+	var both := State.new_run("escort", meta, 77, "normal", ["slay_200"], ["extra_silver"])
+	for r in [plain, money, both]:
+		r.phase = "ending"
+		r.pday = 20
+		r.kills = 200
+		r.waves_survived = 7
+	var g_plain: Dictionary = Ledger.daoxin_gain(plain)
+	var g_money: Dictionary = Ledger.daoxin_gain(money)
+	var g_both: Dictionary = Ledger.daoxin_gain(both)
+	check(int(g_money.total) < int(g_plain.total), "挑了凭仗道心没变少")
+	check(int(g_money.total) == int(round(int(g_plain.total) * 0.90)), "倍率没乘对：%d vs %d" % [
+		int(g_money.total), int(round(int(g_plain.total) * 0.90))])
+	check(int(g_both.total) - int(g_money.total) == 10, "了愿的 10 点应该全额加、不参与乘法：%d vs %d" % [
+		int(g_both.total), int(g_money.total)])
+	print("凭仗：盘缠 +800（×0.90）、多带油 +2 桶、现成屋 ×0.85 且灾后落地；三个全挑 ×0.65")
+
+
+## 载具：负重和赶路时辰都按 data/items.json 的 vehicle 块算；几辆同时有取载重最大的一辆，不叠加。
 func test_vehicle() -> void:
 	var meta := State.new_meta()
 	var r := State.new_run("escort", meta, 77)

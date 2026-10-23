@@ -22,7 +22,7 @@ static func new_meta() -> Dictionary:
 	return {"daoxin": 0, "talents": [], "runs": 0, "deaths": 0, "best_day": 0, "clues": [], "endings": 0}
 
 
-static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal", goals: Array = []) -> Dictionary:
+static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal", goals: Array = [], boons: Array = []) -> Dictionary:
 	var role_data: Dictionary = Data.table("roles")[role_id]
 	var talents: Array = meta.get("talents", []).duplicate()
 	var d: Dictionary = diff_params(difficulty_id)
@@ -32,7 +32,7 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 		"version": 8, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
 		"difficulty": difficulty_id,
 		## 挑战自选的记账本：了愿挑了哪几个、备劫买了什么、修过几次门、回过几趟家
-		"tally": {"goals": goals.duplicate(), "vows": [], "boons": [], "bought": {}, "repair_door": 0, "home_trips": 0},
+		"tally": {"goals": goals.duplicate(), "vows": [], "boons": boons.duplicate(), "bought": {}, "repair_door": 0, "home_trips": 0},
 		"phase": "pre", "day": 1, "hour": OPEN_HOUR, "loc": "home",
 		"pday": 0, "t": 0, "busy": {}, "sleeping": false, "heated": false, "powered": false, "night_lines": [],
 		"wave_due": false, "wave_day": 0, "wave_report": {}, "raid_report": {}, "dawn_due": false,
@@ -59,8 +59,31 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 	if "talisman" in talents:
 		Inv.add(run.home, "talisman", 3)
 		run.flags["learned_talisman"] = true
+	# 凭仗：开局该给的银子、东西先发下去（设施类等到尸劫降临再并进 run.facilities）
+	for b in boon_tables(boons):
+		if b.has("silver"):
+			run.silver = int(run.silver) + int(b.silver)
+		for id in b.get("items", {}):
+			Inv.add(run.home, str(id), int(b.items[id]))
 	note(run, "%s，醒在三日之前。手里攥着一张生死簿残页。" % role_data.name)
 	return run
+
+
+## 把挑了的凭仗 id 换成表里的完整数据（顺手把不认识的 id 丢掉，别让存档带脏数据）
+static func boon_tables(boons: Array) -> Array:
+	var out := []
+	for b in Data.table("challenge").get("boons", []):
+		if str(b.get("id", "")) in boons:
+			out.append(b)
+	return out
+
+
+## 挑了的凭仗各自扣多少倍率（正的数，越小越狠）
+static func boon_malus(run: Dictionary) -> float:
+	var m := 0.0
+	for b in boon_tables(tally(run).get("boons", [])):
+		m += float(b.get("malus", 0.0))
+	return m
 
 
 static func role(run: Dictionary) -> Dictionary:

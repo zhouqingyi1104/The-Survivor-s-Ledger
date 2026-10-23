@@ -257,7 +257,11 @@ static func start_disaster(run: Dictionary) -> void:
 	run.phase = "post"
 	run.loc = "home"
 	var plots := 2
-	for fac_id in run.orders:
+	# 营造坊订的 + 凭仗白送的设施，一起在这里落地（效果走同一段代码）
+	var fac_ids: Array = run.orders.duplicate()
+	for b in State.boon_tables(State.tally(run).get("boons", [])):
+		fac_ids.append_array(b.get("facilities", []))
+	for fac_id in fac_ids:
 		var fx: Dictionary = Data.table("facilities")[fac_id].effect
 		run.facilities.append(fac_id)
 		if fx.has("door_max"):

@@ -1,10 +1,14 @@
 {
-  "_note": "挑战自选。goals=了愿（一局目标，达成才给道心），vows=誓约（放弃一条路换倍率），boons=凭仗（多给东西换倍率下调）。目前只实现了愿，vows/boons 留空占位。",
+  "_note": "挑战自选。goals=了愿（一局目标，达成给道心）、boons=凭仗（多给东西，道心倍率下调）、vows=誓约（放弃一条路，倍率上调，未实现）。",
   "goals": [
     {"id": "slay_200", "name": "杀满", "desc": "一局斩尸 200 具以上。", "stat": "kills", "at_least": 200, "bonus": 10},
     {"id": "hold_all", "name": "全守", "desc": "七次尸潮一次都不失守。", "stat": "waves_survived", "at_least": 7, "bonus": 12},
     {"id": "survive", "name": "活到终局", "desc": "活到第二十日的天亮，不靠翻生死簿。", "stat": "pday", "at_least": 20, "phase": "ending", "bonus": 8}
   ],
-  "vows": [],
-  "boons": []
+  "boons": [
+    {"id": "extra_silver", "name": "多带盘缠", "desc": "开局多 800 文，备劫时能多买一趟。", "silver": 800, "malus": 0.10},
+    {"id": "extra_oil", "name": "多带油", "desc": "开局多 2 桶柴油。冷夜里不用现攒。", "items": {"diesel": 2}, "malus": 0.10},
+    {"id": "free_room", "name": "现成屋", "desc": "尸劫降临后白得一口大水缸、两块菜畦。", "facilities": ["water_vat", "garden_bed"], "malus": 0.15}
+  ],
+  "vows": []
 }

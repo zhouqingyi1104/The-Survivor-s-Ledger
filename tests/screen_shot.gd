@@ -6,6 +6,7 @@ extends Node
 ##   --out=     输出目录（默认 user://shots）
 
 const State = preload("res://scripts/core/state.gd")
+const UI = preload("res://scripts/ui/ui_kit.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Post = preload("res://scripts/core/post.gd")
 
@@ -13,12 +14,15 @@ const Post = preload("res://scripts/core/post.gd")
 func _ready() -> void:
 	var which := "difficulty"
 	var goto := ""
+	var pick := ""
 	var out := "user://shots"
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--screen="):
 			which = a.trim_prefix("--screen=")
 		elif a.begins_with("--goto="):
 			goto = a.trim_prefix("--goto=")
+		elif a.begins_with("--pick="):
+			pick = a.trim_prefix("--pick=")
 		elif a.begins_with("--out="):
 			out = a.trim_prefix("--out=")
 	# 主界面是场景不是 autoload，得自己实例化挂上，Game.go() 才有地方放界面
@@ -39,6 +43,17 @@ func _ready() -> void:
 		Game.go(which)
 	else:
 		Game.go(which)
+	# 挑战页想拍"选中态"：--pick=slay_200,extra_oil
+	if which == "challenge" and pick != "":
+		var scr: Node = _current_screen(main)
+		if scr != null:
+			for id in pick.split(",", false):
+				if id in ["extra_silver", "extra_oil", "free_room"]:
+					scr._boons.append(id)
+				else:
+					scr._picked.append(id)
+			UI.clear(scr)
+			scr.build()
 	# 相机是插值跟上去的（_focus 每帧 lerp），等不够帧就会拍到"还在飞"的机位。
 	# 之前按 12 帧拍，量出来的相机位置和算出来的差一大截，白折腾了三轮角度。
 	for k in 60:
@@ -53,10 +68,15 @@ func _ready() -> void:
 	get_tree().quit()
 
 
+## 当前挂在 holder 上的那个界面。
+func _current_screen(main: Node) -> Node:
+	var holder: Node = main.get_child(1) if main.get_child_count() > 1 else null
+	return holder.get_child(0) if holder != null and holder.get_child_count() > 0 else null
+
+
 ## 界面里到底有什么：节点数、按钮文字、短标签。截图发白时先看这里。
 func _report(main: Node, which: String) -> void:
-	var holder: Node = main.get_child(1) if main.get_child_count() > 1 else null
-	var scr: Node = holder.get_child(0) if holder != null and holder.get_child_count() > 0 else null
+	var scr: Node = _current_screen(main)
 	print("== %s：screen=%s" % [which, scr])
 	if scr == null:
 		return
