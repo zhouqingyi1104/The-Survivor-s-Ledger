@@ -252,14 +252,15 @@ func setup_walker(kind: String) -> void:
 	walker.setup(kind)
 
 
-## 沿街走到 dest：先上自家门前的街，再走到桥头的南北大街，过桥，再拐到对方门前。
+## 同街沿街直达；只有跨河换街时才绕到中央桥头。
 func walk(from: String, dest: String) -> void:
 	var a: Vector3 = PLACES[from][0]
 	var b: Vector3 = PLACES[dest][0]
 	var za: float = PLACES[from][2]
 	var zb: float = PLACES[dest][2]
-	_path = [Vector3(a.x, 0, za), Vector3(0, 0, za)]
+	_path = [Vector3(a.x, 0, za)]
 	if za != zb:
+		_path.append(Vector3(0, 0, za))
 		_path.append(Vector3(0, 0, zb))
 	_path.append(Vector3(b.x, 0, zb))
 	_path.append(b)
