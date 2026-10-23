@@ -8,6 +8,8 @@
 - **玩法诊断（v0.4 实测）**：[04-gameplay-diagnosis.md](docs/04-gameplay-diagnosis.md)
 - **玩法完善方案（v0.5）**：[05-gameplay-plan-v0.5.md](docs/05-gameplay-plan-v0.5.md)
 - **夜战三式（v0.6）**：[06-night-defense-v0.6.md](docs/06-night-defense-v0.6.md)
+- **当前内容路线图**：[10-roadmap.md](docs/10-roadmap.md)
+- **第一步 · 邻居求药**：[11-neighbor-medicine.md](docs/11-neighbor-medicine.md)
 - 截图：[docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；v0.6 的夜战见 `night_policy.png` 与 `night_panel.png`）
 
 ## 运行
