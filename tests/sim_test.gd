@@ -306,6 +306,21 @@ func _init() -> void:
 			nw += 1
 	print("  [候选] 不雇工（no_order）劫满 %d/%d　平均存活 %.1f 日　平均道心 %.0f　破约 %d 次" % [
 		nw, VOW_SAMPLE, ndays / float(VOW_SAMPLE), ndaoxin / float(VOW_SAMPLE), nbroken])
+	# 候选：不设防 / 不服药。两条都是"砍掉一整类"，且不是靠省钱变简单——
+	# 守具撑的是夜里三面的守力，药撑的是气血和瘟疫，价值远高于价钱。
+	for cand in ["no_guard", "no_med"]:
+		vows_picked = [cand]
+		var kw := 0
+		var kdays := 0
+		var kdaoxin := 0
+		for k in VOW_SAMPLE:
+			var kr: Dictionary = play(roles[k % roles.size()], 5000 + k)
+			kdays += int(kr.days)
+			kdaoxin += int(kr.daoxin)
+			if kr.win:
+				kw += 1
+		print("  [候选] %s 劫满 %d/%d　平均存活 %.1f 日　平均道心 %.0f" % [
+			cand, kw, VOW_SAMPLE, kdays / float(VOW_SAMPLE), kdaoxin / float(VOW_SAMPLE)])
 	vows_picked = []
 	test_rewind()
 	test_migrate()
@@ -368,6 +383,11 @@ func _skip_by_vow(id: String) -> bool:
 		return true
 	if "no_charcoal" in vows_picked and id == "charcoal":
 		return true
+	# 按类目禁买的誓约（不设防 / 不服药）：数据里带 cat 的，机器人也照着守
+	for vw in Data.table("challenge").get("vows", []):
+		if str(vw.get("id", "")) in vows_picked and vw.has("cat"):
+			if str(Data.item(id).get("cat", "")) == str(vw.cat):
+				return true
 	return false
 
 
@@ -1004,6 +1024,18 @@ func test_vows() -> void:
 	check(Pre.order(hire, "door_bar") == "", "订门闩失败：%s" % Pre.order(hire, "door_bar"))
 	check(int(State.tally(hire).orders) == 1, "下单没计数")
 	check(not bool(Ledger.vow_results(hire)[0].met), "下了单却没判破")
+	# 不设防：买过任何一件守具就算破（按类目判，不是按单个物品）
+	var guard := State.new_run("escort", meta, 77, "normal", [], [], ["no_guard"])
+	check(is_equal_approx(Ledger.challenge_mul(guard), 1.25), "不设防没抬倍率：%.2f" % Ledger.challenge_mul(guard))
+	check(bool(Ledger.vow_results(guard)[0].met), "还没买守具就判成破了")
+	guard.loc = "temple"
+	Pre.buy(guard, "talisman", 1)
+	check(not bool(Ledger.vow_results(guard)[0].met), "买了符咒却没判破")
+	# 买别的东西不该误判（钱、米都不是守具）
+	var guard2 := State.new_run("escort", meta, 77, "normal", [], [], ["no_guard"])
+	guard2.loc = "rice_shop"
+	Pre.buy(guard2, "rice", 1)
+	check(bool(Ledger.vow_results(guard2)[0].met), "买了米却把不设防判破了")
 	# 不修门：修过一次就算破
 	var door := State.new_run("escort", meta, 77, "normal", [], [], ["no_door"])
 	check(is_equal_approx(Ledger.challenge_mul(door), 1.05), "不修门没抬倍率：%.2f" % Ledger.challenge_mul(door))

@@ -182,6 +182,13 @@ static func vow_met(run: Dictionary, vow: Dictionary) -> bool:
 	match str(vow.get("check", "")):
 		"bought_none":
 			return int(t.get("bought", {}).get(str(vow.get("item", "")), 0)) <= 0
+		"bought_none_cat":
+			# 整类都不许买（守具、药……）。bought 里只记真买过的，没买过就是没破。
+			var cat := str(vow.get("cat", ""))
+			for id in t.get("bought", {}):
+				if int(t.bought[id]) > 0 and str(Data.item(id).get("cat", "")) == cat:
+					return false
+			return true
 		"furniture_none":
 			for f in run.get("furniture", []):
 				if str(f.get("id", "")) == str(vow.get("furniture", "")):

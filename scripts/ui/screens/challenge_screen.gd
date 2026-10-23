@@ -29,12 +29,22 @@ func build() -> void:
 	var cols := UI.hbox(18)
 	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(cols)
+	# 誓约超过 6 条就再开一栏：七条时底部已经贴到按钮，再往下堆必然截断。
+	var vow_list: Array = Data.table("challenge").get("vows", [])
+	var half: int = int(ceil(vow_list.size() / 2.0)) if vow_list.size() > 6 else vow_list.size()
 	var left := UI.vbox(6)
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_child(UI.label("誓约 · 放弃一条路，道心抬高", 18, UI.INK_SOFT))
-	for vw in Data.table("challenge").get("vows", []):
-		left.add_child(_row(vw, _vows, "mul", 2))
+	for i in range(0, half):
+		left.add_child(_row(vow_list[i], _vows, "mul", 2))
 	cols.add_child(left)
+	if half < vow_list.size():
+		var mid := UI.vbox(6)
+		mid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		mid.add_child(UI.label("誓约（续）", 18, UI.INK_SOFT))
+		for i in range(half, vow_list.size()):
+			mid.add_child(_row(vow_list[i], _vows, "mul", 2))
+		cols.add_child(mid)
 	var right := UI.vbox(6)
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right.add_child(UI.label("凭仗 · 开局多给，道心打折", 18, UI.INK_SOFT))
