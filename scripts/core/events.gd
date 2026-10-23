@@ -10,6 +10,11 @@ const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Explore = preload("res://scripts/core/explore.gd")
+const Director = preload("res://scripts/core/director.gd")
+
+static func entry(run: Dictionary) -> Dictionary:
+	if str(run.pending_event).begins_with("world:"): return Director.entry(run)
+	return Data.table("events").get(run.pending_event, {})
 
 const DAILY_CHANCE := 0.6
 const SEEDS := ["seed_cabbage", "seed_radish", "seed_chive"]
@@ -66,7 +71,8 @@ static func choose(run: Dictionary, idx: int) -> String:
 	var id: String = run.pending_event
 	if id == "":
 		return ""
-	var e: Dictionary = Data.table("events")[id]
+	if id.begins_with("world:"): return Director.choose(run, idx)
+	var e: Dictionary = entry(run)
 	if idx < 0 or idx >= e.choices.size():
 		return "无效的选择。"
 	if e.get("story", "") == "neighbor":
@@ -96,6 +102,7 @@ static func choose(run: Dictionary, idx: int) -> String:
 	run.pending_event = ""
 	run.event_result = result
 	State.note(run, "%s——%s" % [e.title, result])
+	Director.note_choice(run, str(e.title), str(result))
 	State.check_death(run, "死于%s。" % e.title)
 	return ""
 

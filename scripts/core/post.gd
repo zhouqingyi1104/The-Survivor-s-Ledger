@@ -16,6 +16,7 @@ const Explore = preload("res://scripts/core/explore.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
+const Director = preload("res://scripts/core/director.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -110,6 +111,8 @@ static func advance(run: Dictionary, minutes: int) -> String:
 			return "event"
 		if blocked(run):
 			return "blocked"
+		if Director.poll(run) != "":
+			return "event"
 		var m := day_minute(run)
 		var step := mini(TICK, left)
 		for cp in checkpoints(run):
@@ -208,7 +211,8 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 	match m:
 		EVENT_AT:
 			if Neighbor.poll(run) == "":
-				run.pending_event = Events.roll(run)
+				if Director.poll(run) == "":
+					run.pending_event = Events.roll(run)
 			if run.pending_event != "":
 				return "event"
 		DUSK_AT:

@@ -13,7 +13,7 @@ extends RefCounted
 const Post = preload("res://scripts/core/post.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 
-const VERSION := 10
+const VERSION := 11
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -127,5 +127,7 @@ static func upgrade(run: Dictionary) -> Dictionary:
 			q.stage = "closed"
 			q.ending = "旧卷邻事已过"
 		run["neighbor"] = q
+	if v < 11:
+		run["director"] = {}
 	run.version = VERSION
 	return run

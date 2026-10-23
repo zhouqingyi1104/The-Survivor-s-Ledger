@@ -3,6 +3,7 @@ extends RefCounted
 const Data = preload("res://scripts/core/data.gd")
 const State = preload("res://scripts/core/state.gd")
 const Inv = preload("res://scripts/core/inv.gd")
+const Director = preload("res://scripts/core/director.gd")
 const DEADLINE := 3 * 1440 + 720 # Day 4, 18:00; time begins at day 1, 06:00.
 const CABINET := "封存药柜"
 const ACCOUNT := "守庄人药账"
@@ -19,6 +20,7 @@ static func state(run: Dictionary) -> Dictionary:
 static func record(run: Dictionary, choice: String, result: String) -> void:
 	state(run).history.append({"t": int(run.t), "choice": choice, "result": result})
 	State.note(run, "隔墙求药：" + result)
+	Director.note_choice(run, "隔墙求药 · " + choice, result)
 
 static func ready_for_home(run: Dictionary) -> bool:
 	return run.get("explore", {}).is_empty() and not run.get("neighbor_travel", false) and not run.get("sleeping", false) and run.get("busy", {}).is_empty()

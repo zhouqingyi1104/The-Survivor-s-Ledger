@@ -21,6 +21,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 Game="*res://scripts/autoload/game.gd"
 Dialogs="*res://scripts/ui/dialogs.gd"
 Sfx="*res://scripts/autoload/audio.gd"
+StoryDirector="*res://scripts/autoload/story_director.gd"
 
 [display]
 

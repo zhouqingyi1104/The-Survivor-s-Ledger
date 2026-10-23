@@ -13,6 +13,7 @@ const Defense = preload("res://scripts/core/defense.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
+const Director = preload("res://scripts/core/director.gd")
 
 ## 家具的功用，摆出来能做什么（写给人看的）
 const FN_TEXT := {
@@ -82,6 +83,10 @@ func journal() -> void:
 
 
 func _journal(body: VBoxContainer) -> void:
+	var d := Director.state(_run())
+	body.add_child(UI.label("人情往来：" + " · ".join(Director.ACTORS.keys().map(func(id): return "%s %+d" % [Director.ACTORS[id], int(d.relations[id])])), 16))
+	for promise in d.promises:
+		body.add_child(UI.para("第 %d 日 · %s 约定送来 %s" % [promise.day, Director.ACTORS[promise.actor], Director.describe(promise.give)], 16))
 	body.add_child(UI.para(Neighbor.summary(_run()), 17))
 	body.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
 	var lines: Array = _run().get("log", [])
@@ -362,7 +367,7 @@ func _go_explore(pid: String) -> void:
 
 func event() -> void:
 	var id: String = _run().pending_event
-	UI.open_modal("event", Data.table("events")[id].title, _event, false, 720)
+	UI.open_modal("event", Events.entry(_run()).get("title", "邻里来信"), _event, false, 720)
 
 
 func _event(body: VBoxContainer) -> void:
@@ -374,7 +379,7 @@ func _event(body: VBoxContainer) -> void:
 		row.add_child(UI.seal_button("知道了", func(): UI.close_modal("event")))
 		body.add_child(row)
 		return
-	var e: Dictionary = Data.table("events")[run.pending_event]
+	var e: Dictionary = Events.entry(run)
 	if e.get("story", "") == "neighbor" and Neighbor.state(run).resolution != "":
 		body.add_child(UI.para("前情：" + Neighbor.resolution_text(Neighbor.state(run)), 16, UI.GOLD))
 	body.add_child(UI.para(e.text, 19, UI.INK))
@@ -390,6 +395,8 @@ func _event(body: VBoxContainer) -> void:
 		body.add_child(b)
 		if c.get("hint", "") != "":
 			body.add_child(UI.para(c.hint, 15, UI.INK_SOFT))
+		if str(run.pending_event).begins_with("world:"):
+			body.add_child(UI.para(Director.effect_hint(c), 15, UI.INK_SOFT))
 		if c.get("pry", false) and not Neighbor.state(run).pry:
 			body.add_child(UI.para("未准备撬杆：须在家中打开劫余录 → 邻里事务，用木料 1 制作。", 15, UI.CINNABAR))
 
@@ -902,6 +909,10 @@ func settings(in_game := false) -> void:
 
 
 func _settings(body: VBoxContainer, in_game: bool) -> void:
+	if in_game and not Game.run.is_empty():
+		var enabled: bool = Director.state(Game.run).enabled
+		body.add_child(UI.button("动态世情：" + ("开启" if enabled else "关闭"), func(): StoryDirector.set_enabled(not enabled)))
+		body.add_child(UI.para("根据往来与处境在后台准备后续事件；关闭后，已许下的约定仍会兑现。", 15))
 	for row in VOLUME_ROWS:
 		var key: String = row[0]
 		var h := UI.hbox(12)

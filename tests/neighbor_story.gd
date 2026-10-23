@@ -219,7 +219,7 @@ func test_save_migration_rewind() -> void:
 		at(old, day)
 		var old_inventory := JSON.stringify(old.home)
 		Migrate.upgrade(old)
-		check(old.version == 10 and old.neighbor.stage == ("waiting" if day == 1 else "closed"), "Migration start policy wrong")
+		check(old.version == Migrate.VERSION and old.neighbor.stage == ("waiting" if day == 1 else "closed"), "Migration start policy wrong")
 		check(JSON.stringify(old.home) == old_inventory, "Migration changed inventory")
 	var legacy := sample()
 	legacy.version = 9
