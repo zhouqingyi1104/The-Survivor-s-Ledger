@@ -17,6 +17,7 @@ const WaveShow = preload("res://scripts/world/wave_show.gd")
 const Outline = preload("res://scripts/world/outline.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
+const Neighbor = preload("res://scripts/core/neighbor.gd")
 
 ## 每档流速：游戏分钟 / 现实秒
 const SPEEDS := [0.0, 4.0, 10.0, 24.0]
@@ -922,6 +923,17 @@ func _left_top(run: Dictionary) -> void:
 			int(pv.gate.count), int(pv.window.count), int(pv.wall.count),
 			("预计漏 %d 只" % leak) if leak > 0 else "挡得住"], 13, Hud.RED if leak > 0 else Hud.GREEN))
 	v.add_child(Hud.panel(f))
+	var quest := VBoxContainer.new()
+	var quest_row := HBoxContainer.new()
+	quest_row.add_child(Hud.title("邻里事务", 18, Hud.GOLD))
+	quest_row.add_child(Hud.button("查看 / 处理", Dialogs.neighbor))
+	quest.add_child(quest_row)
+	var task := Hud.text(Neighbor.summary(run), 14)
+	task.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	task.custom_minimum_size.x = 280
+	quest.add_child(task)
+	_live["neighbor"] = task
+	v.add_child(Hud.panel(quest))
 	hud.add_child(v)
 	Hud.pin(v, Control.PRESET_TOP_LEFT, 14)
 
@@ -1099,6 +1111,8 @@ func _update_live() -> void:
 	var run: Dictionary = Game.run
 	if _live.is_empty() or run.phase != "post":
 		return
+	if _live.has("neighbor"):
+		(_live.neighbor as Label).text = Neighbor.summary(run)
 	if _live.has("time"):
 		(_live.time as Label).text = "%s  %s" % [Post.shichen(run), Post.clock_text(run)]
 	if _live.has("dial"):

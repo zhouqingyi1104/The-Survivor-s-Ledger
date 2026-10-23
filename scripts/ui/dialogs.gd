@@ -12,6 +12,7 @@ const Ledger = preload("res://scripts/core/ledger.gd")
 const Defense = preload("res://scripts/core/defense.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Home = preload("res://scripts/core/home.gd")
+const Neighbor = preload("res://scripts/core/neighbor.gd")
 
 ## 家具的功用，摆出来能做什么（写给人看的）
 const FN_TEXT := {
@@ -81,11 +82,50 @@ func journal() -> void:
 
 
 func _journal(body: VBoxContainer) -> void:
+	body.add_child(UI.para(Neighbor.summary(_run()), 17))
+	body.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
 	var lines: Array = _run().get("log", [])
 	var s := UI.scroll(UI.log_view(lines, lines.size(), 17), 500)
 	var bar := s.get_v_scroll_bar()
 	bar.changed.connect(func(): s.scroll_vertical = int(bar.max_value))
 	body.add_child(s)
+
+
+func neighbor() -> void:
+	UI.open_modal("neighbor", "邻里事务 · 隔墙求药", _neighbor, true, 740)
+
+
+func _neighbor(body: VBoxContainer) -> void:
+	var run := _run()
+	var q := Neighbor.state(run)
+	body.add_child(UI.para(Neighbor.summary(run), 19))
+	if q.stage == "fetch":
+		body.add_child(UI.para("药柜中的药会贴身收好，不占背囊，被追赶也不丢。来回赶路也计入期限。", 16))
+		if not q.pry:
+			var can_prepare: bool = Neighbor.ready_for_home(run) and run.pending_event == "" and Inv.count(run.home, "wood") >= 1 and int(run.t) < Neighbor.DEADLINE
+			body.add_child(UI.button("准备随身撬杆 · 木料 1", func(): _act(func(): return Neighbor.prepare_pry(Game.run)), not can_prepare))
+		else:
+			body.add_child(UI.label("随身撬杆已备好；开柜后损坏。", 17))
+	var target := "pharmacy_ruin" if q.stage == "fetch" else ("mortuary" if q.stage == "investigate" else "")
+	if target != "" and Neighbor.ready_for_home(run):
+		var block := Post.can_act(run, 10)
+		if block == "":
+			block = Explore.point_block(run, target)
+		body.add_child(UI.button("出门去" + Data.table("map_points")[target].name, func(): _neighbor_depart(target), block != "", block))
+	if q.history.is_empty():
+		body.add_child(UI.para("还没有选择记录。第 2 日早间开始，留意邻人的求助。", 16))
+	else:
+		var history := UI.vbox(8)
+		for entry in q.history:
+			var minute := (int(entry.t) + 360) % 1440
+			history.add_child(UI.para("第 %d 日 %02d:%02d · %s" % [int(entry.t) / 1440 + 1, minute / 60, minute % 60, entry.result], 16))
+		body.add_child(UI.scroll(history, mini(280, q.history.size() * 60 + 12)))
+
+
+func _neighbor_depart(target: String) -> void:
+	UI.close_modal("neighbor")
+	UI.close_modal("journal")
+	_act(func(): return Post.act_explore(Game.run, target))
 
 
 # ---------- 吃喝用药 ----------
@@ -335,6 +375,8 @@ func _event(body: VBoxContainer) -> void:
 		body.add_child(row)
 		return
 	var e: Dictionary = Data.table("events")[run.pending_event]
+	if e.get("story", "") == "neighbor" and Neighbor.state(run).resolution != "":
+		body.add_child(UI.para("前情：" + Neighbor.resolution_text(Neighbor.state(run)), 16, UI.GOLD))
 	body.add_child(UI.para(e.text, 19, UI.INK))
 	body.add_child(UI.sep())
 	for k in e.choices.size():
@@ -346,6 +388,10 @@ func _event(body: VBoxContainer) -> void:
 		var b := UI.button(text, func(): _act(func(): return Events.choose(Game.run, k)), not ok, "" if ok else "东西不够")
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		body.add_child(b)
+		if c.get("hint", "") != "":
+			body.add_child(UI.para(c.hint, 15, UI.INK_SOFT))
+		if c.get("pry", false) and not Neighbor.state(run).pry:
+			body.add_child(UI.para("未准备撬杆：须在家中打开劫余录 → 邻里事务，用木料 1 制作。", 15, UI.CINNABAR))
 
 
 static func _event_req_text(req: Dictionary) -> String:

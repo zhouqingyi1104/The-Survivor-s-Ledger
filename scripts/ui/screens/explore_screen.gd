@@ -9,6 +9,7 @@ const RuinWorld = preload("res://scripts/world/ruin_world.gd")
 const Player = preload("res://scripts/world/player.gd")
 const CamRig = preload("res://scripts/world/cam_rig.gd")
 const K = preload("res://scripts/world/kit.gd")
+const Neighbor = preload("res://scripts/core/neighbor.gd")
 
 ## 这个界面上弹的窗用夜色（main.gd 看这个）
 var dark_ui := true
@@ -116,6 +117,10 @@ func search(idx: int) -> void:
 		return
 	var res = Game.act(func(): return Post.search(Game.run, idx))
 	if typeof(res) == TYPE_DICTIONARY and not res.is_empty():
+		if res.get("story", false):
+			Game.toast.emit("已检视封存药柜，请选择开锁方式。" if Game.run.pending_event == "n_cabinet" else "药账已贴身收好，回宅决定去向。")
+			_near = -99
+			return
 		Sfx.play("cloth" if res.found.is_empty() else "leather", -2.0)
 		var text := "翻到：" + Data.describe_items(res.found) if not res.found.is_empty() else "一无所获"
 		if res.full:
@@ -148,6 +153,11 @@ func build_hud() -> void:
 	v.add_child(UI.stat_row("精力", State.attr(run, "energy"), 100, UI.INK_SOFT, 44))
 	v.add_child(UI.label("背囊 %.1f / %d 斤" % [Inv.weight(ex.bag), int(Explore.carry(run))], 16))
 	v.add_child(UI.line("带着：" + (Data.describe_items(ex.bag) if not ex.bag.is_empty() else "空手"), 15, UI.INK_SOFT, 300))
+	v.add_child(UI.line(Neighbor.summary(run), 16, UI.INK_SOFT, 300))
+	if Neighbor.state(run).stage in ["fetch", "carrying"]:
+		v.add_child(UI.label("送药截止：第 4 日 18:00（含返程）", 15, UI.GOLD))
+	if Neighbor.state(run).medicine:
+		v.add_child(UI.label("贴身任务药 ×1 · 不占背囊", 16, UI.GOLD))
 	corner_panel(v, Control.PRESET_TOP_LEFT)
 
 	var e := UI.vbox(4)
