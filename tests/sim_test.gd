@@ -53,9 +53,22 @@ func _init() -> void:
 			wins += 1
 	print("平均存活 %.1f 日，劫满 %d / %d" % [total_days / float(results.size()), wins, results.size()])
 	lazy = true
-	print("--- 对照：偷懒策略（只吃喝做饭睡觉，不定方针） ---")
-	for k in 4:
-		print(play(roles[k], 2000 + k).line)
+	print("--- 对照：偷懒策略 × 难度（只做饭睡觉，不打水不修门不种菜） ---")
+	for d in Data.table("difficulty"):
+		var lw := 0
+		var ldays := 0
+		var lhp := 0
+		var lstarve := 0
+		for k in 4:
+			var r: Dictionary = play(roles[k], 2000 + k, str(d.id))
+			ldays += int(r.days)
+			lhp += int(r.hp)
+			if r.win:
+				lw += 1
+			if "饿死" in str(r.line) or "渴死" in str(r.line):
+				lstarve += 1
+		print("  %-6s 劫满 %d/4　平均存活 %.1f 日　终局气血 %.0f　饿/渴死 %d 局" % [
+			str(d.name), lw, ldays / 4.0, lhp / 4.0, lstarve])
 	lazy = false
 	print("--- 对照：守夜方针 × 6 局 ---")
 	for pol in ["hold", "fight", "manual"]:
