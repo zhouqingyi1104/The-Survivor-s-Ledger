@@ -51,6 +51,9 @@ var _garden_rows := 0
 func _ready() -> void:
 	add_to_group("navsrc")
 	sky = SkyKit.make(self, 26.0)
+	# The overhead camera looks through many metres of fog even at nearby props.
+	# Keep the courtyard legible instead of tinting the entire scene grey.
+	sky.fog_mul = 0.12
 	_ground()
 	_buildings()
 	_furniture()

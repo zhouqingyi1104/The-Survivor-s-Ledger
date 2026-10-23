@@ -49,7 +49,7 @@ var _path: Array = []
 
 func _ready() -> void:
 	sky = SkyKit.make(self, 40.0)
-	sky.fog_mul = 0.45
+	sky.fog_mul = 0.18
 	_ground()
 	for id in PLACES:
 		_building(id)
