@@ -4,6 +4,7 @@ const Data = preload("res://scripts/core/data.gd")
 const State = preload("res://scripts/core/state.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Director = preload("res://scripts/core/director.gd")
+const Past = preload("res://scripts/core/past_lives.gd")
 const DEADLINE := 3 * 1440 + 720 # Day 4, 18:00; time begins at day 1, 06:00.
 const CABINET := "封存药柜"
 const ACCOUNT := "守庄人药账"
@@ -21,6 +22,13 @@ static func record(run: Dictionary, choice: String, result: String) -> void:
 	state(run).history.append({"t": int(run.t), "choice": choice, "result": result})
 	State.note(run, "隔墙求药：" + result)
 	Director.note_choice(run, "隔墙求药 · " + choice, result)
+	match choice:
+		"donate_home", "deliver": Past.record(run, "ning", "medicine", "你曾把药交给阿宁。", 1)
+		"refuse": Past.record(run, "ning", "medicine", "你曾没有答应阿宁的求药。", -1)
+		"keep": Past.record(run, "ning", "medicine", "你曾把为邻人取回的药留给自己。", -1)
+		"deadline": Past.record(run, "ning", "medicine", "你曾答应取药，却没能按期送到阿宁手中。", -1)
+		"share": Past.record(run, "ning", "account", "你曾把守庄人的药账交给阿宁，一同追查线索。", 1)
+		"seal": Past.record(run, "ning", "account", "你曾取到药账后选择封存，没有交给阿宁。", -1)
 
 static func ready_for_home(run: Dictionary) -> bool:
 	return run.get("explore", {}).is_empty() and not run.get("neighbor_travel", false) and not run.get("sleeping", false) and run.get("busy", {}).is_empty()

@@ -9,11 +9,13 @@ extends RefCounted
 ##   v7：难度预设（run.difficulty），四档参数乘数。
 ##   v8：挑战自选——了愿（tally.goals）与记账本（bought / repair_door / home_trips）。
 ##   v9：记账本补 orders（第 7 条誓约「不雇工」用）。
+##   v10：邻居求药完整链。v11：运行时三日导演。v12：前世记忆与稳定世代身份。
 
 const Post = preload("res://scripts/core/post.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
+const Past = preload("res://scripts/core/past_lives.gd")
 
-const VERSION := 11
+const VERSION := 12
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -47,6 +49,8 @@ static func save(data: Dictionary) -> Dictionary:
 	var old: Dictionary = data.get("snapshots", {})
 	for k in old:
 		snaps[k] = upgrade(old[k])
+		if int(old[k].get("version", 1)) < 12 or int(Past.state(snaps[k]).generation) == 0:
+			Past.state(snaps[k]).id = Past.state(out.run).id
 	out.snapshots = snaps
 	return out
 
@@ -129,5 +133,8 @@ static func upgrade(run: Dictionary) -> Dictionary:
 		run["neighbor"] = q
 	if v < 11:
 		run["director"] = {}
+	if v < 12:
+		# Stable identity when the very same old file is loaded again; never infer facts.
+		run["past_lives"] = Past.fresh_run("legacy-" + JSON.stringify(run).sha256_text().left(32))
 	run.version = VERSION
 	return run

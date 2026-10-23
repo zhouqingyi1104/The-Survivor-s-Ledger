@@ -6,6 +6,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
+const Past = preload("res://scripts/core/past_lives.gd")
 
 const OMEN_SLOTS := 3
 const REROLL_COST := 1
@@ -248,6 +249,7 @@ static func merge_memory(run: Dictionary, meta: Dictionary) -> void:
 
 static func end_run(run: Dictionary, meta: Dictionary, bonus := 0) -> Dictionary:
 	var gain := daoxin_gain(run, bonus)
+	Past.archive(run, meta)
 	merge_memory(run, meta)
 	record_daily(run, meta, int(gain.total))
 	meta.daoxin = int(meta.daoxin) + int(gain.total)

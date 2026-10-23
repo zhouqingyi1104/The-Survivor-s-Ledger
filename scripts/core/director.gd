@@ -3,6 +3,7 @@ extends RefCounted
 const State = preload("res://scripts/core/state.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Data = preload("res://scripts/core/data.gd")
+const Past = preload("res://scripts/core/past_lives.gd")
 const GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 
@@ -31,7 +32,8 @@ static func snapshot(run: Dictionary) -> Dictionary:
 		"session": d.session, "revision": int(d.revision), "current_day": int(run.pday), "time": int(run.t),
 		"state": {"role": str(run.role), "stock": stock, "mood": State.attr(run, "mood"),
 			"neighbor": {"stage": n.get("stage", "waiting"), "resolution": n.get("resolution", ""), "ending": n.get("ending", "")},
-			"relations": d.relations.duplicate(), "history": d.history.duplicate(true), "promises": d.promises.duplicate(true)}}
+			"relations": d.relations.duplicate(), "history": d.history.duplicate(true), "promises": d.promises.duplicate(true),
+			"recollections": Past.public_memories(run)}}
 
 static func keys_ok(value: Dictionary, allowed: Array) -> bool:
 	for key in value:
@@ -102,10 +104,21 @@ static func poll(run: Dictionary) -> String:
 			Inv.add_all(run.home, p.give)
 			p.done = true
 			State.note(run, "约定兑现 · %s：%s（%s）" % [ACTORS[p.actor], p.text, describe(p.give)])
+			Past.record(run, str(p.actor), "delivery_%d" % int(p.day), "你曾收到%s按约送来的%s。" % [ACTORS[p.actor], describe(p.give)], 1)
 	d.promises = d.promises.filter(func(p): return not p.done)
-	if not d.enabled or run.pending_event != "" or run.sleeping or not run.busy.is_empty() or not run.explore.is_empty() or run.get("neighbor_travel", false) or run.dawn_due or run.plan_due or run.wave_due or not run.wave_report.is_empty() or not run.get("fight", {}).is_empty(): return ""
+	if run.pending_event != "" or run.sleeping or not run.busy.is_empty() or not run.explore.is_empty() or run.get("neighbor_travel", false) or run.dawn_due or run.plan_due or run.wave_due or not run.wave_report.is_empty() or not run.get("fight", {}).is_empty(): return ""
 	var minute := int(run.t) % 1440
 	if minute < 120 or minute >= 720 or int(run.pday) in d.days: return ""
+	var memory := Past.awakening(run)
+	if not memory.is_empty():
+		d.active = memory
+		d.days.append(int(run.pday))
+		while d.days.size() > 7: d.days.pop_front()
+		run.pending_event = memory.uid
+		note_choice(run, memory.title, memory.text)
+		State.note(run, memory.title + "：" + memory.text)
+		return memory.uid
+	if not d.enabled: return ""
 	for e in d.queue:
 		if int(e.day) == int(run.pday):
 			d.active = e.duplicate(true)
@@ -137,6 +150,15 @@ static func choose(run: Dictionary, index: int) -> String:
 		var due := int(run.pday) + int(a.days)
 		d.promises.append({"day": due, "actor": e.actor, "give": a.give.duplicate(), "text": a.text, "done": false})
 		result += "\n约定：第 %d 日收到%s。" % [due, describe(a.give)]
+	if e.has("past_memory"):
+		Past.respond(run, e, c)
+	else:
+		var facts := []
+		if not c.get("req", {}).is_empty(): facts.append("你交出" + describe(c.req))
+		if not c.get("give", {}).is_empty(): facts.append("对方交给你" + describe(c.give))
+		if not a.is_empty(): facts.append("对方约定 %d 日后送来%s" % [int(a.days), describe(a.give)])
+		if int(c.get("relation", 0)) != 0: facts.append("当时你们的关系" + ("亲近了一些" if int(c.relation) > 0 else "疏远了一些"))
+		if not facts.is_empty(): Past.record(run, str(e.actor), "world_" + str(e.title).sha256_text().left(16), "你曾与%s有过一次往来：%s。" % [ACTORS[e.actor], "；".join(facts)], signi(int(c.get("relation", 0))))
 	note_choice(run, str(e.title), result)
 	State.note(run, "%s · %s：%s" % [ACTORS[e.actor], e.title, result])
 	d.active = {}

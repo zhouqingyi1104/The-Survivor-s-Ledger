@@ -5,6 +5,7 @@ extends RefCounted
 const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
+const Past = preload("res://scripts/core/past_lives.gd")
 
 const ATTR_NAMES := {"hp": "气血", "food": "饱腹", "water": "饮水", "mood": "心神", "energy": "精力", "warmth": "体温"}
 const PROF_NAMES := {"farm": "农事", "cook": "庖厨", "search": "搜寻", "guard": "守御", "build": "营造"}
@@ -20,7 +21,7 @@ const LOG_LIMIT := 300
 
 static func new_meta() -> Dictionary:
 	return {"daoxin": 0, "talents": [], "runs": 0, "deaths": 0, "best_day": 0, "clues": [], "endings": 0,
-		"daily": new_daily()}
+		"daily": new_daily(), "past_lives": Past.fresh_book()}
 
 
 ## 每日一局的记分板。只记每日局（种子按日期的那种），寻常随机局不往里记。
@@ -49,7 +50,7 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 	var hp_max: int = int(round(float(role_data.hp_max) * float(d.get("hp_mul", 1.0))))
 	var silver: int = int(round(float(role_data.silver) * float(d.get("silver_mul", 1.0))))
 	var run := {
-		"version": 11, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
+		"version": 12, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
 		"director": {},
 		"neighbor": {},
 		"difficulty": difficulty_id,
@@ -91,6 +92,7 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 	if "bare" in vows:
 		run.home = {}
 	note(run, "%s，醒在三日之前。手里攥着一张生死簿残页。" % role_data.name)
+	Past.begin(run, meta)
 	return run
 
 

@@ -67,7 +67,7 @@ func _ready() -> void:
 	old.version = 10
 	old.erase("director")
 	Migrate.upgrade(old)
-	check(old.version == 11 and old.has("director"), "v11 migration failed")
+	check(old.version == Migrate.VERSION and old.has("director"), "v11 migration failed")
 	var other := sample()
 	check(not Core.accept(other, sent, plan(1)), "Response contaminated new run")
 	var back := sample()
