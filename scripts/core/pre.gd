@@ -122,6 +122,9 @@ static func travel(run: Dictionary, dest: String) -> String:
 	run.hour = int(run.hour) + travel_cost(run, dest)
 	run.loc = dest
 	if dest == "home":
+		# 回家卸货计次（誓约「一趟」要查这个）
+		var t: Dictionary = State.tally(run)
+		t.home_trips = int(t.get("home_trips", 0)) + 1
 		_unload(run)
 	else:
 		var s := shop(dest)
@@ -166,6 +169,9 @@ static func buy(run: Dictionary, item_id: String, n := 1) -> String:
 	run.silver -= cost
 	run.shops[shop_id][item_id] = int(run.shops[shop_id][item_id]) - n
 	Inv.add(run.cart, item_id, n)
+	# 累计买过多少（誓约「不点灯」要查这个）
+	var bought: Dictionary = State.tally(run).bought
+	bought[item_id] = int(bought.get(item_id, 0)) + n
 	return ""
 
 

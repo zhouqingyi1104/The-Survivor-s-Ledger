@@ -106,6 +106,7 @@ func _init() -> void:
 	test_vehicle()
 	test_goals()
 	test_boons()
+	test_vows()
 	print("不变量失败：%d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -632,6 +633,69 @@ func test_goals() -> void:
 	check(Ledger.daoxin_gain(up).lines.size() > 0, "补了 tally 之后结算崩了")
 	print("了愿：没立愿 %d 道心；三个愿全达 %d（+%d）；差一点 %d" % [
 		int(g0.total), int(g1.total), goal_part, int(g2.total)])
+
+
+## 誓约：五条各自的判定、破了要静默降倍率并在结算里说明、空手要真清空随身物。
+func test_vows() -> void:
+	var meta := State.new_meta()
+	# 空手：身份带的随身物一件不留
+	var rich := State.new_run("escort", meta, 77)
+	check(not rich.home.is_empty(), "镖局趟子手开局本来就该有东西，测试前提不成立")
+	var bare := State.new_run("escort", meta, 77, "normal", [], [], ["bare"])
+	check(bare.home.is_empty(), "空手没清掉随身物：%s" % str(bare.home))
+	check(rich.home.size() > bare.home.size(), "空手和没空手开局一样")
+	# 不点灯：买过灯油就算破
+	var lamp := State.new_run("escort", meta, 77, "normal", [], [], ["no_lamp"])
+	check(is_equal_approx(Ledger.challenge_mul(lamp), 1.15), "不点灯没抬倍率：%.2f" % Ledger.challenge_mul(lamp))
+	check(bool(Ledger.vow_results(lamp)[0].met), "还没买就判成破了")
+	lamp.loc = "grocery"
+	Pre.buy(lamp, "lamp_oil", 1)
+	check(not bool(Ledger.vow_results(lamp)[0].met), "买了灯油却没判破")
+	check(is_equal_approx(Ledger.challenge_mul(lamp), 1.0), "破了誓约倍率没收回去：%.2f" % Ledger.challenge_mul(lamp))
+	# 不修门：修过一次就算破
+	var door := State.new_run("escort", meta, 77, "normal", [], [], ["no_door"])
+	check(is_equal_approx(Ledger.challenge_mul(door), 1.20), "不修门没抬倍率：%.2f" % Ledger.challenge_mul(door))
+	door.phase = "post"
+	door.pday = 3
+	door.t = 2 * Post.DAY + 60
+	door.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
+	door.door.cur = 40
+	Inv.add(door.home, "wood", 1)
+	check(Post.act_repair(door, "door") == "", "修缮开不了工：%s" % Post.act_repair(door, "door"))
+	check(int(State.tally(door).repair_door) == 1, "修门没计数")
+	check(not bool(Ledger.vow_results(door)[0].met), "修了门却没判破")
+	# 一趟：回家卸货超过一次就算破
+	var trip := State.new_run("escort", meta, 77, "normal", [], [], ["one_trip"])
+	trip.loc = "rice_shop"
+	Pre.travel(trip, "home")
+	check(bool(Ledger.vow_results(trip)[0].met), "只回一趟就判破了")
+	Pre.travel(trip, "rice_shop")
+	Pre.travel(trip, "home")
+	check(not bool(Ledger.vow_results(trip)[0].met), "回了两趟却没判破")
+	# 不设笼：院里摆了捕鼠笼就算破
+	var trap := State.new_run("escort", meta, 77, "normal", [], [], ["no_trap"])
+	check(bool(Ledger.vow_results(trap)[0].met), "还没摆就判成破了")
+	trap.furniture = [{"id": "rat_trap", "uid": 1, "x": 0.0, "z": 0.0, "rot": 0, "job": {}}]
+	check(not bool(Ledger.vow_results(trap)[0].met), "摆了捕鼠笼却没判破")
+	# 多条同时：全守约 ×1.50（上限 1.5），破一条就掉一档
+	var three := State.new_run("escort", meta, 77, "normal", [], [], ["no_lamp", "no_door", "bare"])
+	check(is_equal_approx(Ledger.challenge_mul(three), 1.50), "三条全守的倍率不对：%.2f" % Ledger.challenge_mul(three))
+	Inv.add(three.home, "lamp_oil", 1)   # 直接塞进家不算买过，誓约不该破
+	check(is_equal_approx(Ledger.challenge_mul(three), 1.50), "没买只是塞进来，不该判破")
+	three.loc = "grocery"
+	Pre.buy(three, "lamp_oil", 1)
+	check(is_equal_approx(Ledger.challenge_mul(three), 1.35), "破一条后倍率不对：%.2f" % Ledger.challenge_mul(three))
+	# 结算里要把破了的誓约写出来（否则玩家以为算错了）
+	var g: Dictionary = Ledger.daoxin_gain(three)
+	var said := false
+	for l in g.lines:
+		if "已破" in str(l[0]):
+			said = true
+	check(said, "破了誓约，结算里却没说明")
+	# 誓约和凭仗同时挑：1.20 + 0.15 - 0.10 = 1.25
+	var mix := State.new_run("escort", meta, 77, "normal", [], ["extra_silver"], ["no_door", "bare"])
+	check(is_equal_approx(Ledger.challenge_mul(mix), 1.25), "誓约+凭仗混算不对：%.2f" % Ledger.challenge_mul(mix))
+	print("誓约：不点灯×1.15（买油即破）、不修门×1.20（修一次即破）、一趟×1.15（回两趟即破）、空手×1.15（清空）、不设笼×1.10（摆笼即破）；三条全守 ×1.50 封顶")
 
 
 ## 凭仗：开局真的发东西、倍率真的打折、三个凭仗扣到底也不破 0.5 的下限；

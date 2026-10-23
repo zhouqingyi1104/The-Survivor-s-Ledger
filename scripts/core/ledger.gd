@@ -140,6 +140,10 @@ static func daoxin_gain(run: Dictionary, bonus := 0) -> Dictionary:
 	var total := int(round(base * mul))
 	if not is_equal_approx(mul, 1.0):
 		lines.append(["挑战 ×%.2f" % mul, total - base])
+	# 破了誓约要说一声：倍率里少了它，但不写出来玩家会以为是算错了
+	for v in vow_results(run):
+		if not bool(v.met):
+			lines.append(["誓约·%s（已破，不算倍数）" % str(v.name), 0])
 	# 了愿：挑了的都列出来，达成的给分、没达成的标"未成"给 0——
 	# 不达成就悄无声息地少了 20 道心，玩家会以为出了 bug
 	for g in goal_results(run):
@@ -150,13 +154,54 @@ static func daoxin_gain(run: Dictionary, bonus := 0) -> Dictionary:
 
 ## 挑战倍率：誓约抬、凭仗压，夹在 0.5–1.5。
 ## 上下限是为了两头都不失控——三个誓约叠满不能变 3 倍，三个凭仗叠满也不该只剩三成。
+## 誓约是"到结算那一刻还没破"才算数：中途破了就静默作废（不提示、不清零），
+## 因为当场清零惩罚太重，玩家会直接弃局。
 static func challenge_mul(run: Dictionary) -> float:
 	var m := 1.0
 	for v in Data.table("challenge").get("vows", []):
-		if str(v.get("id", "")) in State.tally(run).get("vows", []):
+		if str(v.get("id", "")) in State.tally(run).get("vows", []) and vow_met(run, v):
 			m += float(v.get("mul", 1.0)) - 1.0
 	m -= State.boon_malus(run)
 	return clampf(m, 0.5, 1.5)
+
+
+## 这条誓约到结算时破了没有。条件写在 data/challenge.json 的 check 字段里：
+##   bought_none     一样东西整局没买过（看 tally.bought）
+##   furniture_none  院里没摆这件家具
+##   counter_zero    某个计数器还是 0（repair_door）
+##   counter_max     某个计数器没超过上限（home_trips ≤ max）
+##   always          开局一瞬就生效，没有可破的（空手）
+static func vow_met(run: Dictionary, vow: Dictionary) -> bool:
+	var t: Dictionary = State.tally(run)
+	match str(vow.get("check", "")):
+		"bought_none":
+			return int(t.get("bought", {}).get(str(vow.get("item", "")), 0)) <= 0
+		"furniture_none":
+			for f in run.get("furniture", []):
+				if str(f.get("id", "")) == str(vow.get("furniture", "")):
+					return false
+			return true
+		"counter_zero":
+			return int(t.get(str(vow.get("counter", "")), 0)) <= 0
+		"counter_max":
+			return int(t.get(str(vow.get("counter", "")), 0)) <= int(vow.get("max", 0))
+		_:
+			return true
+
+
+## 挑了的誓约，各自破没破。给结算界面用。
+static func vow_results(run: Dictionary) -> Array:
+	var picked: Array = State.tally(run).get("vows", [])
+	var out := []
+	if picked.is_empty():
+		return out
+	for v in Data.table("challenge").get("vows", []):
+		var id := str(v.get("id", ""))
+		if not id in picked:
+			continue
+		out.append({"id": id, "name": str(v.get("name", id)), "met": vow_met(run, v),
+			"mul": float(v.get("mul", 1.0))})
+	return out
 
 
 ## 这一局挑了的愿，各自达成没有。返回 [{id, name, met, bonus}]。

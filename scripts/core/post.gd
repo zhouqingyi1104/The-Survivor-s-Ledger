@@ -980,6 +980,10 @@ static func act_repair(run: Dictionary, target: String) -> String:
 	else:
 		return "没有木料（两捆柴也能拆着补门板）。"
 	_start(run, "repair", {"target": target})
+	if target == "door":
+		# 修过几次门（誓约「不修门」要查这个）
+		var t: Dictionary = State.tally(run)
+		t.repair_door = int(t.get("repair_door", 0)) + 1
 	return ""
 
 

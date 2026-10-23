@@ -10,5 +10,16 @@
     {"id": "extra_oil", "name": "多带油", "desc": "开局多 2 桶柴油。冷夜里不用现攒。", "items": {"diesel": 2}, "malus": 0.10},
     {"id": "free_room", "name": "现成屋", "desc": "尸劫降临后白得一口大水缸、两块菜畦。", "facilities": ["water_vat", "garden_bed"], "malus": 0.15}
   ],
-  "vows": []
+  "vows": [
+    {"id": "no_lamp", "name": "不点灯", "desc": "整局不买灯油。月黑夜靠摸。", "mul": 1.15,
+     "check": "bought_none", "item": "lamp_oil"},
+    {"id": "no_trap", "name": "不设笼", "desc": "院里不摆捕鼠笼。老鼠随便吃。", "mul": 1.10,
+     "check": "furniture_none", "furniture": "rat_trap"},
+    {"id": "no_door", "name": "不修门", "desc": "院门一次都不修。破了就让它破着。", "mul": 1.20,
+     "check": "counter_zero", "counter": "repair_door"},
+    {"id": "bare", "name": "空手", "desc": "开局丢掉身份带的所有随身物。", "mul": 1.15,
+     "check": "always"},
+    {"id": "one_trip", "name": "一趟", "desc": "备劫三日只回家卸一次货。", "mul": 1.15,
+     "check": "counter_max", "counter": "home_trips", "max": 1}
+  ]
 }

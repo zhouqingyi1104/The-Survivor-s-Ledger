@@ -22,7 +22,7 @@ static func new_meta() -> Dictionary:
 	return {"daoxin": 0, "talents": [], "runs": 0, "deaths": 0, "best_day": 0, "clues": [], "endings": 0}
 
 
-static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal", goals: Array = [], boons: Array = []) -> Dictionary:
+static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal", goals: Array = [], boons: Array = [], vows: Array = []) -> Dictionary:
 	var role_data: Dictionary = Data.table("roles")[role_id]
 	var talents: Array = meta.get("talents", []).duplicate()
 	var d: Dictionary = diff_params(difficulty_id)
@@ -32,7 +32,7 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 		"version": 8, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
 		"difficulty": difficulty_id,
 		## 挑战自选的记账本：了愿挑了哪几个、备劫买了什么、修过几次门、回过几趟家
-		"tally": {"goals": goals.duplicate(), "vows": [], "boons": boons.duplicate(), "bought": {}, "repair_door": 0, "home_trips": 0},
+		"tally": {"goals": goals.duplicate(), "vows": vows.duplicate(), "boons": boons.duplicate(), "bought": {}, "repair_door": 0, "home_trips": 0},
 		"phase": "pre", "day": 1, "hour": OPEN_HOUR, "loc": "home",
 		"pday": 0, "t": 0, "busy": {}, "sleeping": false, "heated": false, "powered": false, "night_lines": [],
 		"wave_due": false, "wave_day": 0, "wave_report": {}, "raid_report": {}, "dawn_due": false,
@@ -65,6 +65,9 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 			run.silver = int(run.silver) + int(b.silver)
 		for id in b.get("items", {}):
 			Inv.add(run.home, str(id), int(b.items[id]))
+	# 誓约：空手——身份带的随身物一件不留（别的誓约都是靠结算时查，不用这里改）
+	if "bare" in vows:
+		run.home = {}
 	note(run, "%s，醒在三日之前。手里攥着一张生死簿残页。" % role_data.name)
 	return run
 

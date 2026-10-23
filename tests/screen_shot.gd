@@ -43,13 +43,15 @@ func _ready() -> void:
 		Game.go(which)
 	else:
 		Game.go(which)
-	# 挑战页想拍"选中态"：--pick=slay_200,extra_oil
+	# 挑战页想拍"选中态"：--pick=slay_200,extra_oil,no_door
 	if which == "challenge" and pick != "":
 		var scr: Node = _current_screen(main)
 		if scr != null:
 			for id in pick.split(",", false):
 				if id in ["extra_silver", "extra_oil", "free_room"]:
 					scr._boons.append(id)
+				elif id in ["no_lamp", "no_trap", "no_door", "bare", "one_trip"]:
+					scr._vows.append(id)
 				else:
 					scr._picked.append(id)
 			UI.clear(scr)

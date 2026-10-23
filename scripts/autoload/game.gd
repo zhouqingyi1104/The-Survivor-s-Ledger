@@ -109,8 +109,8 @@ func role_unlocked(role_id: String) -> bool:
 	return true
 
 
-func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = []) -> void:
-	run = State.new_run(role_id, meta, randi(), difficulty_id, goals, boons)
+func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = []) -> void:
+	run = State.new_run(role_id, meta, randi(), difficulty_id, goals, boons, vows)
 	snapshots = {}
 	last_gain = {}
 	_after()

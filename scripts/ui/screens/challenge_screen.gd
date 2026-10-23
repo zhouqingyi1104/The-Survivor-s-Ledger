@@ -5,15 +5,16 @@ extends "res://scripts/ui/screens/screen_base.gd"
 ##   凭仗：开局多给东西，但这一局的道心倍率下调
 ## 条件与数值全在 data/challenge.json，这里只负责勾选和显示。
 
-## 已勾的愿 / 凭仗 id
+## 已勾的愿 / 凭仗 / 誓约 id
 var _picked: Array = []
 var _boons: Array = []
+var _vows: Array = []
 
 
 func build() -> void:
-	var v := page(24)
+	var v := page(18)
 	var head := UI.hbox()
-	head.add_child(UI.heading("立什么愿，带什么家伙", 32))
+	head.add_child(UI.heading("立什么愿，带什么家伙", 30))
 	head.add_child(UI.spacer())
 	head.add_child(UI.button("返回", func(): Game.go("difficulty")))
 	v.add_child(head)
@@ -21,15 +22,29 @@ func build() -> void:
 	if role_id != "":
 		var r: Dictionary = Data.table("roles")[role_id]
 		v.add_child(UI.para("身份：%s · 难度：%s" % [
-			r.name, State.diff_name({"difficulty": Game.pending_difficulty})], 17))
+			r.name, State.diff_name({"difficulty": Game.pending_difficulty})], 16))
 	v.add_child(UI.sep())
-	v.add_child(UI.label("凭仗 · 开局多给，这一局的道心打折", 20, UI.INK_SOFT))
+	# 三张表一共 11 行，竖着排会顶出屏幕（实测 1600×900 下底部按钮被截掉），
+	# 所以分两栏：左边誓约，右边凭仗 + 了愿。
+	var cols := UI.hbox(18)
+	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(cols)
+	var left := UI.vbox(6)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_child(UI.label("誓约 · 放弃一条路，道心抬高", 18, UI.INK_SOFT))
+	for vw in Data.table("challenge").get("vows", []):
+		left.add_child(_row(vw, _vows, "mul", 2))
+	cols.add_child(left)
+	var right := UI.vbox(6)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_child(UI.label("凭仗 · 开局多给，道心打折", 18, UI.INK_SOFT))
 	for b in Data.table("challenge").get("boons", []):
-		v.add_child(_row(b, _boons, "malus", true))
-	v.add_child(UI.sep())
-	v.add_child(UI.label("了愿 · 一局的目标，达成才给道心", 20, UI.INK_SOFT))
+		right.add_child(_row(b, _boons, "malus", 1))
+	right.add_child(UI.sep())
+	right.add_child(UI.label("了愿 · 一局的目标，达成才给道心", 18, UI.INK_SOFT))
 	for g in Data.table("challenge").get("goals", []):
-		v.add_child(_row(g, _picked, "bonus", false))
+		right.add_child(_row(g, _picked, "bonus", 0))
+	cols.add_child(right)
 	v.add_child(UI.spacer())
 	var foot := UI.hbox()
 	foot.add_child(UI.para("都可空着。", 15, UI.INK_FAINT))
@@ -41,21 +56,33 @@ func build() -> void:
 
 ## 一行一件事：左边方块标记（■ 选了 / □ 没选），右边名字 + 说明 + 分数。
 ## 不用 CheckBox：主题里没配勾选图标，选了和没选长得一模一样，玩家看不出挑了啥。
-func _row(item: Dictionary, bucket: Array, field: String, penalty: bool) -> Control:
+## kind：0=了愿（加分）1=凭仗（扣倍率）2=誓约（抬倍率）
+func _row(item: Dictionary, bucket: Array, field: String, kind: int) -> Control:
 	var id := str(item.get("id", ""))
 	var on: bool = id in bucket
 	var h := UI.hbox(10)
 	var mark := UI.button("■" if on else "□", func(): _toggle(id, not on, bucket))
-	mark.custom_minimum_size = Vector2(40, 40)
+	mark.custom_minimum_size = Vector2(38, 38)
 	mark.tooltip_text = "取消" if on else "选中"
 	h.add_child(mark)
 	var col := UI.vbox(2)
 	var title := UI.hbox(8)
-	title.add_child(UI.label(str(item.get("name", id)), 20, UI.INK if on else UI.INK_SOFT))
-	var v := float(item.get(field, 0.0))
-	title.add_child(UI.label(("道心 −%d%%" % int(round(v * 100.0))) if penalty else ("道心 +%d" % int(v)), 17, UI.INK_FAINT if penalty else UI.CINNABAR))
+	title.add_child(UI.label(str(item.get("name", id)), 19, UI.INK if on else UI.INK_SOFT))
+	var val := float(item.get(field, 0.0))
+	var tag_text := ""
+	var tag_col := UI.CINNABAR
+	match kind:
+		1:
+			tag_text = "道心 −%d%%" % int(round(val * 100.0))
+			tag_col = UI.INK_FAINT
+		2:
+			tag_text = "道心 ×%.2f" % val
+			tag_col = UI.JADE
+		_:
+			tag_text = "道心 +%d" % int(val)
+	title.add_child(UI.label(tag_text, 16, tag_col))
 	col.add_child(title)
-	col.add_child(UI.para(str(item.get("desc", "")), 16, UI.INK_SOFT))
+	col.add_child(UI.para(str(item.get("desc", "")), 15, UI.INK_SOFT))
 	h.add_child(col)
 	h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -73,17 +100,21 @@ func _toggle(id: String, pressed: bool, bucket: Array) -> void:
 
 
 func _start_text() -> String:
-	if _picked.is_empty() and _boons.is_empty():
+	if _picked.is_empty() and _boons.is_empty() and _vows.is_empty():
 		return "就这样，开始"
 	var mul := 1.0
+	for vw in Data.table("challenge").get("vows", []):
+		if str(vw.get("id", "")) in _vows:
+			mul += float(vw.get("mul", 1.0)) - 1.0
 	for b in Data.table("challenge").get("boons", []):
 		if str(b.get("id", "")) in _boons:
 			mul -= float(b.get("malus", 0.0))
+	mul = clampf(mul, 0.5, 1.5)
 	var goal_sum := 0
 	for g in Data.table("challenge").get("goals", []):
 		if str(g.get("id", "")) in _picked:
 			goal_sum += int(g.get("bonus", 0))
-	return "愿 %d 个（+%d）· 凭仗 %d 个（×%.2f），开始" % [_picked.size(), goal_sum, _boons.size(), maxf(0.5, mul)]
+	return "誓 %d 凭 %d 愿 %d（×%.2f / +%d），开始" % [_vows.size(), _boons.size(), _picked.size(), mul, goal_sum]
 
 
 func _start(with_picks: bool) -> void:
@@ -93,5 +124,6 @@ func _start(with_picks: bool) -> void:
 		return
 	var goals: Array = _picked.duplicate() if with_picks else []
 	var boons: Array = _boons.duplicate() if with_picks else []
+	var vows: Array = _vows.duplicate() if with_picks else []
 	Game.pending_role = ""
-	Game.new_game(role_id, Game.pending_difficulty, goals, boons)
+	Game.new_game(role_id, Game.pending_difficulty, goals, boons, vows)
