@@ -488,11 +488,17 @@ static func mend_block(run: Dictionary, sid: String) -> String:
 	return ""
 
 
-static func pay_mend(run: Dictionary) -> void:
+## 扣修缮的材料。sid 是"哪一面"（gate / window / wall），要用来记院门修过几次——
+## 誓约「不修门」查的就是这个数，所以**所有修门的路子都必须走这里**，
+## 否则夜战稳守的自动修缮会绕过计数，誓约被误判成"守住了"。
+static func pay_mend(run: Dictionary, sid := "") -> void:
 	if Inv.count(run.home, "wood") > 0:
 		Inv.add(run.home, "wood", -1)
 	else:
 		Inv.add(run.home, "firewood", -2)
+	if sid == "gate":
+		var t: Dictionary = State.tally(run)
+		t.repair_door = int(t.get("repair_door", 0)) + 1
 
 
 ## 贴符 / 撒糯米：不占时间，立刻给这一面加守力，只算今夜。

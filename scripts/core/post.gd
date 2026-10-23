@@ -444,7 +444,7 @@ static func _auto_mend(run: Dictionary, need_bad: bool) -> bool:
 static func _mend_on(run: Dictionary, sid: String) -> bool:
 	if Defense.mend_block(run, sid) != "":
 		return false
-	Defense.pay_mend(run)
+	Defense.pay_mend(run, sid)
 	_tend_surface(run, sid)
 	return true
 
@@ -498,7 +498,7 @@ static func night_mend(run: Dictionary, sid: String) -> String:
 	err = Defense.mend_block(run, sid)
 	if err != "":
 		return err
-	Defense.pay_mend(run)
+	Defense.pay_mend(run, sid)
 	run.night.acted = true
 	_start(run, "mend", {"surface": sid})
 	return ""

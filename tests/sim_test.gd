@@ -31,6 +31,8 @@ var verbose := false
 var lazy := false
 ## 今夜用哪个守夜方针（稳守 / 亲战 / 亲自调度）。
 var policy := "hold"
+## 这一局机器人带了哪些誓约（策略要照着守，否则测的是"一开局就破约"）
+var vows_picked: Array = []
 
 
 func _init() -> void:
@@ -96,6 +98,26 @@ func _init() -> void:
 			if r.win:
 				dw += 1
 		print("  %-6s 劫满 %d/6　平均存活 %.1f 日　终局气血 %.0f" % [str(d.name), dw, ddays / 6.0, dhp / 6.0])
+	print("--- 对照：挑战誓约 × 6 局（寻常年景，机器人也守约） ---")
+	# 只挑机器人能老实守住的誓约：不点灯（购物清单里去掉灯油）、不修门（跳过修门）、
+	# 空手（开局清空随身物，不影响策略）。「一趟」要改整个赶路计划，暂不纳入。
+	var vow_set := ["no_lamp", "no_door", "bare"]
+	for n in [0, 1, 2, 3]:
+		vows_picked = vow_set.slice(0, n)
+		var vw := 0
+		var vdays := 0
+		var vdaoxin := 0
+		var vbroken := 0
+		for k in 6:
+			var vr: Dictionary = play(roles[k % roles.size()], 5000 + k)
+			vdays += int(vr.days)
+			vdaoxin += int(vr.daoxin)
+			vbroken += int(vr.broken)
+			if vr.win:
+				vw += 1
+		print("  %d 条誓约（%s）劫满 %d/6　平均存活 %.1f 日　平均道心 %.0f　破约 %d 次" % [
+			n, "无" if n == 0 else ",".join(vows_picked), vw, vdays / 6.0, vdaoxin / 6.0, vbroken])
+	vows_picked = []
 	test_rewind()
 	test_migrate()
 	test_fight()
@@ -131,6 +153,13 @@ func check_invariants(run: Dictionary) -> void:
 
 # ---------- 备劫 ----------
 
+## 带了某些誓约就不能碰的东西（机器人也得守约，否则测出来的是"誓约立刻被破"而不是难度）
+func _skip_by_vow(id: String) -> bool:
+	if "no_lamp" in vows_picked and id == "lamp_oil":
+		return true
+	return false
+
+
 func shop_pre(run: Dictionary) -> void:
 	var plan := SHOPPING.duplicate(true)
 	var guard := 0
@@ -159,6 +188,9 @@ func shop_pre(run: Dictionary) -> void:
 			continue
 		var full := false
 		for id in step[1]:
+			# 带了誓约就要守：不点灯就别买灯油，否则机器人一开局就把自己的愿破了
+			if _skip_by_vow(id):
+				continue
 			var want := int(step[1][id])
 			var n := mini(want, Pre.max_buy(run, id))
 			if n > 0:
@@ -237,7 +269,7 @@ func choose_action(run: Dictionary) -> bool:
 	if not run.well_used and Post.draw_water(run) == "":
 		return true
 	var wave_soon := wave_tonight or not Defense.wave_for_day(run.pday + 1).is_empty()
-	if wave_soon and int(run.door.cur) < int(run.door.max) - 30 and Inv.count(run.home, "wood") > 0:
+	if wave_soon and not "no_door" in vows_picked and int(run.door.cur) < int(run.door.max) - 30 and Inv.count(run.home, "wood") > 0:
 		return Post.act_repair(run, "door") == ""
 	if wave_soon and run.devices.size() < 3:
 		for dev in ["peach_stake", "ink_line", "barricade"]:
@@ -362,7 +394,7 @@ func play_day(run: Dictionary) -> void:
 
 func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionary:
 	var meta := State.new_meta()
-	var run := State.new_run(role, meta, seed_value, difficulty_id)
+	var run := State.new_run(role, meta, seed_value, difficulty_id, [], [], vows_picked)
 	shop_pre(run)
 	var silver_left := int(run.silver)
 	var guard := 0
@@ -375,7 +407,13 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 	var line := "%-6s seed=%d  %s  第%d日  尸潮守住%d  斩尸%d  功德%d  余银%s  道心+%d  %s" % [
 		State.role(run).name, seed_value, "劫满" if win else "身死", run.pday, run.waves_survived,
 		run.kills, run.merit, Pre.money(silver_left), gain.total, run.death_cause]
-	return {"line": line, "days": gain.days, "win": win, "hp": State.attr(run, "hp")}
+	# 破了几条誓约（0 表示全守住了）
+	var broken := 0
+	for v in Ledger.vow_results(run):
+		if not bool(v.met):
+			broken += 1
+	return {"line": line, "days": gain.days, "win": win, "hp": State.attr(run, "hp"),
+		"daoxin": int(gain.total), "broken": broken}
 
 
 # ---------- 院门攻防 ----------
@@ -664,6 +702,18 @@ func test_vows() -> void:
 	check(Post.act_repair(door, "door") == "", "修缮开不了工：%s" % Post.act_repair(door, "door"))
 	check(int(State.tally(door).repair_door) == 1, "修门没计数")
 	check(not bool(Ledger.vow_results(door)[0].met), "修了门却没判破")
+	# 夜战稳守的自动修缮也要计数——它不走 act_repair，走 Defense.pay_mend，
+	# 漏了它「不修门」就会被误判成"守住了"（实测就是这么漏的）
+	var auto := State.new_run("escort", meta, 77, "normal", [], [], ["no_door"])
+	auto.phase = "post"
+	auto.pday = 3
+	auto.t = 2 * Post.DAY + 60
+	auto.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
+	auto.door.cur = 40
+	Inv.add(auto.home, "wood", 1)
+	check(Post._mend_on(auto, "gate"), "夜间自动修缮没生效")
+	check(int(State.tally(auto).repair_door) == 1, "夜间自动修门没计数，誓约会被误判成守住")
+	check(not bool(Ledger.vow_results(auto)[0].met), "自动修了门却没判破")
 	# 一趟：回家卸货超过一次就算破
 	var trip := State.new_run("escort", meta, 77, "normal", [], [], ["one_trip"])
 	trip.loc = "rice_shop"
