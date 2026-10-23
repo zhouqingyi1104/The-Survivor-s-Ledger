@@ -38,6 +38,8 @@ var vows_picked: Array = []
 ## 诊断用：灯油白送（不花钱、不占负重，但夜里照样点得上）。
 ## 用来分开"灯油有用但太贵"和"灯油根本没用"——只比"买/不买"两臂是分不清的。
 var free_oil := false
+## 凭仗（开局多给东西）
+var boons_picked: Array = []
 ## 无尽模式：劫满之后不结算，接着守下去
 var endless_after_win := false
 ## 诊断用：把每晚的「尸潮数量 / 守力」记下来，看夜里到底有没有悬念
@@ -321,6 +323,22 @@ func _init() -> void:
 				kw += 1
 		print("  [候选] %s 劫满 %d/%d　平均存活 %.1f 日　平均道心 %.0f" % [
 			cand, kw, VOW_SAMPLE, kdays / float(VOW_SAMPLE), kdaoxin / float(VOW_SAMPLE)])
+	# 凭仗：设计上应该让这一局更轻松（所以道心打折）。这里验它到底松没松——
+	# 若某件东西给了等于没给，那这个凭仗就是"纯扣倍率"，玩家没有理由选它。
+	print("--- 诊断：凭仗到底有没有用（%d 局，无誓约） ---" % VOW_SAMPLE)
+	for bo in ["", "extra_silver", "extra_oil", "free_room"]:
+		boons_picked = [] if bo == "" else [bo]
+		vows_picked = []
+		var bw := 0
+		var bdays := 0
+		for k in VOW_SAMPLE:
+			var br2: Dictionary = play(roles[k % roles.size()], 5000 + k)
+			bdays += int(br2.days)
+			if br2.win:
+				bw += 1
+		print("  %-14s 劫满 %d/%d　平均存活 %.1f 日" % [
+			"（不带）" if bo == "" else bo, bw, VOW_SAMPLE, bdays / float(VOW_SAMPLE)])
+	boons_picked = []
 	vows_picked = []
 	test_rewind()
 	test_migrate()
@@ -379,7 +397,7 @@ func check_invariants(run: Dictionary) -> void:
 
 ## 带了某些誓约就不能碰的东西（机器人也得守约，否则测出来的是"誓约立刻被破"而不是难度）
 func _skip_by_vow(id: String) -> bool:
-	if ("no_lamp" in vows_picked or free_oil) and id == "lamp_oil":
+	if ("no_lamp" in vows_picked or free_oil or "extra_oil" in boons_picked) and id == "lamp_oil":
 		return true
 	if "no_charcoal" in vows_picked and id == "charcoal":
 		return true
@@ -673,7 +691,7 @@ func play_day(run: Dictionary) -> void:
 
 func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionary:
 	var meta := State.new_meta()
-	var run := State.new_run(role, meta, seed_value, difficulty_id, [], [], vows_picked)
+	var run := State.new_run(role, meta, seed_value, difficulty_id, [], boons_picked, vows_picked)
 	pre_silver_start = int(run.silver)
 	shop_pre(run)
 	# 诊断三臂里的"白送油"：备完劫直接塞两壶，不花钱不占车上负重
@@ -1102,9 +1120,9 @@ func test_vows() -> void:
 		if "已破" in str(l[0]):
 			said = true
 	check(said, "破了誓约，结算里却没说明")
-	# 誓约和凭仗同时挑：0.05 + 0.10 - 0.10 = 1.05
+	# 誓约和凭仗同时挑：0.05 + 0.10 - 0.05 = 1.10
 	var mix := State.new_run("escort", meta, 77, "normal", [], ["extra_silver"], ["no_door", "bare"])
-	check(is_equal_approx(Ledger.challenge_mul(mix), 1.05), "誓约+凭仗混算不对：%.2f" % Ledger.challenge_mul(mix))
+	check(is_equal_approx(Ledger.challenge_mul(mix), 1.10), "誓约+凭仗混算不对：%.2f" % Ledger.challenge_mul(mix))
 	var vs := []
 	for v in Data.table("challenge").vows:
 		vs.append("%s×%.2f" % [str(v.name), float(v.mul)])
@@ -1160,21 +1178,21 @@ func test_boons() -> void:
 	# 多带盘缠：+800 文；倍率 1.0 - 0.10 = 0.90
 	var money := State.new_run("escort", meta, 77, "normal", [], ["extra_silver"])
 	check(int(money.silver) == silver0 + 800, "盘缠没发：%d vs %d" % [int(money.silver), silver0])
-	check(is_equal_approx(Ledger.challenge_mul(money), 0.90), "盘缠的倍率不对：%.2f" % Ledger.challenge_mul(money))
-	# 多带油：+2 桶柴油
+	check(is_equal_approx(Ledger.challenge_mul(money), 0.95), "盘缠的倍率不对：%.2f" % Ledger.challenge_mul(money))
+	# 多带油：+3 壶灯油（原来给的是柴油，但没发电机就烧不了，实测 40 局一点没变）
 	var oil := State.new_run("escort", meta, 77, "normal", [], ["extra_oil"])
-	check(Inv.count(oil.home, "diesel") == 2, "柴油没发：%d" % Inv.count(oil.home, "diesel"))
+	check(Inv.count(oil.home, "lamp_oil") == 3, "灯油没发：%d" % Inv.count(oil.home, "lamp_oil"))
 	# 现成屋：开局不该有设施，尸劫降临后才并进来
 	var room := State.new_run("escort", meta, 77, "normal", [], ["free_room"])
 	check(room.facilities.is_empty(), "设施凭仗开局就生效了")
-	check(is_equal_approx(Ledger.challenge_mul(room), 0.85), "现成屋的倍率不对：%.2f" % Ledger.challenge_mul(room))
+	check(is_equal_approx(Ledger.challenge_mul(room), 0.95), "现成屋的倍率不对：%.2f" % Ledger.challenge_mul(room))
 	Pre.start_disaster(room)
-	check("water_vat" in room.facilities and "garden_bed" in room.facilities,
-		"尸劫降临后没并进设施：%s" % str(room.facilities))
-	check(int(room.plots.size()) == 4, "扩建菜畦没多两块：%d" % room.plots.size())
+	check("water_vat" in room.facilities, "尸劫降临后没并进水缸：%s" % str(room.facilities))
+	# 菜畦不再白送：实测白送两块菜畦反而更差（多两块地就多两份浇水施肥的活）
+	check(not ("garden_bed" in room.facilities), "现成屋不该再送菜畦")
 	# 三个凭仗全挑：0.10+0.10+0.15 = 0.35 → 0.65，没到下限
 	var all := State.new_run("escort", meta, 77, "normal", [], ["extra_silver", "extra_oil", "free_room"])
-	check(is_equal_approx(Ledger.challenge_mul(all), 0.65), "三个凭仗的倍率不对：%.2f" % Ledger.challenge_mul(all))
+	check(is_equal_approx(Ledger.challenge_mul(all), 0.85), "三个凭仗的倍率不对：%.2f" % Ledger.challenge_mul(all))
 	# 倍率真的乘到结算上：同一局表现，挑了凭仗道心变少，但了愿的固定分不参与乘法
 	var both := State.new_run("escort", meta, 77, "normal", ["slay_200"], ["extra_silver"])
 	for r in [plain, money, both]:
@@ -1186,11 +1204,11 @@ func test_boons() -> void:
 	var g_money: Dictionary = Ledger.daoxin_gain(money)
 	var g_both: Dictionary = Ledger.daoxin_gain(both)
 	check(int(g_money.total) < int(g_plain.total), "挑了凭仗道心没变少")
-	check(int(g_money.total) == int(round(int(g_plain.total) * 0.90)), "倍率没乘对：%d vs %d" % [
-		int(g_money.total), int(round(int(g_plain.total) * 0.90))])
+	check(int(g_money.total) == int(round(int(g_plain.total) * 0.95)), "倍率没乘对：%d vs %d" % [
+		int(g_money.total), int(round(int(g_plain.total) * 0.95))])
 	check(int(g_both.total) - int(g_money.total) == 10, "了愿的 10 点应该全额加、不参与乘法：%d vs %d" % [
 		int(g_both.total), int(g_money.total)])
-	print("凭仗：盘缠 +800（×0.90）、多带油 +2 桶、现成屋 ×0.85 且灾后落地；三个全挑 ×0.65")
+	print("凭仗：盘缠 +800（×0.95）、多带油 +3 壶灯油、现成屋只给水缸（×0.95）且灾后落地；三个全挑 ×0.85")
 	_ok("test_boons")
 
 

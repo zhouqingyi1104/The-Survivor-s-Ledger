@@ -6,9 +6,9 @@
     {"id": "survive", "name": "活到终局", "desc": "活到第二十日的天亮，不靠翻生死簿。", "stat": "pday", "at_least": 20, "phase": "ending", "bonus": 8}
   ],
   "boons": [
-    {"id": "extra_silver", "name": "多带盘缠", "desc": "开局多 800 文，备劫时能多买一趟。", "silver": 800, "malus": 0.10},
-    {"id": "extra_oil", "name": "多带油", "desc": "开局多 2 桶柴油。冷夜里不用现攒。", "items": {"diesel": 2}, "malus": 0.10},
-    {"id": "free_room", "name": "现成屋", "desc": "尸劫降临后白得一口大水缸、两块菜畦。", "facilities": ["water_vat", "garden_bed"], "malus": 0.15}
+    {"id": "extra_silver", "name": "多带盘缠", "desc": "开局多 800 文，备劫时能多买一趟。", "silver": 800, "malus": 0.05},
+    {"id": "extra_oil", "name": "多带油", "desc": "开局多 3 壶灯油。月黑夜点得起，不用现买。", "items": {"lamp_oil": 3}, "malus": 0.05},
+    {"id": "free_room", "name": "现成屋", "desc": "尸劫降临后白得一口大水缸，开局就有存水。", "facilities": ["water_vat"], "malus": 0.05}
   ],
   "vows": [
     {"id": "no_lamp", "name": "不点灯", "desc": "整局不买灯油。月黑夜靠摸。", "mul": 1.10,

@@ -234,6 +234,25 @@ func run_flow() -> void:
 	await press("续写此录")
 	check(Game.screen == "post" and int(Game.run.pday) == 2, "读档失败")
 
+	# ---- 劫满 → 结局界面 → 守下去转无尽 ----
+	# 真打满 20 日太慢，直接把局面推到第 20 日天亮。测完把状态还回去，
+	# 否则后面的死亡 / 翻页断言会撞上"第 21 日、无尽模式"这个不一样的局面。
+	var keep: Dictionary = Game.run.duplicate(true)
+	Game.run.pday = 20
+	Game.run.dawn_due = true
+	Post.ack_dawn(Game.run)
+	check(Game.run.phase == "ending", "第 20 日天亮没转结局：%s" % str(Game.run.phase))
+	Game.go("ending")
+	await _frames()
+	check(Game.screen == "ending", "没进结局界面")
+	await press("守 下 去")
+	check(Game.screen == "post" and bool(Game.run.endless), "守下去没转成无尽")
+	check(int(Game.run.pday) == 21, "转无尽后该是第 21 日：%d" % int(Game.run.pday))
+	Game.run = keep
+	Game.go("post")
+	await _frames()
+	check(not bool(Game.run.endless), "测完没把无尽状态还原")
+
 	# ---- 死亡 → 翻回昨日 ----
 	Game.act(_kill)
 	await _frames()
