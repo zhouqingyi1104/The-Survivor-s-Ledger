@@ -19,7 +19,14 @@ const LOG_LIMIT := 300
 
 
 static func new_meta() -> Dictionary:
-	return {"daoxin": 0, "talents": [], "runs": 0, "deaths": 0, "best_day": 0, "clues": [], "endings": 0}
+	return {"daoxin": 0, "talents": [], "runs": 0, "deaths": 0, "best_day": 0, "clues": [], "endings": 0,
+		"daily": new_daily()}
+
+
+## 每日一局的记分板。只记每日局（种子按日期的那种），寻常随机局不往里记。
+## best = 当日最好，all = 历来最好，都按模式分组（寻常 / 守到死）。
+static func new_daily() -> Dictionary:
+	return {"day": "", "runs": 0, "best": {}, "all": {}}
 
 
 ## 今天（本地日期）写成 2026-10-24。

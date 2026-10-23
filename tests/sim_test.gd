@@ -353,6 +353,7 @@ func _init() -> void:
 	test_vows()
 	test_endless()
 	test_mode()
+	test_daily_score()
 	var want: Array = _test_list()
 	for w in want:
 		if not w in tested:
@@ -369,7 +370,7 @@ func _init() -> void:
 func _test_list() -> Array:
 	return ["test_fight", "test_broken", "test_furnish", "test_rewind", "test_power",
 		"test_goals", "test_vows", "test_endless", "test_boons", "test_vehicle", "test_mode",
-		"test_difficulty", "test_migrate"]
+		"test_daily_score", "test_difficulty", "test_migrate"]
 
 
 func _ok(name: String) -> void:
@@ -607,7 +608,7 @@ func do_explore(run: Dictionary) -> void:
 
 
 func handle_event(run: Dictionary) -> void:
-	var e: Dictionary = Data.table("events")[run.pending_event]
+	var e: Dictionary = Events.entry(run)
 	var pick: int = e.choices.size() - 1
 	for idx in e.choices.size():
 		if Events.choice_ok(run, e.choices[idx]):
@@ -1205,6 +1206,59 @@ func test_mode() -> void:
 			met = bool(g.met)
 	check(not met, "守到死局里「活到终局」不该算达成")
 	_ok("test_mode")
+
+
+func test_daily_score() -> void:
+	var meta := State.new_meta()
+	var day := "2026-10-24"
+	# 寻常局（随机种子）不进每日榜：能无限重开，让它们进榜会把"今日最好"刷成随机数
+	var plain := State.new_run("escort", meta, 77)
+	plain.phase = "dead"
+	Ledger.end_run(plain, meta, 0)
+	check(int(meta.daily.get("runs", 0)) == 0, "寻常局不该记进每日榜")
+	# 同一天打两局：高的顶掉低的，低的留着（记当日最好，不是最后一次）
+	var a := State.new_run("escort", meta, 77)
+	a.flags["daily"] = day
+	Ledger.record_daily(a, meta, 40)
+	Ledger.record_daily(a, meta, 55)
+	check(int(meta.daily.runs) == 2, "每日局没记上：%d" % int(meta.daily.runs))
+	check(int(meta.daily.best.get("normal", 0)) == 55, "今日最好没更新")
+	Ledger.record_daily(a, meta, 30)
+	check(int(meta.daily.best.get("normal", 0)) == 55, "打得更差却把今日最好顶掉了")
+	# 守到死单独一组：没有劫满那 10 点，也没有终局，跟寻常局放一起比不公平
+	var e := State.new_run("escort", meta, 77)
+	e.flags["daily"] = day
+	e.endless = true
+	Ledger.record_daily(e, meta, 48)
+	check(int(meta.daily.best.get("endless", 0)) == 48, "守到死的成绩没记上")
+	check(int(meta.daily.best.get("normal", 0)) == 55, "守到死的成绩混进寻常组了")
+	# 换一天：当日从头算，历来最好留着
+	var f := State.new_run("escort", meta, 77)
+	f.flags["daily"] = "2026-10-25"
+	Ledger.record_daily(f, meta, 20)
+	check(int(meta.daily.runs) == 1, "换日没重新计数")
+	check(int(meta.daily.best.get("normal", 0)) == 20, "换日没清当日最好")
+	check(int(meta.daily.all.get("normal", 0)) == 55, "历来最好被换日清掉了")
+	check(int(meta.daily.all.get("endless", 0)) == 48, "历来最好（守到死）被换日清掉了")
+	# 记的是开局那天，不是结算这天：跨零点打完的局归它自己那副牌
+	var g := State.new_run("escort", meta, 77)
+	g.flags["daily"] = "2026-10-24"
+	Ledger.record_daily(g, meta, 10)
+	check(str(meta.daily.day) == "2026-10-24" and int(meta.daily.runs) == 1, "跨天的局没归到自己那天")
+	# end_run 是界面之外唯一的入口，最容易在这里漏掉
+	var m2 := State.new_meta()
+	var h := State.new_run("escort", m2, 77)
+	h.flags["daily"] = day
+	h.phase = "dead"
+	var gain := Ledger.end_run(h, m2, 0)
+	check(int(m2.daily.runs) == 1, "end_run 没记每日分")
+	check(int(m2.daily.best.get("normal", 0)) == int(gain.total), "end_run 记的分数和结算不一致")
+	# 记分板那行字
+	check(Ledger.daily_line(meta, "2026-10-24", false).begins_with("今日第"), "当日没报今日的成绩")
+	check(Ledger.daily_line(meta, "2026-11-01", false).begins_with("历来最好"), "换日之后不该报今日")
+	var preview := Ledger.daily_line(meta, "2026-10-24", false, 99)
+	check(preview.begins_with("这一局 99 点") and preview.find("历来最好 99") > 0, "结局界面的预览不对：%s" % preview)
+	_ok("test_daily_score")
 
 
 func test_boons() -> void:

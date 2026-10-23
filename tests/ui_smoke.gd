@@ -298,6 +298,16 @@ func run_flow() -> void:
 	Post.ack_dawn(Game.run)
 	check(Game.run.phase == "post", "守到死：第 20 日天亮不该进结局（%s）" % str(Game.run.phase))
 	check(int(Game.run.pday) == 21, "守到死：天亮后该接着开第 21 日：%d" % int(Game.run.pday))
+	# 每日一局的记分板：结局界面先预览一次（这一局还没落盘），合上此录后真记进 meta
+	Game.run.phase = "ending"
+	Game.go("ending")
+	await _frames()
+	check(Game.screen == "ending", "每日局没进结局界面")
+	var d0 := int(Game.meta.daily.get("runs", 0))
+	Game.close_book()
+	check(int(Game.meta.daily.get("runs", 0)) == d0 + 1, "每日一局结算后没记进记分板")
+	check(str(Game.meta.daily.get("day", "")) == Game.today_text(), "记分板记的日子不对")
+	check(int(Game.meta.daily.get("best", {}).get("endless", -1)) >= 0, "守到死的成绩没进自己那一组")
 	Game.new_game("scholar", "normal", [], [], [], false, false)
 	check(not bool(Game.run.endless), "没挑守到死却带着无尽开局")
 	check(str(Game.run.flags.get("daily", "")) == "", "没挑每日一局却记了日期")

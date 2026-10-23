@@ -5,6 +5,8 @@ extends "res://scripts/ui/screens/screen_base.gd"
 ##   凭仗：开局多给东西，但这一局的道心倍率下调
 ## 条件与数值全在 data/challenge.json，这里只负责勾选和显示。
 
+const Ledger = preload("res://scripts/core/ledger.gd")
+
 ## 已勾的愿 / 凭仗 / 誓约 id
 var _picked: Array = []
 var _boons: Array = []
@@ -36,6 +38,8 @@ func build() -> void:
 	v.add_child(modes)
 	if _endless or _daily:
 		v.add_child(UI.para(_mode_note(), 15, UI.INK_SOFT))
+	if _daily:
+		v.add_child(UI.para(Ledger.daily_line(Game.meta, Game.today_text(), _endless), 15, UI.JADE))
 	v.add_child(UI.sep())
 	# 三张表一共 11 行，竖着排会顶出屏幕（实测 1600×900 下底部按钮被截掉），
 	# 所以分两栏：左边誓约，右边凭仗 + 了愿。
@@ -132,7 +136,7 @@ func _mode_note() -> String:
 		if "survive" in _picked:
 			out.append("「活到终局」在这种局里不会达成，别白挑")
 	if _daily:
-		out.append("每日一局：种子按 %s 给，同一天所有人同一副牌" % Game.today_text())
+		out.append("每日一局：种子按 %s 给，同一天所有人同一副牌；同一副牌可以重打，记当日最好的一次" % Game.today_text())
 	return "；".join(out) + "。"
 
 

@@ -249,12 +249,65 @@ static func merge_memory(run: Dictionary, meta: Dictionary) -> void:
 static func end_run(run: Dictionary, meta: Dictionary, bonus := 0) -> Dictionary:
 	var gain := daoxin_gain(run, bonus)
 	merge_memory(run, meta)
+	record_daily(run, meta, int(gain.total))
 	meta.daoxin = int(meta.daoxin) + int(gain.total)
 	meta.runs = int(meta.runs) + 1
 	meta.best_day = maxi(int(meta.best_day), int(gain.days))
 	if run.phase == "dead":
 		meta.deaths = int(meta.deaths) + 1
 	return gain
+
+
+## 每日一局记一次分。只有每日局（run.flags.daily 写着开局那天的日期）才记——
+## 寻常随机局能无限重开，让它们进榜会把"今日最好"顶成一条刷出来的数。
+## 记的是**开局那天**的成绩，不是结算这天：跨零点打完的局归它自己那副牌。
+## 分两组记：守到死拿不到劫满那 10 点也没有终局，和寻常局放一起比不公平。
+static func record_daily(run: Dictionary, meta: Dictionary, total: int) -> void:
+	var day := str(run.get("flags", {}).get("daily", ""))
+	if day == "":
+		return
+	if not meta.has("daily") or typeof(meta.get("daily")) != TYPE_DICTIONARY:
+		meta.daily = State.new_daily()
+	var d: Dictionary = meta.daily
+	if str(d.get("day", "")) != day:
+		# 换了一天：当日这一栏从头算，历来最好留着
+		d.day = day
+		d.runs = 0
+		d.best = {}
+	d.runs = int(d.get("runs", 0)) + 1
+	var key := "endless" if bool(run.get("endless", false)) else "normal"
+	var best: Dictionary = d.get("best", {})
+	var all: Dictionary = d.get("all", {})
+	if total > int(best.get(key, -1)):
+		best[key] = total
+	if total > int(all.get(key, -1)):
+		all[key] = total
+	d.best = best
+	d.all = all
+
+
+## 记分板的一行字。day 传要看的那天；endless 决定看哪一组（寻常 / 守到死）。
+## pending >= 0：按"这一局已经记进去"算——结局界面上这一局还没落盘，得先预览出来。
+static func daily_line(meta: Dictionary, day: String, endless: bool, pending := -1) -> String:
+	var d: Dictionary = meta.get("daily", {})
+	var key := "endless" if endless else "normal"
+	var all: Dictionary = d.get("all", {})
+	var ever := int(all.get(key, 0))
+	var head := ""
+	if pending >= 0:
+		head = "这一局 %d 点 · " % pending
+		ever = maxi(ever, pending)
+	var tail := "历来最好 %d" % ever if ever > 0 else "历来还没打过"
+	var today: bool = day != "" and str(d.get("day", "")) == day
+	if not today and pending < 0:
+		return tail
+	# 跨天打完的局归它自己那天（record_daily 用开局日期），所以不是今天就从零起算
+	var runs := int(d.get("runs", 0)) if today else 0
+	var bestv := int(d.get("best", {}).get(key, 0)) if today else 0
+	if pending >= 0:
+		runs += 1
+		bestv = maxi(bestv, pending)
+	return "%s今日第 %d 局 · 今日最好 %d · %s" % [head, runs, bestv, tail]
 
 
 static func snapshot(run: Dictionary, snapshots: Dictionary) -> void:

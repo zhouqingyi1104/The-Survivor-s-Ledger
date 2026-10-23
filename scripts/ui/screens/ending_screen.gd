@@ -34,6 +34,14 @@ func build() -> void:
 	v.add_child(t)
 
 	var gain := Ledger.daoxin_gain(run, ENDING_BONUS)
+	# 每日一局：这一局还没落盘（道心是点了"重走/合上"才结算），先把记分板预览出来
+	var dday := str(run.get("flags", {}).get("daily", ""))
+	if dday != "":
+		var dl := UI.para("每日一局 · %s：%s" % [dday,
+			Ledger.daily_line(Game.meta, dday, bool(run.get("endless", false)), int(gain.total))], 17, UI.JADE)
+		dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(dl)
+
 	var row := UI.hbox(16)
 	v.add_child(row)
 	row.add_child(_card("留在这里", "“门还在，灶还热，那就接着住。”",
