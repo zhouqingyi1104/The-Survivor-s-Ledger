@@ -624,9 +624,34 @@ func test_difficulty() -> void:
 	old.version = 6
 	var up: Dictionary = Migrate.upgrade(old)
 	check(str(up.get("difficulty", "")) == "normal" and int(up.version) == Migrate.VERSION, "旧存档没补上 difficulty")
-	print("难度预设：永夜 银%d 血%d 冷%d° 第11夜%d只；暖冬 银%d 冷%d° 第11夜%d只" % [
+	# cold_add 单点注入：整局跑不到「粮水不断但没柴」的局面，所以直接摆一个
+	# 冬至冷夜、不生火、体温从 100 起跑，测前 3 小时的掉温速度（掉不到 0，也不触发冻死）。
+	# 掉温 = cold/10 每小时：暖冬 2.2、寻常 3.0、荒年 3.6、永夜 4.4
+	var cold_rows := []
+	for diff_row in Data.table("difficulty"):
+		var r := State.new_run("escort", meta, 77, str(diff_row.id))
+		r.phase = "post"
+		r.pday = 12
+		r.t = (int(r.pday) - 1) * Post.DAY + Post.DUSK_AT
+		r.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
+		r.attrs.warmth = 100.0
+		r.attrs.hp = 100.0
+		var w0: float = r.attrs.warmth
+		Post.advance(r, 180)
+		cold_rows.append([str(diff_row.name), w0 - float(r.attrs.warmth)])
+		print("  %-6s 冷夜 3 小时掉温 %.1f（%.2f/小时）" % [cold_rows[-1][0], float(cold_rows[-1][1]), float(cold_rows[-1][1]) / 3.0])
+	# 四档单调，且暖冬的掉速必须明显低于寻常（否则 cold_add 是摆设）
+	check(cold_rows[0][1] < cold_rows[1][1] < cold_rows[2][1] < cold_rows[3][1],
+		"cold_add 不单调：%s" % str(cold_rows))
+	check(float(cold_rows[0][1]) < 7.0 and float(cold_rows[1][1]) > 8.0,
+		"暖冬和寻常的掉速没拉开：%s" % str(cold_rows))
+	# 对得上理论值：cold/10 × 小时
+	check(absf(float(cold_rows[1][1]) - 9.0) < 0.1, "寻常年景掉温不是 9.0：%.2f" % float(cold_rows[1][1]))
+	check(absf(float(cold_rows[3][1]) - 13.2) < 0.1, "永夜掉温不是 13.2：%.2f" % float(cold_rows[3][1]))
+	print("难度预设：永夜 银%d 血%d 冷%d° 第11夜%d只；暖冬 银%d 冷%d° 第11夜%d只；冷夜掉温 %.1f/%.1f/%.1f/%.1f" % [
 		int(doom.silver), int(doom.attrs.hp_max), Post.cold_of(doom), int(Defense.wave_for_day(11, 1.35).count),
-		int(mild.silver), Post.cold_of(mild), int(Defense.wave_for_day(11, 0.85).count)])
+		int(mild.silver), Post.cold_of(mild), int(Defense.wave_for_day(11, 0.85).count),
+		float(cold_rows[0][1]), float(cold_rows[1][1]), float(cold_rows[2][1]), float(cold_rows[3][1])])
 
 
 ## 走到当天 20:00（生火那一刻）。8:00 可能撞上随机事件，弹出来就接着走。
