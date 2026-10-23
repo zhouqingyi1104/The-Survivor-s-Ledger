@@ -214,7 +214,7 @@
 | `DifficultySelect` / `ChallengeSetup` / `RogueSelect` | 难度 / 挑战 / 肉鸽入口 |
 - 配置表：`DifficultyParam`、`DifficultyPreset`、`ChallengeAbility` / `Debuff` / `Target`、`EndlessTier`、`EndlessCrisisPool`、`EndlessWeatherPool`、`DailyScore`、`DailyRandom`、`Talent`、`DeathInfo`
 
-**劫余录已有**：翻生死簿（回第 1 日 + 气血上限 + 残页）、天赋、解锁职业、挑战自选。缺无尽模式、每日随机。
+**劫余录已有**：翻生死簿（回第 1 日 + 气血上限 + 残页）、天赋、解锁职业、挑战自选、**无尽模式**（劫满后"守下去"转入：第 23/26/29… 夜各来一波，48 + 6×(n-1) 只，修饰轮换）。**缺**：开局直接选无尽 / 纯无尽（原作 `RogueSelect`）、每日随机种子。
 
 ---
 

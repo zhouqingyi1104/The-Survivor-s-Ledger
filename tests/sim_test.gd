@@ -27,6 +27,8 @@ const SHOPPING := [
 ]
 
 var failures := 0
+## 跑完了的测试名（跟 _test_list() 对账，缺哪个就是中途崩了）
+var tested: Array = []
 var verbose := false
 var lazy := false
 ## 今夜用哪个守夜方针（稳守 / 亲战 / 亲自调度）。
@@ -36,6 +38,8 @@ var vows_picked: Array = []
 ## 诊断用：灯油白送（不花钱、不占负重，但夜里照样点得上）。
 ## 用来分开"灯油有用但太贵"和"灯油根本没用"——只比"买/不买"两臂是分不清的。
 var free_oil := false
+## 无尽模式：劫满之后不结算，接着守下去
+var endless_after_win := false
 ## 诊断用：把每晚的「尸潮数量 / 守力」记下来，看夜里到底有没有悬念
 var log_waves := false
 var wave_log: Array = []
@@ -314,8 +318,28 @@ func _init() -> void:
 	test_goals()
 	test_boons()
 	test_vows()
+	test_endless()
+	var want: Array = _test_list()
+	for w in want:
+		if not w in tested:
+			failures += 1
+			print("断言失败：测试 %s 没有跑完（中途抛错或者被跳过）" % str(w))
+	print("测试完成 %d / %d 项" % [tested.size(), want.size()])
 	print("不变量失败：%d" % failures)
 	quit(1 if failures > 0 else 0)
+
+
+## 每个 test_* 跑完都要调一次。中途抛错就不会调，末尾对不上数就判失败——
+## 否则脚本错误会让整个测试函数静默跳过，而 harness 照样打印"失败 0"（真的发生过）。
+## 应该在 _init 里被调到的测试，顺序无所谓，缺一个就报。
+func _test_list() -> Array:
+	return ["test_fight", "test_broken", "test_furnish", "test_rewind", "test_power",
+		"test_goals", "test_vows", "test_endless", "test_boons", "test_vehicle",
+		"test_difficulty", "test_migrate"]
+
+
+func _ok(name: String) -> void:
+	tested.append(name)
 
 
 func check(cond: bool, msg: String) -> void:
@@ -638,6 +662,14 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 	while run.phase == "post" and guard < 40:
 		guard += 1
 		play_day(run)
+	# 劫满后转无尽：走真实路径（Game.keep_living 的三步），再接着打到死
+	if endless_after_win and run.phase == "ending":
+		run.endless = true
+		run.phase = "post"
+		Post.begin_day(run)
+		while run.phase == "post" and guard < 160:
+			guard += 1
+			play_day(run)
 	check_invariants(run)
 	var win: bool = run.phase == "ending"
 	# 劫满要带上那 10 点，否则胜局的道心被少算（原来这里漏了，导致"胜负道心一样"的假象）
@@ -653,6 +685,8 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 	return {"line": line, "days": gain.days, "win": win, "hp": State.attr(run, "hp"),
 		"daoxin": int(gain.total), "broken": broken,
 		"silver_start": pre_silver_start, "silver_left": silver_left,
+		"endless": bool(run.get("endless", false)), "pday": int(run.pday),
+		"waves_survived": int(run.waves_survived),
 		"tally": _tally_copy(run), "furniture": run.furniture.duplicate()}
 
 
@@ -735,6 +769,7 @@ func test_fight() -> void:
 	check(int(sum2.parries) == 1, "收场时架住次数没带上")
 	print("院门攻防：撞门 %d 次、进院啃了 %d 次、斩 %d、架住 %d" % [
 		int(s.bashes), s2.wrecked.size(), int(sum.kills), int(sum2.parries)])
+	_ok("test_fight")
 
 
 ## 被砸烂的家具：记进 run.broken、存档带走、要材料才修得回来。
@@ -763,6 +798,7 @@ func test_broken() -> void:
 	check(not "stove" in run.broken, "修完了灶台还是烂的")
 	check(Inv.count(run.home, "wood") == 0, "修完了木料没扣")
 	print("家具重修：砸 2 件，修好 1 件，还剩 %s" % str(run.broken))
+	_ok("test_broken")
 
 
 ## 添置家具：占地检查、扣料、要等做完才出现、拆掉退一半（向下取整）。
@@ -793,6 +829,7 @@ func test_furnish() -> void:
 	check(Home.count(run, "armchair") == before, "拆了还在")
 	check(Inv.count(run.home, "wood") == wood_now + 1, "退料不对：%d → %d" % [wood_now, Inv.count(run.home, "wood")])
 	print("添置家具：开局 %d 件，圈椅摆上又拆掉，木料退回 1 根" % Home.list(run).size())
+	_ok("test_furnish")
 
 
 func test_rewind() -> void:
@@ -816,6 +853,7 @@ func test_rewind() -> void:
 	var parsed: Dictionary = Data.normalize(JSON.parse_string(json))
 	check(typeof(parsed.run.pday) == TYPE_INT, "存档读回后整数类型丢失")
 	print("翻生死簿测试：回到第 %d 日，气血上限 %d，残页剩 %d" % [back.pday, back.attrs.hp_max, back.rebirths_left])
+	_ok("test_rewind")
 
 
 ## 能源链：冷夜里开发动机器烧柴油（带暖气暖得更快），没油就退回烧柴。
@@ -853,6 +891,7 @@ func test_power() -> void:
 	check(not bool(run2.get("powered", false)), "天亮机器还在转")
 	check(not run2.heated, "天亮了还生着火")
 	print("能源链：一捆柴暖到 %.0f，发电机+暖气暖到 %.0f，天亮停机" % [warm_fire, warm_gen])
+	_ok("test_power")
 
 
 ## 冬至（cold 30）的一局，时间停在当天开头，等着走到 20:00。
@@ -922,6 +961,7 @@ func test_goals() -> void:
 	check(Ledger.daoxin_gain(up).lines.size() > 0, "补了 tally 之后结算崩了")
 	print("了愿：没立愿 %d 道心；三个愿全达 %d（+%d）；差一点 %d" % [
 		int(g0.total), int(g1.total), goal_part, int(g2.total)])
+	_ok("test_goals")
 
 
 ## 誓约：五条各自的判定、破了要静默降倍率并在结算里说明、空手要真清空随身物。
@@ -1035,10 +1075,49 @@ func test_vows() -> void:
 	for v in Data.table("challenge").vows:
 		vs.append("%s×%.2f" % [str(v.name), float(v.mul)])
 	print("誓约（倍率按实测代价定价）：%s；%d 条全挑 ×%.2f" % ["、".join(vs), vs.size(), 1.0 + _vow_lift()])
+	_ok("test_vows")
 
 
 ## 凭仗：开局真的发东西、倍率真的打折、三个凭仗扣到底也不破 0.5 的下限；
 ## 设施类凭仗要等尸劫降临才落地，不能开局就有。
+## 无尽模式：劫满后接着守，每三夜一波、越往后越多。
+## 这块以前一行测试都没有，而它是通关之后才会进的模式——真出问题玩家已经打了 20 日。
+func test_endless() -> void:
+	# 生成规则：第 20 日之后每 3 天一波，首波在第 23 日
+	check(Defense.wave_for_day(21).is_empty(), "第 21 日不该有尸潮")
+	check(Defense.wave_for_day(22).is_empty(), "第 22 日不该有尸潮")
+	var w1: Dictionary = Defense.wave_for_day(23)
+	check(not w1.is_empty(), "第 23 日该来第一波无尽的尸潮")
+	check(int(w1.count) == 48, "无尽第 1 波数量不对：%d" % int(w1.count))
+	var w2: Dictionary = Defense.wave_for_day(26)
+	var w3: Dictionary = Defense.wave_for_day(29)
+	check(int(w2.count) == 54, "无尽第 2 波该是 54：%d" % int(w2.count))
+	check(int(w3.count) == 60, "无尽第 3 波该是 60：%d" % int(w3.count))
+	# 修饰按 n 轮换，别四波一模一样
+	check(str(w1.mods) != str(w2.mods), "无尽波浪的修饰没轮换：%s / %s" % [str(w1.mods), str(w2.mods)])
+
+	# 真打一遍：机器人打到劫满后转无尽，一直守到死
+	endless_after_win = true
+	vows_picked = []
+	var w := 0
+	var days := 0
+	var survived := 0
+	var n := 0
+	for k in 6:
+		var r: Dictionary = play("escort", 7000 + k)
+		n += 1
+		if bool(r.endless):
+			# 只统计真进了无尽的局：没劫满的局 waves_survived 不足 7，减出来是负数
+			w += 1
+			days += int(r.pday)
+			survived += int(r.waves_survived) - 7
+	endless_after_win = false
+	check(w > 0, "6 局里没有一局走到无尽模式，测试没测到东西")
+	check(survived > 0, "进了无尽却一波尸潮都没守住")
+	print("无尽：6 局里 %d 局劫满，无尽阶段平均活到第 %.1f 日、多守 %.1f 波" % [w, days / float(maxi(1, w)), survived / float(maxi(1, w))])
+	_ok("test_endless")
+
+
 func test_boons() -> void:
 	var meta := State.new_meta()
 	var plain := State.new_run("escort", meta, 77)
@@ -1078,6 +1157,7 @@ func test_boons() -> void:
 	check(int(g_both.total) - int(g_money.total) == 10, "了愿的 10 点应该全额加、不参与乘法：%d vs %d" % [
 		int(g_both.total), int(g_money.total)])
 	print("凭仗：盘缠 +800（×0.90）、多带油 +2 桶、现成屋 ×0.85 且灾后落地；三个全挑 ×0.65")
+	_ok("test_boons")
 
 
 ## 载具：负重和赶路时辰都按 data/items.json 的 vehicle 块算；几辆同时有取载重最大的一辆，不叠加。
@@ -1121,6 +1201,7 @@ func test_vehicle() -> void:
 	check(Inv.count(r.home, "cart") + Inv.count(r.cart, "cart") == 0, "灾后独轮车没清掉")
 	print("载具：徒步 %d 斤 / 近处 %d 时辰 / 营造坊 %d 时辰；板车 +20、独轮车 +40、驴车 +70 且远路 %d 时辰" % [
 		walk_cap, walk_cost, int(Pre.shop("builder").travel), far])
+	_ok("test_vehicle")
 
 
 ## 难度预设：参数乘数要真的落到开局数值、消耗、寒冷和尸潮上；乱写的 id 要能退回寻常。
@@ -1192,7 +1273,7 @@ func test_difficulty() -> void:
 		cold_rows.append([str(diff_row.name), w0 - float(r.attrs.warmth)])
 		print("  %-6s 冷夜 3 小时掉温 %.1f（%.2f/小时）" % [cold_rows[-1][0], float(cold_rows[-1][1]), float(cold_rows[-1][1]) / 3.0])
 	# 四档单调，且暖冬的掉速必须明显低于寻常（否则 cold_add 是摆设）
-	check(cold_rows[0][1] < cold_rows[1][1] < cold_rows[2][1] < cold_rows[3][1],
+	check(float(cold_rows[0][1]) < float(cold_rows[1][1]) and float(cold_rows[1][1]) < float(cold_rows[2][1]) and float(cold_rows[2][1]) < float(cold_rows[3][1]),
 		"cold_add 不单调：%s" % str(cold_rows))
 	check(float(cold_rows[0][1]) < 7.0 and float(cold_rows[1][1]) > 8.0,
 		"暖冬和寻常的掉速没拉开：%s" % str(cold_rows))
@@ -1203,6 +1284,7 @@ func test_difficulty() -> void:
 		int(doom.silver), int(doom.attrs.hp_max), Post.cold_of(doom), int(Defense.wave_for_day(11, 1.35).count),
 		int(mild.silver), Post.cold_of(mild), int(Defense.wave_for_day(11, 0.85).count),
 		float(cold_rows[0][1]), float(cold_rows[1][1]), float(cold_rows[2][1]), float(cold_rows[3][1])])
+	_ok("test_difficulty")
 
 
 ## 走到当天 20:00（生火那一刻）。8:00 可能撞上随机事件，弹出来就接着走。
@@ -1241,3 +1323,4 @@ func test_migrate() -> void:
 	Post.advance(up, 60)
 	check(int(up.t) >= 660, "迁移后时间走不动")
 	print("旧存档迁移测试：%s %s，菜畦 %s" % [Post.shichen(up), Post.clock_text(up), str(up.plots[0])])
+	_ok("test_migrate")
