@@ -99,8 +99,7 @@ func _init() -> void:
 				dw += 1
 		print("  %-6s 劫满 %d/6　平均存活 %.1f 日　终局气血 %.0f" % [str(d.name), dw, ddays / 6.0, dhp / 6.0])
 	print("--- 对照：挑战誓约 × 6 局（寻常年景，机器人也守约） ---")
-	# 只挑机器人能老实守住的誓约：不点灯（购物清单里去掉灯油）、不修门（跳过修门）、
-	# 空手（开局清空随身物，不影响策略）。「一趟」要改整个赶路计划，暂不纳入。
+	# 前三档可比：只加"不改备劫打法"的誓约（不点灯去掉灯油、不修门跳过修门、空手清空随身物）。
 	var vow_set := ["no_lamp", "no_door", "bare"]
 	for n in [0, 1, 2, 3]:
 		vows_picked = vow_set.slice(0, n)
@@ -117,6 +116,22 @@ func _init() -> void:
 				vw += 1
 		print("  %d 条誓约（%s）劫满 %d/6　平均存活 %.1f 日　平均道心 %.0f　破约 %d 次" % [
 			n, "无" if n == 0 else ",".join(vows_picked), vw, vdays / 6.0, vdaoxin / 6.0, vbroken])
+	# 「一趟」单独测：它会改掉整个备劫打法（装不下就不买、不中途回家卸货），
+	# 所以不能和前几档横着比——第一次把它塞进同一张表，4 条誓约反而比 3 条活得久，就是混淆。
+	vows_picked = ["one_trip"]
+	var tw := 0
+	var tdays := 0
+	var tdaoxin := 0
+	var tbroken := 0
+	for k in 6:
+		var tr: Dictionary = play(roles[k % roles.size()], 5000 + k)
+		tdays += int(tr.days)
+		tdaoxin += int(tr.daoxin)
+		tbroken += int(tr.broken)
+		if tr.win:
+			tw += 1
+	print("  [不可比] 一趟（one_trip）劫满 %d/6　平均存活 %.1f 日　平均道心 %.0f　破约 %d 次" % [
+		tw, tdays / 6.0, tdaoxin / 6.0, tbroken])
 	vows_picked = []
 	test_rewind()
 	test_migrate()
@@ -198,11 +213,19 @@ func shop_pre(run: Dictionary) -> void:
 			if n < want and Pre.buy_block(run, id, 1).begins_with("车上"):
 				full = true
 		if full:
-			Pre.travel(run, "home")
+			# 带了「一趟」就不能中途回家卸货：装不下就收手，剩下的不买了。
+			# 这也是这条誓约真正的代价——一趟拉不完，就只能少囤。
+			if "one_trip" in vows_picked:
+				plan.clear()
+			else:
+				Pre.travel(run, "home")
 		else:
 			plan.pop_front()
 			if not plan.is_empty() and Pre.travel_block(run, plan[0][0]) != "":
-				Pre.travel(run, "home")
+				if "one_trip" in vows_picked:
+					plan.clear()
+				else:
+					Pre.travel(run, "home")
 	if run.phase == "pre":
 		check(false, "备劫阶段没结束")
 
@@ -716,12 +739,23 @@ func test_vows() -> void:
 	check(not bool(Ledger.vow_results(auto)[0].met), "自动修了门却没判破")
 	# 一趟：回家卸货超过一次就算破
 	var trip := State.new_run("escort", meta, 77, "normal", [], [], ["one_trip"])
+	check(is_equal_approx(Ledger.challenge_mul(trip), 1.15), "一趟没抬倍率：%.2f" % Ledger.challenge_mul(trip))
 	trip.loc = "rice_shop"
 	Pre.travel(trip, "home")
 	check(bool(Ledger.vow_results(trip)[0].met), "只回一趟就判破了")
 	Pre.travel(trip, "rice_shop")
 	Pre.travel(trip, "home")
 	check(not bool(Ledger.vow_results(trip)[0].met), "回了两趟却没判破")
+	# 决定性核对：一趟守住了，结算总分必须正好是 ×1.15
+	var t_a := State.new_run("escort", meta, 77, "normal", [], [], ["one_trip"])
+	var t_b := State.new_run("escort", meta, 77)
+	for r in [t_a, t_b]:
+		r.phase = "ending"
+		r.pday = 20
+		r.waves_survived = 7
+	var ta_total := int(Ledger.daoxin_gain(t_a).total)
+	var tb_total := int(Ledger.daoxin_gain(t_b).total)
+	check(ta_total == int(round(tb_total * 1.15)), "一趟的 ×1.15 没乘进总分：%d vs %d ×1.15" % [ta_total, tb_total])
 	# 不设笼：院里摆了捕鼠笼就算破
 	var trap := State.new_run("escort", meta, 77, "normal", [], [], ["no_trap"])
 	check(bool(Ledger.vow_results(trap)[0].met), "还没摆就判成破了")
