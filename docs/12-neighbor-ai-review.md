@@ -1,5 +1,7 @@
 # 邻居求药 · ARK 提前策划记录
 
+> 本文保留上一批的作者工具与实测记录。运行时 AI 导演已另行实现，当前入口、边界和真实验证见 [13-dynamic-director.md](13-dynamic-director.md)。下文「游戏没有 ARK 依赖」仅描述本次历史邻居链交付。
+
 2026-10-24 使用 ARK CLI 的当前 Agent Plan profile，保持默认模型路由 `auto`，`reasoning-effort=low`，最大输出 2600 token。未切换默认配置，未使用按量 profile，未发送玩家存档或凭据。
 
 - 实际响应：`resp_021792783710425d6f60410e67e178f28d968f0420b51c39a07b0`。

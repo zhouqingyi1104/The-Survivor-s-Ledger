@@ -10,6 +10,7 @@
 - **夜战三式（v0.6）**：[06-night-defense-v0.6.md](docs/06-night-defense-v0.6.md)
 - **当前内容路线图**：[10-roadmap.md](docs/10-roadmap.md)
 - **第一步 · 邻居求药**：[11-neighbor-medicine.md](docs/11-neighbor-medicine.md)
+- **运行时 AI 世情与后续玩法**：[13-dynamic-director.md](docs/13-dynamic-director.md)
 - 截图：[docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；v0.6 的夜战见 `night_policy.png` 与 `night_panel.png`）
 
 ## 运行
@@ -29,6 +30,8 @@
 ```
 
 存档在 `user://save.json`，跨轮回的记忆（道心、心法、残卷）在 `user://meta.json`。旧版本的存档读档时会自动升级（`scripts/core/migrate.gd`）。Windows 上的位置是 `%APPDATA%\Godot\app_userdata\劫余录\`。
+
+**动态世情**：双击 `启动游戏.bat` 会同时启动本地后台桥接器；用 Godot 打开工程也会尝试自动启动。当前开发机使用已经认证的 ARK Agent Plan（`agent-plan_cn-beijing_personal`）、默认 `auto` 路由、low reasoning；需要本机 Node.js 与 ARK CLI，游戏不保存 ARK 密钥。后台提前规划未来三日，选择会影响之后的人情与事件，已经答应的隔日回报会写入存档。设置中可以关闭「动态世情」。未配置、断网或请求失败时仍可玩原有内容；每日一局保持固定事件以保证同日条件一致。预取频率与实测记录见文档 13。
 
 ## 一局怎么玩
 
