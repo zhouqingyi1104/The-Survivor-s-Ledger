@@ -22,18 +22,22 @@ static func note_choice(run: Dictionary, title: String, result: String) -> void:
 	while d.history.size() > 12:
 		d.history.pop_front()
 
-static func snapshot(run: Dictionary) -> Dictionary:
+static func snapshot(run: Dictionary, archive: Dictionary = {}) -> Dictionary:
 	var d := state(run)
 	var n: Dictionary = run.get("neighbor", {})
 	var stock := {}
 	for id in GOODS:
 		stock[id] = Inv.count(run.home, id)
-	return {"schema": 1, "request_id": "%s-%d-%d" % [d.session, d.revision, int(run.pday)],
+	var result := {"schema": 1, "request_id": "%s-%d-%d" % [d.session, d.revision, int(run.pday)],
 		"session": d.session, "revision": int(d.revision), "current_day": int(run.pday), "time": int(run.t),
 		"state": {"role": str(run.role), "stock": stock, "mood": State.attr(run, "mood"),
 			"neighbor": {"stage": n.get("stage", "waiting"), "resolution": n.get("resolution", ""), "ending": n.get("ending", "")},
 			"relations": d.relations.duplicate(), "history": d.history.duplicate(true), "promises": d.promises.duplicate(true),
 			"recollections": Past.public_memories(run)}}
+	if not archive.is_empty() and not Past.daily(run):
+		result.state["archive"] = archive.duplicate()
+		result.request_id += "-m" + str(archive.get("sha256", "")).left(16)
+	return result
 
 static func keys_ok(value: Dictionary, allowed: Array) -> bool:
 	for key in value:

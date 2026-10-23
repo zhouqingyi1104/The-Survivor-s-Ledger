@@ -269,7 +269,8 @@ func test_daily_fairness() -> void:
 	check(Core.snapshot(run).state.recollections.is_empty(), "Daily director snapshot exposed private prior lives")
 	check(run.home == state_before.home and run.attrs == state_before.attrs and run.rng_n == state_before.rng, "Daily memory guard changed resources, attributes, or RNG")
 	Past.record(run, "ning", "daily_choice", "每日局里的选择。", 1)
-	check(not finish(run, meta) and int(Past.book(meta).count) == count_before, "Daily score farming advanced personal memory generations")
+	check(finish(run, meta) and int(Past.book(meta).count) == count_before + 1, "Completed daily run did not update the shared life archive")
+	check(Past.book(meta).lives[-1].facts.is_empty() and Past.book(meta).lives[-1].summary.mode == "每日一局", "Daily run fabricated NPC memories instead of a summary")
 	completed += 1
 
 func test_real_choice_and_settlement_hooks() -> void:

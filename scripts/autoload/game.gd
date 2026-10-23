@@ -12,6 +12,7 @@ const Ledger = preload("res://scripts/core/ledger.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Migrate = preload("res://scripts/core/migrate.gd")
+const MemoryFile = preload("res://scripts/core/life_memory_file.gd")
 
 const SAVE_PATH := "user://save.json"
 const META_PATH := "user://meta.json"
@@ -30,6 +31,9 @@ var hold_screen := false
 ## 存档位置（测试时会改到别的文件）。
 var save_path := SAVE_PATH
 var meta_path := META_PATH
+## 空值为项目根 Memory.md；隔离存档的测试必须显式指定独立路径。
+var memory_path := ""
+var memory_status := "local"
 ## 正在摆放的家具（空 = 不在摆放）：界面选好家具后置上，点地面放下。
 var placing := ""
 var placing_rot := 0
@@ -236,7 +240,31 @@ func save_game() -> void:
 func save_meta() -> void:
 	if no_save:
 		return
-	_write_json(meta_path, meta)
+	if _write_json(meta_path, meta) != OK: return
+	_sync_life_memory()
+
+
+func resolved_memory_path() -> String:
+	if memory_path != "": return memory_path
+	# Existing scratch-save tests must never write or read the player's root archive.
+	if save_path != SAVE_PATH or meta_path != META_PATH: return ""
+	return "res://Memory.md"
+
+
+func _sync_life_memory() -> void:
+	if no_save: return
+	var path := resolved_memory_path()
+	if path == "": return
+	var error := MemoryFile.sync(meta, path)
+	if error != OK and memory_status != "write_failed":
+		toast.emit("前世档案 Memory.md 未能写入，本轮记录仍保存在跨轮回存档中。")
+	memory_status = "updated" if error == OK else "write_failed"
+
+
+func read_life_memory() -> Dictionary:
+	if no_save or resolved_memory_path() == "": return {}
+	_sync_life_memory()
+	return MemoryFile.read_context(resolved_memory_path())
 
 
 func _delete_save() -> void:
@@ -244,12 +272,15 @@ func _delete_save() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 
 
-func _write_json(path: String, data: Dictionary) -> void:
+func _write_json(path: String, data: Dictionary) -> Error:
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f == null:
 		push_error("写不了存档：" + path)
-		return
+		return FileAccess.get_open_error()
 	f.store_string(JSON.stringify(data, "\t"))
+	var error := f.get_error()
+	f.close()
+	return error
 
 
 func _read_json(path: String) -> Dictionary:

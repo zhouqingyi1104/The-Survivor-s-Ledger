@@ -78,7 +78,6 @@ static func record(run: Dictionary, actor: String, fact_id: String, fact: String
 	while p.trace.size() > KEEP_FACTS: p.trace.pop_front()
 
 static func archive(run: Dictionary, meta: Dictionary) -> bool:
-	if daily(run): return false
 	var p := state(run)
 	var b := book(meta)
 	if p.archived or p.id in b.sealed_ids or (int(p.generation) > 0 and int(p.generation) <= int(b.count)):
@@ -86,9 +85,16 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 		return false
 	var ordinal := int(b.count) + 1
 	var facts := []
-	for fact in p.trace:
-		if valid_fact(fact): facts.append(fact.duplicate(true))
-	b.lives.append({"id": p.id, "life": ordinal, "facts": facts})
+	if not daily(run):
+		for fact in p.trace:
+			if valid_fact(fact): facts.append(fact.duplicate(true))
+	var history: Array = run.get("director", {}).get("history", []).duplicate(true)
+	var summary := {"role": str(run.get("role", "")), "day": int(run.get("pday", 0)),
+		"mode": "每日一局" if daily(run) else ("守到死" if run.get("endless", false) else "寻常轮回"),
+		"outcome": "死亡" if run.get("phase") == "dead" else ("劫满" if run.get("phase") == "ending" else "合卷"),
+		"cause": str(run.get("death_cause", "")).left(160), "waves": int(run.get("waves_survived", 0)), "kills": int(run.get("kills", 0)),
+		"choices": history.slice(maxi(0, history.size() - 8)), "relations": run.get("director", {}).get("relations", {}).duplicate()}
+	b.lives.append({"id": p.id, "life": ordinal, "facts": facts, "summary": summary})
 	b.sealed_ids.append(p.id)
 	b.count = ordinal
 	while b.lives.size() > KEEP_LIVES: b.lives.pop_front()

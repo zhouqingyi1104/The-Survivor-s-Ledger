@@ -44,13 +44,14 @@ func _process(delta: float) -> void:
 	if Game.run.pending_event != "" or not d.active.is_empty(): return
 	for event in d.queue:
 		if int(event.day) == int(Game.run.pday) and not int(event.day) in d.days: return
-	var signature := "%s-%s" % [d.session, d.revision]
+	var archive := Game.read_life_memory()
+	var signature := "%s-%s-%s" % [d.session, d.revision, archive.get("sha256", "")]
 	var now := Time.get_ticks_msec()
 	if signature != _observed:
 		_debounce = now + (15000 if _observed != "" else 0)
 		_observed = signature
 	if not _sent.is_empty() or now < _debounce or now < _next_allowed: return
-	var sent := Core.snapshot(Game.run)
+	var sent := Core.snapshot(Game.run, archive)
 	if sent.request_id == _last_key: return
 	var config := connection()
 	if config.is_empty():
@@ -82,6 +83,10 @@ func _completed(result: int, code: int, _headers: PackedStringArray, body: Packe
 	_sent_run = {}
 	if Game.no_save or Game.run.is_empty() or sent.is_empty(): return
 	if not same_run:
+		last_status = "discarded"
+		return
+	var sent_hash: String = sent.get("state", {}).get("archive", {}).get("sha256", "")
+	if sent_hash != str(Game.read_life_memory().get("sha256", "")):
 		last_status = "discarded"
 		return
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
