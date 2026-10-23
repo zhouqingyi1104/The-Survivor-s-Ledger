@@ -39,6 +39,11 @@ var placing_at = null
 var pending_role := ""
 ## 已经定好的难度，接着去挑挑战（了愿）
 var pending_difficulty := "normal"
+## 开局模式，由挑战界面在开局前设好：
+##   pending_endless  守到死——开局就把 run.endless 打开，第二十日天亮不进结局
+##   pending_daily    每日一局——种子按本地日期给，同一天所有人同一副牌
+var pending_endless := false
+var pending_daily := false
 
 
 func _ready() -> void:
@@ -109,11 +114,25 @@ func role_unlocked(role_id: String) -> bool:
 	return true
 
 
-func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = []) -> void:
-	run = State.new_run(role_id, meta, randi(), difficulty_id, goals, boons, vows)
+func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = [], endless := false, daily := false) -> void:
+	run = State.new_run(role_id, meta, daily_seed() if daily else randi(), difficulty_id, goals, boons, vows)
+	# 守到死：Post.ack_dawn 看 run.endless —— 第 20 日天亮照常开新的一天，不进结局
+	run.endless = endless
+	if daily:
+		run.flags["daily"] = today_text()
 	snapshots = {}
 	last_gain = {}
 	_after()
+
+
+## 今天（本地日期）写成 2026-10-24。
+func today_text() -> String:
+	return State.today_text()
+
+
+## 每日一局的种子：只取日期，不掺时刻，所以同一天开机拿到的都是同一副牌。
+func daily_seed() -> int:
+	return State.daily_seed()
 
 
 ## 选完身份，先去定难度（原版 DifficultySelect / ChallengeSetup）。
@@ -162,8 +181,11 @@ func end_run(bonus := 0) -> Dictionary:
 func restart_from_cover() -> void:
 	var role_id: String = run.role
 	var d := str(run.get("difficulty", "normal"))
+	# 开局模式（守到死 / 每日一局）跟着带过去，别让重开一局把模式丢了
+	var endless := bool(run.get("endless", false))
+	var daily := str(run.get("flags", {}).get("daily", "")) != ""
 	end_run(Ledger.ENDING_BONUS if run.phase == "ending" else 0)
-	new_game(role_id, d)
+	new_game(role_id, d, [], [], [], endless, daily)
 
 
 func close_book() -> void:

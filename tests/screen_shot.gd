@@ -16,6 +16,8 @@ func _ready() -> void:
 	var which := "difficulty"
 	var goto := ""
 	var pick := ""
+	## 开局模式：endless（守到死）/ daily（每日一局）
+	var mode := ""
 	var out := "user://shots"
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--screen="):
@@ -24,6 +26,8 @@ func _ready() -> void:
 			goto = a.trim_prefix("--goto=")
 		elif a.begins_with("--pick="):
 			pick = a.trim_prefix("--pick=")
+		elif a.begins_with("--mode="):
+			mode = a.trim_prefix("--mode=")
 		elif a.begins_with("--out="):
 			out = a.trim_prefix("--out=")
 	# 主界面是场景不是 autoload，得自己实例化挂上，Game.go() 才有地方放界面
@@ -64,6 +68,14 @@ func _ready() -> void:
 					scr._picked.append(id)
 			UI.clear(scr)
 			scr.build()
+	# 开局模式也一样：拍"选了守到死 / 每日一局"那两行说明在不在、有没有把表挤下去
+	if which == "challenge" and mode != "":
+		var msc: Node = _current_screen(main)
+		if msc != null:
+			msc._endless = "endless" in mode.split(",", false)
+			msc._daily = "daily" in mode.split(",", false)
+			UI.clear(msc)
+			msc.build()
 	# 相机是插值跟上去的（_focus 每帧 lerp），等不够帧就会拍到"还在飞"的机位。
 	# 之前按 12 帧拍，量出来的相机位置和算出来的差一大截，白折腾了三轮角度。
 	for k in 60:

@@ -9,6 +9,9 @@ extends "res://scripts/ui/screens/screen_base.gd"
 var _picked: Array = []
 var _boons: Array = []
 var _vows: Array = []
+## 开局模式：守到死（不设终局）、每日一局（种子按日期）。两个都可以不选。
+var _endless := false
+var _daily := false
 
 
 func build() -> void:
@@ -23,6 +26,16 @@ func build() -> void:
 		var r: Dictionary = Data.table("roles")[role_id]
 		v.add_child(UI.para("身份：%s · 难度：%s" % [
 			r.name, State.diff_name({"difficulty": Game.pending_difficulty})], 16))
+	# 开局模式：两件事都不属于"立愿/凭仗/誓约"，单独放一行，选了才展开说明
+	var modes := UI.hbox(10)
+	modes.add_child(UI.button("□ 守到死（不设终局）" if not _endless else "■ 守到死（不设终局）",
+		func(): _toggle_mode(true)))
+	modes.add_child(UI.button(("□ 每日一局（%s）" if not _daily else "■ 每日一局（%s）") % Game.today_text(),
+		func(): _toggle_mode(false)))
+	modes.add_child(UI.spacer())
+	v.add_child(modes)
+	if _endless or _daily:
+		v.add_child(UI.para(_mode_note(), 15, UI.INK_SOFT))
 	v.add_child(UI.sep())
 	# 三张表一共 11 行，竖着排会顶出屏幕（实测 1600×900 下底部按钮被截掉），
 	# 所以分两栏：左边誓约，右边凭仗 + 了愿。
@@ -101,6 +114,28 @@ func _row(item: Dictionary, bucket: Array, field: String, kind: int) -> Control:
 	return UI.panel(h, Color("#f2e3c2") if on else UI.PANEL)
 
 
+## 选中/取消一种开局模式。endless=true 是守到死，false 是每日一局。
+func _toggle_mode(endless: bool) -> void:
+	if endless:
+		_endless = not _endless
+	else:
+		_daily = not _daily
+	UI.clear(self)
+	build()
+
+
+## 选了模式才展开：说清代价，别让玩家打完才发现"活到终局"不算数。
+func _mode_note() -> String:
+	var out: Array = []
+	if _endless:
+		out.append("守到死：第二十日天亮不进结局，尸潮照来，一直守到死为止。道心按活过的天数算，不再另给劫满的 10 点")
+		if "survive" in _picked:
+			out.append("「活到终局」在这种局里不会达成，别白挑")
+	if _daily:
+		out.append("每日一局：种子按 %s 给，同一天所有人同一副牌" % Game.today_text())
+	return "；".join(out) + "。"
+
+
 func _toggle(id: String, pressed: bool, bucket: Array) -> void:
 	if pressed and not id in bucket:
 		bucket.append(id)
@@ -112,7 +147,7 @@ func _toggle(id: String, pressed: bool, bucket: Array) -> void:
 
 
 func _start_text() -> String:
-	if _picked.is_empty() and _boons.is_empty() and _vows.is_empty():
+	if _picked.is_empty() and _boons.is_empty() and _vows.is_empty() and not _endless and not _daily:
 		return "就这样，开始"
 	var mul := 1.0
 	for vw in Data.table("challenge").get("vows", []):
@@ -133,6 +168,10 @@ func _start_text() -> String:
 		parts.append("凭仗 %d" % _boons.size())
 	if not _picked.is_empty():
 		parts.append("了愿 %d" % _picked.size())
+	if _endless:
+		parts.append("守到死")
+	if _daily:
+		parts.append("每日一局")
 	var tail := "道心 ×%.2f" % mul
 	if goal_sum > 0:
 		tail += "，另加 %d" % goal_sum
@@ -148,4 +187,4 @@ func _start(with_picks: bool) -> void:
 	var boons: Array = _boons.duplicate() if with_picks else []
 	var vows: Array = _vows.duplicate() if with_picks else []
 	Game.pending_role = ""
-	Game.new_game(role_id, Game.pending_difficulty, goals, boons, vows)
+	Game.new_game(role_id, Game.pending_difficulty, goals, boons, vows, _endless, _daily)

@@ -48,6 +48,18 @@ func run_flow() -> void:
 	check(rows_after == rows_before, "勾选后界面重复叠加了：%d → %d" % [rows_before, rows_after])
 	check("slay_200" in screen()._picked, "勾了愿却没记下")
 	screen()._toggle("slay_200", false, screen()._picked)
+	# 开局模式（守到死 / 每日一局）：勾上要记住、取消要取消、选了才展开说明。
+	# 这里不开局验证 endless 有没有带进 run——开了就再也回不到结局，后面整段流程都跑不了，
+	# 那条由 sim_test 的 test_mode 用 Game.new_game 直接验。
+	var labels_before: int = screen().find_children("*", "Label", true, false).size()
+	screen()._toggle_mode(true)
+	check(screen()._endless, "守到死没勾上")
+	screen()._toggle_mode(false)
+	check(screen()._daily, "每日一局没勾上")
+	check(screen().find_children("*", "Label", true, false).size() > labels_before, "选了模式却没展开说明")
+	screen()._toggle_mode(true)
+	screen()._toggle_mode(false)
+	check(not screen()._endless and not screen()._daily, "开局模式取消不掉")
 	await press("什么都不选")
 	check(Game.screen == "pre" and Game.run.role == "scholar", "没开局")
 	check(str(Game.run.get("difficulty", "")) != "", "开局没带上难度")
@@ -268,6 +280,30 @@ func run_flow() -> void:
 	await press("合上")
 	check(Game.screen == "title" and Game.run.is_empty(), "合上此录失败")
 	check(int(Game.meta.deaths) >= 1, "死亡次数没记上")
+
+	# ---- 开局模式：守到死 / 每日一局 ----
+	# 界面只置 Game.pending_*，很容易忘了往下传给 new_game，所以这里真开一局验一次。
+	# 放在最后：开一局会把界面切走，中间插进来后面的流程就断了。
+	var keep_save := Game.no_save
+	Game.no_save = true
+	Game.new_game("scholar", "normal", [], [], [], true, true)
+	check(bool(Game.run.endless), "选了守到死，开局却是寻常局")
+	check(str(Game.run.flags.get("daily", "")) != "", "每日一局没记进 run.flags")
+	check(int(Game.run.seed) == State.daily_seed(), "每日一局的种子不是今天的：%d" % int(Game.run.seed))
+	check(Game.screen == "pre", "带模式开局没进备劫界面")
+	# 守到死：第 20 日天亮不进结局，照常开新的一天（寻常局的对照在上面已经验过）
+	Game.run.phase = "post"
+	Game.run.pday = 20
+	Game.run.dawn_due = true
+	Post.ack_dawn(Game.run)
+	check(Game.run.phase == "post", "守到死：第 20 日天亮不该进结局（%s）" % str(Game.run.phase))
+	check(int(Game.run.pday) == 21, "守到死：天亮后该接着开第 21 日：%d" % int(Game.run.pday))
+	Game.new_game("scholar", "normal", [], [], [], false, false)
+	check(not bool(Game.run.endless), "没挑守到死却带着无尽开局")
+	check(str(Game.run.flags.get("daily", "")) == "", "没挑每日一局却记了日期")
+	Game.run = {}
+	Game.no_save = keep_save
+	Game.go("title")
 
 
 ## 不走路，直接做物件上的某个动作。

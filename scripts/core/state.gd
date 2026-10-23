@@ -22,6 +22,19 @@ static func new_meta() -> Dictionary:
 	return {"daoxin": 0, "talents": [], "runs": 0, "deaths": 0, "best_day": 0, "clues": [], "endings": 0}
 
 
+## 今天（本地日期）写成 2026-10-24。
+static func today_text() -> String:
+	var d := Time.get_date_dict_from_system()
+	return "%04d-%02d-%02d" % [int(d.year), int(d.month), int(d.day)]
+
+
+## 每日一局的种子：只取日期、不掺时刻，所以同一天开的局拿到的都是同一副牌。
+## 放在这里而不是界面里：界面（Game）和测试（sim_test、ui_smoke）都得看到同一个算法。
+static func daily_seed() -> int:
+	var d := Time.get_date_dict_from_system()
+	return int(d.year) * 10000 + int(d.month) * 100 + int(d.day)
+
+
 static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal", goals: Array = [], boons: Array = [], vows: Array = []) -> Dictionary:
 	var role_data: Dictionary = Data.table("roles")[role_id]
 	var talents: Array = meta.get("talents", []).duplicate()

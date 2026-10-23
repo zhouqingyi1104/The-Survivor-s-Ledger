@@ -352,6 +352,7 @@ func _init() -> void:
 	test_boons()
 	test_vows()
 	test_endless()
+	test_mode()
 	var want: Array = _test_list()
 	for w in want:
 		if not w in tested:
@@ -367,7 +368,7 @@ func _init() -> void:
 ## 应该在 _init 里被调到的测试，顺序无所谓，缺一个就报。
 func _test_list() -> Array:
 	return ["test_fight", "test_broken", "test_furnish", "test_rewind", "test_power",
-		"test_goals", "test_vows", "test_endless", "test_boons", "test_vehicle",
+		"test_goals", "test_vows", "test_endless", "test_boons", "test_vehicle", "test_mode",
 		"test_difficulty", "test_migrate"]
 
 
@@ -1168,6 +1169,42 @@ func test_endless() -> void:
 	check(survived > 0, "进了无尽却一波尸潮都没守住")
 	print("无尽：6 局里 %d 局劫满，无尽阶段平均活到第 %.1f 日、多守 %.1f 波" % [w, days / float(maxi(1, w)), survived / float(maxi(1, w))])
 	_ok("test_endless")
+
+
+## 开局模式：守到死（不设终局）、每日一局（种子按日期）。
+func test_mode() -> void:
+	# 守到死：Post.ack_dawn 只认 run.endless —— 第 20 日天亮照常开新的一天，不进结局
+	var no_end := State.new_run("scholar", State.new_meta(), 1, "normal", [], [], [])
+	no_end.phase = "post"
+	no_end.pday = 20
+	no_end.dawn_due = true
+	no_end.endless = true
+	Post.ack_dawn(no_end)
+	check(str(no_end.phase) == "post", "守到死：第 20 日天亮不该进结局（%s）" % str(no_end.phase))
+	# 对照：不带这个开关的局照旧进结局
+	var with_end := State.new_run("scholar", State.new_meta(), 1, "normal", [], [], [])
+	with_end.phase = "post"
+	with_end.pday = 20
+	with_end.dawn_due = true
+	Post.ack_dawn(with_end)
+	check(str(with_end.phase) == "ending", "寻常局第 20 日天亮该进结局（%s）" % str(with_end.phase))
+	# 每日一局：同一天两次取种子必须一样（同一副牌），且看着像个日期而不是恒值
+	var a := State.daily_seed()
+	var b := State.daily_seed()
+	check(a == b and a > 20000000, "每日种子不对：%d / %d" % [a, b])
+	# 种子就是今天的日期（不是随便一个常数），换一天才换一副牌
+	var d := Time.get_date_dict_from_system()
+	check(a == int(d.year) * 10000 + int(d.month) * 100 + int(d.day), "每日种子不是今天的日期：%d" % a)
+	# 「守到死」的局没有结局阶段，「活到终局」这个愿不该算达成（结算里会写"未成"）
+	var forever := State.new_run("scholar", State.new_meta(), a, "normal", ["survive"], [], [])
+	forever.phase = "dead"
+	forever.pday = 26
+	var met := false
+	for g in Ledger.goal_results(forever):
+		if str(g.id) == "survive":
+			met = bool(g.met)
+	check(not met, "守到死局里「活到终局」不该算达成")
+	_ok("test_mode")
 
 
 func test_boons() -> void:
