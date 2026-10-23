@@ -3,6 +3,8 @@ extends Node
 ## 运行：godot --path . res://tests/screen_shot.tscn -- --screen=difficulty --out=<目录>
 
 const State = preload("res://scripts/core/state.gd")
+const Pre = preload("res://scripts/core/pre.gd")
+const Post = preload("res://scripts/core/post.gd")
 
 
 func _ready() -> void:
@@ -20,7 +22,15 @@ func _ready() -> void:
 	for k in 4:
 		await get_tree().process_frame
 	Game.pending_role = "scholar"
-	Game.go(which)
+	if which == "pre" or which == "post":
+		# 这两个界面要有局面：先按书生开一局，pre 直接看，post 要求劫后
+		Game.new_game("scholar", "normal")
+		if which == "post":
+			Pre.start_disaster(Game.run)
+			Post.begin_day(Game.run)
+		Game.go(which)
+	else:
+		Game.go(which)
 	for k in 10:
 		await get_tree().process_frame
 	_report(main, which)
