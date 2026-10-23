@@ -39,6 +39,12 @@ var free_oil := false
 ## 诊断用：把每晚的「尸潮数量 / 守力」记下来，看夜里到底有没有悬念
 var log_waves := false
 var wave_log: Array = []
+## 诊断用：天亮时的资源水位（粮/水/体温/柴/炭/银），看经济到底有没有余量
+var log_res := false
+var res_min: Dictionary = {}
+var res_days := 0
+## 柴炭同时见底的早晨数——那种早晨晚上就要挨冻
+var res_zero := 0
 ## 誓约对照段每档跑几局。6 局时 2/6 和 3/6 只差一局，噪声有一档，20 局才敢下结论。
 const VOW_SAMPLE := 40
 
@@ -155,6 +161,20 @@ func _init() -> void:
 			int(w.day), int(w.count), float(w.power), float(w.power) / maxf(1.0, float(w.count)),
 			"[暗夜·点了灯]" if w.lamp else "", "  [破]" if w.breached else ""])
 
+	# 再追根一层：为什么连"每天都花钱"的取暖也咬不着人？看资源水位有没有余量。
+	log_res = true
+	res_min = {}
+	res_days = 0
+	res_zero = 0
+	play("scholar", 5000)
+	log_res = false
+	print("--- 诊断：资源最低水位（书生 seed 5000，%d 个早晨） ---" % res_days)
+	print("  粮 %d　水 %d　体温 %d　精力 %d　柴 %d 捆　炭 %d 筐　银 %d 文" % [
+		int(res_min.get("food", 0)), int(res_min.get("water", 0)), int(res_min.get("warmth", 0)),
+		int(res_min.get("energy", 0)), int(res_min.get("firewood", 0)), int(res_min.get("charcoal", 0)),
+		int(res_min.get("silver", 0))])
+	print("  柴炭同时见底的早晨：%d / %d" % [res_zero, res_days])
+
 	print("--- 对照：挑战誓约 × %d 局（寻常年景，机器人也守约） ---" % VOW_SAMPLE)
 	# 前三档可比：只加"不改备劫打法"的誓约（不点灯去掉灯油、不修门跳过修门、空手清空随身物）。
 	var vow_set := ["no_lamp", "no_door", "bare"]
@@ -205,6 +225,22 @@ func _init() -> void:
 			tw += 1
 	print("  [不可比] 一趟（one_trip）劫满 %d/%d　平均存活 %.1f 日　平均道心 %.0f　破约 %d 次" % [
 		tw, VOW_SAMPLE, tdays / float(VOW_SAMPLE), tdaoxin / float(VOW_SAMPLE), tbroken])
+	# 候选：不烧炭。跟灯油的区别在于它**每天冷夜都要花钱**，不是只在两个暗夜收。
+	# 用来验证"限制核心循环才咬人"这个假设；顺便看木炭和柴到底哪个划算。
+	vows_picked = ["no_charcoal"]
+	var cw := 0
+	var cdays := 0
+	var cdaoxin := 0
+	var cbroken := 0
+	for k in VOW_SAMPLE:
+		var cr: Dictionary = play(roles[k % roles.size()], 5000 + k)
+		cdays += int(cr.days)
+		cdaoxin += int(cr.daoxin)
+		cbroken += int(cr.broken)
+		if cr.win:
+			cw += 1
+	print("  [候选] 不烧炭（no_charcoal）劫满 %d/%d　平均存活 %.1f 日　平均道心 %.0f　破约 %d 次" % [
+		cw, VOW_SAMPLE, cdays / float(VOW_SAMPLE), cdaoxin / float(VOW_SAMPLE), cbroken])
 	vows_picked = []
 	test_rewind()
 	test_migrate()
@@ -244,6 +280,8 @@ func check_invariants(run: Dictionary) -> void:
 ## 带了某些誓约就不能碰的东西（机器人也得守约，否则测出来的是"誓约立刻被破"而不是难度）
 func _skip_by_vow(id: String) -> bool:
 	if ("no_lamp" in vows_picked or free_oil) and id == "lamp_oil":
+		return true
+	if "no_charcoal" in vows_picked and id == "charcoal":
 		return true
 	return false
 
@@ -475,6 +513,17 @@ func play_day(run: Dictionary) -> void:
 			Post.ack_wave(run)
 			continue
 		if run.dawn_due:
+			# 资源水位采样：放在天亮（吃饭之前），看这一天起步时手里有多少余量
+			if log_res:
+				res_days += 1
+				var probe := {"food": State.attr(run, "food"), "water": State.attr(run, "water"),
+					"warmth": State.attr(run, "warmth"), "energy": State.attr(run, "energy"),
+					"firewood": Inv.count(run.home, "firewood"), "charcoal": Inv.count(run.home, "charcoal"),
+					"silver": int(run.silver)}
+				for k in probe:
+					res_min[k] = minf(float(res_min.get(k, 99999.0)), float(probe[k]))
+				if int(probe.firewood) == 0 and int(probe.charcoal) == 0:
+					res_zero += 1
 			if verbose:
 				print("  第%d日天亮 饱%d 水%d 心%d 精%d 温%d 气血%d 粮%d 菜%d 水%d 柴%d 炭%d 木%d 门%d 窗%d 墙%d 守具%d 行事%s" % [run.pday, State.attr(run,"food"), State.attr(run,"water"), State.attr(run,"mood"), State.attr(run,"energy"), State.attr(run,"warmth"), State.attr(run,"hp"), Inv.total(run.home, Inv.GRAINS), dishes(run), Inv.count(run.home,"water"), Inv.count(run.home,"firewood"), Inv.count(run.home,"charcoal"), Inv.count(run.home,"wood"), run.door.cur, run.window.cur, run.wall.cur, run.devices.size(), str(run.today.actions)])
 			Post.ack_dawn(run)
@@ -816,6 +865,13 @@ func test_vows() -> void:
 	Pre.buy(lamp, "lamp_oil", 1)
 	check(not bool(Ledger.vow_results(lamp)[0].met), "买了灯油却没判破")
 	check(is_equal_approx(Ledger.challenge_mul(lamp), 1.0), "破了誓约倍率没收回去：%.2f" % Ledger.challenge_mul(lamp))
+	# 不烧炭：买过木炭就算破（和"不点灯"共用 bought_none 判定，换个物品再验一遍）
+	var coal := State.new_run("escort", meta, 77, "normal", [], [], ["no_charcoal"])
+	check(is_equal_approx(Ledger.challenge_mul(coal), 1.05), "不烧炭没抬倍率：%.2f" % Ledger.challenge_mul(coal))
+	check(bool(Ledger.vow_results(coal)[0].met), "还没买炭就判成破了")
+	coal.loc = "grocery"
+	Pre.buy(coal, "charcoal", 1)
+	check(not bool(Ledger.vow_results(coal)[0].met), "买了木炭却没判破")
 	# 不修门：修过一次就算破
 	var door := State.new_run("escort", meta, 77, "normal", [], [], ["no_door"])
 	check(is_equal_approx(Ledger.challenge_mul(door), 1.05), "不修门没抬倍率：%.2f" % Ledger.challenge_mul(door))

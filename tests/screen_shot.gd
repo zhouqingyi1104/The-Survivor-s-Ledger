@@ -5,6 +5,7 @@ extends Node
 ##   --goto=    仅 pre/post：把角色先挪到某个地点（home / rice_shop / builder …）
 ##   --out=     输出目录（默认 user://shots）
 
+const Data = preload("res://scripts/core/data.gd")
 const State = preload("res://scripts/core/state.gd")
 const UI = preload("res://scripts/ui/ui_kit.gd")
 const Pre = preload("res://scripts/core/pre.gd")
@@ -47,10 +48,17 @@ func _ready() -> void:
 	if which == "challenge" and pick != "":
 		var scr: Node = _current_screen(main)
 		if scr != null:
+			# 三类 id 从数据里取，别再手抄一遍——加一条誓约就得改这里，早晚漏
+			var vow_ids: Array = []
+			for v in Data.table("challenge").get("vows", []):
+				vow_ids.append(str(v.get("id", "")))
+			var boon_ids: Array = []
+			for b in Data.table("challenge").get("boons", []):
+				boon_ids.append(str(b.get("id", "")))
 			for id in pick.split(",", false):
-				if id in ["extra_silver", "extra_oil", "free_room"]:
+				if id in boon_ids:
 					scr._boons.append(id)
-				elif id in ["no_lamp", "no_trap", "no_door", "bare", "one_trip"]:
+				elif id in vow_ids:
 					scr._vows.append(id)
 				else:
 					scr._picked.append(id)

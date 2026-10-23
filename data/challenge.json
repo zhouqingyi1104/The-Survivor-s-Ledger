@@ -19,6 +19,8 @@
      "check": "counter_zero", "counter": "repair_door"},
     {"id": "bare", "name": "空手", "desc": "开局丢掉身份带的所有随身物。", "mul": 1.10,
      "check": "always"},
+    {"id": "no_charcoal", "name": "不烧炭", "desc": "整局不买木炭。冷夜只靠柴火撑着。", "mul": 1.05,
+     "check": "bought_none", "item": "charcoal"},
     {"id": "one_trip", "name": "一趟", "desc": "备劫三日只回家卸一次货。省脚程、也躲开后两日涨价，其实不吃亏，所以不抬倍率。", "mul": 1.00,
      "check": "counter_max", "counter": "home_trips", "max": 1}
   ]
