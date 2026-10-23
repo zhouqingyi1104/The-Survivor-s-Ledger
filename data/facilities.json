@@ -5,5 +5,7 @@
   "garden_bed":   {"name": "扩建菜畦", "price": 800, "effect": {"plots": 2}, "desc": "院里多开两块菜畦。"},
   "stove":        {"name": "改砌灶台", "price": 1000, "effect": {"cook_bonus": 1}, "desc": "双眼灶，每锅多出 1 份。"},
   "cellar":       {"name": "挖地窖", "price": 2000, "effect": {"cellar": 1}, "desc": "冷夜躲进地窖少受冻；溃兵进门也找不全存粮。"},
-  "watchtower":   {"name": "搭望楼", "price": 1200, "effect": {"watch": 1, "defense": 4}, "desc": "提前两日看见尸潮，守夜守力 +4。"}
+  "watchtower":   {"name": "搭望楼", "price": 1200, "effect": {"watch": 1, "defense": 4}, "desc": "提前两日看见尸潮，守夜守力 +4。"},
+  "generator":    {"name": "柴油发电机", "price": 2500, "effect": {"power": 1}, "desc": "冷夜里烧一桶柴油就转，转一整天。比天天烧柴省事，油钱不便宜。"},
+  "heater":       {"name": "装暖气", "price": 1800, "effect": {"heater": 1}, "desc": "接在发电机上。机器转着，屋里整夜往上回暖，睡觉也睡得沉。"}
 }

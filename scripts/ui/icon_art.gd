@@ -111,6 +111,12 @@ static func _item(c, id: String) -> void:
 		"lamp_oil":
 			_jar(c, GOLD.darkened(0.1), false)
 			_l(c, FIRE, 24, 14, 24, 8, 2.0)
+		"diesel":
+			# 油桶：方身、一道油位线、顶上一个提手
+			_r(c, Color("#6e5636"), 13, 11, 22, 24)
+			_r(c, Color("#8a6d42"), 15, 13, 18, 20)
+			_l(c, Color("#3a2f1c"), 15, 26, 33, 26)
+			_l(c, Color("#3a2f1c"), 24, 11, 24, 7)
 		"salve", "plague_powder", "calm_soup":
 			_packet(c, MED if id == "salve" else (Color("#7a8f6a") if id == "plague_powder" else Color("#9a7f9e")))
 		"talisman", "talisman_paper":

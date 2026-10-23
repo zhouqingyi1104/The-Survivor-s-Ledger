@@ -27,9 +27,9 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int) -> Dicti
 	var talents: Array = meta.get("talents", []).duplicate()
 	var hp_max: int = role_data.hp_max + (20 if "jinzhong" in talents else 0)
 	var run := {
-		"version": 5, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
+		"version": 6, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
 		"phase": "pre", "day": 1, "hour": OPEN_HOUR, "loc": "home",
-		"pday": 0, "t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
+		"pday": 0, "t": 0, "busy": {}, "sleeping": false, "heated": false, "powered": false, "night_lines": [],
 		"wave_due": false, "wave_day": 0, "wave_report": {}, "raid_report": {}, "dawn_due": false,
 		"guard_spot": "", "plan_due": false, "heat_weak": false, "night": {},
 		"fight": {}, "door_open": false, "broken": [],

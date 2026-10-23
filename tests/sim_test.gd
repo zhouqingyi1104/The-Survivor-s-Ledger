@@ -76,6 +76,7 @@ func _init() -> void:
 	test_fight()
 	test_broken()
 	test_furnish()
+	test_power()
 	print("不变量失败：%d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -496,6 +497,66 @@ func test_rewind() -> void:
 	var parsed: Dictionary = Data.normalize(JSON.parse_string(json))
 	check(typeof(parsed.run.pday) == TYPE_INT, "存档读回后整数类型丢失")
 	print("翻生死簿测试：回到第 %d 日，气血上限 %d，残页剩 %d" % [back.pday, back.attrs.hp_max, back.rebirths_left])
+
+
+## 能源链：冷夜里开发动机器烧柴油（带暖气暖得更快），没油就退回烧柴。
+func test_power() -> void:
+	# 场景一：没发电机，只有一捆柴 → 弱火
+	var run := cold_night("escort", 93)
+	Inv.add(run.home, "firewood", 1)
+	to_heat(run)
+	check(run.heated and not bool(run.get("powered", false)), "没发电机却标成开发动机器")
+	check(bool(run.get("heat_weak", false)), "一捆柴没标成弱火")
+	run.attrs.warmth = 40.0
+	Post.advance(run, 120)
+	var warm_fire: float = run.attrs.warmth
+	# 场景二：发电机 + 暖气 + 柴油 → 烧油，暖得快一截
+	var run2 := cold_night("escort", 93)
+	run2.facilities = ["generator", "heater"]
+	Inv.add(run2.home, "diesel", 2)
+	to_heat(run2)
+	check(bool(run2.get("powered", false)), "有柴油却没开发动机器")
+	check(Inv.count(run2.home, "diesel") == 1, "柴油没扣：剩 %d" % Inv.count(run2.home, "diesel"))
+	check(run2.heated and not bool(run2.get("heat_weak", false)), "发电机点火标成了弱火")
+	run2.attrs.warmth = 40.0
+	Post.advance(run2, 120)
+	var warm_gen: float = run2.attrs.warmth
+	check(warm_gen > warm_fire + 1.0, "发电机带暖气还没烧柴暖得快：%.1f vs %.1f" % [warm_gen, warm_fire])
+	# 场景三：有发电机没油 → 退回烧炭，机器标记要清掉
+	var run3 := cold_night("escort", 93)
+	run3.facilities = ["generator", "heater"]
+	Inv.add(run3.home, "charcoal", 1)
+	to_heat(run3)
+	check(run3.heated and not bool(run3.get("powered", false)), "没油还开着机器")
+	check(Inv.count(run3.home, "charcoal") == 0, "没油的时候炭没烧")
+	# 场景四：天亮停机
+	Post.begin_day(run2)
+	check(not bool(run2.get("powered", false)), "天亮机器还在转")
+	check(not run2.heated, "天亮了还生着火")
+	print("能源链：一捆柴暖到 %.0f，发电机+暖气暖到 %.0f，天亮停机" % [warm_fire, warm_gen])
+
+
+## 冬至（cold 30）的一局，时间停在当天开头，等着走到 20:00。
+func cold_night(role_id: String, seed_value: int) -> Dictionary:
+	var run := State.new_run(role_id, State.new_meta(), seed_value)
+	run.phase = "post"
+	run.pday = 12
+	run.t = (int(run.pday) - 1) * Post.DAY
+	run.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
+	return run
+
+
+## 走到当天 20:00（生火那一刻）。8:00 可能撞上随机事件，弹出来就接着走。
+func to_heat(run: Dictionary) -> void:
+	var target := (int(run.pday) - 1) * Post.DAY + Post.HEAT_AT
+	for k in 40:
+		if int(run.t) >= target:
+			return
+		run.pending_event = ""
+		var stop: String = Post.advance(run, target - int(run.t))
+		if stop == "dead":
+			return
+
 
 
 ## v0.2 的旧存档（回合制劫中）读进来要能接着玩。

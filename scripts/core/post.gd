@@ -30,7 +30,7 @@ const RAID_AT := 1060       # 23:40（原本 23:00，让位给第三轮夜战）
 ## 每小时的变化
 const RATE := {
 	"food": 2.0, "water": 2.2, "mood": 0.5, "energy": 1.2,
-	"sleep_energy": 7.0, "nap_energy": 10.0, "sleep_hp": 0.8, "warm_up": 2.0,
+	"sleep_energy": 7.0, "nap_energy": 10.0, "sleep_hp": 0.8, "warm_up": 2.0, "boiler_up": 3.0,
 	"starve_hp": 2.0, "thirst_hp": 2.5, "plague_hp": 1.0, "cold_hp": 0.7, "freezing_hp": 1.4,
 	"overrun_hp": 3.0,
 }
@@ -132,20 +132,24 @@ static func _tick(run: Dictionary, hours: float) -> void:
 	State.add_attr(run, "water", -RATE.water * mul * hours)
 	State.add_attr(run, "mood", (0.3 if sleeping else -RATE.mood) * hours)
 	var warm: int = State.attr(run, "warmth")
+	var boiler: bool = bool(run.get("powered", false)) and State.has_facility(run, "heater")
 	if sleeping:
-		# 冻着睡不踏实：回暖少，气血也不长
-		State.add_attr(run, "energy", RATE.sleep_energy * hours * (1.0 if warm >= 30 else 0.6))
-		if State.attr(run, "food") > 20 and State.attr(run, "water") > 20 and warm >= 30:
+		# 冻着睡不踏实：回暖少，气血也不长；有暖气才睡得沉
+		State.add_attr(run, "energy", RATE.sleep_energy * hours * (1.0 if warm >= 30 or boiler else 0.6))
+		if State.attr(run, "food") > 20 and State.attr(run, "water") > 20 and (warm >= 30 or boiler):
 			State.add_attr(run, "hp", RATE.sleep_hp * hours)
 	elif resting:
 		State.add_attr(run, "energy", RATE.nap_energy * hours)
 	else:
 		State.add_attr(run, "energy", -RATE.energy * hours)
-	# 体温：白天靠日头回暖（最多到 60，地窖 75）；夜里只有生火才暖得起来
+	# 体温：白天靠日头回暖（最多到 60，地窖 75）；夜里生火 / 发电机才暖得起来，
+	# 发电机带暖气的话整夜往上走，冷天也不掉温
 	var cold := int(State.weather(run).cold)
 	if is_night(run) and cold > 0 and not run.heated:
 		var loss := cold / 10.0 * (0.5 if State.has_facility(run, "cellar") else 1.0)
 		State.add_attr(run, "warmth", -loss * hours)
+	elif boiler:
+		run.attrs.warmth = clampf(float(run.attrs.warmth) + RATE.boiler_up * hours, 0.0, 100.0)
 	else:
 		var gain := RATE.warm_up
 		var cap := 60.0 if not State.has_facility(run, "cellar") else 75.0
@@ -233,9 +237,19 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 	return ""
 
 
-## 20:00 烧炭取暖：一筐炭，或两捆柴，管一夜；只有一捆柴也能烧半夜。
+## 20:00 取暖：有发电机就烧柴油（管一整夜，还带动暖气）；不然烧炭 / 柴。
 static func _heat(run: Dictionary) -> void:
 	if int(State.weather(run).cold) <= 0:
+		return
+	# 发电机：冷天才值得开，暖夜白烧一桶油
+	if State.has_facility(run, "generator") and Inv.count(run.home, "diesel") > 0:
+		Inv.add(run.home, "diesel", -1)
+		run.powered = true
+		run.heated = true
+		run.heat_weak = false
+		var extra := "暖气跟着开了，屋里整夜往上回暖。" if State.has_facility(run, "heater") else ""
+		run.night_lines.append("发电机轰起来，烧了一桶柴油。%s" % extra)
+		State.note(run, "开发电机，烧了一桶柴油。%s" % extra)
 		return
 	var fuel := {}
 	var weak := false
@@ -247,8 +261,9 @@ static func _heat(run: Dictionary) -> void:
 		fuel = {"firewood": 1}
 		weak = true
 	if fuel.is_empty():
-		run.night_lines.append("没柴没炭，屋里冷得像冰窖。")
-		State.note(run, "没柴没炭，夜里冷得睡不着。")
+		var no_gen := "发电机里没有柴油。" if State.has_facility(run, "generator") else ""
+		run.night_lines.append("没柴没炭，屋里冷得像冰窖。%s" % no_gen)
+		State.note(run, "没柴没炭，夜里冷得睡不着。%s" % no_gen)
 		return
 	Inv.take_all(run.home, fuel)
 	run.heated = true
@@ -614,6 +629,7 @@ static func begin_day(run: Dictionary) -> void:
 	run.well_used = false
 	run.heated = false
 	run.heat_weak = false
+	run.powered = false
 	run.night_policy = ""
 	run.guard_spot = ""
 	run.plan_due = false

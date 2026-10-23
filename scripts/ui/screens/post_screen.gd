@@ -968,7 +968,14 @@ func _right_top(run: Dictionary) -> void:
 	var temp: int = -int(round(int(w.cold) / 2.2))
 	var feel := "寒冷" if int(w.cold) >= 20 else "微寒"
 	env.add_child(Hud.text("院子  %d°  %s" % [temp, feel], 15, Hud.TEXT, true))
-	var heat_text := "今夜已生火" if run.heated else ("20:00 生火（柴 %d 捆 · 炭 %d 筐）" % [Inv.count(run.home, "firewood"), Inv.count(run.home, "charcoal")])
+	var heat_text := ""
+	if run.heated:
+		heat_text = "今夜已生火" + ("（发电机）" if bool(run.get("powered", false)) else "")
+	elif State.has_facility(Game.run, "generator"):
+		heat_text = "20:00 开发电机（柴油 %d 桶）· 烧柴（柴 %d 捆 · 炭 %d 筐）" % [
+			Inv.count(run.home, "diesel"), Inv.count(run.home, "firewood"), Inv.count(run.home, "charcoal")]
+	else:
+		heat_text = "20:00 生火（柴 %d 捆 · 炭 %d 筐）" % [Inv.count(run.home, "firewood"), Inv.count(run.home, "charcoal")]
 	env.add_child(Hud.text(heat_text, 13, Hud.GOLD if run.heated else Hud.SUB))
 	env.add_child(Hud.text("灯油 %d 壶 · 清水 %d 瓢 · 存粮 %d 斗" % [Inv.count(run.home, "lamp_oil"), Inv.count(run.home, "water"), Inv.total(run.home, Inv.GRAINS)], 13, Hud.SUB))
 	col.add_child(Hud.panel(env))

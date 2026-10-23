@@ -15,6 +15,7 @@
   "firewood":       {"name": "柴", "unit": "捆", "cat": "柴炭", "price": 40, "weight": 5, "desc": "生火做饭用。没炭的冷夜，两捆柴也能顶一夜。"},
   "charcoal":       {"name": "木炭", "unit": "筐", "cat": "柴炭", "price": 200, "weight": 8, "desc": "冷夜里烧一筐取暖。"},
   "lamp_oil":       {"name": "灯油", "unit": "壶", "cat": "柴炭", "price": 150, "weight": 2, "desc": "月黑之夜点灯守夜，看得清才打得准。"},
+  "diesel":         {"name": "柴油", "unit": "桶", "cat": "柴炭", "price": 300, "weight": 6, "desc": "发电机喝这个，一桶转一天。冷夜里比柴炭省心，也贵得多。"},
   "salve":          {"name": "金创药", "unit": "瓶", "cat": "药", "price": 400, "weight": 0.2, "use": {"hp": 30}, "desc": "止血生肌。"},
   "plague_powder":  {"name": "避瘟散", "unit": "包", "cat": "药", "price": 300, "weight": 0.2, "use": {"cure": 1.0}, "desc": "药铺秘方，能祛尸瘟、解尸毒。"},
   "mugwort":        {"name": "艾草", "unit": "束", "cat": "药", "price": 60, "weight": 0.5, "use": {"hp": 6, "cure": 0.35, "mood": 3}, "desc": "熏屋驱疫，偶尔能压住尸毒。"},
