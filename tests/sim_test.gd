@@ -71,6 +71,18 @@ func _init() -> void:
 				w += 1
 		print("  方针 %-6s 劫满 %d/6　平均存活 %.1f 日　终局气血 %.0f" % [pol, w, days / 6.0, hp_left / 6.0])
 	policy = "hold"
+	print("--- 对照：难度 × 6 局（同一机器人策略，只看难度本身） ---")
+	for d in Data.table("difficulty"):
+		var dw := 0
+		var ddays := 0
+		var dhp := 0
+		for k in 6:
+			var r: Dictionary = play(roles[k % roles.size()], 4000 + k, str(d.id))
+			ddays += int(r.days)
+			dhp += int(r.hp)
+			if r.win:
+				dw += 1
+		print("  %-6s 劫满 %d/6　平均存活 %.1f 日　终局气血 %.0f" % [str(d.name), dw, ddays / 6.0, dhp / 6.0])
 	test_rewind()
 	test_migrate()
 	test_fight()
@@ -331,9 +343,9 @@ func play_day(run: Dictionary) -> void:
 			Post.advance(run, 30)
 
 
-func play(role: String, seed_value: int) -> Dictionary:
+func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionary:
 	var meta := State.new_meta()
-	var run := State.new_run(role, meta, seed_value)
+	var run := State.new_run(role, meta, seed_value, difficulty_id)
 	shop_pre(run)
 	var silver_left := int(run.silver)
 	var guard := 0
