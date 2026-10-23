@@ -8,10 +8,11 @@ extends RefCounted
 ##   v6：能源链——柴油发电机 + 暖气，夜里烧柴油转机器（run.powered）。
 ##   v7：难度预设（run.difficulty），四档参数乘数。
 ##   v8：挑战自选——了愿（tally.goals）与记账本（bought / repair_door / home_trips）。
+##   v9：记账本补 orders（第 7 条誓约「不雇工」用）。
 
 const Post = preload("res://scripts/core/post.gd")
 
-const VERSION := 8
+const VERSION := 9
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -32,6 +33,8 @@ const ADDED_6 := {"powered": false}
 const ADDED_7 := {"difficulty": "normal"}
 ## v8 新加的字段（挑战记账本；老存档一律当成没挑了愿）
 const ADDED_8 := {"tally": {"goals": [], "vows": [], "boons": [], "bought": {}, "repair_door": 0, "home_trips": 0}}
+## v9 补进已有 tally 的字段（注意：不能整体替换 tally，v8 的档里已经有 goals/vows 等）
+const TALLY_9 := {"orders": 0}
 ## v1 的时段（晨 / 午 / 暮 / 夜）→ 当天第几分钟（从 6:00 起）：8:00、12:00、16:00、18:00
 const SEG_MINUTE := [120, 360, 600, 720]
 
@@ -105,5 +108,12 @@ static func upgrade(run: Dictionary) -> Dictionary:
 			if not run.has(key):
 				var val = ADDED_8[key]
 				run[key] = val.duplicate(true) if (val is Dictionary or val is Array) else val
+	if v < 9:
+		# 只补字段，不整体替换——v8 的档里 tally 已经有内容（挑过的愿、买过的东西）
+		if not (run.get("tally") is Dictionary):
+			run.tally = ADDED_8["tally"].duplicate(true)
+		for key in TALLY_9:
+			if not run.tally.has(key):
+				run.tally[key] = TALLY_9[key]
 	run.version = VERSION
 	return run

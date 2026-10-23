@@ -266,6 +266,22 @@ func _init() -> void:
 			cw += 1
 	print("  [候选] 不烧炭（no_charcoal）劫满 %d/%d　平均存活 %.1f 日　平均道心 %.0f　破约 %d 次" % [
 		cw, VOW_SAMPLE, cdays / float(VOW_SAMPLE), cdaoxin / float(VOW_SAMPLE), cbroken])
+	# 候选：不雇工。营造坊那四项（门闩 1500 + 水缸 600 + 窗板 800 + 灶台 1000 = 3900 文）
+	# 约占备劫开销 26%，而且直接加门窗耐久——量级比灯油/木炭大一个数量级。
+	vows_picked = ["no_order"]
+	var nw := 0
+	var ndays := 0
+	var ndaoxin := 0
+	var nbroken := 0
+	for k in VOW_SAMPLE:
+		var nr: Dictionary = play(roles[k % roles.size()], 5000 + k)
+		ndays += int(nr.days)
+		ndaoxin += int(nr.daoxin)
+		nbroken += int(nr.broken)
+		if nr.win:
+			nw += 1
+	print("  [候选] 不雇工（no_order）劫满 %d/%d　平均存活 %.1f 日　平均道心 %.0f　破约 %d 次" % [
+		nw, VOW_SAMPLE, ndays / float(VOW_SAMPLE), ndaoxin / float(VOW_SAMPLE), nbroken])
 	vows_picked = []
 	test_rewind()
 	test_migrate()
@@ -349,8 +365,10 @@ func shop_pre(run: Dictionary) -> void:
 				plan.pop_front()
 				continue
 		if dest == "builder":
-			for fac in step[1]:
-				Pre.order(run, fac)
+			# 守「不雇工」：营造坊一步都不进，直接跳过整条订单
+			if "no_order" not in vows_picked:
+				for fac in step[1]:
+					Pre.order(run, fac)
 			plan.pop_front()
 			continue
 		var full := false
@@ -917,6 +935,14 @@ func test_vows() -> void:
 	coal.loc = "grocery"
 	Pre.buy(coal, "charcoal", 1)
 	check(not bool(Ledger.vow_results(coal)[0].met), "买了木炭却没判破")
+	# 不雇工：在营造坊订过一次活就算破。这是唯一一条实测真有代价的誓约（−35pp 劫满率）
+	var hire := State.new_run("escort", meta, 77, "normal", [], [], ["no_order"])
+	check(is_equal_approx(Ledger.challenge_mul(hire), 1.35), "不雇工没抬倍率：%.2f" % Ledger.challenge_mul(hire))
+	check(bool(Ledger.vow_results(hire)[0].met), "还没下单就判成破了")
+	hire.loc = "builder"
+	check(Pre.order(hire, "door_bar") == "", "订门闩失败：%s" % Pre.order(hire, "door_bar"))
+	check(int(State.tally(hire).orders) == 1, "下单没计数")
+	check(not bool(Ledger.vow_results(hire)[0].met), "下了单却没判破")
 	# 不修门：修过一次就算破
 	var door := State.new_run("escort", meta, 77, "normal", [], [], ["no_door"])
 	check(is_equal_approx(Ledger.challenge_mul(door), 1.05), "不修门没抬倍率：%.2f" % Ledger.challenge_mul(door))
@@ -987,7 +1013,7 @@ func test_vows() -> void:
 	var vs := []
 	for v in Data.table("challenge").vows:
 		vs.append("%s×%.2f" % [str(v.name), float(v.mul)])
-	print("誓约（倍率按实测代价定价）：%s；五条全挑 ×%.2f" % ["、".join(vs), 1.0 + _vow_lift()])
+	print("誓约（倍率按实测代价定价）：%s；%d 条全挑 ×%.2f" % ["、".join(vs), vs.size(), 1.0 + _vow_lift()])
 
 
 ## 凭仗：开局真的发东西、倍率真的打折、三个凭仗扣到底也不破 0.5 的下限；

@@ -32,7 +32,7 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 		"version": 8, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
 		"difficulty": difficulty_id,
 		## 挑战自选的记账本：了愿挑了哪几个、备劫买了什么、修过几次门、回过几趟家
-		"tally": {"goals": goals.duplicate(), "vows": vows.duplicate(), "boons": boons.duplicate(), "bought": {}, "repair_door": 0, "home_trips": 0},
+		"tally": {"goals": goals.duplicate(), "vows": vows.duplicate(), "boons": boons.duplicate(), "bought": {}, "repair_door": 0, "home_trips": 0, "orders": 0},
 		"phase": "pre", "day": 1, "hour": OPEN_HOUR, "loc": "home",
 		"pday": 0, "t": 0, "busy": {}, "sleeping": false, "heated": false, "powered": false, "night_lines": [],
 		"wave_due": false, "wave_day": 0, "wave_report": {}, "raid_report": {}, "dawn_due": false,

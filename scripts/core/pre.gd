@@ -235,6 +235,9 @@ static func order(run: Dictionary, fac_id: String) -> String:
 	var f: Dictionary = Data.table("facilities")[fac_id]
 	run.silver -= int(f.price)
 	run.orders.append(fac_id)
+	# 记账：给「不雇工」这条誓约判违约用（订单是营造坊的活，不是普通买卖）
+	var t: Dictionary = State.tally(run)
+	t.orders = int(t.get("orders", 0)) + 1
 	State.note(run, "在营造坊订了%s。" % f.name)
 	return ""
 
