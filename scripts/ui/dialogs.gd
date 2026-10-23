@@ -14,6 +14,7 @@ const Pre = preload("res://scripts/core/pre.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Director = preload("res://scripts/core/director.gd")
+const Past = preload("res://scripts/core/past_lives.gd")
 
 ## 家具的功用，摆出来能做什么（写给人看的）
 const FN_TEXT := {
@@ -87,13 +88,53 @@ func _journal(body: VBoxContainer) -> void:
 	body.add_child(UI.label("人情往来：" + " · ".join(Director.ACTORS.keys().map(func(id): return "%s %+d" % [Director.ACTORS[id], int(d.relations[id])])), 16))
 	for promise in d.promises:
 		body.add_child(UI.para("第 %d 日 · %s 约定送来 %s" % [promise.day, Director.ACTORS[promise.actor], Director.describe(promise.give)], 16))
+	body.add_child(UI.button("前世记忆 · 查看旧世与觉醒", past_lives))
 	body.add_child(UI.para(Neighbor.summary(_run()), 17))
 	body.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
 	var lines: Array = _run().get("log", [])
-	var s := UI.scroll(UI.log_view(lines, lines.size(), 17), 500)
+	var log_height := mini(360, maxi(160, int(get_viewport().get_visible_rect().size.y) - 330 - d.promises.size() * 34))
+	var s := UI.scroll(UI.log_view(lines, lines.size(), 17), log_height)
 	var bar := s.get_v_scroll_bar()
 	bar.changed.connect(func(): s.scroll_vertical = int(bar.max_value))
 	body.add_child(s)
+
+
+func past_lives() -> void:
+	UI.open_modal("past_lives", "前世记忆 · 生死簿留痕", _past_lives, true, 820)
+
+
+func _past_lives(body: VBoxContainer) -> void:
+	var run := _run()
+	var p := Past.state(run)
+	var book := Past.book(Game.meta)
+	body.add_child(UI.para("已封存 %d 世，保留最近八世的人物往事。翻回昨日仍属于同一世，未曾发生的事不会成为记忆。" % int(book.count), 17))
+	if Past.daily(run):
+		body.add_child(UI.para("每日一局不唤醒或归档人物前世记忆，保持同日条件一致。", 16, UI.GOLD))
+	var content := UI.vbox(10)
+	content.add_child(UI.label("本世觉醒", 21, UI.GOLD))
+	var awakened := Past.public_memories(run)
+	if awakened.is_empty():
+		content.add_child(UI.para("本世尚无人觉醒。片段并非每世出现，也不需要等待 AI；日间往来时偶尔会浮现。", 16))
+	for fragment in awakened:
+		var when := "上一世" if int(fragment.age) == 1 else "%d 世前" % int(fragment.age)
+		content.add_child(UI.para("%s · %s：%s" % [Past.ACTORS[fragment.actor], when, fragment.fact], 17))
+		var response: String = {"": "尚未回应", "acknowledge": "承认似曾相识", "compensate": "用今世行动回应", "dismiss": "只当作旧梦"}.get(fragment.response, "已回应")
+		content.add_child(UI.para("你的回应：" + response, 15, UI.INK_SOFT))
+	content.add_child(UI.sep())
+	content.add_child(UI.label("本世留痕 · 结算后归档", 21, UI.GOLD))
+	if p.trace.is_empty(): content.add_child(UI.para("尚无可辨认的人物往事。给药、拒绝、药账处置与真实物资往来会留下事实。", 16))
+	for fact in p.trace:
+		content.add_child(UI.para("%s · 第 %d 日：%s" % [Past.ACTORS[fact.actor], int(fact.day), fact.fact], 16))
+	content.add_child(UI.sep())
+	content.add_child(UI.label("旧世档案", 21, UI.GOLD))
+	if book.lives.is_empty(): content.add_child(UI.para("还没有封存的旧世；从启用本机制后真实经历的这一世开始记。", 16))
+	for k in range(book.lives.size() - 1, -1, -1):
+		var life: Dictionary = book.lives[k]
+		content.add_child(UI.label("第 %d 世留痕" % int(life.life), 18, UI.GOLD))
+		if life.facts.is_empty(): content.add_child(UI.para("这一世没有留下可辨认的人物往事。", 16))
+		for fact in life.facts:
+			content.add_child(UI.para("%s：%s" % [Past.ACTORS[fact.actor], fact.fact], 16))
+	body.add_child(UI.scroll(content, mini(440, maxi(180, int(get_viewport().get_visible_rect().size.y) - 230))))
 
 
 func neighbor() -> void:
