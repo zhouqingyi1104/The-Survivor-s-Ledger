@@ -581,6 +581,8 @@ func do_explore(run: Dictionary) -> void:
 		if run.explore.is_empty() or run.explore.caught or int(run.explore.exposure) > 65 or Post.blocked(run):
 			break
 		Post.search(run, idx)
+		if run.pending_event != "":
+			handle_event(run)
 	if not run.explore.is_empty():
 		Post.finish_explore(run)
 

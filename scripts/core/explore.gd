@@ -6,6 +6,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
+const Neighbor = preload("res://scripts/core/neighbor.gd")
 
 const EXPOSURE_MAX := 100
 
@@ -54,6 +55,7 @@ static func begin(run: Dictionary, pid: String) -> void:
 	var spots := []
 	for s in Rng.shuffled(run, p.spots).slice(0, n):
 		spots.append({"name": s, "done": false})
+	Neighbor.add_objective(run, pid, spots)
 	run.explore = {"point": pid, "spots": spots, "exposure": 0, "bag": {}, "caught": false, "notes": []}
 	State.add_attr(run, "energy", -6)
 	if not pid in run.points:
@@ -80,9 +82,13 @@ static func exposure_gain(run: Dictionary, pid: String) -> int:
 
 static func search(run: Dictionary, idx: int) -> Dictionary:
 	var ex: Dictionary = run.explore
+	if ex.is_empty() or idx < 0 or idx >= ex.spots.size():
+		return {}
 	var spot: Dictionary = ex.spots[idx]
 	if spot.done or ex.caught:
 		return {}
+	if spot.has("neighbor"):
+		return Neighbor.search_objective(run, spot)
 	spot.done = true
 	var pid: String = ex.point
 	var p: Dictionary = Data.table("map_points")[pid]
@@ -149,6 +155,15 @@ static func _caught(run: Dictionary, p: Dictionary) -> void:
 		Inv.add(ex.bag, id, -int(ceil(n / 2.0)))
 	ex.notes.append(text)
 	State.note(run, text)
+
+
+static func capture_if_due(run: Dictionary) -> void:
+	var ex: Dictionary = run.get("explore", {})
+	if ex.get("neighbor_capture_due", false):
+		ex.erase("neighbor_capture_due")
+		if not ex.get("caught", false):
+			_caught(run, Data.table("map_points")[ex.point])
+			State.check_death(run, "砸锁惊动尸群，没能逃出药铺。")
 
 
 ## 回家：背囊入库，记下地点搜空的日子。

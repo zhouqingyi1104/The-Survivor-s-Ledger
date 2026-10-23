@@ -8,6 +8,8 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
+const Neighbor = preload("res://scripts/core/neighbor.gd")
+const Explore = preload("res://scripts/core/explore.gd")
 
 const DAILY_CHANCE := 0.6
 const SEEDS := ["seed_cabbage", "seed_radish", "seed_chive"]
@@ -20,6 +22,8 @@ static func roll(run: Dictionary) -> String:
 	var events: Dictionary = Data.table("events")
 	for id in events:
 		var e: Dictionary = events[id]
+		if e.get("story", "") != "" or id in ["neighbor_girl", "girl_gift"]:
+			continue
 		if run.pday < int(e.get("min_day", 1)) or run.pday > int(e.get("max_day", 999)):
 			continue
 		if e.get("once", false) and id in run.seen_events:
@@ -37,6 +41,8 @@ static func roll(run: Dictionary) -> String:
 
 
 static func choice_ok(run: Dictionary, choice: Dictionary) -> bool:
+	if str(run.get("pending_event", "")).begins_with("n_"):
+		return Neighbor.choice_block(run, choice) == ""
 	var req: Dictionary = choice.get("req", {})
 	for k in req:
 		var n := int(req[k])
@@ -61,6 +67,12 @@ static func choose(run: Dictionary, idx: int) -> String:
 	if id == "":
 		return ""
 	var e: Dictionary = Data.table("events")[id]
+	if idx < 0 or idx >= e.choices.size():
+		return "无效的选择。"
+	if e.get("story", "") == "neighbor":
+		var result := Neighbor.choose(run, idx)
+		Explore.capture_if_due(run)
+		return result
 	var choice: Dictionary = e.choices[idx]
 	if not choice_ok(run, choice):
 		return "做不到。"

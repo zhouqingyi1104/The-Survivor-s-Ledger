@@ -15,6 +15,7 @@ const Events = preload("res://scripts/core/events.gd")
 const Explore = preload("res://scripts/core/explore.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
+const Neighbor = preload("res://scripts/core/neighbor.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -105,6 +106,8 @@ static func advance(run: Dictionary, minutes: int) -> String:
 	while left > 0:
 		if run.phase != "post":
 			return "dead"
+		if Neighbor.poll(run) != "":
+			return "event"
 		if blocked(run):
 			return "blocked"
 		var m := day_minute(run)
@@ -121,6 +124,8 @@ static func advance(run: Dictionary, minutes: int) -> String:
 		var stop := _checkpoint(run, m + step)
 		if stop != "":
 			return stop
+		if Neighbor.poll(run) != "":
+			return "event"
 	return ""
 
 
@@ -202,7 +207,8 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 		return "wave_round"
 	match m:
 		EVENT_AT:
-			run.pending_event = Events.roll(run)
+			if Neighbor.poll(run) == "":
+				run.pending_event = Events.roll(run)
 			if run.pending_event != "":
 				return "event"
 		DUSK_AT:
@@ -1098,7 +1104,10 @@ static func search(run: Dictionary, idx: int) -> Dictionary:
 	var res := Explore.search(run, idx)
 	if not res.is_empty():
 		State.add_attr(run, "energy", -float(ACTIONS.search[2]))
+		run["neighbor_searching"] = true
 		advance(run, int(ACTIONS.search[1]))
+		run.erase("neighbor_searching")
+		Neighbor.poll(run)
 	return res
 
 
@@ -1106,9 +1115,14 @@ static func search(run: Dictionary, idx: int) -> Dictionary:
 static func finish_explore(run: Dictionary) -> Dictionary:
 	if run.explore.is_empty():
 		return {}
+	if run.pending_event == "n_cabinet":
+		return {} # Resolve the opened cabinet before leaving its scene.
 	var summary := Explore.finish(run)
 	if run.phase == "post":
+		run["neighbor_travel"] = true
 		advance(run, int(ACTIONS.travel[1]))
+		run.erase("neighbor_travel")
+		Neighbor.poll(run)
 	return summary
 
 

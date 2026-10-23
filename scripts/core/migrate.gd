@@ -11,8 +11,9 @@ extends RefCounted
 ##   v9：记账本补 orders（第 7 条誓约「不雇工」用）。
 
 const Post = preload("res://scripts/core/post.gd")
+const Neighbor = preload("res://scripts/core/neighbor.gd")
 
-const VERSION := 9
+const VERSION := 10
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -115,5 +116,16 @@ static func upgrade(run: Dictionary) -> Dictionary:
 		for key in TALLY_9:
 			if not run.tally.has(key):
 				run.tally[key] = TALLY_9[key]
+	if v < 10:
+		var q := Neighbor.fresh()
+		if run.get("flags", {}).get("girl_helped", false):
+			q.stage = "lead"
+			q.resolution = "donated"
+			q.reward = "legacy"
+			q.due = maxi(5 * 1440 + 120, int(run.get("t", 0)) + 60)
+		elif int(run.get("pday", 0)) > 4 or "neighbor_girl" in run.get("seen_events", []):
+			q.stage = "closed"
+			q.ending = "旧卷邻事已过"
+		run["neighbor"] = q
 	run.version = VERSION
 	return run
