@@ -3,6 +3,9 @@ extends Node
 ## 运行：godot --path . res://tests/screen_shot.tscn -- --screen=pre --goto=rice_shop
 ##   --screen=  界面 id（difficulty / roles / pre / post）
 ##   --goto=    仅 pre/post：把角色先挪到某个地点（home / rice_shop / builder …）
+##   --pick=    仅 challenge：先勾上这几项再拍（逗号分隔，id 见 data/challenge.json）
+##   --mode=    仅 challenge：endless / daily，拍"选了开局模式"的状态
+##   --mates=   仅 challenge：带这几个同院的人（逗号分隔，id 见 data/companions.json）
 ##   --out=     输出目录（默认 user://shots）
 
 const Data = preload("res://scripts/core/data.gd")
@@ -18,6 +21,8 @@ func _ready() -> void:
 	var pick := ""
 	## 开局模式：endless（守到死）/ daily（每日一局）
 	var mode := ""
+	## 同院的人
+	var mates := ""
 	var out := "user://shots"
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--screen="):
@@ -28,6 +33,8 @@ func _ready() -> void:
 			pick = a.trim_prefix("--pick=")
 		elif a.begins_with("--mode="):
 			mode = a.trim_prefix("--mode=")
+		elif a.begins_with("--mates="):
+			mates = a.trim_prefix("--mates=")
 		elif a.begins_with("--out="):
 			out = a.trim_prefix("--out=")
 	# 主界面是场景不是 autoload，得自己实例化挂上，Game.go() 才有地方放界面
@@ -76,6 +83,14 @@ func _ready() -> void:
 			msc._daily = "daily" in mode.split(",", false)
 			UI.clear(msc)
 			msc.build()
+	# 同院的人：拍"带了人"的状态（说明行会多出来，看有没有把表挤下去）
+	if which == "challenge" and mates != "":
+		var csc: Node = _current_screen(main)
+		if csc != null:
+			for mid in mates.split(",", false):
+				csc._mates.append(mid)
+			UI.clear(csc)
+			csc.build()
 	# 相机是插值跟上去的（_focus 每帧 lerp），等不够帧就会拍到"还在飞"的机位。
 	# 之前按 12 帧拍，量出来的相机位置和算出来的差一大截，白折腾了三轮角度。
 	for k in 60:

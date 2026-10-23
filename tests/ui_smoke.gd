@@ -60,6 +60,20 @@ func run_flow() -> void:
 	screen()._toggle_mode(true)
 	screen()._toggle_mode(false)
 	check(not screen()._endless and not screen()._daily, "开局模式取消不掉")
+	# 同院的人：带上要记住、最多 2 人、能取消
+	screen()._toggle_mate("afu")
+	screen()._toggle_mate("carpenter")
+	check("afu" in screen()._mates and "carpenter" in screen()._mates, "带人没记下")
+	screen()._toggle_mate("xiaoman")
+	check(screen()._mates.size() == 2, "院里最多住 2 人，塞进第 3 个了")
+	screen()._toggle_mate("afu")
+	check(not "afu" in screen()._mates, "人取消不掉")
+	screen()._toggle_mate("afu")
+	# 主流程按"院里没人"跑（带人只在天亮有动静，这里不让它插进后面的断言），
+	# 结尾再真开一局验证同伴有没有带进 run
+	screen()._toggle_mate("afu")
+	screen()._toggle_mate("carpenter")
+	check(screen()._mates.is_empty(), "人清不干净")
 	await press("什么都不选")
 	check(Game.screen == "pre" and Game.run.role == "scholar", "没开局")
 	check(str(Game.run.get("difficulty", "")) != "", "开局没带上难度")
@@ -286,10 +300,11 @@ func run_flow() -> void:
 	# 放在最后：开一局会把界面切走，中间插进来后面的流程就断了。
 	var keep_save := Game.no_save
 	Game.no_save = true
-	Game.new_game("scholar", "normal", [], [], [], true, true)
+	Game.new_game("scholar", "normal", [], [], [], true, true, ["afu", "carpenter"])
 	check(bool(Game.run.endless), "选了守到死，开局却是寻常局")
 	check(str(Game.run.flags.get("daily", "")) != "", "每日一局没记进 run.flags")
 	check(int(Game.run.seed) == State.daily_seed(), "每日一局的种子不是今天的：%d" % int(Game.run.seed))
+	check((Game.run.get("companions", []) as Array) == ["afu", "carpenter"], "同院的人没带进 run")
 	check(Game.screen == "pre", "带模式开局没进备劫界面")
 	# 守到死：第 20 日天亮不进结局，照常开新的一天（寻常局的对照在上面已经验过）
 	Game.run.phase = "post"

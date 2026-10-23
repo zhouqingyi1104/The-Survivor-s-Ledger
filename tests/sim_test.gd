@@ -14,6 +14,7 @@ const Ledger = preload("res://scripts/core/ledger.gd")
 const Defense = preload("res://scripts/core/defense.gd")
 const Migrate = preload("res://scripts/core/migrate.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
+const Companion = preload("res://scripts/core/companion.gd")
 
 const SHOPPING := [
 	["builder", ["door_bar", "water_vat", "window_board", "stove"]],
@@ -346,6 +347,7 @@ func _init() -> void:
 	test_broken()
 	test_furnish()
 	test_crafts()
+	test_companions()
 	test_power()
 	test_difficulty()
 	test_vehicle()
@@ -369,8 +371,8 @@ func _init() -> void:
 ## 否则脚本错误会让整个测试函数静默跳过，而 harness 照样打印"失败 0"（真的发生过）。
 ## 应该在 _init 里被调到的测试，顺序无所谓，缺一个就报。
 func _test_list() -> Array:
-	return ["test_fight", "test_broken", "test_furnish", "test_crafts", "test_rewind", "test_power",
-		"test_goals", "test_vows", "test_endless", "test_boons", "test_vehicle", "test_mode",
+	return ["test_fight", "test_broken", "test_furnish", "test_crafts", "test_companions", "test_rewind",
+		"test_power", "test_goals", "test_vows", "test_endless", "test_boons", "test_vehicle", "test_mode",
 		"test_daily_score", "test_difficulty", "test_migrate"]
 
 
@@ -922,6 +924,66 @@ func test_crafts() -> void:
 	check(Inv.count(run.home, "talisman") == 2, "画符没出两张")
 	print("加工：烧炭 2 柴→1 炭、配药 3 艾→1 散、压干粮 1 米→4 饼，各一个时辰；画符照旧")
 	_ok("test_crafts")
+
+
+## 同院的人：天亮各干一件事，代价是每天的口粮。吃不上就不干活、掉心情。
+func test_companions() -> void:
+	# 老存档升级后得有 companions 字段（空 = 院里只有你一个）
+	var old := State.new_run("escort", State.new_meta(), 5)
+	old.erase("companions")
+	old.version = 12
+	Migrate.upgrade(old)
+	check(old.get("companions") is Array and (old.companions as Array).is_empty(), "老存档没补出 companions")
+	# 没口粮：不干活，掉心情
+	var run := cold_night("escort", 103)
+	run.companions = ["afu"]
+	run.home = {}
+	var mood0 := State.attr(run, "mood")
+	var lines := Companion.dawn(run)
+	check(lines.size() == 1 and "饿" in str(lines[0]), "没喂饱该报饿肚子：%s" % str(lines))
+	check(State.attr(run, "mood") < mood0, "饿着肚子心情没掉")
+	# 喂饱了才干活：厨子收 1 份口粮 + 1 瓢水，再用粮/水/柴蒸一锅
+	Inv.add(run.home, "flatbread", 1)
+	Inv.add(run.home, "rice", 1)
+	Inv.add(run.home, "water", 2)
+	Inv.add(run.home, "firewood", 1)
+	var l2 := Companion.dawn(run)
+	check(Inv.count(run.home, "flatbread") == 3, "厨子没出干粮（或口粮没收对）：%d" % Inv.count(run.home, "flatbread"))
+	check(Inv.count(run.home, "rice") == 0 and Inv.count(run.home, "firewood") == 0, "厨子的料没扣")
+	check("蒸了一锅" in str(l2), "厨子干活没报动静：%s" % str(l2))
+	# 木匠：修最破的那处，扣木料；修的是门就记进账本（誓约「不修门」查的就是这个）
+	var run2 := cold_night("escort", 107)
+	run2.companions = ["carpenter"]
+	run2.home = {}
+	Inv.add(run2.home, "flatbread", 1)
+	Inv.add(run2.home, "wood", 2)
+	Inv.add(run2.home, "water", 1)
+	run2.door.cur = 40
+	run2.window.cur = 30
+	Companion.dawn(run2)
+	check(int(run2.window.cur) == 55, "木匠该修最破的窗：%d" % int(run2.window.cur))
+	check(int(run2.door.cur) == 40, "门不是最破的，不该修")
+	check(Inv.count(run2.home, "wood") == 1, "木料没扣")
+	check(int(run2.tally.get("repair_door", 0)) == 0, "没修门却记了账")
+	# 这回门最破：修了就得记账，不然是对「不修门」的作弊
+	Inv.add(run2.home, "flatbread", 1)
+	Inv.add(run2.home, "wood", 1)
+	Inv.add(run2.home, "water", 1)
+	Companion.dawn(run2)
+	check(int(run2.door.cur) == 65, "门没被修上：%d" % int(run2.door.cur))
+	check(int(run2.tally.get("repair_door", 0)) == 1, "木匠修门没记进账本")
+	# 小满：打水两瓢、浇菜畦
+	var run3 := cold_night("escort", 109)
+	run3.companions = ["xiaoman"]
+	run3.home = {}
+	Inv.add(run3.home, "flatbread", 1)
+	Inv.add(run3.home, "water", 1)
+	run3.plots = [{"crop": "cabbage", "days": 1.0, "watered_t": 0}]
+	Companion.dawn(run3)
+	check(Inv.count(run3.home, "water") == 2, "小满没打水")
+	check(int(run3.plots[0].watered_t) == int(run3.t), "菜畦没浇")
+	print("同院的人：饿着不干活；厨子蒸干粮、木匠修最破处（修门记账）、小满打水浇畦")
+	_ok("test_companions")
 
 
 func test_rewind() -> void:

@@ -114,12 +114,14 @@ func role_unlocked(role_id: String) -> bool:
 	return true
 
 
-func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = [], endless := false, daily := false) -> void:
+func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = [], endless := false, daily := false, companions: Array = []) -> void:
 	run = State.new_run(role_id, meta, daily_seed() if daily else randi(), difficulty_id, goals, boons, vows)
 	# 守到死：Post.ack_dawn 看 run.endless —— 第 20 日天亮照常开新的一天，不进结局
 	run.endless = endless
 	if daily:
 		run.flags["daily"] = today_text()
+	# 同院的人（备劫前带回来的帮手）
+	run.companions = companions.duplicate()
 	snapshots = {}
 	last_gain = {}
 	_after()
@@ -184,8 +186,11 @@ func restart_from_cover() -> void:
 	# 开局模式（守到死 / 每日一局）跟着带过去，别让重开一局把模式丢了
 	var endless := bool(run.get("endless", false))
 	var daily := str(run.get("flags", {}).get("daily", "")) != ""
+	# 同院的人也带过去——回到三日之前，院里还是这几个人（誓约/凭仗/了愿另说，
+	# 那三样是"这一局挑的挑战"，重开不带走）
+	var mates: Array = (run.get("companions", []) as Array).duplicate()
 	end_run(Ledger.ENDING_BONUS if run.phase == "ending" else 0)
-	new_game(role_id, d, [], [], [], endless, daily)
+	new_game(role_id, d, [], [], [], endless, daily, mates)
 
 
 func close_book() -> void:

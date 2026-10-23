@@ -10,12 +10,13 @@ extends RefCounted
 ##   v8：挑战自选——了愿（tally.goals）与记账本（bought / repair_door / home_trips）。
 ##   v9：记账本补 orders（第 7 条誓约「不雇工」用）。
 ##   v10：邻居求药完整链。v11：运行时三日导演。v12：前世记忆与稳定世代身份。
+##   v13：同院的人（run.companions），老存档当成没带帮手。
 
 const Post = preload("res://scripts/core/post.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 
-const VERSION := 12
+const VERSION := 13
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -38,6 +39,9 @@ const ADDED_7 := {"difficulty": "normal"}
 const ADDED_8 := {"tally": {"goals": [], "vows": [], "boons": [], "bought": {}, "repair_door": 0, "home_trips": 0}}
 ## v9 补进已有 tally 的字段（注意：不能整体替换 tally，v8 的档里已经有 goals/vows 等）
 const TALLY_9 := {"orders": 0}
+## v12 的身份（past_lives）在 upgrade 里现算
+## v13 新加的字段（同院的人）
+const ADDED_13 := {"companions": []}
 ## v1 的时段（晨 / 午 / 暮 / 夜）→ 当天第几分钟（从 6:00 起）：8:00、12:00、16:00、18:00
 const SEG_MINUTE := [120, 360, 600, 720]
 
@@ -136,5 +140,9 @@ static func upgrade(run: Dictionary) -> Dictionary:
 	if v < 12:
 		# Stable identity when the very same old file is loaded again; never infer facts.
 		run["past_lives"] = Past.fresh_run("legacy-" + JSON.stringify(run).sha256_text().left(32))
+	if v < 13:
+		# 同院的人：老存档当成没带帮手（空数组 = 院里只有你一个）
+		if not (run.get("companions") is Array):
+			run["companions"] = []
 	run.version = VERSION
 	return run

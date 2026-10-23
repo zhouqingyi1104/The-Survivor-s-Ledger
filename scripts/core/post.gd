@@ -17,6 +17,7 @@ const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Director = preload("res://scripts/core/director.gd")
+const Companion = preload("res://scripts/core/companion.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -294,7 +295,11 @@ static func _dawn(run: Dictionary) -> void:
 	run.sleeping = false
 	run.busy = {}
 	run.dawn_due = true
-	run.report = {"day": run.pday, "night": run.night_lines.duplicate(), "settle": Ledger.settle(run)}
+	# 同院的人天亮各干一件事（先收口粮），动静放进天亮报告
+	var help := Companion.dawn(run)
+	for line in help:
+		State.note(run, line)
+	run.report = {"day": run.pday, "night": run.night_lines.duplicate(), "help": help, "settle": Ledger.settle(run)}
 
 
 static func ack_dawn(run: Dictionary) -> void:

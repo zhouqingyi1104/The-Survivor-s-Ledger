@@ -14,6 +14,8 @@ var _vows: Array = []
 ## 开局模式：守到死（不设终局）、每日一局（种子按日期）。两个都可以不选。
 var _endless := false
 var _daily := false
+## 同院的人：带谁回来搭伙（最多 2 人）。不是誓约也不是凭仗，不改道心倍率。
+var _mates: Array = []
 
 
 func build() -> void:
@@ -40,12 +42,34 @@ func build() -> void:
 		v.add_child(UI.para(_mode_note(), 15, UI.INK_SOFT))
 	if _daily:
 		v.add_child(UI.para(Ledger.daily_line(Game.meta, Game.today_text(), _endless), 15, UI.JADE))
+	# 同院的人：不改道心倍率，代价是每天天亮的口粮（吃不上就不干活）
+	var mates := UI.hbox(8)
+	mates.add_child(UI.label("同院的人（最多 2 人）", 18, UI.INK_SOFT))
+	for pid in Data.table("companions"):
+		var p: Dictionary = Data.table("companions")[pid]
+		var on: bool = pid in _mates
+		var full: bool = _mates.size() >= 2 and not on
+		mates.add_child(UI.button("%s %s" % ["■" if on else "□", str(p.name)],
+			func(): _toggle_mate(pid), full, "取消" if on else ("院里已经住满了" if full else "带他进宅院")))
+	mates.add_child(UI.spacer())
+	mates.add_child(UI.label("每人每天 12 饱腹 + 1 瓢水", 15, UI.INK_FAINT))
+	v.add_child(mates)
+	for pid in _mates:
+		var p2: Dictionary = Data.table("companions").get(pid, {})
+		v.add_child(UI.para("%s：%s" % [str(p2.get("name", pid)), str(p2.get("desc", ""))], 15, UI.INK_SOFT))
+	if "carpenter" in _mates and "no_door" in _vows:
+		v.add_child(UI.para("你立了「不修门」——陈木匠修的门也记在你账上，这条誓约会当场作废。", 15, UI.CINNABAR))
 	v.add_child(UI.sep())
 	# 三张表一共 11 行，竖着排会顶出屏幕（实测 1600×900 下底部按钮被截掉），
-	# 所以分两栏：左边誓约，右边凭仗 + 了愿。
+	# 所以分两栏：左边誓约，右边凭仗 + 了愿。三栏装进滚动区，底下的开始按钮才不会被顶出屏幕
+	# （1280×720 下加了同院的人之后真的被顶出去过）。
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(scroll)
 	var cols := UI.hbox(18)
-	cols.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(cols)
+	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(cols)
 	# 誓约超过 6 条就再开一栏：七条时底部已经贴到按钮，再往下堆必然截断。
 	var vow_list: Array = Data.table("challenge").get("vows", [])
 	var half: int = int(ceil(vow_list.size() / 2.0)) if vow_list.size() > 6 else vow_list.size()
@@ -128,6 +152,16 @@ func _toggle_mode(endless: bool) -> void:
 	build()
 
 
+## 带 / 不带一个人进宅院。院里最多住 2 个帮手。
+func _toggle_mate(pid: String) -> void:
+	if pid in _mates:
+		_mates.erase(pid)
+	elif _mates.size() < 2:
+		_mates.append(pid)
+	UI.clear(self)
+	build()
+
+
 ## 选了模式才展开：说清代价，别让玩家打完才发现"活到终局"不算数。
 func _mode_note() -> String:
 	var out: Array = []
@@ -151,7 +185,7 @@ func _toggle(id: String, pressed: bool, bucket: Array) -> void:
 
 
 func _start_text() -> String:
-	if _picked.is_empty() and _boons.is_empty() and _vows.is_empty() and not _endless and not _daily:
+	if _picked.is_empty() and _boons.is_empty() and _vows.is_empty() and not _endless and not _daily and _mates.is_empty():
 		return "就这样，开始"
 	var mul := 1.0
 	for vw in Data.table("challenge").get("vows", []):
@@ -176,6 +210,8 @@ func _start_text() -> String:
 		parts.append("守到死")
 	if _daily:
 		parts.append("每日一局")
+	if not _mates.is_empty():
+		parts.append("同院 %d 人" % _mates.size())
 	var tail := "道心 ×%.2f" % mul
 	if goal_sum > 0:
 		tail += "，另加 %d" % goal_sum
@@ -191,4 +227,4 @@ func _start(with_picks: bool) -> void:
 	var boons: Array = _boons.duplicate() if with_picks else []
 	var vows: Array = _vows.duplicate() if with_picks else []
 	Game.pending_role = ""
-	Game.new_game(role_id, Game.pending_difficulty, goals, boons, vows, _endless, _daily)
+	Game.new_game(role_id, Game.pending_difficulty, goals, boons, vows, _endless, _daily, _mates.duplicate())

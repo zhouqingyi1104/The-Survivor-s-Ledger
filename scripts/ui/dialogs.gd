@@ -745,6 +745,12 @@ func _dawn_report(body: VBoxContainer) -> void:
 		body.add_child(UI.para(l, 17, UI.INK))
 	if rep.get("night", []).is_empty():
 		body.add_child(UI.para("一夜无事。", 17, UI.INK))
+	# 同院的人一早干的活（没带人就没有这一段）
+	if not rep.get("help", []).is_empty():
+		body.add_child(UI.sep())
+		body.add_child(UI.label("院里的人", 22, UI.CINNABAR))
+		for l in rep.help:
+			body.add_child(UI.para(l, 17, UI.INK))
 	body.add_child(UI.sep())
 	body.add_child(UI.label("功过格", 22, UI.CINNABAR))
 	var g := UI.grid(2, 30, 2)
