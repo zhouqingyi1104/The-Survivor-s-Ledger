@@ -2,7 +2,7 @@ extends "res://scripts/ui/screens/screen_base.gd"
 ## 劫满：熬过第二十夜后的结局三选。对应原版 EndingChoice（继续坚守 / 带着记忆重走 / 合上日志）。
 
 const Ledger = preload("res://scripts/core/ledger.gd")
-const ENDING_BONUS := 10
+const ENDING_BONUS := Ledger.ENDING_BONUS
 
 
 func build() -> void:

@@ -162,12 +162,12 @@ func end_run(bonus := 0) -> Dictionary:
 func restart_from_cover() -> void:
 	var role_id: String = run.role
 	var d := str(run.get("difficulty", "normal"))
-	end_run(10 if run.phase == "ending" else 0)
+	end_run(Ledger.ENDING_BONUS if run.phase == "ending" else 0)
 	new_game(role_id, d)
 
 
 func close_book() -> void:
-	end_run(10 if run.phase == "ending" else 0)
+	end_run(Ledger.ENDING_BONUS if run.phase == "ending" else 0)
 	run = {}
 	snapshots = {}
 	_delete_save()

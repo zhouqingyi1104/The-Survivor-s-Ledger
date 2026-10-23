@@ -122,6 +122,12 @@ static func settle(run: Dictionary) -> Dictionary:
 
 # ---------- 道心与轮回 ----------
 
+## 劫满（熬过第二十夜）额外加多少道心。
+## 放在这里而不是界面里：结算逻辑和测试工具都得看到它，
+## 否则「赢一局」和「输一局」的道心差会被少算 10 点（之前就少算了，见 docs/09 第 16 节）。
+const ENDING_BONUS := 10
+
+
 ## 一轮结束时得多少道心。死在第 N 日只算活过 N-1 日。
 static func daoxin_gain(run: Dictionary, bonus := 0) -> Dictionary:
 	var days := int(run.pday)

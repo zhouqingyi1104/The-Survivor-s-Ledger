@@ -200,6 +200,26 @@ func _init() -> void:
 		bparts.append("%s %d 次" % [str(bk), int(block_reasons[bk])])
 	print("  买不了的原因：%s" % ("、".join(bparts) if not bparts.is_empty() else "一次没被拦（购物清单本来就买得完）"))
 
+	# 奖励轴：胜局和败局各拿多少道心（现在带上了劫满 10 点，是真实值）
+	vows_picked = []
+	var win_n := 0
+	var win_sum := 0
+	var lose_n := 0
+	var lose_sum := 0
+	for k in VOW_SAMPLE:
+		var ar: Dictionary = play(roles[k % roles.size()], 5000 + k)
+		if ar.win:
+			win_n += 1
+			win_sum += int(ar.daoxin)
+		else:
+			lose_n += 1
+			lose_sum += int(ar.daoxin)
+	var win_avg := win_sum / float(maxi(1, win_n))
+	var lose_avg := lose_sum / float(maxi(1, lose_n))
+	print("--- 诊断：道心的胜负差（%d 局，寻常年景、无誓约） ---" % VOW_SAMPLE)
+	print("  胜 %d 局均 %.1f　败 %d 局均 %.1f　胜/败 = %.2f" % [
+		win_n, win_avg, lose_n, lose_avg, win_avg / maxf(0.01, lose_avg)])
+
 	print("--- 对照：挑战誓约 × %d 局（寻常年景，机器人也守约） ---" % VOW_SAMPLE)
 	# 前三档可比：只加"不改备劫打法"的誓约（不点灯去掉灯油、不修门跳过修门、空手清空随身物）。
 	var vow_set := ["no_lamp", "no_door", "bare"]
@@ -620,7 +640,8 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 		play_day(run)
 	check_invariants(run)
 	var win: bool = run.phase == "ending"
-	var gain := Ledger.end_run(run, meta)
+	# 劫满要带上那 10 点，否则胜局的道心被少算（原来这里漏了，导致"胜负道心一样"的假象）
+	var gain := Ledger.end_run(run, meta, Ledger.ENDING_BONUS if win else 0)
 	var line := "%-6s seed=%d  %s  第%d日  尸潮守住%d  斩尸%d  功德%d  余银%s  道心+%d  %s" % [
 		State.role(run).name, seed_value, "劫满" if win else "身死", run.pday, run.waves_survived,
 		run.kills, run.merit, Pre.money(silver_left), gain.total, run.death_cause]
