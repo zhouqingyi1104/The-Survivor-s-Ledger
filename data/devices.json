@@ -10,6 +10,9 @@
     "bagua_mirror": {"name": "八卦镜", "cost": {"bagua": 1}, "power": 10, "dur": 99, "time": 0, "surface": "*", "desc": "挂在门楣上，三面都沾光，一直管用。"}
   },
   "crafts": {
-    "draw_talisman": {"name": "画符", "in": {"talisman_paper": 2, "cinnabar": 1}, "out": {"talisman": 2}, "time": 1, "flag": "learned_talisman", "desc": "黄纸朱砂，画两张镇尸符。需要先学会画符。"}
+    "draw_talisman": {"name": "画符", "verb": "画", "in": {"talisman_paper": 2, "cinnabar": 1}, "out": {"talisman": 2}, "time": 1, "flag": "learned_talisman", "desc": "黄纸朱砂，画两张镇尸符。需要先学会画符。"},
+    "press_charcoal": {"name": "烧炭", "verb": "烧", "in": {"firewood": 2}, "out": {"charcoal": 1}, "time": 1, "desc": "两捆柴压成一筐木炭。同样过一夜，轻 2 斤，火到后半夜也不会弱。"},
+    "mix_plague": {"name": "配避瘟散", "verb": "炼", "in": {"mugwort": 3}, "out": {"plague_powder": 1}, "time": 1, "desc": "三束艾草炼一包避瘟散。艾草自用只能熏屋压一压尸毒，炼了才是十拿九稳的药。"},
+    "press_ration": {"name": "压干粮", "verb": "压", "in": {"rice": 1}, "out": {"flatbread": 4}, "time": 1, "desc": "一斗米压成四张炊饼。不生火、不占灶、省柴省水；只是做不成粥，渴了还得另打水。"}
   }
 }

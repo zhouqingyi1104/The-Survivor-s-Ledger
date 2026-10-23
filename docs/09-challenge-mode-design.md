@@ -783,4 +783,5 @@ sim_test 新增 `test_daily_score`（14/14）：寻常局不进榜、同一天�
 ui_smoke 在每日局上走一遍"结局界面 → 合上此录"，验 meta 真的被写进去。
 **未完成**：没有联网，所以没有跨玩家的排名，只能自己在本地比（原作 `DailyScore` 是有榜的）。
 **顺手改错**：docs/07 里两条"缺"其实是错的——`SelectPeople` 有（`roles_screen` 选身份），
-加工/制符也有（`devices.json` 的 crafts），只是制造只有画符一张配方，谈不上"取舍"。
+加工/制符也有（`devices.json` 的 crafts），只是当时制造只有画符一张配方，谈不上"取舍"。
+（同日已补三条配方，取舍见 `docs/14-craft-tradeoffs.md`。）

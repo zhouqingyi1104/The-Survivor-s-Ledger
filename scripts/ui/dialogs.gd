@@ -274,17 +274,18 @@ func _build(body: VBoxContainer) -> void:
 		else:
 			_action(h, "布置", func(): _act(func(): return Post.act_build(Game.run, did)), block)
 		v.add_child(h)
-	if State.flag(run, "learned_talisman"):
-		v.add_child(UI.sep())
-		v.add_child(UI.label("画符", 20, UI.CINNABAR))
-		var crafts: Dictionary = Data.table("devices").crafts
-		for cid in crafts:
-			var c: Dictionary = crafts[cid]
-			var h := UI.hbox(10)
-			h.add_child(UI.expand(UI.para("%s：%s　用料：%s" % [c.name, c.desc, req_text(run.home, c["in"])], 16, UI.INK)))
-			var block := Post.craft_block(run, cid)
-			_action(h, "画（一个时辰）", func(): _start("build", func(): return Post.act_craft(Game.run, cid)), block)
-			v.add_child(h)
+	# 加工：画符要先学会，其余几条谁都能做。不会的也列出来（标"还不会"），
+	# 省得玩家猜有没有这回事——藏着的选项等于不存在的选项。
+	v.add_child(UI.sep())
+	v.add_child(UI.label("加工", 20, UI.CINNABAR))
+	var crafts: Dictionary = Data.table("devices").crafts
+	for cid in crafts:
+		var c: Dictionary = crafts[cid]
+		var h := UI.hbox(10)
+		h.add_child(UI.expand(UI.para("%s：%s　用料：%s" % [c.name, c.desc, req_text(run.home, c["in"])], 16, UI.INK)))
+		var block := Post.craft_block(run, cid)
+		_action(h, "%s（一个时辰）" % str(c.get("verb", "做")), func(): _start("build", func(): return Post.act_craft(Game.run, cid)), block)
+		v.add_child(h)
 	v.add_child(UI.sep())
 	v.add_child(UI.label("修缮　用木料 1 根（有 %d），没木料时拆 2 捆柴顶上（有 %d），耐久 +%d" % [
 		Inv.count(run.home, "wood"), Inv.count(run.home, "firewood"), 35 + 5 * State.prof_level(run, "build")], 20, UI.CINNABAR))

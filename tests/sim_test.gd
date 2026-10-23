@@ -345,6 +345,7 @@ func _init() -> void:
 	test_fight()
 	test_broken()
 	test_furnish()
+	test_crafts()
 	test_power()
 	test_difficulty()
 	test_vehicle()
@@ -368,7 +369,7 @@ func _init() -> void:
 ## 否则脚本错误会让整个测试函数静默跳过，而 harness 照样打印"失败 0"（真的发生过）。
 ## 应该在 _init 里被调到的测试，顺序无所谓，缺一个就报。
 func _test_list() -> Array:
-	return ["test_fight", "test_broken", "test_furnish", "test_rewind", "test_power",
+	return ["test_fight", "test_broken", "test_furnish", "test_crafts", "test_rewind", "test_power",
 		"test_goals", "test_vows", "test_endless", "test_boons", "test_vehicle", "test_mode",
 		"test_daily_score", "test_difficulty", "test_migrate"]
 
@@ -872,6 +873,55 @@ func test_furnish() -> void:
 	check(Inv.count(run.home, "wood") == wood_now + 1, "退料不对：%d → %d" % [wood_now, Inv.count(run.home, "wood")])
 	print("添置家具：开局 %d 件，圈椅摆上又拆掉，木料退回 1 根" % Home.list(run).size())
 	_ok("test_furnish")
+
+
+## 推到手上这件事做完为止。不用 Post.advance：那条路上有事件/夜报检查点，
+## 跟"加工出没出货"无关，混进来只会让这条测试随机变红。
+func _craft_done(run: Dictionary) -> void:
+	run.t = int(run.busy.end)
+	Post._check_busy(run)
+
+
+## 加工：一个时辰换一样灾后稀缺的东西。先验账（每条都得轻/值/省料），再验流程。
+func test_crafts() -> void:
+	# 账：三条都是拿时间换负重或换别处的料
+	check(Inv.weight({"firewood": 2}) > Inv.weight({"charcoal": 1}), "烧炭没减重")
+	check(Inv.weight({"mugwort": 3}) > Inv.weight({"plague_powder": 1}), "配药没减重")
+	check(Inv.weight({"rice": 1}) > Inv.weight({"flatbread": 4}), "压干粮没减重")
+	# 压干粮 vs 煮粥：同样一斗米，干粮多给口粮、少给水，还不占柴
+	var press_food := 4 * int(Data.item("flatbread").get("eat", {}).get("food", 0))
+	var congee_food := 2 * int(Data.item("congee").get("eat", {}).get("food", 0))
+	check(press_food > congee_food, "压干粮还不如煮粥，没人会压")
+	var press_w := Inv.weight({"flatbread": 4})
+	var congee_w := Inv.weight({"congee": 2}) + Inv.weight({"water": 1}) + Inv.weight({"firewood": 1})
+	check(press_w < congee_w, "压干粮连水带柴算下来没省重量")
+	# 流程：材料当场扣，成品做完才给
+	var run := cold_night("escort", 101)
+	Inv.add(run.home, "firewood", 2)
+	Inv.add(run.home, "mugwort", 3)
+	Inv.add(run.home, "rice", 1)
+	check(Post.craft_block(run, "draw_talisman") == "还不会", "没学会画符却能画")
+	check(Post.act_craft(run, "press_charcoal") == "", "烧炭做不了：%s" % Post.craft_block(run, "press_charcoal"))
+	check(Inv.count(run.home, "firewood") == 0, "材料没扣")
+	check(Inv.count(run.home, "charcoal") == 0, "成品不该提前到手")
+	_craft_done(run)
+	check(Inv.count(run.home, "charcoal") == 1, "做完了没给成品")
+	# 另外两条也走一遍：扣料 → 出货
+	var cases := [["mix_plague", "mugwort", "plague_powder"], ["press_ration", "rice", "flatbread"]]
+	for c in cases:
+		check(Post.act_craft(run, c[0]) == "", "%s 做不了：%s" % [c[0], Post.craft_block(run, c[0])])
+		check(Inv.count(run.home, c[1]) == 0, "%s 的料没扣" % c[1])
+		_craft_done(run)
+		check(Inv.count(run.home, c[2]) > 0, "%s 没出货" % c[2])
+	# 画符要先学会，学会了就出两张
+	run.flags["learned_talisman"] = true
+	Inv.add(run.home, "talisman_paper", 2)
+	Inv.add(run.home, "cinnabar", 1)
+	check(Post.act_craft(run, "draw_talisman") == "", "学会画符还画不出来")
+	_craft_done(run)
+	check(Inv.count(run.home, "talisman") == 2, "画符没出两张")
+	print("加工：烧炭 2 柴→1 炭、配药 3 艾→1 散、压干粮 1 米→4 饼，各一个时辰；画符照旧")
+	_ok("test_crafts")
 
 
 func test_rewind() -> void:
