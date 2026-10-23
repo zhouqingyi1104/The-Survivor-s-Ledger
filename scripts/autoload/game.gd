@@ -37,6 +37,8 @@ var placing_rot := 0
 var placing_at = null
 ## 选难度界面挂着：刚挑的身份，定了难度就照这个开局
 var pending_role := ""
+## 已经定好的难度，接着去挑挑战（了愿）
+var pending_difficulty := "normal"
 
 
 func _ready() -> void:
@@ -107,8 +109,8 @@ func role_unlocked(role_id: String) -> bool:
 	return true
 
 
-func new_game(role_id: String, difficulty_id := "normal") -> void:
-	run = State.new_run(role_id, meta, randi(), difficulty_id)
+func new_game(role_id: String, difficulty_id := "normal", goals: Array = []) -> void:
+	run = State.new_run(role_id, meta, randi(), difficulty_id, goals)
 	snapshots = {}
 	last_gain = {}
 	_after()
@@ -117,6 +119,7 @@ func new_game(role_id: String, difficulty_id := "normal") -> void:
 ## 选完身份，先去定难度（原版 DifficultySelect / ChallengeSetup）。
 func pick_difficulty(role_id: String) -> void:
 	pending_role = role_id
+	pending_difficulty = "normal"
 	go("difficulty")
 
 

@@ -8,6 +8,7 @@ const SCREENS := {
 	"title": "res://scripts/ui/screens/title_screen.gd",
 	"roles": "res://scripts/ui/screens/roles_screen.gd",
 	"difficulty": "res://scripts/ui/screens/difficulty_screen.gd",
+	"challenge": "res://scripts/ui/screens/challenge_screen.gd",
 	"talents": "res://scripts/ui/screens/talents_screen.gd",
 	"pre": "res://scripts/ui/screens/pre_screen.gd",
 	"post": "res://scripts/ui/screens/post_screen.gd",

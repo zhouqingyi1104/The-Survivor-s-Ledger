@@ -22,15 +22,17 @@ static func new_meta() -> Dictionary:
 	return {"daoxin": 0, "talents": [], "runs": 0, "deaths": 0, "best_day": 0, "clues": [], "endings": 0}
 
 
-static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal") -> Dictionary:
+static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal", goals: Array = []) -> Dictionary:
 	var role_data: Dictionary = Data.table("roles")[role_id]
 	var talents: Array = meta.get("talents", []).duplicate()
 	var d: Dictionary = diff_params(difficulty_id)
 	var hp_max: int = int(round(float(role_data.hp_max) * float(d.get("hp_mul", 1.0))))
 	var silver: int = int(round(float(role_data.silver) * float(d.get("silver_mul", 1.0))))
 	var run := {
-		"version": 7, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
+		"version": 8, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
 		"difficulty": difficulty_id,
+		## 挑战自选的记账本：了愿挑了哪几个、备劫买了什么、修过几次门、回过几趟家
+		"tally": {"goals": goals.duplicate(), "vows": [], "boons": [], "bought": {}, "repair_door": 0, "home_trips": 0},
 		"phase": "pre", "day": 1, "hour": OPEN_HOUR, "loc": "home",
 		"pday": 0, "t": 0, "busy": {}, "sleeping": false, "heated": false, "powered": false, "night_lines": [],
 		"wave_due": false, "wave_day": 0, "wave_report": {}, "raid_report": {}, "dawn_due": false,
@@ -91,6 +93,18 @@ static func diff_name(run: Dictionary) -> String:
 		if str(d.get("id", "")) == id:
 			return str(d.get("name", "寻常年景"))
 	return "寻常年景"
+
+
+## 挑战记账本（老存档没有就现补一个空壳，不让它把结算搅坏）。
+static func tally(run: Dictionary) -> Dictionary:
+	if not run.has("tally") or typeof(run.tally) != TYPE_DICTIONARY:
+		run.tally = {"goals": [], "vows": [], "boons": [], "bought": {}, "repair_door": 0, "home_trips": 0}
+	return run.tally
+
+
+## 挑了哪几个了愿。
+static func goals_of(run: Dictionary) -> Array:
+	return tally(run).get("goals", [])
 
 
 static func has_talent(run: Dictionary, id: String) -> bool:

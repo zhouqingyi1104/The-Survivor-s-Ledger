@@ -104,6 +104,7 @@ func _init() -> void:
 	test_power()
 	test_difficulty()
 	test_vehicle()
+	test_goals()
 	print("不变量失败：%d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -571,6 +572,65 @@ func cold_night(role_id: String, seed_value: int) -> Dictionary:
 	run.t = (int(run.pday) - 1) * Post.DAY
 	run.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
 	return run
+
+
+## 了愿：达成给分、没达成标「未成」给 0、没立愿就一分不给；旧存档迁上来当成没立愿。
+func test_goals() -> void:
+	var meta := State.new_meta()
+	# 没立愿：结算里不该出现了愿这一行。基准要和下面那局各项都对齐，只差「有没有立愿」
+	var plain := State.new_run("escort", meta, 77)
+	plain.phase = "ending"
+	plain.pday = 20
+	plain.kills = 300
+	plain.waves_survived = 7
+	var g0: Dictionary = Ledger.daoxin_gain(plain)
+	for l in g0.lines:
+		check(not "了愿" in str(l[0]), "没立愿却出现了愿行：%s" % str(l[0]))
+	# 立三个愿且全部达成：杀满 200、七次全守、活到终局
+	var run := State.new_run("escort", meta, 77, "normal", ["slay_200", "hold_all", "survive"])
+	check(State.goals_of(run).size() == 3, "立的愿没记进 run.tally")
+	run.phase = "ending"
+	run.pday = 20
+	run.kills = 200
+	run.waves_survived = 7
+	var all_met: Array = Ledger.goal_results(run)
+	check(all_met.size() == 3, "立三个愿只认出 %d 个" % all_met.size())
+	for g in all_met:
+		check(bool(g.met), "该达成的愿没达成：%s" % str(g.id))
+	var g1: Dictionary = Ledger.daoxin_gain(run)
+	var goal_part := 0
+	for l in g1.lines:
+		if "了愿" in str(l[0]):
+			goal_part += int(l[1])
+	check(goal_part == 30, "三个愿满额应是 30 道心，实得 %d" % goal_part)
+	check(int(g1.total) == int(g0.total) + 30, "了愿没加到总分里：%d vs %d" % [int(g1.total), int(g0.total)])
+	# 差一点：杀 199、只守 6 次、且是病死（phase=dead）→ 三个都不算
+	var near := State.new_run("escort", meta, 77, "normal", ["slay_200", "hold_all", "survive"])
+	near.phase = "dead"
+	near.pday = 20
+	near.kills = 199
+	near.waves_survived = 6
+	var near_met: Array = Ledger.goal_results(near)
+	for g in near_met:
+		check(not bool(g.met), "差一点也算达成了：%s" % str(g.id))
+	var g2: Dictionary = Ledger.daoxin_gain(near)
+	for l in g2.lines:
+		if "了愿" in str(l[0]):
+			check(int(l[1]) == 0 and "未成" in str(l[0]), "没达成的愿没标未成：%s" % str(l))
+	# 病死在第 20 日不算「活到终局」：pday 够但 phase 不是 ending
+	var died := State.new_run("escort", meta, 77, "normal", ["survive"])
+	died.phase = "dead"
+	died.pday = 20
+	check(not bool(Ledger.goal_results(died)[0].met), "病死在第 20 日却被算成活到终局")
+	# 旧存档（v7）没有 tally：迁上来当成没立愿，且不能崩
+	var old := State.new_run("escort", meta, 77)
+	old.erase("tally")
+	old.version = 7
+	var up: Dictionary = Migrate.upgrade(old)
+	check(up.has("tally") and State.goals_of(up).is_empty(), "旧存档没补上空的 tally")
+	check(Ledger.daoxin_gain(up).lines.size() > 0, "补了 tally 之后结算崩了")
+	print("了愿：没立愿 %d 道心；三个愿全达 %d（+%d）；差一点 %d" % [
+		int(g0.total), int(g1.total), goal_part, int(g2.total)])
 
 
 ## 载具：负重和赶路时辰都按 data/items.json 的 vehicle 块算；几辆同时有取最快的一辆，不叠加。

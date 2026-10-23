@@ -66,12 +66,12 @@ func _card(d: Dictionary) -> Control:
 
 
 func _start() -> void:
-	var role_id: String = Game.pending_role
-	if role_id == "":
+	if Game.pending_role == "":
 		Game.go("roles")
 		return
-	Game.pending_role = ""
-	Game.new_game(role_id, _picked)
+	# 难度定了，接着去挑了愿（挑战自选的第一步）
+	Game.pending_difficulty = _picked
+	Game.go("challenge")
 
 
 func _default_of(k: String) -> float:

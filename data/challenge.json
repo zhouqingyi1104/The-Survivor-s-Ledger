@@ -1,0 +1,10 @@
+{
+  "_note": "挑战自选。goals=了愿（一局目标，达成才给道心），vows=誓约（放弃一条路换倍率），boons=凭仗（多给东西换倍率下调）。目前只实现了愿，vows/boons 留空占位。",
+  "goals": [
+    {"id": "slay_200", "name": "杀满", "desc": "一局斩尸 200 具以上。", "stat": "kills", "at_least": 200, "bonus": 10},
+    {"id": "hold_all", "name": "全守", "desc": "七次尸潮一次都不失守。", "stat": "waves_survived", "at_least": 7, "bonus": 12},
+    {"id": "survive", "name": "活到终局", "desc": "活到第二十日的天亮，不靠翻生死簿。", "stat": "pday", "at_least": 20, "phase": "ending", "bonus": 8}
+  ],
+  "vows": [],
+  "boons": []
+}

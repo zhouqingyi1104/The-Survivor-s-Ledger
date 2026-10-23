@@ -40,8 +40,18 @@ func run_flow() -> void:
 	await press("就是他了")
 	check(Game.screen == "difficulty", "没进选难度界面")
 	await press("就这个")
+	check(Game.screen == "challenge", "没进了愿界面")
+	# 勾选要能重画而不叠层（build() 只往 self 追加，忘了 clear 就会每点一次多一层）
+	var rows_before: int = screen().find_children("*", "Label", true, false).size()
+	screen()._toggle("slay_200", true)
+	var rows_after: int = screen().find_children("*", "Label", true, false).size()
+	check(rows_after == rows_before, "勾选后界面重复叠加了：%d → %d" % [rows_before, rows_after])
+	check("slay_200" in screen()._picked, "勾了愿却没记下")
+	screen()._toggle("slay_200", false)
+	await press("不立愿")
 	check(Game.screen == "pre" and Game.run.role == "scholar", "没开局")
 	check(str(Game.run.get("difficulty", "")) != "", "开局没带上难度")
+	check(State.goals_of(Game.run).is_empty(), "选了不立愿却带着愿开局")
 	screen().world.walk_speed = 400.0
 
 	# ---- 备劫：走到营造坊订门闩，到米行买米，到杂货铺买柴，回家 ----

@@ -7,10 +7,11 @@ extends RefCounted
 ##   v5：被砸烂的家具记进 run.broken（要拿材料重做）。
 ##   v6：能源链——柴油发电机 + 暖气，夜里烧柴油转机器（run.powered）。
 ##   v7：难度预设（run.difficulty），四档参数乘数。
+##   v8：挑战自选——了愿（tally.goals）与记账本（bought / repair_door / home_trips）。
 
 const Post = preload("res://scripts/core/post.gd")
 
-const VERSION := 7
+const VERSION := 8
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -29,6 +30,8 @@ const ADDED_5 := {"broken": []}
 const ADDED_6 := {"powered": false}
 ## v7 新加的字段
 const ADDED_7 := {"difficulty": "normal"}
+## v8 新加的字段（挑战记账本；老存档一律当成没挑了愿）
+const ADDED_8 := {"tally": {"goals": [], "vows": [], "boons": [], "bought": {}, "repair_door": 0, "home_trips": 0}}
 ## v1 的时段（晨 / 午 / 暮 / 夜）→ 当天第几分钟（从 6:00 起）：8:00、12:00、16:00、18:00
 const SEG_MINUTE := [120, 360, 600, 720]
 
@@ -97,5 +100,10 @@ static func upgrade(run: Dictionary) -> Dictionary:
 			if not run.has(key):
 				var val = ADDED_7[key]
 				run[key] = val.duplicate() if (val is Dictionary or val is Array) else val
+	if v < 8:
+		for key in ADDED_8:
+			if not run.has(key):
+				var val = ADDED_8[key]
+				run[key] = val.duplicate(true) if (val is Dictionary or val is Array) else val
 	run.version = VERSION
 	return run

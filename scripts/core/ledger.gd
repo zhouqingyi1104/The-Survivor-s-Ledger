@@ -132,10 +132,36 @@ static func daoxin_gain(run: Dictionary, bonus := 0) -> Dictionary:
 		lines.append(["新得残卷 %d 篇" % run.clues_new.size(), run.clues_new.size() * 5])
 	if bonus > 0:
 		lines.append(["劫满", bonus])
+	# 了愿：挑了的都列出来，达成的给分、没达成的标"未成"给 0——
+	# 不达成就悄无声息地少了 20 道心，玩家会以为出了 bug
+	for g in goal_results(run):
+		lines.append([("了愿·" + str(g.name)) if bool(g.met) else ("了愿·%s（未成）" % str(g.name)), int(g.bonus)])
 	var total := 0
 	for l in lines:
 		total += int(l[1])
 	return {"lines": lines, "total": total, "days": days}
+
+
+## 这一局挑了的愿，各自达成没有。返回 [{id, name, met, bonus}]。
+## 条件全写在 data/challenge.json 里：stat 取 run 上的字段，at_least 是门槛；
+## 带 phase 的还要求局面停在那个阶段（比如"活到终局"必须 phase == ending，病死在第 20 日不算）。
+static func goal_results(run: Dictionary) -> Array:
+	var picked: Array = State.goals_of(run)
+	var out := []
+	if picked.is_empty():
+		return out
+	for g in Data.table("challenge").get("goals", []):
+		var id := str(g.get("id", ""))
+		if not id in picked:
+			continue
+		var met := true
+		if g.has("phase") and str(run.get("phase", "")) != str(g.phase):
+			met = false
+		if met and float(run.get(g.get("stat", ""), 0.0)) < float(g.get("at_least", 0.0)):
+			met = false
+		out.append({"id": id, "name": str(g.get("name", id)), "met": met,
+			"bonus": int(g.get("bonus", 0)) if met else 0})
+	return out
 
 
 ## 把这一轮学到的东西记进 meta（残卷是记忆，翻回去也不会忘）。
