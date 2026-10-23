@@ -45,6 +45,9 @@ var res_min: Dictionary = {}
 var res_days := 0
 ## 柴炭同时见底的早晨数——那种早晨晚上就要挨冻
 var res_zero := 0
+## 诊断用：备劫时买货被拦下的原因（银子 vs 负重 vs 缺货 vs 关门）
+var block_reasons: Dictionary = {}
+var pre_silver_start := 0
 ## 誓约对照段每档跑几局。6 局时 2/6 和 3/6 只差一局，噪声有一档，20 局才敢下结论。
 const VOW_SAMPLE := 40
 
@@ -175,6 +178,28 @@ func _init() -> void:
 		int(res_min.get("silver", 0))])
 	print("  柴炭同时见底的早晨：%d / %d" % [res_zero, res_days])
 
+	# 备劫到底卡在哪个约束上：银子、负重、还是缺货？
+	# 这决定"降低开局银两"这种调整有没有意义——若玩家本来就买不完（负重先满），降钱等于没改。
+	vows_picked = []
+	block_reasons = {}
+	var bs0 := 0
+	var bs1 := 0
+	for k in VOW_SAMPLE:
+		var br: Dictionary = play(roles[k % roles.size()], 5000 + k)
+		bs0 += int(br.silver_start)
+		bs1 += int(br.silver_left)
+	var bdk := float(VOW_SAMPLE)
+	print("--- 诊断：备劫的约束（%d 局） ---" % VOW_SAMPLE)
+	print("  开局银两均 %s，备劫后剩 %s（花掉 %.0f%%）" % [
+		Pre.money(int(bs0 / bdk)), Pre.money(int(bs1 / bdk)),
+		100.0 * (1.0 - float(bs1) / maxf(1.0, float(bs0)))])
+	var bkeys := block_reasons.keys()
+	bkeys.sort()
+	var bparts := []
+	for bk in bkeys:
+		bparts.append("%s %d 次" % [str(bk), int(block_reasons[bk])])
+	print("  买不了的原因：%s" % ("、".join(bparts) if not bparts.is_empty() else "一次没被拦（购物清单本来就买得完）"))
+
 	print("--- 对照：挑战誓约 × %d 局（寻常年景，机器人也守约） ---" % VOW_SAMPLE)
 	# 前三档可比：只加"不改备劫打法"的誓约（不点灯去掉灯油、不修门跳过修门、空手清空随身物）。
 	var vow_set := ["no_lamp", "no_door", "bare"]
@@ -286,6 +311,22 @@ func _skip_by_vow(id: String) -> bool:
 	return false
 
 
+## 把"买不了"的原因归类计数。这是判断"钱还是负重才是约束"的唯一依据。
+func _count_block(why: String) -> void:
+	var key := why
+	if why.begins_with("银子"):
+		key = "银子不够"
+	elif why.begins_with("车上装不下"):
+		key = "车上装不下"
+	elif why.begins_with("货不够"):
+		key = "货不够"
+	elif why.begins_with("已经关门"):
+		key = "关了门"
+	if key == "":
+		return
+	block_reasons[key] = int(block_reasons.get(key, 0)) + 1
+
+
 func shop_pre(run: Dictionary) -> void:
 	var plan := SHOPPING.duplicate(true)
 	var guard := 0
@@ -321,6 +362,8 @@ func shop_pre(run: Dictionary) -> void:
 			var n := mini(want, Pre.max_buy(run, id))
 			if n > 0:
 				Pre.buy(run, id, n)
+			if n < want:
+				_count_block(Pre.buy_block(run, id, 1))
 			if n < want and Pre.buy_block(run, id, 1).begins_with("车上"):
 				full = true
 		if full:
@@ -547,6 +590,7 @@ func play_day(run: Dictionary) -> void:
 func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionary:
 	var meta := State.new_meta()
 	var run := State.new_run(role, meta, seed_value, difficulty_id, [], [], vows_picked)
+	pre_silver_start = int(run.silver)
 	shop_pre(run)
 	# 诊断三臂里的"白送油"：备完劫直接塞两壶，不花钱不占车上负重
 	if free_oil:
@@ -569,6 +613,7 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 			broken += 1
 	return {"line": line, "days": gain.days, "win": win, "hp": State.attr(run, "hp"),
 		"daoxin": int(gain.total), "broken": broken,
+		"silver_start": pre_silver_start, "silver_left": silver_left,
 		"tally": _tally_copy(run), "furniture": run.furniture.duplicate()}
 
 
