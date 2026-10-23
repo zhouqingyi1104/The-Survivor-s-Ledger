@@ -114,6 +114,10 @@ func build() -> void:
 		int(meta.runs), int(meta.best_day), int(meta.endings)]))
 	foot_row.add_child(_tiny("原型 v0.6"))
 	foot_col.add_child(foot_row)
+	# Decorative descendants also cover the menu: ignoring only their parent
+	# does not prevent children from intercepting pointer input.
+	_ignore_pointer(bottom)
+	_ignore_pointer(foot)
 
 	# 入场：整屏淡入
 	modulate = Color(1, 1, 1, 0.0)
@@ -130,6 +134,13 @@ func _process(_delta: float) -> void:
 
 
 # ---------- 小件 ----------
+
+func _ignore_pointer(node: Node) -> void:
+	if node is Control:
+		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in node.get_children():
+		_ignore_pointer(child)
+
 
 ## 左侧菜单的一条：平时是灰的，指上去变暖白并沉下去一点。
 func _item(text: String, cb: Callable, strong := false) -> Button:
