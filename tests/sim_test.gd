@@ -33,8 +33,14 @@ var lazy := false
 var policy := "hold"
 ## 这一局机器人带了哪些誓约（策略要照着守，否则测的是"一开局就破约"）
 var vows_picked: Array = []
+## 诊断用：灯油白送（不花钱、不占负重，但夜里照样点得上）。
+## 用来分开"灯油有用但太贵"和"灯油根本没用"——只比"买/不买"两臂是分不清的。
+var free_oil := false
+## 诊断用：把每晚的「尸潮数量 / 守力」记下来，看夜里到底有没有悬念
+var log_waves := false
+var wave_log: Array = []
 ## 誓约对照段每档跑几局。6 局时 2/6 和 3/6 只差一局，噪声有一档，20 局才敢下结论。
-const VOW_SAMPLE := 20
+const VOW_SAMPLE := 40
 
 
 func _init() -> void:
@@ -100,6 +106,55 @@ func _init() -> void:
 			if r.win:
 				dw += 1
 		print("  %-6s 劫满 %d/6　平均存活 %.1f 日　终局气血 %.0f" % [str(d.name), dw, ddays / 6.0, dhp / 6.0])
+	# 诊断：基准局（无誓约）里每条誓约"若立则违约"几次。
+	# 这一步是为了区分两种"测不出"：誓约真的不咬人，还是这个机器人的打法根本不碰它
+	# （那就是测量无效，不能拿来给数值定罪）。数据库里早就有 tally，白拿。
+	print("--- 诊断：基准局（无誓约）里各誓约的触发次数，%d 局 ---" % VOW_SAMPLE)
+	vows_picked = []
+	var lamp_games := 0
+	var lamp_sum := 0
+	var trap_games := 0
+	var door_sum := 0
+	var door_zero := 0
+	var trip_sum := 0
+	var trip_ok := 0
+	for k in VOW_SAMPLE:
+		var br: Dictionary = play(roles[k % roles.size()], 5000 + k)
+		var t: Dictionary = br.tally
+		var lamp := int(t.get("bought", {}).get("lamp_oil", 0))
+		lamp_sum += lamp
+		if lamp > 0:
+			lamp_games += 1
+		if "rat_trap" in br.furniture:
+			trap_games += 1
+		var dr := int(t.get("repair_door", 0))
+		door_sum += dr
+		if dr == 0:
+			door_zero += 1
+		var tr := int(t.get("home_trips", 0))
+		trip_sum += tr
+		if tr <= 1:
+			trip_ok += 1
+	var den := float(VOW_SAMPLE)
+	print("  不点灯  买过灯油 %d/%d 局，平均 %.1f 壶（不吃灯油 %d 局）" % [lamp_games, VOW_SAMPLE, lamp_sum / den, VOW_SAMPLE - lamp_games])
+	print("  不设笼  摆过捕鼠笼 %d/%d 局" % [trap_games, VOW_SAMPLE])
+	print("  不修门  平均修门 %.1f 次；一次没修 %d/%d 局" % [door_sum / den, door_zero, VOW_SAMPLE])
+	print("  一趟    平均回家 %.1f 次；只回 ≤1 次 %d/%d 局" % [trip_sum / den, trip_ok, VOW_SAMPLE])
+
+	# 再往下追一层：为什么"白送的灯油"也几乎不涨胜率？
+	# 如果守力常年远超尸潮数量，那些 ×0.7 / ×1.1 的乘数就没有实际效果，
+	# 灯油本来就白买、誓约自然也咬不着人。用一局把这条曲线打出来。
+	log_waves = true
+	wave_log = []
+	vows_picked = []
+	play("scholar", 5000)
+	log_waves = false
+	print("--- 诊断：守力 vs 尸潮（书生 seed 5000，逐夜） ---")
+	for w in wave_log:
+		print("  第%2d夜  尸潮 %3d  守力 %5.0f  守力/尸潮 %4.1f  %s%s" % [
+			int(w.day), int(w.count), float(w.power), float(w.power) / maxf(1.0, float(w.count)),
+			"[暗夜·点了灯]" if w.lamp else "", "  [破]" if w.breached else ""])
+
 	print("--- 对照：挑战誓约 × %d 局（寻常年景，机器人也守约） ---" % VOW_SAMPLE)
 	# 前三档可比：只加"不改备劫打法"的誓约（不点灯去掉灯油、不修门跳过修门、空手清空随身物）。
 	var vow_set := ["no_lamp", "no_door", "bare"]
@@ -119,6 +174,21 @@ func _init() -> void:
 		print("  %d 条誓约（%s）劫满 %d/%d　平均存活 %.1f 日　平均道心 %.0f　破约 %d 次" % [
 			n, "无" if n == 0 else ",".join(vows_picked), vw, VOW_SAMPLE,
 			vdays / float(VOW_SAMPLE), vdaoxin / float(VOW_SAMPLE), vbroken])
+	# 第三臂：灯油白送。**不买**（省下 300 文和 4 斤负重）**但白给两壶**，
+	# 于是和"不买"那一臂只差"有没有油"、和"买"那一臂只差"花没花钱"，成本被钉住。
+	# 只比买/不买两臂是分不开"没用"和"太贵"的。
+	free_oil = true
+	vows_picked = []
+	var ow := 0
+	var odays := 0
+	for k in VOW_SAMPLE:
+		var oil_run: Dictionary = play(roles[k % roles.size()], 5000 + k)
+		odays += int(oil_run.days)
+		if oil_run.win:
+			ow += 1
+	free_oil = false
+	print("  [三臂对照] 灯油白送（不花钱、0 负重）劫满 %d/%d　平均存活 %.1f 日" % [
+		ow, VOW_SAMPLE, odays / float(VOW_SAMPLE)])
 	# 「一趟」单独测：它会改掉整个备劫打法（装不下就不买、不中途回家卸货），
 	# 所以不能和前几档横着比——第一次把它塞进同一张表，4 条誓约反而比 3 条活得久，就是混淆。
 	vows_picked = ["one_trip"]
@@ -173,7 +243,7 @@ func check_invariants(run: Dictionary) -> void:
 
 ## 带了某些誓约就不能碰的东西（机器人也得守约，否则测出来的是"誓约立刻被破"而不是难度）
 func _skip_by_vow(id: String) -> bool:
-	if "no_lamp" in vows_picked and id == "lamp_oil":
+	if ("no_lamp" in vows_picked or free_oil) and id == "lamp_oil":
 		return true
 	return false
 
@@ -395,6 +465,13 @@ func play_day(run: Dictionary) -> void:
 				print("  第%d夜 第一轮 斩%d 进院%d 气血%d" % [run.pday, w.killed, w.get("enter", 0), State.attr(run, "hp")])
 			continue
 		if not run.wave_report.is_empty():
+			if log_waves:
+				wave_log.append({
+					"day": int(run.pday), "count": int(run.wave_report.get("count", 0)),
+					"power": float(run.wave_report.get("power", 0.0)),
+					"lamp": bool(run.wave_report.get("lamp", false)),
+					"breached": bool(run.wave_report.get("breached", false)),
+				})
 			Post.ack_wave(run)
 			continue
 		if run.dawn_due:
@@ -422,6 +499,9 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 	var meta := State.new_meta()
 	var run := State.new_run(role, meta, seed_value, difficulty_id, [], [], vows_picked)
 	shop_pre(run)
+	# 诊断三臂里的"白送油"：备完劫直接塞两壶，不花钱不占车上负重
+	if free_oil:
+		Inv.add(run.home, "lamp_oil", 2)
 	var silver_left := int(run.silver)
 	var guard := 0
 	while run.phase == "post" and guard < 40:
@@ -439,7 +519,19 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 		if not bool(v.met):
 			broken += 1
 	return {"line": line, "days": gain.days, "win": win, "hp": State.attr(run, "hp"),
-		"daoxin": int(gain.total), "broken": broken}
+		"daoxin": int(gain.total), "broken": broken,
+		"tally": _tally_copy(run), "furniture": run.furniture.duplicate()}
+
+
+## 诊断用：跑完一局后把记账抄一份出来（不然引用会被下一局覆盖）。
+## run.tally 只有两层，手抄一遍足够，不用找深拷贝的库函数。
+static func _tally_copy(run: Dictionary) -> Dictionary:
+	var t: Dictionary = run.get("tally", {})
+	var out := {}
+	for k in t:
+		var v = t[k]
+		out[k] = v.duplicate(true) if (v is Dictionary or v is Array) else v
+	return out
 
 
 # ---------- 院门攻防 ----------
@@ -700,6 +792,14 @@ func test_goals() -> void:
 
 
 ## 誓约：五条各自的判定、破了要静默降倍率并在结算里说明、空手要真清空随身物。
+## 五条誓约全挑能抬多少（打印用）
+func _vow_lift() -> float:
+	var lift := 0.0
+	for v in Data.table("challenge").vows:
+		lift += float(v.mul) - 1.0
+	return lift
+
+
 func test_vows() -> void:
 	var meta := State.new_meta()
 	# 空手：身份带的随身物一件不留
@@ -710,7 +810,7 @@ func test_vows() -> void:
 	check(rich.home.size() > bare.home.size(), "空手和没空手开局一样")
 	# 不点灯：买过灯油就算破
 	var lamp := State.new_run("escort", meta, 77, "normal", [], [], ["no_lamp"])
-	check(is_equal_approx(Ledger.challenge_mul(lamp), 1.15), "不点灯没抬倍率：%.2f" % Ledger.challenge_mul(lamp))
+	check(is_equal_approx(Ledger.challenge_mul(lamp), 1.10), "不点灯没抬倍率：%.2f" % Ledger.challenge_mul(lamp))
 	check(bool(Ledger.vow_results(lamp)[0].met), "还没买就判成破了")
 	lamp.loc = "grocery"
 	Pre.buy(lamp, "lamp_oil", 1)
@@ -718,7 +818,7 @@ func test_vows() -> void:
 	check(is_equal_approx(Ledger.challenge_mul(lamp), 1.0), "破了誓约倍率没收回去：%.2f" % Ledger.challenge_mul(lamp))
 	# 不修门：修过一次就算破
 	var door := State.new_run("escort", meta, 77, "normal", [], [], ["no_door"])
-	check(is_equal_approx(Ledger.challenge_mul(door), 1.20), "不修门没抬倍率：%.2f" % Ledger.challenge_mul(door))
+	check(is_equal_approx(Ledger.challenge_mul(door), 1.05), "不修门没抬倍率：%.2f" % Ledger.challenge_mul(door))
 	door.phase = "post"
 	door.pday = 3
 	door.t = 2 * Post.DAY + 60
@@ -742,14 +842,15 @@ func test_vows() -> void:
 	check(not bool(Ledger.vow_results(auto)[0].met), "自动修了门却没判破")
 	# 一趟：回家卸货超过一次就算破
 	var trip := State.new_run("escort", meta, 77, "normal", [], [], ["one_trip"])
-	check(is_equal_approx(Ledger.challenge_mul(trip), 1.15), "一趟没抬倍率：%.2f" % Ledger.challenge_mul(trip))
+	check(is_equal_approx(Ledger.challenge_mul(trip), 1.00), "一趟的倍率该是 1.00（实测它更容易，不配给奖励）：%.2f" % Ledger.challenge_mul(trip))
 	trip.loc = "rice_shop"
 	Pre.travel(trip, "home")
 	check(bool(Ledger.vow_results(trip)[0].met), "只回一趟就判破了")
 	Pre.travel(trip, "rice_shop")
 	Pre.travel(trip, "home")
 	check(not bool(Ledger.vow_results(trip)[0].met), "回了两趟却没判破")
-	# 决定性核对：一趟守住了，结算总分必须正好是 ×1.15
+	# 决定性核对：一趟现在不给倍率，守住了总分必须和基准一模一样
+	# （原来是 ×1.15 的核对，40 局实测它反而好赢 3 局，倍率降回 1.00）
 	var t_a := State.new_run("escort", meta, 77, "normal", [], [], ["one_trip"])
 	var t_b := State.new_run("escort", meta, 77)
 	for r in [t_a, t_b]:
@@ -758,20 +859,20 @@ func test_vows() -> void:
 		r.waves_survived = 7
 	var ta_total := int(Ledger.daoxin_gain(t_a).total)
 	var tb_total := int(Ledger.daoxin_gain(t_b).total)
-	check(ta_total == int(round(tb_total * 1.15)), "一趟的 ×1.15 没乘进总分：%d vs %d ×1.15" % [ta_total, tb_total])
+	check(ta_total == tb_total, "一趟不抬倍率，总分该和基准相同：%d vs %d" % [ta_total, tb_total])
 	# 不设笼：院里摆了捕鼠笼就算破
 	var trap := State.new_run("escort", meta, 77, "normal", [], [], ["no_trap"])
 	check(bool(Ledger.vow_results(trap)[0].met), "还没摆就判成破了")
 	trap.furniture = [{"id": "rat_trap", "uid": 1, "x": 0.0, "z": 0.0, "rot": 0, "job": {}}]
 	check(not bool(Ledger.vow_results(trap)[0].met), "摆了捕鼠笼却没判破")
-	# 多条同时：全守约 ×1.50（上限 1.5），破一条就掉一档
+	# 多条同时：1.10 + 0.05 + 0.10 = 1.25，破一条就掉一档
 	var three := State.new_run("escort", meta, 77, "normal", [], [], ["no_lamp", "no_door", "bare"])
-	check(is_equal_approx(Ledger.challenge_mul(three), 1.50), "三条全守的倍率不对：%.2f" % Ledger.challenge_mul(three))
+	check(is_equal_approx(Ledger.challenge_mul(three), 1.25), "三条全守的倍率不对：%.2f" % Ledger.challenge_mul(three))
 	Inv.add(three.home, "lamp_oil", 1)   # 直接塞进家不算买过，誓约不该破
-	check(is_equal_approx(Ledger.challenge_mul(three), 1.50), "没买只是塞进来，不该判破")
+	check(is_equal_approx(Ledger.challenge_mul(three), 1.25), "没买只是塞进来，不该判破")
 	three.loc = "grocery"
 	Pre.buy(three, "lamp_oil", 1)
-	check(is_equal_approx(Ledger.challenge_mul(three), 1.35), "破一条后倍率不对：%.2f" % Ledger.challenge_mul(three))
+	check(is_equal_approx(Ledger.challenge_mul(three), 1.15), "破一条后倍率不对：%.2f" % Ledger.challenge_mul(three))
 	# 结算里要把破了的誓约写出来（否则玩家以为算错了）
 	var g: Dictionary = Ledger.daoxin_gain(three)
 	var said := false
@@ -779,10 +880,13 @@ func test_vows() -> void:
 		if "已破" in str(l[0]):
 			said = true
 	check(said, "破了誓约，结算里却没说明")
-	# 誓约和凭仗同时挑：1.20 + 0.15 - 0.10 = 1.25
+	# 誓约和凭仗同时挑：0.05 + 0.10 - 0.10 = 1.05
 	var mix := State.new_run("escort", meta, 77, "normal", [], ["extra_silver"], ["no_door", "bare"])
-	check(is_equal_approx(Ledger.challenge_mul(mix), 1.25), "誓约+凭仗混算不对：%.2f" % Ledger.challenge_mul(mix))
-	print("誓约：不点灯×1.15（买油即破）、不修门×1.20（修一次即破）、一趟×1.15（回两趟即破）、空手×1.15（清空）、不设笼×1.10（摆笼即破）；三条全守 ×1.50 封顶")
+	check(is_equal_approx(Ledger.challenge_mul(mix), 1.05), "誓约+凭仗混算不对：%.2f" % Ledger.challenge_mul(mix))
+	var vs := []
+	for v in Data.table("challenge").vows:
+		vs.append("%s×%.2f" % [str(v.name), float(v.mul)])
+	print("誓约（倍率按实测代价定价）：%s；五条全挑 ×%.2f" % ["、".join(vs), 1.0 + _vow_lift()])
 
 
 ## 凭仗：开局真的发东西、倍率真的打折、三个凭仗扣到底也不破 0.5 的下限；

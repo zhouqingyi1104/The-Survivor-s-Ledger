@@ -76,8 +76,10 @@ func _row(item: Dictionary, bucket: Array, field: String, kind: int) -> Control:
 			tag_text = "道心 −%d%%" % int(round(val * 100.0))
 			tag_col = UI.INK_FAINT
 		2:
-			tag_text = "道心 ×%.2f" % val
-			tag_col = UI.JADE
+			# ×1.00 的誓约不抬倍率（「一趟」实测反而好赢，按数据只给 1.00）。
+			# 直接写「×1.00」看着像没算出来，写明"不加成"。
+			tag_text = "道心 ×%.2f" % val if val > 1.005 else "道心不加成"
+			tag_col = UI.JADE if val > 1.005 else UI.INK_FAINT
 		_:
 			tag_text = "道心 +%d" % int(val)
 	title.add_child(UI.label(tag_text, 16, tag_col))
@@ -114,7 +116,17 @@ func _start_text() -> String:
 	for g in Data.table("challenge").get("goals", []):
 		if str(g.get("id", "")) in _picked:
 			goal_sum += int(g.get("bonus", 0))
-	return "誓 %d 凭 %d 愿 %d（×%.2f / +%d），开始" % [_vows.size(), _boons.size(), _picked.size(), mul, goal_sum]
+	var parts: Array = []
+	if not _vows.is_empty():
+		parts.append("立誓 %d" % _vows.size())
+	if not _boons.is_empty():
+		parts.append("凭仗 %d" % _boons.size())
+	if not _picked.is_empty():
+		parts.append("了愿 %d" % _picked.size())
+	var tail := "道心 ×%.2f" % mul
+	if goal_sum > 0:
+		tail += "，另加 %d" % goal_sum
+	return "%s｜%s，开始" % [" · ".join(parts), tail]
 
 
 func _start(with_picks: bool) -> void:

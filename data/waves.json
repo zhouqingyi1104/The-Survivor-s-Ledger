@@ -33,7 +33,8 @@
   "mods": {
     "horde":      {"name": "尸海", "omen": "群鸦夜鸣不止，城北黑压压一片。", "count_mul": 1.5},
     "armored":    {"name": "铜甲", "omen": "义庄方向传来金铁相击之声。", "cost": 1.6},
-    "dark":       {"name": "月黑", "omen": "天色阴沉，今夜无月。", "dark": true},
+    "dark":       {"name": "月黑", "omen": "天色阴沉，今夜无月。", "dark": true,
+                   "lit_mul": 1.1, "unlit_mul": 0.7},
     "pincer":     {"name": "夹击", "omen": "后巷的野狗也狂吠起来。", "split": "pincer"},
     "blood_moon": {"name": "血月", "omen": "月色殷红如血——劫数到了最后一夜。", "count_mul": 1.2, "cost": 1.3}
   },

@@ -232,13 +232,17 @@ static func surface_power(run: Dictionary, sid: String) -> Dictionary:
 	if State.attr(run, "warmth") < 15:
 		total *= 0.85
 		lines.append(["手脚冻僵 ×0.85", 0])
-	# 夜里点了灯，三面都看得清
+	# 夜里点了灯，三面都看得清。两个乘数写在 data/waves.json 的 dark 里，
+	# 调灯油值不值这个价只改数据，不用动代码。
+	var moon: Dictionary = Data.table("waves").mods.dark
 	if run.get("night", {}).get("lamp", false):
-		total *= 1.1
-		lines.append(["点灯 ×1.1", 0])
+		var lit := float(moon.get("lit_mul", 1.1))
+		total *= lit
+		lines.append(["点灯 ×%.2f" % lit, 0])
 	elif run.get("night", {}).get("dark_unlit", false):
-		total *= 0.7
-		lines.append(["月黑无灯 ×0.7", 0])
+		var unlit := float(moon.get("unlit_mul", 0.7))
+		total *= unlit
+		lines.append(["月黑无灯 ×%.2f" % unlit, 0])
 	return {"total": total, "lines": lines}
 
 
