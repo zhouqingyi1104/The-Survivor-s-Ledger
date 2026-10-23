@@ -6,10 +6,11 @@ extends RefCounted
 ##   v4：三面（门/窗/院墙）+ 三轮夜战 + 守夜方针。
 ##   v5：被砸烂的家具记进 run.broken（要拿材料重做）。
 ##   v6：能源链——柴油发电机 + 暖气，夜里烧柴油转机器（run.powered）。
+##   v7：难度预设（run.difficulty），四档参数乘数。
 
 const Post = preload("res://scripts/core/post.gd")
 
-const VERSION := 6
+const VERSION := 7
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -26,6 +27,8 @@ const ADDED_4 := {
 const ADDED_5 := {"broken": []}
 ## v6 新加的字段
 const ADDED_6 := {"powered": false}
+## v7 新加的字段
+const ADDED_7 := {"difficulty": "normal"}
 ## v1 的时段（晨 / 午 / 暮 / 夜）→ 当天第几分钟（从 6:00 起）：8:00、12:00、16:00、18:00
 const SEG_MINUTE := [120, 360, 600, 720]
 
@@ -88,6 +91,11 @@ static func upgrade(run: Dictionary) -> Dictionary:
 		for key in ADDED_6:
 			if not run.has(key):
 				var val = ADDED_6[key]
+				run[key] = val.duplicate() if (val is Dictionary or val is Array) else val
+	if v < 7:
+		for key in ADDED_7:
+			if not run.has(key):
+				var val = ADDED_7[key]
 				run[key] = val.duplicate() if (val is Dictionary or val is Array) else val
 	run.version = VERSION
 	return run

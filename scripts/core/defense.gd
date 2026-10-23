@@ -30,16 +30,27 @@ static func leak_damage(day: int) -> int:
 	return LEAK_BASE + int((maxi(0, day) - 1) / LEAK_STEP_DAYS)
 
 
-static func wave_for_day(day: int) -> Dictionary:
+## 某一天会不会来尸潮、来多少。mul 是难度乘数（荒年更密、暖冬更稀）。
+static func wave_for_day(day: int, mul := 1.0) -> Dictionary:
 	var cfg: Dictionary = Data.table("waves")
 	for w in cfg.waves:
 		if int(w.day) == day:
-			return w
+			return _scaled(w, mul)
 	var e: Dictionary = cfg.endless
 	if day > State.STORY_DAYS and (day - State.STORY_DAYS) % int(e.every) == 0:
 		var n := (day - State.STORY_DAYS) / int(e.every)
-		return {"day": day, "count": int(e.base) + int(e.step) * (n - 1), "mods": ENDLESS_MODS[n % ENDLESS_MODS.size()]}
+		return _scaled({"day": day, "count": int(e.base) + int(e.step) * (n - 1),
+			"mods": ENDLESS_MODS[n % ENDLESS_MODS.size()]}, mul)
 	return {}
+
+
+## 按难度乘数缩放尸潮数量；mods 里的 count_mul 之后还会再乘一次，别在这里重复算。
+static func _scaled(w: Dictionary, mul: float) -> Dictionary:
+	if is_equal_approx(mul, 1.0):
+		return w
+	var out: Dictionary = w.duplicate()
+	out["count"] = maxi(1, int(round(float(w.count) * mul)))
+	return out
 
 
 static func mod_names(wave: Dictionary) -> String:
@@ -75,7 +86,7 @@ static func forecast(run: Dictionary) -> Array:
 	var out := []
 	var horizon := 2 if State.has_facility(run, "watchtower") else 1
 	for d in range(run.pday, run.pday + horizon + 1):
-		var w := wave_for_day(d)
+		var w := wave_for_day(d, float(State.diff(run).wave_mul))
 		if w.is_empty():
 			continue
 		var when := "今夜" if d == run.pday else ("明夜" if d == run.pday + 1 else "后夜")

@@ -22,18 +22,21 @@ static func new_meta() -> Dictionary:
 	return {"daoxin": 0, "talents": [], "runs": 0, "deaths": 0, "best_day": 0, "clues": [], "endings": 0}
 
 
-static func new_run(role_id: String, meta: Dictionary, seed_value: int) -> Dictionary:
+static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal") -> Dictionary:
 	var role_data: Dictionary = Data.table("roles")[role_id]
 	var talents: Array = meta.get("talents", []).duplicate()
-	var hp_max: int = role_data.hp_max + (20 if "jinzhong" in talents else 0)
+	var d: Dictionary = diff_params(difficulty_id)
+	var hp_max: int = int(round(float(role_data.hp_max) * float(d.get("hp_mul", 1.0))))
+	var silver: int = int(round(float(role_data.silver) * float(d.get("silver_mul", 1.0))))
 	var run := {
-		"version": 6, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
+		"version": 7, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
+		"difficulty": difficulty_id,
 		"phase": "pre", "day": 1, "hour": OPEN_HOUR, "loc": "home",
 		"pday": 0, "t": 0, "busy": {}, "sleeping": false, "heated": false, "powered": false, "night_lines": [],
 		"wave_due": false, "wave_day": 0, "wave_report": {}, "raid_report": {}, "dawn_due": false,
 		"guard_spot": "", "plan_due": false, "heat_weak": false, "night": {},
 		"fight": {}, "door_open": false, "broken": [],
-		"silver": role_data.silver, "cart": {}, "home": role_data.items.duplicate(),
+		"silver": silver, "cart": {}, "home": role_data.items.duplicate(),
 		"orders": [], "facilities": [], "shops": {},
 		"attrs": {"hp": hp_max, "hp_max": hp_max, "food": 80, "water": 80, "mood": 60, "energy": 100, "warmth": 80},
 		"plague": false,
@@ -60,6 +63,34 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int) -> Dicti
 
 static func role(run: Dictionary) -> Dictionary:
 	return Data.table("roles")[run.role]
+
+
+## 这一局的难度参数（乘数）。没配的就是 1.0，等于寻常年景。
+static func diff(run: Dictionary) -> Dictionary:
+	return diff_params(str(run.get("difficulty", "normal")))
+
+
+## 按难度 id 取参数；id 不存在就退回寻常年景，不让它把一局搅坏。
+static func diff_params(difficulty_id: String) -> Dictionary:
+	var out := {"silver_mul": 1.0, "hp_mul": 1.0, "food_mul": 1.0, "water_mul": 1.0,
+		"cold_add": 0, "wave_mul": 1.0}
+	var list: Array = Data.table("difficulty")
+	for d in list:
+		if str(d.get("id", "")) == difficulty_id:
+			for k in out:
+				if d.get("params", {}).has(k):
+					out[k] = d.params[k]
+			return out
+	return out
+
+
+## 难度名字（HUD、结算、生死簿上用）。
+static func diff_name(run: Dictionary) -> String:
+	var id := str(run.get("difficulty", "normal"))
+	for d in Data.table("difficulty"):
+		if str(d.get("id", "")) == id:
+			return str(d.get("name", "寻常年景"))
+	return "寻常年景"
 
 
 static func has_talent(run: Dictionary, id: String) -> bool:

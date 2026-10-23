@@ -374,7 +374,7 @@ func _night_plan(body: VBoxContainer) -> void:
 	if not run.plan_due:
 		UI.close_modal("night_plan")
 		return
-	var wave := Defense.wave_for_day(int(run.pday))
+	var wave := Defense.wave_for_day(int(run.pday), float(State.diff(run).wave_mul))
 	var total := Defense._count(wave)
 	var mods := Defense.mod_names(wave)
 	body.add_child(UI.para("更鼓敲过二更。街那头铜锣响了，门缝里透进一片火把的光——今夜要来 %d 只%s，分三轮撞门、窗、院墙。" % [

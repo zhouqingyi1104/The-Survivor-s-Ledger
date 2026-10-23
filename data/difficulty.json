@@ -1,0 +1,26 @@
+[
+  {
+    "id": "mild",
+    "name": "暖冬",
+    "desc": "雪小风软，粮也还买得到。给想先看清这游戏的人。",
+    "params": {"silver_mul": 1.25, "hp_mul": 1.10, "food_mul": 0.85, "water_mul": 0.85, "cold_add": -8, "wave_mul": 0.85}
+  },
+  {
+    "id": "normal",
+    "name": "寻常年景",
+    "desc": "就这么过。粮一天天少，夜一天比一天冷，尸潮一夜比一夜近。",
+    "params": {}
+  },
+  {
+    "id": "harsh",
+    "name": "荒年",
+    "desc": "米价先涨，人也先饿。火更难烧，尸潮更密。",
+    "params": {"silver_mul": 0.75, "hp_mul": 0.95, "food_mul": 1.20, "water_mul": 1.10, "cold_add": 6, "wave_mul": 1.15}
+  },
+  {
+    "id": "doom",
+    "name": "永夜",
+    "desc": "冷到骨头里，尸潮多三成，银子只够买半袋米。活过二十日算你赢。",
+    "params": {"silver_mul": 0.60, "hp_mul": 0.90, "food_mul": 1.35, "water_mul": 1.25, "cold_add": 14, "wave_mul": 1.35}
+  }
+]

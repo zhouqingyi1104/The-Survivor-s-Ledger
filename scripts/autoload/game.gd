@@ -35,6 +35,8 @@ var placing := ""
 var placing_rot := 0
 ## 摆放预览的固定落点（截图和测试用；null 时跟着鼠标）
 var placing_at = null
+## 选难度界面挂着：刚挑的身份，定了难度就照这个开局
+var pending_role := ""
 
 
 func _ready() -> void:
@@ -105,11 +107,17 @@ func role_unlocked(role_id: String) -> bool:
 	return true
 
 
-func new_game(role_id: String) -> void:
-	run = State.new_run(role_id, meta, randi())
+func new_game(role_id: String, difficulty_id := "normal") -> void:
+	run = State.new_run(role_id, meta, randi(), difficulty_id)
 	snapshots = {}
 	last_gain = {}
 	_after()
+
+
+## 选完身份，先去定难度（原版 DifficultySelect / ChallengeSetup）。
+func pick_difficulty(role_id: String) -> void:
+	pending_role = role_id
+	go("difficulty")
 
 
 func has_save() -> bool:
@@ -150,8 +158,9 @@ func end_run(bonus := 0) -> Dictionary:
 ## 带着记忆回到三日之前（同一身份重开）。
 func restart_from_cover() -> void:
 	var role_id: String = run.role
+	var d := str(run.get("difficulty", "normal"))
 	end_run(10 if run.phase == "ending" else 0)
-	new_game(role_id)
+	new_game(role_id, d)
 
 
 func close_book() -> void:

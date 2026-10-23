@@ -17,7 +17,7 @@ func build() -> void:
 	var cause := UI.label(run.death_cause, 22)
 	cause.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(cause)
-	var sub := UI.label("判官的朱笔停在你的名字上。残页还能翻 %d 次。" % int(run.rebirths_left), 18, UI.INK_SOFT)
+	var sub := UI.label("判官的朱笔停在你的名字上。%s · 残页还能翻 %d 次。" % [State.diff_name(run), int(run.rebirths_left)], 18, UI.INK_SOFT)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(sub)
 

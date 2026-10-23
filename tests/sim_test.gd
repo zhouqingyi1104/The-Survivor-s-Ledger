@@ -77,6 +77,7 @@ func _init() -> void:
 	test_broken()
 	test_furnish()
 	test_power()
+	test_difficulty()
 	print("不变量失败：%d" % failures)
 	quit(1 if failures > 0 else 0)
 
@@ -544,6 +545,63 @@ func cold_night(role_id: String, seed_value: int) -> Dictionary:
 	run.t = (int(run.pday) - 1) * Post.DAY
 	run.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
 	return run
+
+
+## 难度预设：参数乘数要真的落到开局数值、消耗、寒冷和尸潮上；乱写的 id 要能退回寻常。
+func test_difficulty() -> void:
+	var meta := State.new_meta()
+	var base := State.new_run("scholar", meta, 77)
+	var doom := State.new_run("scholar", meta, 77, "doom")
+	var mild := State.new_run("scholar", meta, 77, "mild")
+	check(str(base.get("difficulty", "")) == "normal", "默认难度没记进存档")
+	# 银两 / 气血：doom 是 0.6 / 0.9，mild 是 1.25 / 1.10
+	check(int(doom.silver) == int(round(22000 * 0.6)), "荒年银两不对：%d" % int(doom.silver))
+	check(int(mild.silver) == int(round(22000 * 1.25)), "暖冬银两不对：%d" % int(mild.silver))
+	check(int(doom.attrs.hp_max) == int(round(100 * 0.9)), "荒年气血上限不对：%d" % int(doom.attrs.hp_max))
+	check(int(mild.attrs.hp_max) == int(round(100 * 1.1)), "暖冬气血上限不对：%d" % int(mild.attrs.hp_max))
+	# 食量 / 水量：同一段时间，doom 掉得更多、mild 掉得更少。
+	# RATE.food = 2.0/小时，90 分钟 = 9 个 10 分钟刻度：寻常 3.0、荒年 4.05、暖冬 2.55
+	var a := State.new_run("escort", meta, 77)
+	var b := State.new_run("escort", meta, 77, "doom")
+	var c := State.new_run("escort", meta, 77, "mild")
+	for r in [a, b, c]:
+		r.phase = "post"
+		r.pday = 12
+		r.t = (int(r.pday) - 1) * Post.DAY
+		r.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
+		r.attrs.food = 80.0
+	for r in [a, b, c]:
+		Post.advance(r, 90)
+	check(absf(80.0 - float(a.attrs.food) - 3.0) < 0.05, "寻常年景 90 分钟没掉 3.0 饱腹：%.2f" % (80.0 - float(a.attrs.food)))
+	check(absf(80.0 - float(b.attrs.food) - 4.05) < 0.05, "荒年 90 分钟没掉 4.05 饱腹：%.2f" % (80.0 - float(b.attrs.food)))
+	check(absf(80.0 - float(c.attrs.food) - 2.55) < 0.05, "暖冬 90 分钟没掉 2.55 饱腹：%.2f" % (80.0 - float(c.attrs.food)))
+	# 寒冷：冬至 cold 30，doom +14 = 44，mild -8 = 22；暖冬仍 > 0 所以还是会取暖
+	for r in [doom, mild]:
+		r.pday = 12
+	check(Post.cold_of(doom) == 44, "荒年寒冷没加上去：%d" % Post.cold_of(doom))
+	check(Post.cold_of(mild) == 22, "暖冬寒冷没减下来：%d" % Post.cold_of(mild))
+	check(Post.cold_of(a) == 30, "寻常年景的寒冷被改了：%d" % Post.cold_of(a))
+	# 尸潮：第 11 夜 24 只，doom 1.35 → 32，mild 0.85 → 20
+	check(int(Defense.wave_for_day(11, 1.0).count) == 24, "第 11 夜基数不对")
+	check(int(Defense.wave_for_day(11, 1.35).count) == 32, "荒年尸潮没放大：%d" % int(Defense.wave_for_day(11, 1.35).count))
+	check(int(Defense.wave_for_day(11, 0.85).count) == 20, "暖冬尸潮没缩小：%d" % int(Defense.wave_for_day(11, 0.85).count))
+	# 难度名字
+	check(State.diff_name(doom) == "永夜", "难度名字不对：%s" % State.diff_name(doom))
+	# 乱写的 id：数值全部退回 1.0，不把一局搅坏
+	var junk := State.new_run("scholar", meta, 77, "不存在的难度")
+	var d: Dictionary = State.diff(junk)
+	for k in ["silver_mul", "hp_mul", "food_mul", "water_mul", "wave_mul"]:
+		check(is_equal_approx(float(d[k]), 1.0), "乱 id 的 %s 没退回 1.0" % k)
+	check(int(junk.silver) == 22000, "乱 id 把开局银两改了")
+	# 旧存档没有 difficulty 字段：迁上来要补 normal
+	var old := State.new_run("scholar", meta, 77)
+	old.erase("difficulty")
+	old.version = 6
+	var up: Dictionary = Migrate.upgrade(old)
+	check(str(up.get("difficulty", "")) == "normal" and int(up.version) == Migrate.VERSION, "旧存档没补上 difficulty")
+	print("难度预设：永夜 银%d 血%d 冷%d° 第11夜%d只；暖冬 银%d 冷%d° 第11夜%d只" % [
+		int(doom.silver), int(doom.attrs.hp_max), Post.cold_of(doom), int(Defense.wave_for_day(11, 1.35).count),
+		int(mild.silver), Post.cold_of(mild), int(Defense.wave_for_day(11, 0.85).count)])
 
 
 ## 走到当天 20:00（生火那一刻）。8:00 可能撞上随机事件，弹出来就接着走。

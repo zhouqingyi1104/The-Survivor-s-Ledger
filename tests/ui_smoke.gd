@@ -38,7 +38,10 @@ func run_flow() -> void:
 	await press("新开一卷")
 	check(Game.screen == "roles", "没进选身份界面")
 	await press("就是他了")
+	check(Game.screen == "difficulty", "没进选难度界面")
+	await press("就这个")
 	check(Game.screen == "pre" and Game.run.role == "scholar", "没开局")
+	check(str(Game.run.get("difficulty", "")) != "", "开局没带上难度")
 	screen().world.walk_speed = 400.0
 
 	# ---- 备劫：走到营造坊订门闩，到米行买米，到杂货铺买柴，回家 ----

@@ -858,7 +858,7 @@ func _left_top(run: Dictionary) -> void:
 	# 尸潮预警
 	var f := VBoxContainer.new()
 	f.add_theme_constant_override("separation", 2)
-	var wave := Defense.wave_for_day(run.pday)
+	var wave := Defense.wave_for_day(run.pday, float(State.diff(run).wave_mul))
 	if not wave.is_empty() and int(run.wave_day) != int(run.pday):
 		f.add_child(Hud.title("今夜尸潮", 19, Hud.RED))
 		var mods := Defense.mod_names(wave)
@@ -869,7 +869,7 @@ func _left_top(run: Dictionary) -> void:
 	else:
 		var next := 0
 		for d in range(int(run.pday) + 1, int(run.pday) + 10):
-			if not Defense.wave_for_day(d).is_empty():
+			if not Defense.wave_for_day(d, float(State.diff(run).wave_mul)).is_empty():
 				next = d
 				break
 		f.add_child(Hud.title("预兆", 19, Hud.GOLD))
@@ -950,7 +950,7 @@ func _right_top(run: Dictionary) -> void:
 	top.add_child(texts)
 	var dial := ClockDial.new()
 	dial.custom_minimum_size = Vector2(104, 104)
-	if not Defense.wave_for_day(run.pday).is_empty():
+	if not Defense.wave_for_day(run.pday, float(State.diff(run).wave_mul)).is_empty():
 		dial.alert_minute = 22 * 60
 	top.add_child(dial)
 	_live.dial = dial

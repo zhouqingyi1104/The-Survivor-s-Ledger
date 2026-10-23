@@ -44,7 +44,7 @@ func _card(id: String, r: Dictionary) -> Control:
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(gap)
 	if unlocked:
-		v.add_child(UI.seal_button("就是他了", func(): Game.new_game(id)))
+		v.add_child(UI.seal_button("就是他了", func(): Game.pick_difficulty(id)))
 	else:
 		v.add_child(UI.button(r.get("unlock_desc", "未解锁"), func(): pass, true))
 	var p := UI.panel(v)

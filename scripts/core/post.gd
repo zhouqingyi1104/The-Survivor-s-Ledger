@@ -127,9 +127,10 @@ static func advance(run: Dictionary, minutes: int) -> String:
 static func _tick(run: Dictionary, hours: float) -> void:
 	var sleeping: bool = run.sleeping
 	var resting: bool = run.busy.get("kind", "") == "rest"
+	var d: Dictionary = State.diff(run)
 	var mul := 0.6 if sleeping else 1.0
-	State.add_attr(run, "food", -RATE.food * mul * hours * (0.75 if State.has_talent(run, "bigu") else 1.0))
-	State.add_attr(run, "water", -RATE.water * mul * hours)
+	State.add_attr(run, "food", -RATE.food * mul * hours * float(d.food_mul) * (0.75 if State.has_talent(run, "bigu") else 1.0))
+	State.add_attr(run, "water", -RATE.water * mul * hours * float(d.water_mul))
 	State.add_attr(run, "mood", (0.3 if sleeping else -RATE.mood) * hours)
 	var warm: int = State.attr(run, "warmth")
 	var boiler: bool = bool(run.get("powered", false)) and State.has_facility(run, "heater")
@@ -144,7 +145,7 @@ static func _tick(run: Dictionary, hours: float) -> void:
 		State.add_attr(run, "energy", -RATE.energy * hours)
 	# 体温：白天靠日头回暖（最多到 60，地窖 75）；夜里生火 / 发电机才暖得起来，
 	# 发电机带暖气的话整夜往上走，冷天也不掉温
-	var cold := int(State.weather(run).cold)
+	var cold := cold_of(run)
 	if is_night(run) and cold > 0 and not run.heated:
 		var loss := cold / 10.0 * (0.5 if State.has_facility(run, "cellar") else 1.0)
 		State.add_attr(run, "warmth", -loss * hours)
@@ -212,12 +213,12 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 			if not run.explore.is_empty():
 				return "curfew"
 			# 今夜有尸潮：先让玩家定守夜方针，再放时间走
-			if not Defense.wave_for_day(run.pday).is_empty() and int(run.wave_day) != int(run.pday) and str(run.get("night_policy", "")) == "":
+			if not Defense.wave_for_day(run.pday, float(State.diff(run).wave_mul)).is_empty() and int(run.wave_day) != int(run.pday) and str(run.get("night_policy", "")) == "":
 				run.plan_due = true
 				run.sleeping = false
 				return "plan"
 		WAVE_AT:
-			if not Defense.wave_for_day(run.pday).is_empty() and int(run.wave_day) != int(run.pday):
+			if not Defense.wave_for_day(run.pday, float(State.diff(run).wave_mul)).is_empty() and int(run.wave_day) != int(run.pday):
 				run.wave_due = true
 				run.sleeping = false
 				run.busy = {}
@@ -237,9 +238,15 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 	return ""
 
 
+## 今夜实际有多冷：天气的冷加上难度的冷加成（暖冬能加到 2 以下，等于不冻）。
+static func cold_of(run: Dictionary) -> int:
+	var base := int(State.weather(run).cold)
+	return base + int(State.diff(run).get("cold_add", 0))
+
+
 ## 20:00 取暖：有发电机就烧柴油（管一整夜，还带动暖气）；不然烧炭 / 柴。
 static func _heat(run: Dictionary) -> void:
-	if int(State.weather(run).cold) <= 0:
+	if cold_of(run) <= 0:
 		return
 	# 发电机：冷天才值得开，暖夜白烧一桶油
 	if State.has_facility(run, "generator") and Inv.count(run.home, "diesel") > 0:
@@ -298,7 +305,7 @@ static func resolve_wave(run: Dictionary) -> Dictionary:
 		return {}
 	run.wave_due = false
 	run.wave_day = run.pday
-	var wave := Defense.wave_for_day(int(run.pday))
+	var wave := Defense.wave_for_day(int(run.pday), float(State.diff(run).wave_mul))
 	Defense.start_night(run, wave)
 	var rep := Defense.next_round(run)
 	if run.phase == "post":
@@ -368,7 +375,7 @@ static func choose_policy(run: Dictionary, id: String) -> String:
 static func _spot_for(run: Dictionary, mode: String) -> String:
 	if mode == "gate":
 		return "gate"
-	var wave := Defense.wave_for_day(int(run.pday))
+	var wave := Defense.wave_for_day(int(run.pday), float(State.diff(run).wave_mul))
 	var best := "gate"
 	var worst := -999.0
 	for sid in Defense.SURFACES:
@@ -383,7 +390,7 @@ static func _spot_for(run: Dictionary, mode: String) -> String:
 
 ## 21:00 弹窗用的四档：[id, 名称, 说明, 亲守面, 今夜预计漏几只]
 static func policy_options(run: Dictionary) -> Array:
-	var wave := Defense.wave_for_day(int(run.pday))
+	var wave := Defense.wave_for_day(int(run.pday), float(State.diff(run).wave_mul))
 	var out := []
 	for id in Data.table("waves").policies:
 		var p: Dictionary = Data.table("waves").policies[id]
