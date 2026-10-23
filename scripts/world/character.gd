@@ -146,6 +146,11 @@ func setup(k: String, robe := Color(0, 0, 0, 0)) -> Node3D:
 		_ap.add_animation_library("", _anim_library())
 	_look.idle = _pick(str(_look.get("idle", "")), "idle")
 	_look.walk = _pick(str(_look.get("walk", "")), "walk")
+	# Imported clips (notably Camp_Walk / Camp_Idle) may be one-shot.
+	# These states must keep playing while movement or idle persists.
+	for clip_name in [_look.idle, _look.walk, _rig.jog, _rig.sprint]:
+		if _ap.has_animation(clip_name):
+			_ap.get_animation(clip_name).loop_mode = Animation.LOOP_LINEAR
 	_accessories()
 	if xray:
 		_enable_xray()
