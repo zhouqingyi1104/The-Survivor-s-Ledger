@@ -93,6 +93,7 @@ func _ready() -> void:
 	await snapshot("04-delivery")
 	# Persist the actual pending event using only a unique scratch save.
 	Game.save_path = "user://neighbor-ui-%d.json" % OS.get_process_id()
+	Game.meta_path = "user://neighbor-ui-meta-%d.json" % OS.get_process_id()
 	Game.no_save = false
 	Game.save_game()
 	Game.run = {}
@@ -123,6 +124,7 @@ func _ready() -> void:
 	check(Game.run.neighbor.stage == "closed" and State.flag(Game.run, "temple_open"), "End-to-end ending failed")
 	check(Game.run.neighbor.history.size() >= 8, "Choice history missing")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Game.save_path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Game.meta_path))
 	main.queue_free()
 	await frames()
 	print("Neighbor UI: %d checks, %d failures" % [checks, failures])
