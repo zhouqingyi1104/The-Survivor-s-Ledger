@@ -66,12 +66,32 @@ static func render(meta: Dictionary) -> String:
 			for gift in trade.aid:
 				section += "- 待收旧世回礼：%s约定第 %d 日 08:00 送来%s；你已交出%s。\n" % [Past.ACTORS[gift.actor], int(gift.due_day), Data.describe_items(gift.give), Data.describe_items(gift.req)]
 		section += _crisis_section(summary.get("crisis", {}))
+		section += _npc_section(summary.get("npcs", {}))
 		section += "\n"
 		if text.to_utf16_buffer().size() + section.to_utf16_buffer().size() > (MAX_CHARS - 100) * 2:
 			text += "较早轮回的更多细节已按篇幅省略；上文优先保留最近完结的一轮。\n"
 			break
 		text += section
 	return text
+
+
+static func _npc_section(value) -> String:
+	var npcs := Past.npc_snapshot(value)
+	if npcs.is_empty(): return ""
+	var modes := {"gather": "筹措周转", "stockpile": "备货自保", "guard": "收紧往来", "share": "主动回报"}
+	var responses := {"": "未介入", "support": "玩家送物支援", "favor": "玩家凭情改托", "decline": "玩家由他安排"}
+	var out := "\n### 旧世邻人自主行动\n\n以下是旧世的周转物资和行动记录；旧计划、库存和待送物资不带入新世。只有已经觉醒的本人片段才能影响今世决定。\n\n"
+	for actor in Past.ACTORS:
+		var person: Dictionary = npcs.actors[actor]
+		out += "- %s：周转%s；新报价%s、%s。" % [Past.ACTORS[actor], Data.describe_items(person.stock), "加米 %d" % int(person.policy.price_add) if int(person.policy.price_add) > 0 else "无自主加价", "允许申请赊欠（仍受信用条件限制）" if person.policy.credit_allowed else "暂停新赊欠"]
+		if not person.plan.is_empty():
+			var p: Dictionary = person.plan
+			var action := "原%s让位于凭情改托" % modes[p.mode] if p.response == "favor" else str(modes[p.mode])
+			out += "第 %d 日%s，%s，%s。" % [int(p.day), action, responses[p.response], "已执行" if p.status == "done" else "合卷时尚未执行，不等于已兑现"]
+		out += "\n"
+	for fact in npcs.history.slice(maxi(0, npcs.history.size() - 6)):
+		out += "- 第 %d 日 · %s：%s\n" % [int(fact.day), Past.ACTORS[fact.actor], line(fact.result, 100)]
+	return out
 
 static func read_context(path: String) -> Dictionary:
 	if path == "" or not FileAccess.file_exists(path): return {}

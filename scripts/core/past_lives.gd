@@ -85,6 +85,39 @@ static func crisis_snapshot(value) -> Dictionary:
 static func fresh_book() -> Dictionary:
 	return {"version": 1, "count": 0, "lives": [], "sealed_ids": []}
 
+
+## Final public NPC facts only. Dialogue caches and unawakened memories are not
+## evidence of an encounter, and old-life reservations are not new-life gifts.
+static func npc_snapshot(value) -> Dictionary:
+	if not value is Dictionary or value.get("schema") != 1 or not value.get("actors") is Dictionary: return {}
+	var focal := {"ning": "mugwort", "zhou": "wood", "traveler": "firewood"}
+	var actors := {}
+	for actor in ACTORS:
+		var person = value.actors.get(actor)
+		if not person is Dictionary or not person.get("stock") is Dictionary or person.stock.size() != 2: return {}
+		var stock := {}
+		for item in ["rice", focal[actor]]:
+			if not _trade_integer(person.stock.get(item), 0, 20): return {}
+			stock[item] = int(person.stock[item])
+		var policy = person.get("policy")
+		if not policy is Dictionary or not _trade_integer(policy.get("price_add"), 0, 1) or not policy.get("credit_allowed") is bool or not policy.get("reason") is String or policy.reason.length() > 240: return {}
+		var plan = person.get("plan", {})
+		if not plan is Dictionary: return {}
+		var public_plan := {}
+		if not plan.is_empty():
+			if not _trade_integer(plan.get("day"), 2, 100000) or plan.get("due_t") != (int(plan.day) - 1) * 1440 + 600: return {}
+			if not plan.get("mode", "") in ["gather", "stockpile", "guard", "share"] or not plan.get("response", "") in ["", "support", "favor", "decline"] or not plan.get("status", "") in ["pending", "done"]: return {}
+			for key in ["day", "due_t", "mode", "response", "status"]: public_plan[key] = plan[key]
+		actors[actor] = {"stock": stock, "plan": public_plan, "policy": {"price_add": int(policy.price_add), "credit_allowed": policy.credit_allowed, "reason": policy.reason}}
+	var history = value.get("history", [])
+	if not history is Array or history.size() > 12: return {}
+	var facts := []
+	for entry in history:
+		if not entry is Dictionary or not entry.get("actor", "") in ACTORS or not _trade_integer(entry.get("day"), 0, 100000) or not _trade_integer(entry.get("t"), 0, 144000000): return {}
+		if not entry.get("action") is String or entry.action.is_empty() or entry.action.length() > 40 or not entry.get("result") is String or entry.result.is_empty() or entry.result.length() > 240: return {}
+		facts.append({"day": int(entry.day), "t": int(entry.t), "actor": entry.actor, "action": entry.action, "result": entry.result})
+	return {"schema": 1, "actors": actors, "history": facts}
+
 static func book(meta: Dictionary) -> Dictionary:
 	if not meta.get("past_lives") is Dictionary:
 		meta["past_lives"] = fresh_book()
@@ -175,6 +208,8 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 	if not trade.is_empty(): summary["trade"] = trade
 	var crisis := crisis_snapshot(run.get("crisis", {}))
 	if not crisis.is_empty(): summary["crisis"] = crisis
+	var npcs := npc_snapshot(run.get("npcs", {}))
+	if not npcs.is_empty(): summary["npcs"] = npcs
 	b.lives.append({"id": p.id, "life": ordinal, "facts": facts, "summary": summary})
 	b.sealed_ids.append(p.id)
 	b.count = ordinal

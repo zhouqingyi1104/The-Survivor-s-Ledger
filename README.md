@@ -29,6 +29,7 @@
 | [16-craft-tradeoffs.md](docs/16-craft-tradeoffs.md) | 工作台加工：烧炭 / 配避瘟散 / 压干粮 | 已实现 |
 | [17-relationship-trade.md](docs/17-relationship-trade.md) | 纸鹤往来：信用报价、人情、赊欠、互助与失约补救 | 已实现，本地验证通过 |
 | [18-crisis-clocks.md](docs/18-crisis-clocks.md) | 风声与危机：预兆、调查、筹备、人情求助与事后补救 | 已实现，本地及真实AI提案回放验证 |
+| [19-npc-autonomy.md](docs/19-npc-autonomy.md) | NPC自主周转、每日目标与介入、受约束AI对话 | 已实现，本地窗口与真实AI回放验证 |
 
 截图在 [docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；夜战见 `night_policy.png` 与 `night_panel.png`；开局模式与同院见 `challenge_modes.png`、`challenge_mates.png`）。
 
@@ -169,6 +170,7 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 | `memory_file_flow` | 结算 → 写 Memory.md → 下一世规划读取的整条流程（隔离的临时文件） |
 | `social_trade_rules` / `social_trade_integration` / `social_trade_ui` / `social_trade_memory` | 人情交易规则、剧情与时钟接线、真实窗口点击及旧世交易结算；入口为宅院劫余录 → 纸鹤往来，第2日起08:00–18:00 |
 | `crisis_rules` / `crisis_integration` / `crisis_ui` / `crisis_memory` / `crisis_recorded` | 三类危机、真实时间与供给后果、HUD/窗口操作、前世档案及真实ARK答案离线回放；宅院顶部「查验 / 筹备」或劫余录 → 风声与危机 |
+| `npc_rules` / `npc_integration` / `npc_dialogue` / `npc_ui` / `npc_memory` / `npc_recorded` | 三人资源与自主决定、时钟/交易、受控对话、真实鼠标、旧世归档及真实ARK答案回放；劫余录 → 邻人与商情，第2日起08:00公开、16:00执行 |
 | `player_animation` / `title_input` | 真实输入能驱动移动与动画；标题页按钮能被鼠标点到 |
 | `city_routes` | 城里任意两地之间的走法 |
 | `sky_clarity` | 新旧雾浓度在同一机位下的对比图 |
