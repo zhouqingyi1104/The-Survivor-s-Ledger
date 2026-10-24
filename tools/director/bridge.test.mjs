@@ -4,12 +4,43 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {createBridge,validatePlan,validateSnapshot,buildPrompt,arkProvider,NPC_DIALOGUE,validateNpcContext,validateDialogueContext,validateDialogueRows,validateMainlineContext,validateIdentityContext,IDENTITY_CAPS,IDENTITY_TAGS} from './bridge.mjs';
+import {createBridge,validatePlan,validateSnapshot,buildPrompt,arkProvider,NPC_DIALOGUE,validateNpcContext,validateDialogueContext,validateDialogueRows,validateMainlineContext,validateIdentityContext,IDENTITY_CAPS,IDENTITY_TAGS,validateOpeningContext,OPENING_CHOICES,OPENING_TAGS} from './bridge.mjs';
 const plan=JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/director-plan.json',import.meta.url)));
 const snapshot={schema:1,request_id:'fixture-0-0',session:'fixture',revision:0,current_day:0,time:0,state:{role:'escort',stock:{wood:1,rice:5},mood:60,neighbor:{stage:'waiting',resolution:'',ending:''},relations:{ning:0,zhou:0,traveler:0},history:[],promises:[]}};
 async function start(options){const b=createBridge(options);await new Promise(r=>b.server.listen(0,'127.0.0.1',r));return {...b,url:`http://127.0.0.1:${b.server.address().port}`};}
 const request=(b,body=snapshot,headers={})=>fetch(b.url+'/plan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+b.token,...headers},body:JSON.stringify(body)});
 const close=b=>new Promise(r=>b.server.close(r));
+const openingFixture=(choice='plain',role='escort')=>({schema:1,role,choice,applied:true,effects:{silver_cost:0,hours:0,spent:{},gained:{},contacts:{},first_warning:{}},legacy_tags:[...OPENING_TAGS]});
+test('opening strictly validates six public fields and bounded actual effects',()=>{
+  for(const choice of OPENING_CHOICES){
+    const role=['scholar','escort','herbalist','watchman'].find(r=>choice.startsWith(r+'_'))??'escort';
+    const v=openingFixture(choice,role);
+    if(choice!=='plain')v.effects={silver_cost:1200,hours:1,spent:{rice:1},gained:{wood:4},contacts:{ning:{trust:1,favors:1}},first_warning:{kind:'well_freeze',actor:'ning',warning_day:3}};
+    assert.equal(validateOpeningContext(v,role),true,choice);
+    const s=structuredClone(snapshot);s.state.role=role;s.state.opening=v;assert.equal(validateSnapshot(s),true,choice);
+  }
+  const fresh=openingFixture('');fresh.applied=false;assert.equal(validateOpeningContext(fresh),true);
+  for(const mutate of [v=>v.source_id='private',v=>delete v.applied,v=>v.effects.real=true,v=>v.effects.first_warning.real=true,v=>v.effects.gained.wood=5,v=>v.effects.contacts.ning={trust:3,favors:0},v=>v.effects.silver_cost=NaN,v=>v.effects.hours=.5,v=>v.effects.gained.unknown=1,v=>v.effects.first_warning={kind:'well_freeze',actor:'ning',warning_day:4}]){const v=openingFixture('escort_stock');mutate(v);assert.equal(validateOpeningContext(v),false);}
+});
+test('opening rejects foreign roles, missing provenance tags and private payloads',()=>{
+  for(const choice of ['scholar_lamps','escort_oldroad','herbalist_oldcase','watchman_oldledger','cash_account','old_crisis']){const role=choice.split('_')[0];const v=openingFixture(choice,['scholar','escort','herbalist','watchman'].includes(role)?role:'escort');v.legacy_tags=[];assert.equal(validateOpeningContext(v),false,choice);}
+  for(const mutate of [v=>v.role='scholar',v=>v.choice='model_gift',v=>v.legacy_tags.push('unknown_source'),v=>v.legacy_tags.push('gave_medicine'),v=>v.effects.first_warning={kind:'well_freeze',actor:'ning',warning_day:2,pending:{}},v=>v.effects.contacts.ning={trust:0,favors:0,debt:{rice:1}}]){const v=openingFixture('escort_stock');mutate(v);assert.equal(validateOpeningContext(v,'escort'),false);}
+  const neutral=openingFixture();neutral.effects.gained.rice=1;assert.equal(validateOpeningContext(neutral),false);
+  const waiting=openingFixture('');waiting.applied=false;waiting.effects.hours=1;assert.equal(validateOpeningContext(waiting),false);
+});
+test('opening prompt keeps local authority, private truth and NPC knowledge boundaries',()=>{
+  const s=structuredClone(snapshot);s.state.opening=openingFixture('cash_account');const prompt=buildPrompt(s);
+  for(const phrase of ['可变开局边界','不能通过新事件重复发放','不是旧债转世','不能变成NPC记忆','没有真假与防护资格','不能授予、替选、切换、补发','recollections'])assert.ok(prompt.includes(phrase),phrase);
+  for(const field of ['opening','first_warning','effects']){const bad=structuredClone(plan);bad[field]={gift:'free'};assert.equal(validatePlan(bad,0),false,field);}
+});
+test('opening optional snapshot preserves legacy input and rejects private authority fields',()=>{
+  assert.equal(validateSnapshot(snapshot),true,'Legacy inputs remain valid without invented opening facts');
+  for(const hidden of ['source_id','source_life','birth','inherited','real','protected','history']){
+    const s=structuredClone(snapshot);s.state.opening=openingFixture();s.state.opening[hidden]={forged:true};assert.equal(validateSnapshot(s),false,hidden);
+  }
+  const minimal=structuredClone(snapshot);minimal.state.opening=openingFixture();assert.equal(validateSnapshot(minimal),true);
+  for(const mutate of [s=>s.state.opening={schema:1},s=>s.state.opening.effects.first_warning='well_freeze',s=>s.state.opening.legacy_tags='gave_medicine',s=>s.state.opening.applied=1]){const s=structuredClone(minimal);mutate(s);assert.equal(validateSnapshot(s),false);}
+});
 const remembered=()=>({...structuredClone(snapshot),state:{...structuredClone(snapshot.state),recollections:[{actor:'ning',life:1,age:2,fact_id:'neighbor:medicine_given',fact:'前世玩家将一包艾草交给阿宁；是否康复尚未确认。',response:''},{actor:'zhou',life:2,age:1,fact_id:'zhou:wood_lent',fact:'前世玩家借给老周一份木料。',response:'acknowledge'}]}});
 const archived=(markdown,base=snapshot)=>{
   const s=structuredClone(base),sha256=crypto.createHash('sha256').update(markdown,'utf8').digest('hex');

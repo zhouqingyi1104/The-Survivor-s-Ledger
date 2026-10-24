@@ -71,6 +71,7 @@ static func render(meta: Dictionary, compact := false) -> String:
 		section += _npc_section(summary.get("npcs", {}), compact)
 		section += _mainline_section(summary.get("mainline", {}))
 		section += _identity_section(summary.get("identity", {}), compact)
+		section += _opening_section(summary.get("opening", {}), compact)
 		section += "\n"
 		if text.to_utf16_buffer().size() + section.to_utf16_buffer().size() > (MAX_CHARS - 100) * 2:
 			# Keep the newest complete life across all systems. Trim repeated prose,
@@ -136,6 +137,25 @@ static func _identity_section(value, compact := false) -> String:
 	if not identity.work.is_empty(): out += "- 合卷时未完成工作：%s；原定第 %d 日完工，投入不代表已经学会或已经生效。\n" % [names[identity.work.action], int(identity.work.end_t) / 1440 + 1]
 	for fact in identity.history.slice(maxi(0, identity.history.size() - (2 if compact else 4))):
 		out += "- 第 %d 日：%s\n" % [int(fact.day), line(fact.result, 60 if compact else 80)]
+	return out
+
+
+static func _opening_section(value, compact := false) -> String:
+	var opening := Past.opening_snapshot(value)
+	if opening.is_empty(): return ""
+	var out := "\n### 旧世可变开局\n\n以下为旧世实际采用的开局；原物资变化、投入和人情不自动搬到新世，不是新世债务、赠礼或NPC记忆。危机方向只决定首场预兆，真假仍须当世核实，也不自动免疫。\n\n"
+	if not opening.applied: return out + "- 合卷时尚未确认开局，没有发放资源或改变关系。\n"
+	var effect: Dictionary = opening.effects
+	out += "- 已采用：%s；实际付银 %d 文、备劫时间 %d 时辰。\n" % [line(opening.choice, 40), int(effect.silver_cost), int(effect.hours)]
+	out += "- 原资源支出：%s；实际获得：%s。\n" % [Data.describe_items(effect.spent) if not effect.spent.is_empty() else "无", Data.describe_items(effect.gained) if not effect.gained.is_empty() else "无"]
+	for actor in effect.contacts:
+		out += "- 今世开局往来 · %s：信任 %+d、人情 %+d；这是本世投入后的关系变化，不继承旧债。\n" % [Past.ACTORS[actor], int(effect.contacts[actor].trust), int(effect.contacts[actor].favors)]
+	if effect.first_warning.is_empty(): out += "- 首场预兆：没有专门指定方向。\n"
+	else:
+		var names := {"well_freeze": "井口冻裂", "fuel_shortage": "运柴中断", "herb_shortage": "药草挤兑"}
+		out += "- 首场未核实方向：%s，由%s在第 %d 日传来；开局本身不表示已成真、已核实或已防住。\n" % [names[effect.first_warning.kind], Past.ACTORS[effect.first_warning.actor], int(effect.first_warning.warning_day)]
+	for fact in opening.history.slice(maxi(0, opening.history.size() - (1 if compact else 3))):
+		out += "- 备劫第 %d 日：%s\n" % [int(fact.day), line(fact.result, 50 if compact else 80)]
 	return out
 
 
