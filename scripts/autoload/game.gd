@@ -126,6 +126,8 @@ func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boo
 	run.endless = endless
 	if daily:
 		run.flags["daily"] = today_text()
+		# Past.begin runs before this flag. Daily runs carry no private legacy source.
+		run.identity = {}
 	# 同院的人（备劫前带回来的帮手）
 	run.companions = companions.duplicate()
 	snapshots = {}

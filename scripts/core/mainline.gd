@@ -10,11 +10,17 @@ const ESCAPE_OPEN := 17 * 1440 + 120 # Day18 08:00.
 const COSTS := {"host": {"water": 1, "firewood": 1}, "self_route": {"rice": 1},
 	"disrupt": {"talisman": 1, "lamp_oil": 1}, "copy": {},
 	"prepare_escape": {"rice": 3, "water": 3, "wood": 2, "nails": 1},
-	"prepare_ritual": {"talisman": 2, "lamp_oil": 1, "dog_blood": 1}, "escape": {}}
+	"prepare_ritual": {"talisman": 2, "lamp_oil": 1, "dog_blood": 1}, "escape": {},
+	"prepare_light_escape": {"rice": 2, "water": 2},
+	"prepare_convoy": {"rice": 4, "water": 4, "wood": 1, "nails": 1},
+	"prepare_paper_ritual": {"talisman": 1, "talisman_paper": 3, "cinnabar": 2, "lamp_oil": 1}}
 const ACTIONS := {"host": ["接待道士", 30, 4], "self_route": ["买下义庄旧路线", 60, 4],
 	"disrupt": ["截断运尸支路", 60, 6], "copy": ["抄录运尸簿", 30, 4],
 	"prepare_escape": ["筹备撤离行装", 90, 8], "prepare_ritual": ["筹备封阵法具", 120, 10],
-	"escape": ["沿后山道撤离", 120, 10]}
+	"escape": ["沿后山道撤离", 120, 10],
+	"prepare_light_escape": ["筹备轻装更道", 120, 8],
+	"prepare_convoy": ["筹备趟子手早行", 120, 12],
+	"prepare_paper_ritual": ["筹备纸阵法具", 150, 10]}
 const STAGES := {"waiting": "等待道士线索", "contact": "道士来访", "fallback": "自行打听义庄", "mortuary": "实查义庄", "mortuary_choice": "处置本世运尸簿", "temple": "实查青云观", "routes": "选择最后的活法", "escape_ready": "等待撤离窗口", "ritual_ready": "亲赴青云观封阵", "sealed": "七灯已熄，仍须守过残潮", "hold": "守住这座宅院", "closed": "主线已结案", "failed": "错过窗口，转守宅院", "endless": "劫后继续生活"}
 
 static func _day(run: Dictionary) -> int:
@@ -92,12 +98,36 @@ static func _access(run: Dictionary, outside := false) -> String:
 	if not outside and not run.get("explore", {}).is_empty(): return "先回到宅院再安排。"
 	return ""
 
-static func _allowed(stage: String) -> Array:
+## Read only the completed rule state; Identity imports Mainline, so no reverse import.
+static func _identity_cap(run: Dictionary, cap: String) -> bool:
+	var defs := {"light_escape": ["watchman_lane", "watchman", ""], "early_convoy": ["escort_convoy", "escort", "escaped_city"], "paper_ritual": ["scholar_diagram", "scholar", "sealed_lamps"]}
+	if not defs.has(cap): return false
+	var s: Dictionary = run.get("identity", {})
+	var def: Array = defs[cap]
+	if s.get("schema") != 1 or s.get("chosen", "") != def[0] or run.get("role", "") != def[1] or s.get("learned", []) != [cap] or not Past._trade_integer(s.get("completed_t"), 0, int(run.get("t", 0))): return false
+	if def[2] == "": return true
+	if Past.daily(run): return false
+	var p := Past.state(run)
+	for source in s.get("inherited", []):
+		if source is Dictionary and source.get("tag", "") == def[2] and Past._trade_integer(source.get("source_life"), 1, int(p.get("generation", 0)) - 1) and source.get("source_id") is String and not source.source_id.is_empty() and source.source_id.length() <= 80 and source.source_id != p.id: return true
+	return false
+
+static func _escape_spec(run: Dictionary, method := "") -> Array:
+	if method == "": method = str(state(run).get("escape_method", "normal"))
+	if method == "light": return ["沿轻装更道撤离", 150, 10]
+	if method == "convoy": return ["沿旧世路线提早出城", 180, 14]
+	return ACTIONS.escape
+
+static func _allowed(stage: String, run: Dictionary = {}) -> Array:
 	match stage:
 		"contact": return ["host", "refuse"]
 		"fallback": return ["self_route"]
 		"mortuary_choice": return ["disrupt", "copy", "seal"]
-		"routes": return ["hold", "prepare_escape", "prepare_ritual"]
+		"routes":
+			var out := ["hold", "prepare_escape", "prepare_ritual"]
+			for pair in [["light_escape", "prepare_light_escape"], ["early_convoy", "prepare_convoy"], ["paper_ritual", "prepare_paper_ritual"]]:
+				if _identity_cap(run, pair[0]): out.append(pair[1])
+			return out
 		"escape_ready": return ["escape"]
 	return []
 
@@ -106,24 +136,31 @@ static func _action_block(run: Dictionary, action: String) -> String:
 	if access != "": return access
 	var s := state(run)
 	var now := int(run.get("t", 0))
-	if not action in _allowed(str(s.stage)): return "当前阶段不能作这个选择。"
+	if not action in _allowed(str(s.stage), run): return "当前阶段或身份经验不能作这个选择。"
 	if now < (int(s.start_day) - 1) * 1440 + 120: return "尚未到本世主线的公开时刻。"
 	if action == "refuse": return "" if now < CONTACT_END else "道士来访窗口已过。"
 	if action in ["hold", "seal"]: return ""
 	if action == "self_route" and _day(run) < 5: return "第5日起才打听得到自查路线。"
-	if action in ["prepare_escape", "prepare_ritual"] and _day(run) < 12: return "第12日起才能筹备最后路线。"
-	if action in ["prepare_escape", "escape"] and run.get("endless", false): return "守到死模式不开放撤离结局；仍可调查、断运与封阵。"
-	var end := now + int(ACTIONS[action][1])
+	if action.begins_with("prepare_") and _day(run) < 12: return "第12日起才能筹备最后路线。"
+	if action in ["prepare_escape", "prepare_light_escape", "prepare_convoy", "escape"] and run.get("endless", false): return "守到死模式不开放撤离结局；仍可调查、断运与封阵。"
+	var spec: Array = _escape_spec(run) if action == "escape" else ACTIONS[action]
+	var end := now + int(spec[1])
 	if action == "host" and end >= CONTACT_END: return "来不及在道士离开前完成接待。"
 	if action == "self_route" and end + 140 >= FINAL_END: return "来不及完成义庄往返取证，不能再收这份路线钱。"
 	if action in ["disrupt", "copy"] and end + 140 >= FINAL_END: return "来不及完成后续青云观往返取证，请考虑封存守宅。"
-	if action == "prepare_escape" and end + 120 > FINAL_END: return "筹备后留不够120分钟实际撤离，不能再扣筹备物资。"
-	if action == "prepare_ritual" and end + 60 + 90 >= FINAL_END: return "筹备后留不够上山和90分钟现场封阵，不能再扣材料。"
+	if action in ["prepare_escape", "prepare_light_escape", "prepare_convoy"]:
+		var travel := 150 if action == "prepare_light_escape" else (180 if action == "prepare_convoy" else 120)
+		if end + travel > FINAL_END: return "筹备后留不够%d分钟实际撤离，不能再扣筹备物资。" % travel
+	if action in ["prepare_ritual", "prepare_paper_ritual"] and end + 60 + 90 >= FINAL_END: return "筹备后留不够上山和90分钟现场封阵，不能再扣材料。"
 	if action == "escape":
-		if now < ESCAPE_OPEN: return "第18日08:00才到实际撤离窗口。"
-		if end > FINAL_END: return "来不及在第19日18:00前完成120分钟撤离。"
+		var method := str(s.get("escape_method", "normal"))
+		if method == "convoy" and not _identity_cap(run, "early_convoy"): return "本世没有有效的趟子手旧路经验。"
+		if method == "light" and not _identity_cap(run, "light_escape"): return "本世没有勘成轻装更道。"
+		var open := ESCAPE_OPEN - (1440 if method == "convoy" else 0)
+		if now < open: return "第%d日08:00才到这条路线的实际撤离窗口。" % (17 if method == "convoy" else 18)
+		if end > FINAL_END: return "来不及在第19日18:00前完成%d分钟撤离。" % int(spec[1])
 	elif action != "host" and end >= FINAL_END: return "主线最后窗口已过，不能再开工。"
-	if State.attr(run, "energy") < int(ACTIONS[action][2]): return "精力不足，需要 %d。" % int(ACTIONS[action][2])
+	if float(run.get("attrs", {}).get("energy", 0.0)) < int(spec[2]): return "精力不足，需要 %d。" % int(spec[2])
 	if not Inv.has_all(run.home, COSTS[action]): return "需要%s。" % Data.describe_items(COSTS[action])
 	return ""
 
@@ -151,15 +188,21 @@ static func act(run: Dictionary, action: String, token: String) -> String:
 		_fact(run, action, "你%s；没有额外物资成本，本世放弃后续撤离与封阵，留守宅院直到第二十夜。" % ("封存本世运尸簿" if action == "seal" else "决定保留物资、坚守宅院"))
 		return ""
 	Inv.take_all(run.home, COSTS[action])
-	State.add_attr(run, "energy", -int(ACTIONS[action][2]))
-	_start(run, action, str(ACTIONS[action][0]), int(ACTIONS[action][1]))
+	var spec: Array = _escape_spec(run) if action == "escape" else ACTIONS[action]
+	State.add_attr(run, "energy", -int(spec[2]))
+	_start(run, action, str(spec[0]), int(spec[1]))
 	return ""
 
 static func options(run: Dictionary) -> Array:
 	var labels := {"host": "接待道士", "refuse": "婉拒来访，自行寻路", "self_route": "付米买下旧路线", "disrupt": "截断运尸支路", "copy": "抄录线索，保留材料", "seal": "封存证据，留守宅院", "hold": "选择坚守", "prepare_escape": "筹备撤离", "prepare_ritual": "筹备破阵", "escape": "实际撤离离城"}
 	var hints := {"host": "清水1、柴1；30分钟、精力4。完工后学画符，得镇尸符1、符纸2和道士残卷，开启义庄调查。", "refuse": "零物资，不算失约。第5日起可付米1自查，没有道士赠符与教学。", "self_route": "米1；60分钟、精力4。得到本世义庄路线，没有赠符与画符教学。", "disrupt": "镇尸符1、灯油1；60分钟、精力6。完工后移除尚未开夜的第11/17夜铜甲，开启青云观调查。", "copy": "30分钟、精力4，不耗材料。开启青云观调查，尸潮保持原样。", "seal": "零额外成本，保留材料；锁为坚守，放弃本世后续撤离与破阵。", "hold": "零额外物资与时间；锁定坚守，放弃撤离与破阵，守过20夜可继续无尽。", "prepare_escape": "米3、清水3、木料2、铁钉1；90分钟、精力8。完工锁定撤离，还须在第18日08:00至19日18:00完成120分钟实际撤离；提前离城没有守满20日奖励。", "prepare_ritual": "镇尸符2、灯油1、黑狗血1；120分钟、精力10。完工锁定破阵，还须上青云观施工90分钟；严格在第19日18:00前封阵，才能削弱第20夜。", "escape": "120分钟、精力10；完成才离城，原宅不再可继续，守满20日奖励为0。第19日18:00前必须完成。"}
 	var rows := []
-	for action in _allowed(str(state(run).stage)):
+	labels.merge({"prepare_light_escape": "轻装更道撤离", "prepare_convoy": "趟子手提早出城", "prepare_paper_ritual": "以纸阵替狗血封阵"})
+	hints.merge({"prepare_light_escape": "米2、清水2；120分钟、精力8。省下木钉，但实际撤离要150分钟、精力10，仍在第18日08:00至19日18:00完成。", "prepare_convoy": "米4、清水4、木料1、铁钉1；120分钟、精力12。实际撤离180分钟、精力14，第17日08:00起可走，仍须19日18:00前完成，无守满奖励。", "prepare_paper_ritual": "镇尸符1、符纸3、朱砂2、灯油1；150分钟、精力10。不用黑狗血，但需更多纸砂和时间，仍须亲赴青云观90分钟封阵、守过残潮。"})
+	if str(state(run).get("escape_method", "normal")) != "normal":
+		var spec := _escape_spec(run)
+		hints.escape = "%d分钟、精力%d；%s起可走，第19日18:00前必须完成。完工才离城，不得守满20日奖励，也不能返回原宅续无尽。" % [int(spec[1]), int(spec[2]), "第17日08:00" if state(run).escape_method == "convoy" else "第18日08:00"]
+	for action in _allowed(str(state(run).stage), run):
 		rows.append({"id": action, "text": labels[action], "hint": hints[action], "block": _action_block(run, action)})
 	return rows
 
@@ -181,6 +224,7 @@ static func objective(run: Dictionary, pid: String) -> Dictionary:
 	if State.attr(run, "energy") < energy: blocked = "精力不足，需要 %d。" % energy
 	if not s.work.is_empty(): blocked = "先完成正在进行的主线工作。"
 	if int(run.get("t", 0)) < (int(s.start_day) - 1) * 1440 + 120: blocked = "尚未到本世主线的公开时刻。"
+	if id == "ritual" and s.get("ritual_method", "normal") == "paper" and not _identity_cap(run, "paper_ritual"): blocked = "本世没有有效的纸阵解法。"
 	return {"id": id, "name": names[id], "hint": hints[id], "block": blocked, "minutes": minutes, "energy": energy}
 
 static func add_objective(run: Dictionary, pid: String, spots: Array) -> void:
@@ -276,28 +320,37 @@ static func complete(run: Dictionary, data: Dictionary) -> String:
 			run.flags["temple_open"] = true
 			s.stage = "temple"
 			return _fact(run, action, "本世运尸簿%s；青云观路线已经打开，仍须上山取回七灯图与后山道图。" % ("断运施工完成，尚未开夜的第11/17夜铜甲将被移除" if action == "disrupt" else "抄录完成，没有截断运尸，尸潮保持原样"))
-		"prepare_escape":
+		"prepare_escape", "prepare_light_escape", "prepare_convoy":
 			if s.stage != "routes" or not s.evidence.temple: return ""
+			if action == "prepare_light_escape" and not _identity_cap(run, "light_escape"): return _fact(run, "invalid_method", "轻装更道尚未有效勘成，筹备没有生效。")
+			if action == "prepare_convoy" and not _identity_cap(run, "early_convoy"): return _fact(run, "invalid_method", "旧路经验在当前模式无效，筹备没有生效。")
+			s["escape_method"] = "light" if action == "prepare_light_escape" else ("convoy" if action == "prepare_convoy" else "normal")
 			s.route = "escape"
 			s.stage = "escape_ready"
-			return _fact(run, action, "撤离行装与渡具筹备完成，物资已经用于行装；路线锁为撤离，第18日08:00至第19日18:00须再完成120分钟实际撤离，不能同时破阵。")
-		"prepare_ritual":
+			var travel := _escape_spec(run)
+			return _fact(run, action, "撤离行装筹备完成，路线锁为撤离（%s）；第%d日08:00起可走，第19日18:00前还须完成%d分钟实际撤离，精力%d，不能同时破阵。" % [travel[0], 17 if s.escape_method == "convoy" else 18, int(travel[1]), int(travel[2])])
+		"prepare_ritual", "prepare_paper_ritual":
 			if s.stage != "routes" or not s.evidence.temple: return ""
+			if action == "prepare_paper_ritual" and not _identity_cap(run, "paper_ritual"): return _fact(run, "invalid_method", "旧世灯图经验在当前模式无效，纸阵筹备没有生效。")
+			s["ritual_method"] = "paper" if action == "prepare_paper_ritual" else "normal"
 			s.route = "ritual"
 			s.stage = "ritual_ready"
 			return _fact(run, action, "封阵法具筹备完成，路线锁为破阵；尚未熄灯，必须亲赴青云观阵眼施工90分钟，严格在第19日18:00前完工。")
 		"escape":
 			if s.stage != "escape_ready" or s.route != "escape": return ""
+			if s.get("escape_method", "normal") == "convoy" and not _identity_cap(run, "early_convoy"): return _fact(run, "invalid_method", "当前没有有效旧路经验，不能免费完成提早出城。")
+			if s.get("escape_method", "normal") == "light" and not _identity_cap(run, "light_escape"): return _fact(run, "invalid_method", "当前没有有效轻装更道，不能免费完成撤离。")
 			s.stage = "closed"
 			s.ending = _ending_data("escape")
 			run.phase = "ending"
-			return _fact(run, action, "120分钟撤离完成，你沿后山道离开这座城。离城余生：不再守第20夜，没有守满20日奖励，也不能直接返回原宅继续生活。")
+			return _fact(run, action, "%d分钟撤离完成，你沿今世确认的出路离开这座城。离城余生：不再守第20夜，没有守满20日奖励，也不能直接返回原宅继续生活。" % int(work.end_t - work.start_t))
 		"search_mortuary", "search_temple", "search_ritual":
 			var id := str(work.data.get("objective", ""))
 			var ex: Dictionary = run.get("explore", {})
 			if ex.is_empty() or ex.get("point", "") != work.data.get("point", "") or ex.get("caught", false): return _fact(run, "lost_work", "现场已经离开或被追上，未完成取证或封阵，没有免费生效。")
 			if id == "ritual":
 				if s.stage != "ritual_ready" or not s.evidence.temple or s.route != "ritual": return ""
+				if s.get("ritual_method", "normal") == "paper" and not _identity_cap(run, "paper_ritual"): return _fact(run, "invalid_method", "当前没有有效纸阵解法，现场封阵没有免费生效。")
 				s.interventions.ritual_t = now
 				s.stage = "sealed"
 				return _fact(run, "ritual", "90分钟现场封阵已经完成，七星灯俱熄；第20夜移除血月、基础尸数乘0.8。仍有残潮，须活到第21日天亮才得破阵结局。")
@@ -314,6 +367,29 @@ static func complete(run: Dictionary, data: Dictionary) -> String:
 			s.stage = "mortuary_choice" if cargo == "mortuary" else "routes"
 			return _fact(run, action, "60分钟返程完成，本世%s证据正式交回；%s。" % ["义庄" if cargo == "mortuary" else "青云观", "现在可以断运、抄录或封存" if cargo == "mortuary" else "现在可以在坚守、撤离与破阵之间作真实取舍"])
 	return ""
+
+## Called only by the completed identity work, with its unconsumed work token.
+static func identity_resolution(run: Dictionary, action: String) -> String:
+	var defs := {"scholar_collate": ["scholar", ""], "scholar_diagram": ["scholar", "sealed_lamps"], "escort_intercept": ["escort", ""], "escort_convoy": ["escort", "escaped_city"], "herbalist_lure": ["herbalist", ""], "herbalist_ink": ["herbalist", "gave_medicine"], "watchman_lane": ["watchman", ""], "watchman_intel": ["watchman", "returned_evidence"]}
+	if not defs.has(action) or run.get("phase", "") != "post" or State.attr(run, "hp") <= 0: return ""
+	var identity: Dictionary = run.get("identity", {})
+	var work: Dictionary = identity.get("work", {})
+	var now := int(run.get("t", 0))
+	if identity.get("chosen", "") != "" or work.get("action", "") != action or not str(work.get("id", "")).begins_with("identity:%s:" % str(Past.state(run).id)) or int(work.get("end_t", 0)) > now or int(work.get("end_t", 0)) <= int(work.get("start_t", -1)): return ""
+	if run.get("role", "") != defs[action][0] or now + 140 >= FINAL_END: return ""
+	if defs[action][1] != "":
+		if Past.daily(run): return ""
+		var inherited := false
+		var p := Past.state(run)
+		for source in identity.get("inherited", []):
+			if source is Dictionary and source.get("tag", "") == defs[action][1] and Past._trade_integer(source.get("source_life"), 1, int(p.get("generation", 0)) - 1) and source.get("source_id") is String and not source.source_id.is_empty() and source.source_id.length() <= 80 and source.source_id != p.id: inherited = true
+		if not inherited: return ""
+	var s := state(run)
+	if s.stage != "mortuary_choice" or not s.evidence.mortuary or not run.get("explore", {}).is_empty() or not s.work.is_empty(): return ""
+	if action == "escort_intercept": s.interventions.disrupt_t = now
+	run.flags["temple_open"] = true
+	s.stage = "temple"
+	return _fact(run, action, "本世身份解法已实际完成（%s），青云观路线开放；仍须上山调查并交回今世证据。%s" % [str(work.get("label", "专属处置")), "已截运，尚未开夜的第11/17夜铜甲移除。" if action == "escort_intercept" else "没有公共断运效果，专属配方、路线或情报按已学解法生效。"])
 
 static func wave_effect(run: Dictionary, day: int) -> Dictionary:
 	var s := state(run)
@@ -375,11 +451,14 @@ static func view(run: Dictionary) -> Dictionary:
 	var goals := {"waiting": "第3日08:00起留意道士线索，旧卷从当前日之后起步。", "contact": "接待道士或拒绝后自行寻路；来访不靠随机抽取。", "fallback": "第5日起付米1自行打听，无需先救邻居。", "mortuary": "到义庄专点调查运尸簿，完工再完成60分钟返程。", "mortuary_choice": "断运会改变未来铜甲尸潮；抄录保材料；封存锁为坚守。", "temple": "亲赴青云观取回七灯图与后山道图，完成返程才解锁路线。", "routes": "第12日起决定坚守、备撤离或备破阵；筹备完工后锁定。", "escape_ready": "第18日08:00至第19日18:00完成120分钟实际撤离。", "ritual_ready": "亲赴青云观阵眼施工90分钟，严格第19日18:00前完工。", "sealed": "现场已熄灯，仍需对付第20夜削弱后的残潮，活到21晨。", "hold": "保留物资，守过第20夜，21晨进入坚守结局。", "failed": "错过最后窗口后转守宅院，已投入不退，生存仍可继续。", "closed": "本世已结案，查看结局与真实调查、施工记录。", "endless": "无尽生活继续，主线结局不强制结束这一轮。"}
 	var costs := []
 	for row in options(run): costs.append(str(row.hint))
+	var escape_spec := _escape_spec(run)
+	var escape_day := 17 if s.get("escape_method", "normal") == "convoy" else 18
+	if s.stage == "escape_ready": goals.escape_ready = "第%d日08:00起、第19日18:00前完成%d分钟实际撤离，精力%d；只有完工才离城。" % [escape_day, int(escape_spec[1]), int(escape_spec[2])]
 	return {"title": "二十日主线 · " + str(STAGES.get(str(s.stage), "调查")), "summary": summary(run), "goal": str(goals.get(str(s.stage), "")),
 		"target": target, "target_name": str(Data.table("map_points").get(target, {}).get("name", "")), "objective": objective(run, target),
-		"costs": costs, "deadlines": ["道士接待：第12日18:00前完工。", "撤离窗口：第18日08:00至第19日18:00，撤离需120分钟。", "封阵：严格第19日18:00前现场完工；取证需额外60分钟返程。"],
+		"costs": costs, "deadlines": ["道士接待：第12日18:00前完工。", "撤离窗口：第%d日08:00至第19日18:00，当前方法需%d分钟。" % [escape_day, int(escape_spec[1])], "封阵：严格第19日18:00前现场完工；取证需额外60分钟返程。"],
 		"evidence": s.evidence.duplicate(), "route": str(s.route), "interventions": s.interventions.duplicate(), "token": _token(run), "stage": str(s.stage),
-		"work": s.work.duplicate(true), "ending": ending(run), "last_result": str(s.last_result), "history": s.history.duplicate(true)}
+		"work": s.work.duplicate(true), "escape_method": str(s.get("escape_method", "normal")), "ritual_method": str(s.get("ritual_method", "normal")), "ending": ending(run), "last_result": str(s.last_result), "history": s.history.duplicate(true)}
 
 static func context(run: Dictionary) -> Dictionary:
 	var s := state(run)

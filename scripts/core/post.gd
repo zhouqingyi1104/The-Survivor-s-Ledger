@@ -22,6 +22,7 @@ const Trade = preload("res://scripts/core/social_trade.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
 const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const Identity = preload("res://scripts/core/identity_paths.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -689,6 +690,8 @@ static func trade_refresh(run: Dictionary) -> String:
 	# Settle world clocks before calculating market terms or honoring payments.
 	crisis_refresh(run)
 	mainline_refresh(run)
+	var identity_result := Identity.poll(run)
+	if identity_result != "": Director.note_world(run, "身份与旧世 · 工作中断", identity_result)
 	Trade.state(run)
 	var npc_result := Npcs.poll(run)
 	if npc_result != "":
@@ -712,6 +715,24 @@ static func mainline_action(run: Dictionary, action: String, token: String) -> S
 	if result == "":
 		Director.note_choice(run, "尸劫来历 · 主线选择", str(Mainline.state(run).last_result))
 	return result
+
+
+static func identity_action(run: Dictionary, action: String, token: String) -> String:
+	trade_refresh(run)
+	var result := Identity.act(run, action, token)
+	if result == "":
+		Director.note_choice(run, "身份与旧世 · 专属解法", str(Identity.state(run).get("work", {}).get("label", action)))
+	return result
+
+
+static func identity_intel(run: Dictionary) -> Array:
+	if not Identity.has(run, "wave_intel"): return []
+	var lines := []
+	for day in [11, 17, 20]:
+		var wave := Defense.wave_for_run(run, day)
+		if wave.is_empty(): continue
+		lines.append("第%d夜：%d只，%s。%s" % [day, Defense._count(wave), Defense.mod_names(wave), "已开夜，按整夜锁定安排" if int(run.get("wave_day", 0)) == day else "本世干预变化后会重新核对"])
+	return lines
 
 
 static func npc_action(run: Dictionary, actor: String, action: String, token: String) -> String:
@@ -790,6 +811,9 @@ static func _check_busy(run: Dictionary) -> void:
 ## 做完了，见成果。
 static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 	match kind:
+		"identity":
+			var result := Identity.complete(run, data)
+			if result != "": Director.note_choice(run, "身份解法完成", result)
 		"mainline":
 			var result := Mainline.complete(run, data)
 			if result != "": Director.note_choice(run, "主线行动完成", result)
@@ -852,6 +876,9 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 			State.note(run, "读完了%s。" % Data.item_name(data.book))
 		"craft":
 			var c: Dictionary = Data.table("devices").crafts[data.craft]
+			if c.has("identity") and Identity.craft_block(run, str(data.craft)) != "":
+				State.note(run, "身份配方的本世条件已经失效，未得到产物；已投入的材料和精力不退。")
+				return
 			Inv.add_all(run.home, c.out)
 			State.note(run, "%s，得%s。" % [c.name, Data.describe_items(c.out)])
 		"rest":
@@ -1146,7 +1173,12 @@ static func act_unfurnish(run: Dictionary, uid: int) -> String:
 
 
 static func craft_block(run: Dictionary, craft_id: String) -> String:
+	if not Data.table("devices").crafts.has(craft_id): return "没有这项配方。"
 	var c: Dictionary = Data.table("devices").crafts[craft_id]
+	if c.has("identity"):
+		var identity_block := Identity.craft_block(run, craft_id)
+		if identity_block != "": return identity_block
+		if float(run.get("attrs", {}).get("energy", 0.0)) < int(ACTIONS.craft[2]): return "精力不足，身份配方需要%d。" % int(ACTIONS.craft[2])
 	if c.has("flag") and not State.flag(run, c.flag):
 		return "还不会"
 	if not Inv.has_all(run.home, c["in"]):

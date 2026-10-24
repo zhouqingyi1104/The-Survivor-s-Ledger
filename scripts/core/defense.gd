@@ -12,6 +12,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const Identity = preload("res://scripts/core/identity_paths.gd")
 
 ## 每漏进一只僵尸，这一面掉多少耐久：越往后尸群越凶（第 2 夜 6，第 20 夜 10）。
 const LEAK_BASE := 5
@@ -55,6 +56,8 @@ static func wave_for_run(run: Dictionary, day: int) -> Dictionary:
 	if base.is_empty(): return {}
 	var wave: Dictionary = base.duplicate(true)
 	var effect := Mainline.wave_effect(run, day)
+	var identity_effect := Identity.wave_effect(run, day)
+	effect.count_mul = float(effect.get("count_mul", 1.0)) * float(identity_effect.get("count_mul", 1.0))
 	for modifier in effect.get("remove_mods", []): wave.mods.erase(modifier)
 	wave.count = maxi(1, int(round(float(wave.count) * float(effect.get("count_mul", 1.0)))))
 	return wave
@@ -111,6 +114,8 @@ static func forecast(run: Dictionary) -> Array:
 			omen = Data.table("waves").mods[w.mods[0]].omen
 		var line := "%s尸潮。%s" % [when, omen]
 		var intervention := str(Mainline.wave_effect(run, d).get("reason", ""))
+		var identity_reason := str(Identity.wave_effect(run, d).get("reason", ""))
+		if identity_reason != "": intervention += (" " if intervention != "" else "") + identity_reason
 		if intervention != "": line += "（%s）" % intervention
 		if State.has_talent(run, "lingjue"):
 			line += "（灵觉：约 %d 只）" % _count(w)

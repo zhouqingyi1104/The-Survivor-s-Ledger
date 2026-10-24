@@ -13,6 +13,9 @@
     "draw_talisman": {"name": "画符", "verb": "画", "in": {"talisman_paper": 2, "cinnabar": 1}, "out": {"talisman": 2}, "time": 1, "flag": "learned_talisman", "desc": "黄纸朱砂，画两张镇尸符。需要先学会画符。"},
     "press_charcoal": {"name": "烧炭", "verb": "烧", "in": {"firewood": 2}, "out": {"charcoal": 1}, "time": 1, "desc": "两捆柴压成一筐木炭。同样过一夜，轻 2 斤，火到后半夜也不会弱。"},
     "mix_plague": {"name": "配避瘟散", "verb": "炼", "in": {"mugwort": 3}, "out": {"plague_powder": 1}, "time": 1, "desc": "三束艾草炼一包避瘟散。艾草自用只能熏屋压一压尸毒，炼了才是十拿九稳的药。"},
-    "press_ration": {"name": "压干粮", "verb": "压", "in": {"rice": 1}, "out": {"flatbread": 4}, "time": 1, "desc": "一斗米压成四张炊饼。不生火、不占灶、省柴省水；只是做不成粥，渴了还得另打水。"}
+    "press_ration": {"name": "压干粮", "verb": "压", "in": {"rice": 1}, "out": {"flatbread": 4}, "time": 1, "desc": "一斗米压成四张炊饼。不生火、不占灶、省柴省水；只是做不成粥，渴了还得另打水。"},
+    "scribe_talisman": {"name": "省纸符方", "verb": "画", "in": {"talisman_paper": 1, "cinnabar": 1}, "out": {"talisman": 2}, "time": 1, "identity": "scribe_talisman", "desc": "书生本世校勘后方可画；省一张符纸，代价是没有截断铜甲运送。"},
+    "efficient_plague": {"name": "辨药避瘟散", "verb": "炼", "in": {"mugwort": 2}, "out": {"plague_powder": 1}, "time": 1, "identity": "efficient_plague", "desc": "药徒本世辨药导尸后学会；两束艾草炼一包，先前导尸已经消耗成药。"},
+    "medicinal_talisman": {"name": "药墨符方", "verb": "画", "in": {"talisman_paper": 1, "mugwort": 2}, "out": {"talisman": 1}, "time": 1, "identity": "medicinal_talisman", "desc": "药徒凭真实旧世交药经验，在本世续研后才会；以艾草替朱砂，不能兼得辨药导尸。"}
   }
 }

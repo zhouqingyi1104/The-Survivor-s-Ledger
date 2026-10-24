@@ -7,7 +7,108 @@ const MAX_AWAKENINGS := 2
 const TRADE_GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const CRISIS_KINDS := ["well_freeze", "fuel_shortage", "herb_shortage"]
 const MAINLINE_STAGES := ["waiting", "contact", "fallback", "mortuary", "mortuary_choice", "temple", "routes", "escape_ready", "ritual_ready", "sealed", "hold", "closed", "failed", "endless"]
-const MAINLINE_WORK := ["host", "self_route", "disrupt", "copy", "prepare_escape", "prepare_ritual", "escape", "search_mortuary", "search_temple", "search_ritual", "return_mortuary", "return_temple"]
+const MAINLINE_WORK := ["host", "self_route", "disrupt", "copy", "prepare_escape", "prepare_ritual", "prepare_light_escape", "prepare_convoy", "prepare_paper_ritual", "escape", "search_mortuary", "search_temple", "search_ritual", "return_mortuary", "return_temple"]
+const IDENTITY_ROLES := ["scholar", "escort", "herbalist", "watchman"]
+const IDENTITY_TAGS := ["sealed_lamps", "escaped_city", "gave_medicine", "returned_evidence"]
+const IDENTITY_CAPS := {"scholar_collate": "scribe_talisman", "scholar_diagram": "paper_ritual", "escort_intercept": "", "escort_convoy": "early_convoy", "herbalist_lure": "efficient_plague", "herbalist_ink": "medicinal_talisman", "watchman_lane": "light_escape", "watchman_intel": "wave_intel"}
+const IDENTITY_REQUIRED := {"scholar_diagram": "sealed_lamps", "escort_convoy": "escaped_city", "herbalist_ink": "gave_medicine", "watchman_intel": "returned_evidence"}
+
+## Keep a bounded account of this life's actual work, never its private source IDs.
+## This module cannot import Identity/State without creating a dependency cycle.
+static func identity_snapshot(value) -> Dictionary:
+	if not value is Dictionary or value.get("schema") != 1: return {}
+	for key in value:
+		if not key in ["schema", "revision", "inherited", "chosen", "completed_t", "learned", "work", "history", "serial"]: return {}
+	for key in ["revision", "serial"]:
+		if value.has(key) and not _trade_integer(value[key], 0, 1000000): return {}
+	var inherited = value.get("inherited", [])
+	if not inherited is Array or inherited.size() > 4: return {}
+	var seen := []
+	for source in inherited:
+		if not source is Dictionary or source.size() != 3 or not source.get("tag", "") in IDENTITY_TAGS or source.tag in seen or not _trade_integer(source.get("source_life"), 1, 1000000) or not source.get("source_id") is String or source.source_id.is_empty() or source.source_id.length() > 80: return {}
+		for key in source:
+			if not key in ["tag", "source_life", "source_id"]: return {}
+		seen.append(source.tag)
+	var chosen = value.get("chosen", "")
+	var completed = value.get("completed_t", -1)
+	var learned = value.get("learned", [])
+	var work = value.get("work", {})
+	var history = value.get("history", [])
+	if not chosen is String or (chosen != "" and not chosen in IDENTITY_CAPS) or not _trade_integer(completed, -1, 144000000): return {}
+	if not learned is Array or learned.size() > 1 or not work is Dictionary or not history is Array or history.size() > 12: return {}
+	var expected: String = IDENTITY_CAPS.get(chosen, "")
+	if completed < 0 and not learned.is_empty(): return {}
+	if completed >= 0 and chosen == "": return {}
+	if (expected == "" and not learned.is_empty()) or (expected != "" and learned != ([expected] if completed >= 0 else [])): return {}
+	var out := {"schema": 1, "chosen": chosen, "completed_t": int(completed), "learned": learned.duplicate(), "work": {}, "history": []}
+	if not work.is_empty():
+		if not work.get("action", "") in IDENTITY_CAPS or chosen != "" or completed >= 0 or not _trade_integer(work.get("end_t"), 0, 144000000): return {}
+		out.work = {"action": work.action, "end_t": int(work.end_t)}
+	for entry in history:
+		if not entry is Dictionary or not _trade_integer(entry.get("day"), 1, 100000) or not _trade_integer(entry.get("t"), 0, 144000000): return {}
+		if not entry.get("action") is String or entry.action.strip_edges().is_empty() or entry.action.length() > 40 or not entry.get("result") is String or entry.result.strip_edges().is_empty() or entry.result.length() > 240: return {}
+		for key in entry:
+			if not key in ["day", "t", "action", "result"]: return {}
+		out.history.append({"day": int(entry.day), "t": int(entry.t), "action": entry.action, "result": entry.result})
+	return out
+
+static func _identity_archive(run: Dictionary) -> Dictionary:
+	var raw = run.get("identity", {})
+	var safe := identity_snapshot(raw)
+	if safe.is_empty(): return {}
+	var action: String = safe.chosen if safe.chosen != "" else str(safe.work.get("action", ""))
+	if action == "": return safe
+	if not action.begins_with(str(run.get("role", "")) + "_") or int(safe.completed_t) > int(run.get("t", 0)): return {}
+	var story := mainline_snapshot(run.get("mainline", {}))
+	if story.is_empty() or not story.evidence.mortuary: return {}
+	if IDENTITY_REQUIRED.has(action):
+		if daily(run): return {}
+		var found := false
+		var p := state(run)
+		for source in raw.get("inherited", []):
+			if source.tag == IDENTITY_REQUIRED[action] and int(source.source_life) < int(p.get("generation", 0)) and source.source_id != p.id: found = true
+		if not found: return {}
+	return safe
+
+## Unlock from sealed structured outcomes. Markdown and free narrative are not proof.
+static func identity_inheritance(meta: Dictionary) -> Array:
+	var b := book(meta)
+	var id_counts := {}
+	var ordinal_counts := {}
+	for life in b.lives:
+		if not life is Dictionary: continue
+		var id = life.get("id", "")
+		var ordinal = life.get("life", -1)
+		if id is String: id_counts[id] = int(id_counts.get(id, 0)) + 1
+		if _trade_integer(ordinal, 1, int(b.count)): ordinal_counts[int(ordinal)] = int(ordinal_counts.get(int(ordinal), 0)) + 1
+	var latest := {}
+	for life in b.lives:
+		if not life is Dictionary: continue
+		var id = life.get("id", "")
+		var ordinal = life.get("life", -1)
+		if not id is String or id.is_empty() or id.length() > 80 or not id in b.sealed_ids or int(id_counts.get(id, 0)) != 1: continue
+		if not _trade_integer(ordinal, 1, int(b.count)) or int(ordinal_counts.get(int(ordinal), 0)) != 1: continue
+		var summary = life.get("summary", {})
+		if not summary is Dictionary or not summary.get("role", "") in IDENTITY_ROLES or not summary.get("mode", "") in ["寻常轮回", "守到死"] or not _trade_integer(summary.get("day"), 0, 100000): continue
+		var tags := []
+		var story := mainline_snapshot(summary.get("mainline", {}))
+		if not story.is_empty():
+			if story.evidence.mortuary: tags.append("returned_evidence")
+			var sealed_at := int(story.interventions.ritual_t)
+			if story.evidence.mortuary and story.evidence.temple and sealed_at >= 0 and sealed_at < mini(18 * 1440 + 720, int(summary.day) * 1440): tags.append("sealed_lamps")
+			if story.evidence.mortuary and story.evidence.temple and story.stage == "closed" and story.route == "escape" and story.ending.get("kind", "") == "escape" and story.ending.get("title", "") == "离城余生" and summary.get("outcome", "") == "离城余生" and (int(summary.day) in [18, 19] or (int(summary.day) == 17 and story.get("escape_method", "") == "convoy")): tags.append("escaped_city")
+		var facts = life.get("facts", [])
+		if facts is Array and facts.size() <= KEEP_FACTS:
+			for fact in facts:
+				if valid_fact(fact) and fact.actor == "ning" and fact.fact_id == "medicine" and _trade_integer(fact.valence, 1, 1) and _trade_integer(fact.get("day"), 1, int(summary.day)):
+					tags.append("gave_medicine")
+					break
+		for tag in tags:
+			if int(latest.get(tag, {}).get("source_life", 0)) < int(ordinal): latest[tag] = {"tag": tag, "source_life": int(ordinal), "source_id": id}
+	var result := []
+	for tag in IDENTITY_TAGS:
+		if latest.has(tag): result.append(latest[tag])
+	return result
 
 ## Raw rule state only; no imports that would form State/Director dependency cycles.
 static func mainline_snapshot(value) -> Dictionary:
@@ -19,6 +120,12 @@ static func mainline_snapshot(value) -> Dictionary:
 	if not interventions is Dictionary or not _trade_integer(interventions.get("disrupt_t"), -1, 144000000) or not _trade_integer(interventions.get("ritual_t"), -1, 144000000): return {}
 	var result := {"schema": 1, "start_day": int(value.start_day), "stage": value.stage, "evidence": {"mortuary": evidence.mortuary, "temple": evidence.temple},
 		"route": value.route, "interventions": {"disrupt_t": int(interventions.disrupt_t), "ritual_t": int(interventions.ritual_t)}, "ending": {}, "work": {}, "history": []}
+	if value.has("escape_method"):
+		if not value.escape_method in ["normal", "light", "convoy"]: return {}
+		result["escape_method"] = value.escape_method
+	if value.has("ritual_method"):
+		if not value.ritual_method in ["normal", "paper"]: return {}
+		result["ritual_method"] = value.ritual_method
 	var ending = value.get("ending", {})
 	if not ending is Dictionary: return {}
 	if not ending.is_empty():
@@ -179,6 +286,8 @@ static func begin(run: Dictionary, meta: Dictionary) -> void:
 	var b := book(meta)
 	var p := fresh_run()
 	run["past_lives"] = p
+	# Fixed at birth; an old save never learns from lives sealed after its start.
+	run["identity"] = {"schema": 1, "inherited": identity_inheritance(meta)}
 	p.generation = int(b.count) + 1
 	var candidates := {}
 	for life in b.lives:
@@ -245,6 +354,8 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 	if not mainline.is_empty():
 		summary["mainline"] = mainline
 		if run.get("phase", "") == "ending" and not mainline.ending.is_empty(): summary.outcome = mainline.ending.title
+	var identity := _identity_archive(run)
+	if not identity.is_empty(): summary["identity"] = identity
 	b.lives.append({"id": p.id, "life": ordinal, "facts": facts, "summary": summary})
 	b.sealed_ids.append(p.id)
 	b.count = ordinal
