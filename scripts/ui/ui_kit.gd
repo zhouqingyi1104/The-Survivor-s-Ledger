@@ -235,6 +235,15 @@ static func panel(content: Control = null, bg := PANEL) -> PanelContainer:
 	return p
 
 
+## 把一整棵子树的鼠标都设成"不吃"。容器默认 mouse_filter=STOP，会把本该给
+## 父控件的点击吃掉——整张卡想当按钮用时，内容必须先这么过一遍
+## （选难度的卡曾经就这么坏的，见 screens/difficulty_screen.gd）。
+static func ignore_mouse(node: Control) -> void:
+	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for n in node.find_children("*", "Control", true, false):
+		(n as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
 ## 物品 / 家具的图标（纯代码画，见 icon_art.gd）。
 static func icon(id: String, px: float, furniture := false) -> Control:
 	var n: Control = IconView.new()

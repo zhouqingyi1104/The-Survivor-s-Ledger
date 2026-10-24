@@ -62,7 +62,36 @@ func _card(d: Dictionary) -> Control:
 	v.add_child(gap)
 	if id == _picked:
 		v.add_child(UI.tag("已选中", UI.CINNABAR))
-	return UI.panel(v, Color("#f2e3c2") if id == _picked else UI.PANEL)
+	var p := UI.panel(v, Color("#f2e3c2") if id == _picked else UI.PANEL)
+	# 整张卡收点击：内容一律不吃鼠标（Label 默认就 IGNORE，但 gap、各种容器默认
+	# STOP，会把点击吃掉），卡片自己接 gui_input。以前这段写在屏幕根的 _gui_input
+	# 里按坐标找卡：卡嵌套在 Margin→VBox→HBox 里，根的 get_children() 只有一个
+	# MarginContainer，且事件先被卡里的控件吃掉、根本到不了根——四张卡全都点不动。
+	UI.ignore_mouse(v)
+	p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	p.gui_input.connect(_on_card_input.bind(id))
+	p.set_meta("difficulty_pick", id)
+	return p
+
+
+func _on_card_input(event: InputEvent, id: String) -> void:
+	if not event is InputEventMouseButton:
+		return
+	var mb := event as InputEventMouseButton
+	if mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+		_pick(id)
+
+
+func _pick(id: String) -> void:
+	_picked = id
+	_redraw()
+
+
+## 选中后重画。必须先 clear：build() 只往 self 追加，不清就会每点一次叠一层
+## （和 challenge_screen 的 _redraw 一个套路）。
+func _redraw() -> void:
+	UI.clear(self)
+	build()
 
 
 func _start() -> void:
@@ -96,27 +125,3 @@ func _color_of(val: float) -> Color:
 	if val < 1.0:
 		return Color("#3f7d5a")
 	return UI.INK_SOFT
-
-
-func _gui_input(event: InputEvent) -> void:
-	# 点卡选中：按鼠标位置找出是哪张卡
-	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
-		var p := (event as InputEventMouseButton).position
-		for c in get_children():
-			if c is PanelContainer and (c as PanelContainer).get_rect().has_point(p):
-				_pick_card(c)
-				return
-
-
-func _pick_card(card: PanelContainer) -> void:
-	# 卡里第一个标题就是难度名，反查 id
-	var name := ""
-	for n in card.find_children("*", "Label", true, false):
-		if not str((n as Label).text).is_empty():
-			name = (n as Label).text
-			break
-	for d in Data.table("difficulty"):
-		if str(d.name) == name:
-			_picked = str(d.id)
-			build()
-			return
