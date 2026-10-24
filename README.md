@@ -1,6 +1,6 @@
-# 劫余录 · The Survivor's Ledger（原型，迭代到 v0.9 之后）
+# 劫余录 · The Survivor's Ledger（原型 v0.10）
 
-> 文档更新于 2026-10-24，内容以当前代码为准。标题页角落仍显示「原型 v0.6」，是界面上的版本号没跟着改，不代表功能停在 v0.6。
+> 文档更新于 2026-10-24，内容以当前代码为准。版本号只在 `project.godot` 的 `application/config/version` 里维护，标题页角落直接读它。
 
 古风尸变 + 写实灾荒 + 一点东方仙侠的生存模拟。玩法结构、界面布局和交互方式参考《Survival Log / 生存日志》（灾前囤货 → 灾后经营 → 轮回），文本、数值、图标都是原创——没有从原版提取或复用任何美术资产。模型和贴图一部分是公开的免费素材（Poly Haven、cs-studio、Quaternius），其余用代码拼；来源和许可证见游戏标题页的"制作名单"和 [docs/03-art-assets.md](docs/03-art-assets.md)。
 

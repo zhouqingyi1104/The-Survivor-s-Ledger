@@ -183,7 +183,7 @@ python -I tools/pipeline/build_audio.py assets/third_party/audio/raw <合成输�
 | 注意 | `NOTICE.txt` 写明：开发机上另下的 MMD 角色包**不是**这套素材，没有清过商用授权，不在仓库里也不能放进游戏 |
 | 检查工具 | `tests/hero_shot.tscn` 从几个角度拍主角，`tests/check_hero.tscn` 逐项报挂件在不在、挂在哪 |
 
-标题页"制作名单"（`data/credits.json`）目前**还没有列 413 Games**。CC0 不强制署名，但其他 CC0 来源都列了，建议补上。
+标题页"制作名单"（`data/credits.json`）已列 413 Games，并写明尖帽和仙气装束是本作自己做的。
 
 ## 九、图标（代码绘制，没有第三方素材）
 

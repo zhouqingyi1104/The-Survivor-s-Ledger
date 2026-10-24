@@ -22,10 +22,18 @@
 			"cs-studio.itch.io/cs-building-set1"
 		]
 	},
+	"413games": {
+		"name": "413 Games（CC0）",
+		"lines": [
+			"主角的女身模型与自带动作：Anime Maid Character（重绑贴图、转 GLB，几何未改）。",
+			"主角头上的尖帽、仙气装束（披帛、腰绦、步摇、灵光）和配色是本作自己做的。",
+			"413games.itch.io/maid-character"
+		]
+	},
 	"quaternius": {
 		"name": "Quaternius（CC0）",
 		"lines": [
-			"人物底模与发型：Universal Base Characters；衣裳由底模派生、按身份配色。",
+			"街上百姓与僵尸的人物底模和发型：Universal Base Characters；衣裳由底模派生、按身份配色。",
 			"动作：Universal Animation Library。",
 			"quaternius.com"
 		]

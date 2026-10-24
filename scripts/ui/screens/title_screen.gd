@@ -112,7 +112,7 @@ func build() -> void:
 	foot_row.alignment = BoxContainer.ALIGNMENT_END
 	foot_row.add_child(_tiny("已轮回 %d 次 · 最久活到第 %d 日 · 劫满 %d 次" % [
 		int(meta.runs), int(meta.best_day), int(meta.endings)]))
-	foot_row.add_child(_tiny("原型 v0.6"))
+	foot_row.add_child(_tiny("原型 v" + version_label()))
 	foot_col.add_child(foot_row)
 	# Decorative descendants also cover the menu: ignoring only their parent
 	# does not prevent children from intercepting pointer input.
@@ -258,9 +258,17 @@ func _show_credits() -> void:
 ## 第三方美术资源的来源和许可证（data/credits.json）。
 func _build_credits(body: VBoxContainer) -> void:
 	var credits: Dictionary = Data.table("credits")
+	# 条目多了会超出屏幕，放进滚动区
+	var list := UI.vbox(8)
 	for id in credits:
 		var row := UI.vbox(2)
 		row.add_child(UI.label(credits[id].name, 20, UI.CINNABAR))
 		for line in credits[id].lines:
 			row.add_child(UI.para(line, 16))
-		body.add_child(row)
+		list.add_child(row)
+	body.add_child(UI.scroll(list, 520))
+
+
+## 版本号只在 project.godot 的 application/config/version 里维护（0.10.0 → "0.10"），界面不再写死。
+static func version_label() -> String:
+	return str(ProjectSettings.get_setting("application/config/version", "0.0.0")).trim_suffix(".0")
