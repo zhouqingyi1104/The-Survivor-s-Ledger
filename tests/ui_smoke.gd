@@ -74,7 +74,7 @@ func run_flow() -> void:
 	screen()._toggle_mate("afu")
 	screen()._toggle_mate("carpenter")
 	check(screen()._mates.is_empty(), "人清不干净")
-	await press("什么都不选")
+	await press("普通行囊")
 	check(Game.screen == "pre" and Game.run.role == "scholar", "没开局")
 	check(str(Game.run.get("difficulty", "")) != "", "开局没带上难度")
 	check(State.goals_of(Game.run).is_empty(), "选了不立愿却带着愿开局")
