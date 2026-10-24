@@ -30,7 +30,7 @@ func build() -> void:
 		"回到　第 %d 日清晨\n保留　你知道的一切（残卷、记忆）\n代价　寿元：气血上限 -10（现为 %d）\n　　　残页 -1" % [back_day, int(run.attrs.hp_max)],
 		"翻回去", Game.rewind, not can_rewind, "残页用尽了" if int(run.rebirths_left) <= 0 else ""))
 	row.add_child(_card("翻回扉页", "“从第一页重新写——这次你知道该写什么。”",
-		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷\n收获　道心 +%d" % gain.total,
+		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷；沿用本世开局\n收获　道心 +%d" % gain.total,
 		"重新来过", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
 	row.add_child(_card("合上此录", "“到这里就够了。”",
 		"结算　这一卷到此为止\n收获　道心 +%d\n之后　回到标题，可去参悟心法" % gain.total,
@@ -41,6 +41,11 @@ func build() -> void:
 	var d := UI.label("道心明细：" + "　".join(detail), 16, UI.INK_FAINT)
 	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(d)
+
+	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，再保留身份与难度，重新选择下世筹备；原重走按钮会沿用本世开局。")
+	choose.set_meta("opening_next", true)
+	choose.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(choose)
 
 
 func _card(title: String, quote: String, body_text: String, btn: String, cb: Callable, disabled := false, tip := "") -> Control:

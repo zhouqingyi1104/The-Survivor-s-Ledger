@@ -58,3 +58,7 @@
 受影响定向回归：身份接入372、危机规则254/接入64、NPC接入69、人情交易接入430、导演34、轮回规则124检查通过。本批只跑相关功能与必要回归，未跑全量。部分headless有既有ObjectDB/资源退出提示；这不是玩家整局或发行验收。
 
 记忆与AI：opening_memory 275、身份Memory127、Memory文件9/9组68检查通过；Node开局4项通过，实际Godot应用后的15份公开快照严格验证15/15通过。根玩家Memory字节未改，六系统最新一世保留在8000 UTF-16预算内。模型没有新增执行权限；旧版本快照可缺opening，新字段不能携带出生库存、来源ID、私有真假或指令。完整复现命令见[13](13-dynamic-director.md)。本批真实ARK调用0次；没有把契约校验视为实时模型验收。
+
+窗口：`opening_ui` 609检查、既有`mainline_ui` 354检查通过，实际viewport鼠标路由，1280×720、gl_compatibility、exit 0。四身份12项筹备真实创建、两种通用旧世卡、普通放弃挑战、每日/空手锁因、双击/跨世按钮、备劫与日志只读详情、死亡/结局另选及自动沿用均覆盖。六张截图逐张检查，root另抽查旧世选卡和实际开局详情；标题、选项与底部操作可见，长内容可滚动。GL退出仍有既有同类CanvasItem/ObjectDB/纹理释放提示。
+
+复现窗口检查：`tools/godot/Godot_v4.7.2-stable_win64_console.exe --path . --rendering-method gl_compatibility --resolution 1280x720 res://tests/opening_ui.tscn`；主线回归将末尾场景换为`res://tests/mainline_ui.tscn`。完整玩家二十日、长期经济与轮回平衡、更多分辨率、CI、独立安装包和部署均 **NOT RUN**。没有新增依赖或修改凭据。

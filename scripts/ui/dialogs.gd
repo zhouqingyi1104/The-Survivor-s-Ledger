@@ -21,6 +21,7 @@ const Npc = preload("res://scripts/core/npc_autonomy.gd")
 const NpcDialogue = preload("res://scripts/core/npc_dialogue.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
+const Opening = preload("res://scripts/core/opening.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -98,6 +99,9 @@ func _journal(body: VBoxContainer) -> void:
 	content.add_child(UI.label("人情往来：" + " · ".join(Director.ACTORS.keys().map(func(id): return "%s %+d" % [Director.ACTORS[id], int(d.relations[id])])), 16))
 	for promise in d.promises:
 		content.add_child(UI.para("第 %d 日 · %s 约定送来 %s" % [promise.day, Director.ACTORS[promise.actor], Director.describe(promise.give)], 16))
+	var opening_entry := UI.button("本世开局 · 行囊、人情与危机风声", opening_info)
+	opening_entry.set_meta("opening_entry", "journal")
+	content.add_child(opening_entry)
 	content.add_child(UI.button("尸劫来历 · 调查与出路", mainline))
 	var identity_entry := UI.button("身份与旧世 · 专属解法", identity_paths)
 	identity_entry.set_meta("identity_entry", "journal")
@@ -115,6 +119,42 @@ func _journal(body: VBoxContainer) -> void:
 	content.add_child(s)
 	var scroll := UI.scroll(content, mini(480, maxi(220, int(get_viewport().get_visible_rect().size.y) - 190)))
 	scroll.name = "JournalDetailsScroll"
+	body.add_child(scroll)
+
+
+func opening_info() -> void:
+	UI.close_modal("journal")
+	UI.open_modal("opening", "本世开局 · 已经发生的筹备", _opening_info, true, 860)
+
+
+func _opening_info(body: VBoxContainer) -> void:
+	var view := Opening.view(_run())
+	var content := UI.vbox(10)
+	content.add_child(UI.label(str(view.get("title", "普通行囊")), 23, UI.GOLD))
+	content.add_child(UI.para(str(view.get("summary", "这世按本职过活。")), 17))
+	var effects: Dictionary = view.get("effects", {})
+	if not effects.is_empty():
+		content.add_child(UI.para("已花银两 %s · 已用 %d 时辰" % [Pre.money(int(effects.get("silver_cost", 0))), int(effects.get("hours", 0))], 17, UI.GOLD))
+		var spent: Dictionary = effects.get("spent", {})
+		var gained: Dictionary = effects.get("gained", {})
+		content.add_child(UI.para("已付物资：" + (Data.describe_items(spent) if not spent.is_empty() else "无") + "\n已得物资：" + (Data.describe_items(gained) if not gained.is_empty() else "无"), 16))
+		for actor in effects.get("contacts", {}):
+			var contact: Dictionary = effects.contacts[actor]
+			content.add_child(UI.para("今世往来 · %s：信任 %+d、人情 %+d" % [Director.ACTORS.get(actor, actor), int(contact.get("trust", 0)), int(contact.get("favors", 0))], 16, UI.JADE))
+		var warning: Dictionary = effects.get("first_warning", {})
+		if not warning.is_empty():
+			var title := str(Crisis.CATALOG.get(str(warning.get("kind", "")), {}).get("title", "危机风声"))
+			content.add_child(UI.para("首场预兆：第 %d 日 · %s · 线人 %s。是否成真仍需本世查验。" % [int(warning.get("warning_day", 0)), title, Director.ACTORS.get(str(warning.get("actor", "")), "邻人")], 16, UI.GOLD))
+	var source := str(view.get("source_label", ""))
+	if source != "": content.add_child(UI.para("筹备依据：" + source, 16, UI.JADE))
+	content.add_child(UI.para("这是本世已经支付和得到的开局结果。其后交易、人情和危机查验仍按实际选择推进；下世可另选一项。", 15, UI.INK_SOFT))
+	for entry in view.get("history", []):
+		if entry is Dictionary:
+			content.add_child(UI.para(str(entry.get("text", entry.get("result", ""))), 16))
+		elif entry is String:
+			content.add_child(UI.para(entry, 16))
+	var scroll := UI.scroll(content, mini(400, maxi(220, int(get_viewport().get_visible_rect().size.y) - 190)))
+	scroll.name = "OpeningDetailsScroll"
 	body.add_child(scroll)
 
 

@@ -51,9 +51,14 @@ func build() -> void:
 	else:
 		v.add_child(UI.para("这条路线已结案；可以带着记忆重走，或合上这一卷。", 17, UI.DAI))
 	row.add_child(_card("再入轮回", "“这一回，我知道该往哪走。”",
-		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷\n收获　道心 +%d" % gain.total, "重 走", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
+		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷；沿用本世开局\n收获　道心 +%d" % gain.total, "重 走", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
 	row.add_child(_card("合上此录", "“到这里就够了。”",
 		"结算　这一卷到此为止\n收获　道心 +%d" % gain.total, "合 上", Game.close_book.bind(str(run.get("past_lives", {}).get("id", "")))))
+
+	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，再保留身份与难度，重新选择下世筹备；原重走按钮会沿用本世开局。")
+	choose.set_meta("opening_next", true)
+	choose.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(choose)
 
 
 func _card(title: String, quote: String, body_text: String, btn: String, cb: Callable) -> Control:

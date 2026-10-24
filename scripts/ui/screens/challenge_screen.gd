@@ -7,6 +7,7 @@ extends "res://scripts/ui/screens/screen_base.gd"
 
 const Ledger = preload("res://scripts/core/ledger.gd")
 const Companion = preload("res://scripts/core/companion.gd")
+const Opening = preload("res://scripts/core/opening.gd")
 
 ## 已勾的愿 / 凭仗 / 誓约 id
 var _picked: Array = []
@@ -17,9 +18,21 @@ var _endless := false
 var _daily := false
 ## 同院的人：带谁回来搭伙（最多 2 人）。不是誓约也不是凭仗，不改道心倍率。
 var _mates: Array = []
+var _opening_id := "plain"
+var _setup_read := false
+var _starting := false
+var _scroll_y := 0
 
 
 func build() -> void:
+	if not _setup_read:
+		_setup_read = true
+		var setup: Dictionary = Game.pending_opening_setup
+		_endless = bool(setup.get("endless", false))
+		_daily = bool(setup.get("daily", false))
+		_mates = setup.get("mates", []).duplicate()
+		Game.pending_opening_setup = {}
+	_normalize_opening()
 	var v := page(18)
 	var head := UI.hbox()
 	head.add_child(UI.heading("立什么愿，带什么家伙", 30))
@@ -33,10 +46,12 @@ func build() -> void:
 			r.name, State.diff_name({"difficulty": Game.pending_difficulty})], 16))
 	# 开局模式：两件事都不属于"立愿/凭仗/誓约"，单独放一行，选了才展开说明
 	var modes := UI.hbox(10)
-	modes.add_child(UI.button("□ 守到死（不设终局）" if not _endless else "■ 守到死（不设终局）",
-		func(): _toggle_mode(true)))
-	modes.add_child(UI.button(("□ 每日一局（%s）" if not _daily else "■ 每日一局（%s）") % Game.today_text(),
-		func(): _toggle_mode(false)))
+	var endless_pick := UI.button("□ 守到死（不设终局）" if not _endless else "■ 守到死（不设终局）", func(): _toggle_mode(true))
+	endless_pick.set_meta("opening_mode", "endless")
+	modes.add_child(endless_pick)
+	var daily_pick := UI.button(("□ 每日一局（%s）" if not _daily else "■ 每日一局（%s）") % Game.today_text(), func(): _toggle_mode(false))
+	daily_pick.set_meta("opening_mode", "daily")
+	modes.add_child(daily_pick)
 	modes.add_child(UI.spacer())
 	v.add_child(modes)
 	if _endless or _daily:
@@ -65,12 +80,18 @@ func build() -> void:
 	# 所以分两栏：左边誓约，右边凭仗 + 了愿。三栏装进滚动区，底下的开始按钮才不会被顶出屏幕
 	# （1280×720 下加了同院的人之后真的被顶出去过）。
 	var scroll := ScrollContainer.new()
+	scroll.name = "OpeningChoiceScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(scroll)
+	var contents := UI.vbox(14)
+	contents.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(contents)
+	_build_openings(contents)
+	contents.add_child(UI.sep())
 	var cols := UI.hbox(18)
 	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(cols)
+	contents.add_child(cols)
 	# 誓约超过 6 条就再开一栏：七条时底部已经贴到按钮，再往下堆必然截断。
 	var vow_list: Array = Data.table("challenge").get("vows", [])
 	var half: int = int(ceil(vow_list.size() / 2.0)) if vow_list.size() > 6 else vow_list.size()
@@ -98,12 +119,62 @@ func build() -> void:
 		right.add_child(_row(g, _picked, "bonus", 0))
 	cols.add_child(right)
 	v.add_child(UI.spacer())
+	v.add_child(UI.para("当前挑战：" + _start_text().trim_suffix("，开始"), 15, UI.INK_SOFT))
 	var foot := UI.hbox()
-	foot.add_child(UI.para("都可空着。", 15, UI.INK_FAINT))
+	foot.add_child(UI.para("开局互斥，挑战可空着。", 15, UI.INK_FAINT))
 	foot.add_child(UI.spacer())
-	foot.add_child(UI.button("什么都不选，开始", func(): _start(false)))
-	foot.add_child(UI.seal_button(_start_text(), func(): _start(true)))
+	var plain_start := UI.button("普通行囊，跳过挑战", func(): _start(false), false, "使用普通开局并清空誓约、凭仗和了愿；保留已选模式与同院的人。")
+	plain_start.set_meta("opening_start", "plain")
+	foot.add_child(plain_start)
+	var selected_start := UI.seal_button("按所选开局，开始", func(): _start(true), false, _start_text())
+	selected_start.set_meta("opening_start", "selected")
+	foot.add_child(selected_start)
 	v.add_child(foot)
+	scroll.set_deferred("scroll_vertical", _scroll_y)
+
+
+func _normalize_opening() -> void:
+	if _daily or "bare" in _vows:
+		_opening_id = "plain"
+	var found := false
+	for option in Opening.options(Game.pending_role, Game.meta, _daily, _vows, Game.pending_difficulty):
+		if str(option.id) == _opening_id and str(option.get("block", "")) == "": found = true
+	if not found: _opening_id = "plain"
+
+
+func _build_openings(parent: VBoxContainer) -> void:
+	parent.add_child(UI.label("这世带着什么回来 · 只选一项", 22, UI.DAI))
+	parent.add_child(UI.para("先花银和时间筹备，换来不同物资、人情与首场危机风声；放下旧世也能照常开始。", 16))
+	var grid := UI.grid(2, 12, 12)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for option in Opening.options(Game.pending_role, Game.meta, _daily, _vows, Game.pending_difficulty):
+		var id := str(option.id)
+		var on := _opening_id == id
+		var block := str(option.get("block", ""))
+		var card := UI.vbox(5)
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var pick := UI.button(("■ " if on else "□ ") + str(option.get("text", id)), func(): _pick_opening(id), block != "", block)
+		pick.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		pick.set_meta("opening_choice", id)
+		card.add_child(pick)
+		card.add_child(UI.para(str(option.get("hint", "")), 15))
+		if block != "": card.add_child(UI.para(block, 15, UI.CINNABAR))
+		var panel := UI.panel(card, Color("#f2e3c2") if on else UI.PANEL)
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(panel)
+	parent.add_child(grid)
+
+
+func _pick_opening(id: String) -> void:
+	_opening_id = id
+	_redraw()
+
+
+func _redraw() -> void:
+	var scroll := find_child("OpeningChoiceScroll", true, false) as ScrollContainer
+	if scroll != null: _scroll_y = scroll.scroll_vertical
+	UI.clear(self)
+	build()
 
 
 ## 一行一件事：左边方块标记（■ 选了 / □ 没选），右边名字 + 说明 + 分数。
@@ -115,6 +186,7 @@ func _row(item: Dictionary, bucket: Array, field: String, kind: int) -> Control:
 	var h := UI.hbox(10)
 	var mark := UI.button("■" if on else "□", func(): _toggle(id, not on, bucket))
 	mark.custom_minimum_size = Vector2(38, 38)
+	mark.set_meta("challenge_choice", id)
 	mark.tooltip_text = "取消" if on else "选中"
 	h.add_child(mark)
 	var col := UI.vbox(2)
@@ -149,8 +221,7 @@ func _toggle_mode(endless: bool) -> void:
 		_endless = not _endless
 	else:
 		_daily = not _daily
-	UI.clear(self)
-	build()
+	_redraw()
 
 
 ## 带 / 不带一个人进宅院。院里最多住 2 个帮手。
@@ -159,8 +230,7 @@ func _toggle_mate(pid: String) -> void:
 		_mates.erase(pid)
 	elif _mates.size() < 2:
 		_mates.append(pid)
-	UI.clear(self)
-	build()
+	_redraw()
 
 
 ## 选了模式才展开：说清代价，别让玩家打完才发现"活到终局"不算数。
@@ -181,8 +251,7 @@ func _toggle(id: String, pressed: bool, bucket: Array) -> void:
 	elif not pressed:
 		bucket.erase(id)
 	# 必须先 clear：build() 只往 self 上追加，不清就会每点一次叠一层。
-	UI.clear(self)
-	build()
+	_redraw()
 
 
 func _start_text() -> String:
@@ -222,6 +291,7 @@ func _start_text() -> String:
 
 
 func _start(with_picks: bool) -> void:
+	if _starting: return
 	var role_id: String = Game.pending_role
 	if role_id == "":
 		Game.go("roles")
@@ -229,5 +299,10 @@ func _start(with_picks: bool) -> void:
 	var goals: Array = _picked.duplicate() if with_picks else []
 	var boons: Array = _boons.duplicate() if with_picks else []
 	var vows: Array = _vows.duplicate() if with_picks else []
-	Game.pending_role = ""
-	Game.new_game(role_id, Game.pending_difficulty, goals, boons, vows, _endless, _daily, _mates.duplicate())
+	_starting = true
+	var result: String = Game.new_game(role_id, Game.pending_difficulty, goals, boons, vows, _endless, _daily, _mates.duplicate(), _opening_id if with_picks else "plain")
+	if result == "":
+		Game.pending_role = ""
+	else:
+		_starting = false
+		Game.toast.emit(result)
