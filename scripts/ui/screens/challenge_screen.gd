@@ -6,6 +6,7 @@ extends "res://scripts/ui/screens/screen_base.gd"
 ## 条件与数值全在 data/challenge.json，这里只负责勾选和显示。
 
 const Ledger = preload("res://scripts/core/ledger.gd")
+const Companion = preload("res://scripts/core/companion.gd")
 
 ## 已勾的愿 / 凭仗 / 誓约 id
 var _picked: Array = []
@@ -52,7 +53,7 @@ func build() -> void:
 		mates.add_child(UI.button("%s %s" % ["■" if on else "□", str(p.name)],
 			func(): _toggle_mate(pid), full, "取消" if on else ("院里已经住满了" if full else "带他进宅院")))
 	mates.add_child(UI.spacer())
-	mates.add_child(UI.label("每人每天 12 饱腹 + 1 瓢水", 15, UI.INK_FAINT))
+	mates.add_child(UI.label("每人每天 12 饱腹 + 1 瓢水 · 道心 −5%/人", 15, UI.INK_FAINT))
 	v.add_child(mates)
 	for pid in _mates:
 		var p2: Dictionary = Data.table("companions").get(pid, {})
@@ -194,6 +195,8 @@ func _start_text() -> String:
 	for b in Data.table("challenge").get("boons", []):
 		if str(b.get("id", "")) in _boons:
 			mul -= float(b.get("malus", 0.0))
+	# 同院的人：开局多帮手，道心打折（一人 −5%，折扣见 companion.MATE_MALUS 的实测依据）
+	mul -= Companion.MATE_MALUS * _mates.size()
 	mul = clampf(mul, 0.5, 1.5)
 	var goal_sum := 0
 	for g in Data.table("challenge").get("goals", []):

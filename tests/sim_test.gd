@@ -41,6 +41,11 @@ var vows_picked: Array = []
 var free_oil := false
 ## 凭仗（开局多给东西）
 var boons_picked: Array = []
+## 同院的人（备劫带回来的帮手，id 见 data/companions.json）
+var mates_picked: Array = []
+## 诊断用：带了人还多囤口粮（10 炊饼 + 2 斗米 + 2 捆柴）。
+## 分开"人没用"和"人有用但饿着了"——只跑一臂是分不清的。
+var mate_rations := false
 ## 无尽模式：劫满之后不结算，接着守下去
 var endless_after_win := false
 ## 诊断用：把每晚的「尸潮数量 / 守力」记下来，看夜里到底有没有悬念
@@ -341,6 +346,43 @@ func _init() -> void:
 			"（不带）" if bo == "" else bo, bw, VOW_SAMPLE, bdays / float(VOW_SAMPLE)])
 	boons_picked = []
 	vows_picked = []
+	# 同院的人：他们要口粮（每人每天 12 饱腹 + 1 瓢水），值不值只能跑出来看。
+	# 三臂同种子（8000+k）：不带 / 带了不专门囤粮 / 带了多囤口粮——
+	# 分开"人没用"和"人有用但饿着了"。胜负差按 2 个标准误报，够不上就明说在噪声里。
+	print("--- 诊断：同院的人值不值那口粮（%d 局，同种子成对） ---" % VOW_SAMPLE)
+	var arms := [["（不带）", [], false], ["阿福+小满", ["afu", "xiaoman"], false],
+		["阿福+小满·囤粮", ["afu", "xiaoman"], true]]
+	var arm_wins := []
+	for arm in arms:
+		mates_picked = arm[1]
+		mate_rations = arm[2]
+		var aw := 0
+		var adays := 0
+		var adaoxin := 0
+		var ajobs := 0
+		var ahungry := 0
+		for k in VOW_SAMPLE:
+			var ar: Dictionary = play(roles[k % roles.size()], 8000 + k)
+			adays += int(ar.days)
+			adaoxin += int(ar.daoxin)
+			ajobs += int(ar.mate_jobs)
+			ahungry += int(ar.mate_hungry)
+			if ar.win:
+				aw += 1
+		arm_wins.append(aw)
+		print("  %-12s 劫满 %d/%d　平均存活 %.1f 日　平均道心 %.0f　干活 %d 天　饿着 %d 天" % [
+			str(arm[0]), aw, VOW_SAMPLE, adays / float(VOW_SAMPLE), adaoxin / float(VOW_SAMPLE), ajobs, ahungry])
+	# 差值的 2 个标准误（按两个独立二项算，成对比较的真 SE 会更小，这里偏保守）
+	var p0: float = int(arm_wins[0]) / float(VOW_SAMPLE)
+	for i in range(1, arms.size()):
+		var pi: float = int(arm_wins[i]) / float(VOW_SAMPLE)
+		var se2 := 200.0 * sqrt(p0 * (1.0 - p0) / VOW_SAMPLE + pi * (1.0 - pi) / VOW_SAMPLE)
+		var delta_pp := (pi - p0) * 100.0
+		print("  vs 基准：%-12s 胜率 %+.0fpp　（2 个标准误约 ±%.0fpp，%s）" % [
+			str(arms[i][0]), delta_pp, se2,
+			"够不上，算噪声" if absf(delta_pp) < se2 else "超过 2 个标准误"])
+	mates_picked = []
+	mate_rations = false
 	test_rewind()
 	test_migrate()
 	test_fight()
@@ -432,6 +474,12 @@ func _count_block(why: String) -> void:
 
 func shop_pre(run: Dictionary) -> void:
 	var plan := SHOPPING.duplicate(true)
+	# 带了同院的人又开了"多囤口粮"：每人每天 12 饱腹 + 1 瓢水，
+	# 2 人 20 天约 480 饱腹。这里补 10 张炊饼（180 饱腹）+ 2 斗米（阿福能蒸成干粮）
+	# + 2 捆柴，免得测出来的只是"饿着人"。
+	if mate_rations and not mates_picked.is_empty():
+		plan.append(["rice_shop", {"flatbread": 10, "rice": 2}])
+		plan.append(["grocery", {"firewood": 2}])
 	var guard := 0
 	while run.phase == "pre" and guard < 200:
 		guard += 1
@@ -697,6 +745,7 @@ func play_day(run: Dictionary) -> void:
 func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionary:
 	var meta := State.new_meta()
 	var run := State.new_run(role, meta, seed_value, difficulty_id, [], boons_picked, vows_picked)
+	run.companions = mates_picked.duplicate()
 	pre_silver_start = int(run.silver)
 	shop_pre(run)
 	# 诊断三臂里的"白送油"：备完劫直接塞两壶，不花钱不占车上负重
@@ -732,6 +781,7 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 		"silver_start": pre_silver_start, "silver_left": silver_left,
 		"endless": bool(run.get("endless", false)), "pday": int(run.pday),
 		"waves_survived": int(run.waves_survived),
+		"mate_jobs": int(run.flags.get("mate_jobs", 0)), "mate_hungry": int(run.flags.get("mate_hungry", 0)),
 		"tally": _tally_copy(run), "furniture": run.furniture.duplicate()}
 
 
@@ -942,6 +992,7 @@ func test_companions() -> void:
 	var lines := Companion.dawn(run)
 	check(lines.size() == 1 and "饿" in str(lines[0]), "没喂饱该报饿肚子：%s" % str(lines))
 	check(State.attr(run, "mood") < mood0, "饿着肚子心情没掉")
+	check(int(run.flags.get("mate_hungry", 0)) == 1, "饿肚子没记进账")
 	# 喂饱了才干活：厨子收 1 份口粮 + 1 瓢水，再用粮/水/柴蒸一锅
 	Inv.add(run.home, "flatbread", 1)
 	Inv.add(run.home, "rice", 1)
@@ -951,6 +1002,7 @@ func test_companions() -> void:
 	check(Inv.count(run.home, "flatbread") == 3, "厨子没出干粮（或口粮没收对）：%d" % Inv.count(run.home, "flatbread"))
 	check(Inv.count(run.home, "rice") == 0 and Inv.count(run.home, "firewood") == 0, "厨子的料没扣")
 	check("蒸了一锅" in str(l2), "厨子干活没报动静：%s" % str(l2))
+	check(int(run.flags.get("mate_jobs", 0)) == 1, "干活没记进账")
 	# 木匠：修最破的那处，扣木料；修的是门就记进账本（誓约「不修门」查的就是这个）
 	var run2 := cold_night("escort", 107)
 	run2.companions = ["carpenter"]
@@ -982,7 +1034,14 @@ func test_companions() -> void:
 	Companion.dawn(run3)
 	check(Inv.count(run3.home, "water") == 2, "小满没打水")
 	check(int(run3.plots[0].watered_t) == int(run3.t), "菜畦没浇")
-	print("同院的人：饿着不干活；厨子蒸干粮、木匠修最破处（修门记账）、小满打水浇畦")
+	# 道心折扣：一人 −5%，两人 −10%（40 局实测带 2 人胜率 +17pp 还涨道心，纯口粮咬不住）
+	var priced := cold_night("escort", 111)
+	check(is_equal_approx(Ledger.challenge_mul(priced), 1.0), "没带人却改了倍率")
+	priced.companions = ["afu"]
+	check(is_equal_approx(Ledger.challenge_mul(priced), 0.95), "带一人的折扣不对：%.3f" % Ledger.challenge_mul(priced))
+	priced.companions = ["afu", "carpenter"]
+	check(is_equal_approx(Ledger.challenge_mul(priced), 0.90), "带两人的折扣不对：%.3f" % Ledger.challenge_mul(priced))
+	print("同院的人：饿着不干活；厨子蒸干粮、木匠修最破处（修门记账）、小满打水浇畦；道心 −5%/人")
 	_ok("test_companions")
 
 

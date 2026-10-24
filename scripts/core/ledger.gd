@@ -6,6 +6,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
+const Companion = preload("res://scripts/core/companion.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 
 const OMEN_SLOTS := 3
@@ -169,6 +170,8 @@ static func challenge_mul(run: Dictionary) -> float:
 		if str(v.get("id", "")) in State.tally(run).get("vows", []) and vow_met(run, v):
 			m += float(v.get("mul", 1.0)) - 1.0
 	m -= State.boon_malus(run)
+	# 同院的人：开局多帮手，道心打折（一人 −5%，见 companion.MATE_MALUS 的实测依据）
+	m -= Companion.MATE_MALUS * float(run.get("companions", []).size())
 	return clampf(m, 0.5, 1.5)
 
 

@@ -12,6 +12,10 @@ const FOOD_PER_DAY := 12.0
 const WATER_PER_DAY := 1
 ## 木匠每天修多少耐久
 const MEND_AMOUNT := 25
+## 带一个人的道心折扣。**按实测定的**：40 局三臂对照里，带 2 人劫满 39/40（基准 32/40），
+## 而且道心还涨了 5 点——只收口粮根本咬不住，"不带"变成纯亏。
+## 跟凭仗一个道理：开局多帮手，道心打折。一人 −5%，两人 −10%（challenge_mul 里减）。
+const MATE_MALUS := 0.05
 
 
 static func list(run: Dictionary) -> Array:
@@ -35,6 +39,7 @@ static func dawn(run: Dictionary) -> Array:
 		if not _feed(run, float(need.get("food", FOOD_PER_DAY)), int(need.get("water", WATER_PER_DAY))):
 			out.append("%s饿着肚子，今天什么也没干。" % who)
 			State.add_attr(run, "mood", -3)
+			run.flags["mate_hungry"] = int(run.flags.get("mate_hungry", 0)) + 1
 			continue
 		var line := _job(run, str(c.get("job", "")), who)
 		if line != "":
@@ -71,6 +76,7 @@ static func _job(run: Dictionary, job: String, who: String) -> String:
 					Inv.add(run.home, "firewood", -1)
 					var dish := "flatbread" if gid == "rice" else "millet_cake"
 					Inv.add(run.home, dish, 3)
+					_worked(run)
 					return "%s蒸了一锅%s，得 3 份。" % [who, Data.item_name(dish)]
 			return "%s没凑齐粮、水、柴，灶没生起来。" % who
 		"mend":
@@ -91,6 +97,7 @@ static func _job(run: Dictionary, job: String, who: String) -> String:
 			# 他修的门也记在你账上：誓约「不修门」查的是修过几次，不管是谁挥的锤子
 			if worst == "door":
 				run.tally["repair_door"] = int(run.tally.get("repair_door", 0)) + 1
+			_worked(run)
 			return "%s修了%s，耐久 +%d。" % [who, _part_name(worst), MEND_AMOUNT]
 		"water":
 			Inv.add(run.home, "water", 2)
@@ -98,8 +105,15 @@ static func _job(run: Dictionary, job: String, who: String) -> String:
 			for plot in plots:
 				plot["watered_t"] = int(run.t)
 			var extra := "，顺手把菜畦都浇了" if not plots.is_empty() else ""
+			_worked(run)
 			return "%s打了两瓢水%s。" % [who, extra]
 	return ""
+
+
+## 真干成了活才记账。平衡对账时用它数"人到底干了几天"，
+## 免得胜率没动就只能猜（饿肚子的另记 mate_hungry）。
+static func _worked(run: Dictionary) -> void:
+	run.flags["mate_jobs"] = int(run.flags.get("mate_jobs", 0)) + 1
 
 
 static func _part_name(part: String) -> String:
