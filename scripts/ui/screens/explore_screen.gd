@@ -122,7 +122,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo or modal_open():
 		return
-	if key.keycode in [KEY_E, KEY_SPACE]:
+	# 翻找 = interact（E）或 confirm（空格），走输入动作，改键不用动这里
+	if event.is_action_pressed("interact") or event.is_action_pressed("confirm"):
 		if _near == -2:
 			finish()
 		elif _near >= 0:

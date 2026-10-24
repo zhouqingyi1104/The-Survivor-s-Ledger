@@ -162,11 +162,14 @@ func search_objective(kind: String) -> void:
 	await frames(7)
 	check(int(main._screen._near) == idx, "Physical proximity did not select mainline target")
 	var press := InputEventKey.new()
+	# 动作用 physical_keycode 定义，真实按键事件两者都带；只设 keycode 匹配不上
 	press.keycode = KEY_E
+	press.physical_keycode = KEY_E
 	press.pressed = true
 	Input.parse_input_event(press)
 	var release := InputEventKey.new()
 	release.keycode = KEY_E
+	release.physical_keycode = KEY_E
 	Input.parse_input_event(release)
 	await frames(7)
 	check(Game.run.busy.get("kind", "") == "mainline", "Actual E key did not start real investigation")

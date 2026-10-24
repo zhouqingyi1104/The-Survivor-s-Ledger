@@ -524,44 +524,50 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo or modal_open():
 		return
-	match key.keycode:
-		KEY_E:
-			var id: String = world.nearest_spot(player.global_position, 2.2)
-			if id != "":
-				open_menu(id, rig.cam.unproject_position(HomeWorld.SPOTS[id].tag))
-		KEY_SPACE:
-			Game.speed = 1 if Game.speed == 0 else 0
-			Game.refresh()
-		KEY_1, KEY_2, KEY_3:
-			Game.speed = key.keycode - KEY_0
-			Game.refresh()
-		KEY_N:
-			perform("bed", "就寝")
-		KEY_I, KEY_TAB:
-			Dialogs.inventory()
-		KEY_J:
-			if not Game.run.get("fight", {}).is_empty():
-				_swing()
-			else:
-				Dialogs.journal()
-		KEY_K:
-			if not Game.run.get("fight", {}).is_empty():
-				_guard()
-		KEY_R:
-			if Game.placing != "":
-				Game.placing_rot = (Game.placing_rot + 90) % 360
-				Game.toast.emit("转了个方向。")
-		KEY_F:
-			if Post.in_night(Game.run):
-				Dialogs.night_panel()
-		KEY_ESCAPE:
-			if Game.placing != "":
-				Game.placing = ""
-				Game.toast.emit("先不摆了。")
-			elif _menu.visible:
-				_close_menu()
-			else:
-				Dialogs.settings(true)
+	# 热键一律走输入动作（project.godot [input]），改键只动 InputMap，这里不用变
+	if event.is_action_pressed("interact"):
+		var id: String = world.nearest_spot(player.global_position, 2.2)
+		if id != "":
+			open_menu(id, rig.cam.unproject_position(HomeWorld.SPOTS[id].tag))
+	elif event.is_action_pressed("speed_pause"):
+		Game.speed = 1 if Game.speed == 0 else 0
+		Game.refresh()
+	elif event.is_action_pressed("speed_1"):
+		Game.speed = 1
+		Game.refresh()
+	elif event.is_action_pressed("speed_2"):
+		Game.speed = 2
+		Game.refresh()
+	elif event.is_action_pressed("speed_3"):
+		Game.speed = 3
+		Game.refresh()
+	elif event.is_action_pressed("sleep"):
+		perform("bed", "就寝")
+	elif event.is_action_pressed("inventory"):
+		Dialogs.inventory()
+	elif event.is_action_pressed("journal"):
+		if not Game.run.get("fight", {}).is_empty():
+			_swing()
+		else:
+			Dialogs.journal()
+	elif event.is_action_pressed("guard"):
+		if not Game.run.get("fight", {}).is_empty():
+			_guard()
+	elif event.is_action_pressed("rotate"):
+		if Game.placing != "":
+			Game.placing_rot = (Game.placing_rot + 90) % 360
+			Game.toast.emit("转了个方向。")
+	elif event.is_action_pressed("night_panel"):
+		if Post.in_night(Game.run):
+			Dialogs.night_panel()
+	elif event.is_action_pressed("cancel"):
+		if Game.placing != "":
+			Game.placing = ""
+			Game.toast.emit("先不摆了。")
+		elif _menu.visible:
+			_close_menu()
+		else:
+			Dialogs.settings(true)
 
 
 func _click(pos: Vector2) -> void:

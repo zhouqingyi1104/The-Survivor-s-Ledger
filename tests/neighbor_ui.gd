@@ -82,7 +82,9 @@ func _ready() -> void:
 	screen().player.position = screen().world._spots[0].pos
 	screen()._near = 0
 	var key := InputEventKey.new()
+	# 动作用 physical_keycode 定义，真实按键事件两者都带；只设 keycode 匹配不上
 	key.keycode = KEY_E
+	key.physical_keycode = KEY_E
 	key.pressed = true
 	screen()._unhandled_input(key)
 	await snapshot("03-cabinet")

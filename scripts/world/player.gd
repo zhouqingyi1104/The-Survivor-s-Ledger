@@ -59,13 +59,14 @@ func is_walking() -> bool:
 func _physics_process(delta: float) -> void:
 	var input := Vector2.ZERO
 	if enabled:
-		if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
+		# 移动走输入动作（project.godot [input] 里 W/S/A/D + 方向键），改键不用动这里
+		if Input.is_action_pressed("move_up"):
 			input.y -= 1
-		if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN):
+		if Input.is_action_pressed("move_down"):
 			input.y += 1
-		if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT):
+		if Input.is_action_pressed("move_left"):
 			input.x -= 1
-		if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT):
+		if Input.is_action_pressed("move_right"):
 			input.x += 1
 	var dir := Vector3(input.x, 0, input.y).normalized().rotated(Vector3.UP, cam_yaw)
 	if dir.length() > 0.1:
