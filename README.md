@@ -27,6 +27,7 @@
 | [14-past-lives.md](docs/14-past-lives.md) | 前世记忆与 `Memory.md` 运行档案 | 已实现 |
 | [15-companions.md](docs/15-companions.md) | 同院的人（带帮手搭伙） | 已实现 |
 | [16-craft-tradeoffs.md](docs/16-craft-tradeoffs.md) | 工作台加工：烧炭 / 配避瘟散 / 压干粮 | 已实现 |
+| [17-relationship-trade.md](docs/17-relationship-trade.md) | 纸鹤往来：信用报价、人情、赊欠、互助与失约补救 | 已实现，本地验证通过 |
 
 截图在 [docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；夜战见 `night_policy.png` 与 `night_panel.png`；开局模式与同院见 `challenge_modes.png`、`challenge_mates.png`）。
 
@@ -165,6 +166,7 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 | `director_recorded_ui` | 离线重放一次已授权的 ARK 真实回答，不再生成、不重试 |
 | `past_lives_rules` / `past_lives_ui` | 前世事实只来自真实选择、觉醒抽取和界面展示 |
 | `memory_file_flow` | 结算 → 写 Memory.md → 下一世规划读取的整条流程（隔离的临时文件） |
+| `social_trade_rules` / `social_trade_integration` / `social_trade_ui` / `social_trade_memory` | 人情交易规则、剧情与时钟接线、真实窗口点击及旧世交易结算；入口为宅院劫余录 → 纸鹤往来，第2日起08:00–18:00 |
 | `player_animation` / `title_input` | 真实输入能驱动移动与动画；标题页按钮能被鼠标点到 |
 | `city_routes` | 城里任意两地之间的走法 |
 | `sky_clarity` | 新旧雾浓度在同一机位下的对比图 |

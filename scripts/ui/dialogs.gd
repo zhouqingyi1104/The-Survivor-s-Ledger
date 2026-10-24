@@ -15,6 +15,9 @@ const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
+const Trade = preload("res://scripts/core/social_trade.gd")
+
+var _trade_actor := "ning"
 
 ## 家具的功用，摆出来能做什么（写给人看的）
 const FN_TEXT := {
@@ -91,12 +94,105 @@ func _journal(body: VBoxContainer) -> void:
 	body.add_child(UI.button("前世记忆 · 查看旧世与觉醒", past_lives))
 	body.add_child(UI.para(Neighbor.summary(_run()), 17))
 	body.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
+	body.add_child(UI.button("纸鹤往来 · 交易与欠账", social_trade))
 	var lines: Array = _run().get("log", [])
 	var log_height := mini(360, maxi(160, int(get_viewport().get_visible_rect().size.y) - 330 - d.promises.size() * 34))
 	var s := UI.scroll(UI.log_view(lines, lines.size(), 17), log_height)
 	var bar := s.get_v_scroll_bar()
 	bar.changed.connect(func(): s.scroll_vertical = int(bar.max_value))
 	body.add_child(s)
+
+
+func social_trade() -> void:
+	# 到期事实即使此前没有打开窗口，也先结算再展示，并走统一存档入口。
+	Game.act(func(): return Post.trade_refresh(Game.run))
+	UI.open_modal("social_trade", "纸鹤往来 · 交易与欠账", _social_trade, true, 850)
+
+
+func _trade_pick(actor: String) -> void:
+	_trade_actor = actor
+	# 不发出 Game.changed；切联系人不改变游戏事实或刷新其他窗口。
+	if UI.host != null and UI.host.has_modal("social_trade"):
+		UI.host._modals.social_trade._queue()
+
+
+func _social_trade(body: VBoxContainer) -> void:
+	var run := _run()
+	var ctx := Trade.context(run)
+	body.add_child(UI.para("第 2 日起，每日 08:00–18:00 可在家联系。每人每天一份货；婉拒也会放弃当天机会。", 16))
+	var tabs := UI.hbox(8)
+	for actor in ["ning", "zhou", "traveler"]:
+		var contact := Trade.contact(run, actor)
+		var name_text: String = contact.name
+		var tab := UI.button(("● " if actor == _trade_actor else "") + name_text, _trade_pick.bind(actor))
+		tab.set_meta("trade_contact", actor)
+		tabs.add_child(UI.expand(tab))
+	body.add_child(tabs)
+	var content := UI.vbox(10)
+	var who := Trade.contact(run, _trade_actor)
+	content.add_child(UI.label("%s · 信任 %+d · 欠你的人情 %d · 未化解失约 %d（累计 %d）" % [who.name, int(who.trust), int(who.favors), int(who.breaches), int(who.breach_total)], 18, UI.GOLD))
+	content.add_child(UI.para("最近人情变化：" + str(who.get("last_change", "尚无人情往来")), 15))
+	content.add_child(UI.para("信任影响报价与赊欠资格；人情可换当日现货；失约会抬价，清债后仍需补偿才能化解。", 15))
+	var trade_state := Trade.state(run)
+	var history: Array = trade_state.get("history", [])
+	if str(trade_state.get("last_result", "")) != "":
+		var last_actor := str(history.back().get("actor", "")) if not history.is_empty() else ""
+		var last_name: String = Trade.ACTORS.get(last_actor, "往来记录")
+		content.add_child(UI.para("最近结果：%s · %s" % [last_name, str(trade_state.last_result)], 17, UI.JADE))
+	var quoted := Trade.quote(run, _trade_actor)
+	if not quoted.is_empty():
+		content.add_child(UI.label("第 %d 日的现货" % int(quoted.day), 19, UI.GOLD))
+		content.add_child(UI.para("交出：%s\n得到：%s\n报价缘由：%s" % [req_text(run.home, quoted.req), Director.describe(quoted.give), quoted.reason], 17))
+	else:
+		content.add_child(UI.para("暂时没有可领取的当日报价。", 17))
+	var options := Trade.options(run, _trade_actor)
+	for option in options:
+		var card := UI.vbox(4)
+		card.add_child(UI.para(str(option.hint), 16))
+		var block := str(option.block)
+		if block != "":
+			card.add_child(UI.para(block, 15, UI.CINNABAR))
+		var token := str(quoted.get("id", ""))
+		var button := UI.button(str(option.text), _trade_do.bind(_trade_actor, str(option.id), token), block != "", block)
+		button.set_meta("trade_action", str(option.id))
+		button.set_meta("trade_actor", _trade_actor)
+		card.add_child(button)
+		content.add_child(UI.panel(card))
+	content.add_child(UI.sep())
+	var debt_heading := UI.label("欠账与待收回礼", 19, UI.GOLD)
+	debt_heading.name = "TradeDebtHeading"
+	content.add_child(debt_heading)
+	var debt: Dictionary = ctx.debt
+	if debt.is_empty():
+		content.add_child(UI.para("没有未清欠账。全局同时只能保留一笔借债。", 16))
+	else:
+		var debt_name: String = Trade.contact(run, str(debt.actor)).name
+		var debt_summary := UI.para("欠 %s：%s\n第 %d 日 18:00 前偿还%s。欠账已定，不随以后的报价改变。" % [debt_name, req_text(run.home, debt.req), int(debt.due_day), "；现已逾期，失约已留痕" if bool(debt.overdue) else ""], 16, UI.CINNABAR if bool(debt.overdue) else UI.INK)
+		debt_summary.name = "TradeDebtSummary"
+		content.add_child(debt_summary)
+	if ctx.aid.is_empty():
+		content.add_child(UI.para("没有待收回礼。", 16))
+	for aid in ctx.aid:
+		content.add_child(UI.para("%s · 第 %d 日 %s 回礼：%s（已送出 %s）" % [Trade.contact(run, str(aid.actor)).name, int(aid.due_day), _trade_clock(int(aid.due_t)), Director.describe(aid.give), Director.describe(aid.req)], 16))
+	content.add_child(UI.sep())
+	content.add_child(UI.label("往来记录 · 最近十二条", 19, UI.GOLD))
+	if history.is_empty():
+		content.add_child(UI.para("尚无成交、拒绝或失约。实际选择会记在这里。", 16))
+	for k in range(history.size() - 1, maxi(-1, history.size() - 13), -1):
+		var entry: Dictionary = history[k]
+		content.add_child(UI.para("第 %d 日 %s · %s" % [int(entry.get("t", 0)) / 1440 + 1, _trade_clock(int(entry.get("t", 0))), str(entry.get("result", entry.get("text", "")))], 15))
+	var scroll := UI.scroll(content, mini(420, maxi(180, int(get_viewport().get_visible_rect().size.y) - 240)))
+	scroll.name = "TradeDetailsScroll"
+	body.add_child(scroll)
+
+
+func _trade_clock(t: int) -> String:
+	var minute := (t + 360) % 1440
+	return "%02d:%02d" % [minute / 60, minute % 60]
+
+
+func _trade_do(actor: String, action: String, quote_id: String) -> void:
+	Game.act(func(): return Post.trade_action(Game.run, actor, action, quote_id))
 
 
 func past_lives() -> void:
