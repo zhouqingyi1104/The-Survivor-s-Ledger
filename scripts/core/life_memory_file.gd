@@ -8,6 +8,25 @@ const ROLES := {"scholar": "落第书生", "escort": "镖局趟子手", "herbali
 static func line(value, limit := 240) -> String:
 	return str(value).replace("\r", " ").replace("\n", " ").left(limit)
 
+static func _crisis_line(entry: Dictionary) -> String:
+	var titles := {"well_freeze": "井口冻裂", "fuel_shortage": "运柴中断", "herb_shortage": "药草挤兑"}
+	var truth := {"unknown": "尚未核实，真假未知", "real": "已确认属实", "false": "已确认虚惊"}
+	var responses := {"": "未选处置", "prepare": "自行筹备", "aid": "请线人帮忙", "ignore": "本次观望", "emergency": "事后补救"}
+	var outcomes := {"": "本世合卷时尚未结案", "averted": "危机成真但影响被防住", "false_alarm": "虚惊结案", "endured": "影响自然结束", "repaired": "补救后提前恢复"}
+	return "- %s · 来源%s · 第 %d 日公开：%s；%s，%s；%s。原定影响判定第 %d 日 18:00，自然结束第 %d 日 08:00。\n" % [titles[entry.kind], Past.ACTORS[entry.actor], int(entry.warning_day), truth[entry.confirmed], responses[entry.response], "处置已完成" if entry.protected else "没有完成提前处置", outcomes[entry.outcome], int(entry.warning_day) + 2, int(entry.warning_day) + 4]
+
+static func _crisis_section(value) -> String:
+	var crisis := Past.crisis_snapshot(value)
+	if crisis.is_empty(): return ""
+	var out := "\n### 旧世风声与危机结算\n\n只记录曾公开的预兆与实际行动；未核实传闻仍是真假未知。旧世危机不是本世处罚，也不会自动搬到新世。\n\n"
+	for entry in crisis.completed: out += _crisis_line(entry)
+	if not crisis.active.is_empty(): out += _crisis_line(crisis.active)
+	if not crisis.history.is_empty():
+		out += "\n最近核实与应对记录：\n"
+		for entry in crisis.history.slice(maxi(0, crisis.history.size() - 6)):
+			out += "- 第 %d 日 · %s：%s\n" % [int(entry.day), Past.ACTORS[entry.actor], line(entry.result, 100)]
+	return out
+
 static func render(meta: Dictionary) -> String:
 	var b := Past.book(meta)
 	var text := "<!-- survivors-memory:v1 count:%d -->\n# 轮回记忆\n\n游戏每轮最终结算后更新。以下是已完结旧世，不能当作本世已经发生的事。\nAI 编剧可据此铺垫后续；NPC 只知道本世已经觉醒的片段。\n\n" % int(b.count)
@@ -46,6 +65,7 @@ static func render(meta: Dictionary) -> String:
 			if trade.aid.is_empty(): section += "- 待收旧世回礼：无。\n"
 			for gift in trade.aid:
 				section += "- 待收旧世回礼：%s约定第 %d 日 08:00 送来%s；你已交出%s。\n" % [Past.ACTORS[gift.actor], int(gift.due_day), Data.describe_items(gift.give), Data.describe_items(gift.req)]
+		section += _crisis_section(summary.get("crisis", {}))
 		section += "\n"
 		if text.to_utf16_buffer().size() + section.to_utf16_buffer().size() > (MAX_CHARS - 100) * 2:
 			text += "较早轮回的更多细节已按篇幅省略；上文优先保留最近完结的一轮。\n"

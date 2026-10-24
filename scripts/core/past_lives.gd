@@ -5,6 +5,7 @@ const KEEP_LIVES := 8
 const KEEP_FACTS := 12
 const MAX_AWAKENINGS := 2
 const TRADE_GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
+const CRISIS_KINDS := ["well_freeze", "fuel_shortage", "herb_shortage"]
 
 static func _trade_integer(value, low: int, high: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and float(value) == floorf(float(value)) and value >= low and value <= high
@@ -44,6 +45,42 @@ static func trade_snapshot(value) -> Dictionary:
 		if confirmed.is_empty(): return {}
 		aid.append(confirmed)
 	return {"schema": 1, "actors": actors, "debt": debt, "aid": aid}
+
+static func _public_crisis(value) -> Dictionary:
+	if not value is Dictionary or not value.get("id") is String or value.id.strip_edges().is_empty() or value.id.length() > 80: return {}
+	if not value.get("kind", "") in CRISIS_KINDS or not value.get("actor", "") in ACTORS or not value.get("stage", "") in ["warning", "impact", "resolved"]: return {}
+	if not _trade_integer(value.get("warning_day"), 2, 100003) or value.get("impact_t") != (int(value.warning_day) + 1) * 1440 + 720 or value.get("end_t") != (int(value.warning_day) + 3) * 1440 + 120: return {}
+	if not value.get("investigated") is bool or not value.get("protected") is bool or not value.get("confirmed", "") in ["unknown", "real", "false"]: return {}
+	if not value.get("response") in ["", "prepare", "aid", "ignore", "emergency"] or not value.get("outcome") in ["", "averted", "false_alarm", "endured", "repaired"]: return {}
+	if value.investigated and value.confirmed == "unknown": return {}
+	if value.confirmed == "false" and (value.stage != "resolved" or value.outcome != "false_alarm"): return {}
+	var out := {}
+	for key in ["id", "kind", "actor", "stage", "warning_day", "impact_t", "end_t", "investigated", "confirmed", "response", "protected", "outcome"]: out[key] = value[key]
+	return out
+
+## Only published facts survive a life; pending proposals and private real never do.
+static func crisis_snapshot(value) -> Dictionary:
+	if not value is Dictionary or value.get("schema") != 1 or not value.get("active") is Dictionary: return {}
+	var completed = value.get("completed", [])
+	var history = value.get("history", [])
+	if not completed is Array or completed.size() > 6 or not history is Array or history.size() > 12: return {}
+	var active := _public_crisis(value.active) if not value.active.is_empty() else {}
+	if not value.active.is_empty() and active.is_empty(): return {}
+	var settled := []
+	var ids := []
+	for entry in completed:
+		var confirmed := _public_crisis(entry)
+		if confirmed.is_empty() or confirmed.stage != "resolved" or confirmed.id in ids: return {}
+		settled.append(confirmed)
+		ids.append(confirmed.id)
+	var facts := []
+	for entry in history:
+		if not entry is Dictionary or not _trade_integer(entry.get("day"), 0, 100000) or not entry.get("kind", "") in CRISIS_KINDS or not entry.get("actor", "") in ACTORS: return {}
+		if not entry.get("action") is String or entry.action.strip_edges().is_empty() or entry.action.length() > 32 or not entry.get("result") is String or entry.result.strip_edges().is_empty() or entry.result.length() > 160: return {}
+		facts.append({"day": int(entry.day), "kind": entry.kind, "actor": entry.actor, "action": entry.action, "result": entry.result})
+	if active.get("id", "") in ids: active = {}
+	if active.is_empty() and settled.is_empty() and facts.is_empty(): return {}
+	return {"schema": 1, "active": active, "completed": settled, "history": facts}
 
 static func fresh_book() -> Dictionary:
 	return {"version": 1, "count": 0, "lives": [], "sealed_ids": []}
@@ -136,6 +173,8 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 		"choices": history.slice(maxi(0, history.size() - 8)), "relations": run.get("director", {}).get("relations", {}).duplicate()}
 	var trade := trade_snapshot(run.get("trade", {}))
 	if not trade.is_empty(): summary["trade"] = trade
+	var crisis := crisis_snapshot(run.get("crisis", {}))
+	if not crisis.is_empty(): summary["crisis"] = crisis
 	b.lives.append({"id": p.id, "life": ordinal, "facts": facts, "summary": summary})
 	b.sealed_ids.append(p.id)
 	b.count = ordinal
