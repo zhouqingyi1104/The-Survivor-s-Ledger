@@ -19,6 +19,7 @@ const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Companion = preload("res://scripts/core/companion.gd")
 const Trade = preload("res://scripts/core/social_trade.gd")
+const Crisis = preload("res://scripts/core/crisis.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -118,6 +119,11 @@ static func advance(run: Dictionary, minutes: int) -> String:
 			return "event"
 		var m := day_minute(run)
 		var step := mini(TICK, left)
+		# Finish work at its actual minute, even after split advances. Otherwise a
+		# valid finish just before a crisis deadline can be rounded into the crisis.
+		var work_end := int(run.busy.get("end", 0))
+		if work_end > int(run.t) and int(run.t) + step > work_end:
+			step = work_end - int(run.t)
 		for cp in checkpoints(run):
 			if m < cp and m + step > cp:
 				step = cp - m
@@ -674,10 +680,28 @@ static func begin_day(run: Dictionary) -> void:
 
 ## 纸鹤交易在本地结算；到期事实也会使尚未展示的 AI 规划失效。
 static func trade_refresh(run: Dictionary) -> String:
+	# Settle world clocks before calculating market terms or honoring payments.
+	crisis_refresh(run)
 	var result := Trade.poll(run)
 	if result != "":
 		Director.note_choice(run, "纸鹤往来 · 履约与期限", result)
 	return ""
+
+
+static func crisis_refresh(run: Dictionary) -> String:
+	var result := Crisis.poll(run)
+	if result != "":
+		Director.note_choice(run, "风声与危机", result)
+	return ""
+
+
+static func crisis_action(run: Dictionary, action: String, token: String) -> String:
+	crisis_refresh(run)
+	Trade.state(run) # Aid can spend only existing, real favors from this life.
+	var result := Crisis.act(run, action, token)
+	if result == "":
+		Director.note_choice(run, "危机应对", str(Crisis.state(run).last_result))
+	return result
 
 
 static func trade_action(run: Dictionary, actor: String, action: String, quote_id: String) -> String:
@@ -732,6 +756,9 @@ static func _check_busy(run: Dictionary) -> void:
 ## 做完了，见成果。
 static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 	match kind:
+		"crisis":
+			var result := Crisis.complete(run, data)
+			if result != "": Director.note_choice(run, "危机行动完成", result)
 		"cook":
 			var rid: String = data.recipe
 			var n := cook_servings(run, rid)
@@ -794,6 +821,11 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 			State.add_attr(run, "mood", 4)
 			State.note(run, "小憩醒来，精神好些了。")
 		"water":
+			var blocked_well := Crisis.well_block(run)
+			if blocked_well != "":
+				run.well_used = false # An unsuccessful attempt must not consume a successful draw.
+				State.note(run, blocked_well + "这次没有打到水；修复后仍可重新打水。")
+				return
 			var n := 2 + (1 if State.has_facility(run, "water_vat") else 0)
 			var frozen := int(State.weather(run).cold) >= 25
 			if frozen:
@@ -1095,12 +1127,21 @@ static func act_craft(run: Dictionary, craft_id: String) -> String:
 	return ""
 
 
-static func draw_water(run: Dictionary) -> String:
+static func water_block(run: Dictionary) -> String:
 	var err := can_act(run, 2)
 	if err != "":
 		return err
+	err = Crisis.well_block(run)
+	if err != "": return err
 	if run.well_used:
 		return "今天已经打过水了。"
+	return ""
+
+
+static func draw_water(run: Dictionary) -> String:
+	crisis_refresh(run)
+	var err := water_block(run)
+	if err != "": return err
 	run.well_used = true
 	_start(run, "water")
 	return ""

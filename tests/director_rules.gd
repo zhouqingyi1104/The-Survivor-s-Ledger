@@ -112,8 +112,12 @@ func _ready() -> void:
 	check(not Core.accept(dead, dead_sent, plan(1)), "Dead run accepted future events")
 	var clocked := sample()
 	Neighbor.state(clocked).stage = "closed"
-	Core.accept(clocked, Core.snapshot(clocked), plan(1))
 	at(clocked, 2)
+	# Publish the new world fact before preparing this fixture's next-day plan.
+	# A warning must invalidate an older plan, rather than weakening that rule.
+	Post.crisis_refresh(clocked)
+	Core.accept(clocked, Core.snapshot(clocked), plan(2))
+	at(clocked, 3)
 	clocked.t -= 10
 	check(Post.advance(clocked, 20) == "event" and str(clocked.pending_event).begins_with("world:"), "Game clock did not open buffered event at 08:00")
 	print("Director rules: %d checks, %d failures" % [checks, failures])

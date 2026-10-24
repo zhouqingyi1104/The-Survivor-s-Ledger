@@ -6,6 +6,7 @@ extends RefCounted
 const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const State = preload("res://scripts/core/state.gd")
+const Crisis = preload("res://scripts/core/crisis.gd")
 
 ## 一天的口粮：多少点饱腹的吃食 + 几瓢清水。吃得上才干活。
 const FOOD_PER_DAY := 12.0
@@ -100,6 +101,8 @@ static func _job(run: Dictionary, job: String, who: String) -> String:
 			_worked(run)
 			return "%s修了%s，耐久 +%d。" % [who, _part_name(worst), MEND_AMOUNT]
 		"water":
+			var blocked_well := Crisis.well_block(run)
+			if blocked_well != "": return "%s没能打水或浇田：%s" % [who, blocked_well]
 			Inv.add(run.home, "water", 2)
 			var plots: Array = run.get("plots", [])
 			for plot in plots:

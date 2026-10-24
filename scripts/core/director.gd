@@ -5,6 +5,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 const Trade = preload("res://scripts/core/social_trade.gd")
+const Crisis = preload("res://scripts/core/crisis.gd")
 const GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 
@@ -34,7 +35,7 @@ static func snapshot(run: Dictionary, archive: Dictionary = {}) -> Dictionary:
 		"state": {"role": str(run.role), "stock": stock, "mood": State.attr(run, "mood"),
 			"neighbor": {"stage": n.get("stage", "waiting"), "resolution": n.get("resolution", ""), "ending": n.get("ending", "")},
 			"relations": d.relations.duplicate(), "history": d.history.duplicate(true), "promises": d.promises.duplicate(true),
-			"recollections": Past.public_memories(run), "trade": Trade.context(run)}}
+			"recollections": Past.public_memories(run), "trade": Trade.context(run), "crisis": Crisis.context(run)}}
 	if not archive.is_empty() and not Past.daily(run):
 		result.state["archive"] = archive.duplicate()
 		result.request_id += "-m" + str(archive.get("sha256", "")).left(16)
@@ -61,8 +62,9 @@ static func goods_ok(value, limit := 3) -> bool:
 	return true
 
 static func validate(plan, base_day: int) -> bool:
-	if not plan is Dictionary or not keys_ok(plan, ["schema", "days"]) or plan.get("schema") != 1 or not plan.get("days") is Array or plan.days.size() != 3:
+	if not plan is Dictionary or not keys_ok(plan, ["schema", "days", "crisis"]) or plan.get("schema") != 1 or not plan.get("days") is Array or plan.days.size() != 3:
 		return false
+	if plan.has("crisis") and not Crisis.valid_proposal(plan.crisis, base_day): return false
 	var used := []
 	for e in plan.days:
 		if not e is Dictionary or not keys_ok(e, ["day", "actor", "title", "text", "choices"]): return false
@@ -92,9 +94,13 @@ static func accept(run: Dictionary, sent: Dictionary, plan) -> bool:
 	if not run.get("phase", "") in ["pre", "post"] or not d.enabled or sent.session != d.session or int(sent.revision) != int(d.revision) or int(run.t) < int(sent.time) or int(run.pday) > int(sent.current_day) + 3 or not validate(plan, int(sent.current_day)):
 		return false
 	d.queue = []
+	if plan.has("crisis"): Crisis.propose(run, plan.crisis, int(sent.current_day))
 	for e in plan.days:
 		if int(e.day) >= int(run.pday) and not int(e.day) in d.days:
 			var copy: Dictionary = e.duplicate(true)
+			# The same generation can know a private proposal. Keep its free prose
+			# out of gameplay while retaining every validated economic choice.
+			if plan.has("crisis"): copy["crisis_rules_text"] = true
 			copy["uid"] = "world:%s:%d" % [sent.request_id, e.day]
 			d.queue.append(copy)
 	d.source = "ark-plan"
@@ -108,7 +114,8 @@ static func poll(run: Dictionary) -> String:
 		if not p.done and int(run.pday) >= int(p.day):
 			Inv.add_all(run.home, p.give)
 			p.done = true
-			State.note(run, "约定兑现 · %s：%s（%s）" % [ACTORS[p.actor], p.text, describe(p.give)])
+			var delivery_text := "按原约送来物资" if _crisis_text_guard(run) else str(p.text)
+			State.note(run, "约定兑现 · %s：%s（%s）" % [ACTORS[p.actor], delivery_text, describe(p.give)])
 			Past.record(run, str(p.actor), "delivery_%d" % int(p.day), "你曾收到%s按约送来的%s。" % [ACTORS[p.actor], describe(p.give)], 1)
 	d.promises = d.promises.filter(func(p): return not p.done)
 	if run.pending_event != "" or run.sleeping or not run.busy.is_empty() or not run.explore.is_empty() or run.get("neighbor_travel", false) or run.dawn_due or run.plan_due or run.wave_due or not run.wave_report.is_empty() or not run.get("fight", {}).is_empty(): return ""
@@ -137,11 +144,35 @@ static func describe(items: Dictionary) -> String:
 	return Data.describe_items(items)
 
 static func entry(run: Dictionary) -> Dictionary:
-	return state(run).active
+	var event: Dictionary = state(run).active
+	if event.is_empty() or event.has("past_memory") or not (event.get("crisis_rules_text", false) or _crisis_text_guard(run)):
+		return event
+	return _rules_text(event)
+
+
+static func _crisis_text_guard(run: Dictionary) -> bool:
+	var c := Crisis.state(run)
+	return not c.pending.is_empty() or (not c.active.is_empty() and c.active.stage != "resolved")
+
+
+## Crisis evidence is authored by the rules. A model cannot disclose its private
+## proposal or claim to have investigated/repaired it through unrelated prose.
+static func _rules_text(event: Dictionary) -> Dictionary:
+	var safe: Dictionary = event.duplicate(true)
+	safe.title = "第%d日 · %s的来信" % [int(event.get("day", 0)), ACTORS[event.actor]]
+	safe.text = "纸鹤捎来几种物资与人情往来的办法。交出、获得和已许下的回礼均写在选项下方，你可以自行决定。"
+	for choice in safe.choices:
+		var req: Dictionary = choice.get("req", {})
+		var give: Dictionary = choice.get("give", {})
+		var after: Dictionary = choice.get("after", {})
+		choice.text = "以物相换" if not req.is_empty() and not give.is_empty() else ("交付物资，约定回礼" if not req.is_empty() and not after.is_empty() else ("交出物资" if not req.is_empty() else ("收下物资" if not give.is_empty() else "回应对方的来信")))
+		choice.result = ("交出%s；" % describe(req) if not req.is_empty() else "") + effect_hint(choice)
+		if not after.is_empty(): after.text = "按原约送来物资"
+	return safe
 
 static func choose(run: Dictionary, index: int) -> String:
 	var d := state(run)
-	var e: Dictionary = d.active
+	var e: Dictionary = entry(run)
 	if e.is_empty() or run.pending_event != e.get("uid") or index < 0 or index >= e.choices.size(): return "这件事已经处理过了。"
 	var c: Dictionary = e.choices[index]
 	if not Inv.has_all(run.home, c.get("req", {})): return "东西不够。"

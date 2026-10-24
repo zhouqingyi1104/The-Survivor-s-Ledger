@@ -58,6 +58,8 @@ func _ready() -> void:
 	dynamic.pending_event = d.active.uid
 	check(Events.choose(dynamic, 0) == "", "Real director choice failed")
 	check(int(Trade.contact(dynamic, "zhou").trust) == 3, "First dynamic choice seeded relation twice")
+	# Settle a separately observable warning before measuring one trade's revision.
+	Post.crisis_refresh(dynamic)
 	var sent := Director.snapshot(dynamic)
 	check(sent.state.trade.actors.zhou.trust == 3, "Director did not receive executable credit")
 	d.queue = [{"sentinel": true}]

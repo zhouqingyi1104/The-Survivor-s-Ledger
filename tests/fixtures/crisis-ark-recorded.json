@@ -1,0 +1,215 @@
+{
+  "snapshot": {
+    "current_day": 1,
+    "request_id": "crisis-explicit-probe-20261024-r2-0-1",
+    "revision": 0,
+    "schema": 1,
+    "session": "crisis-explicit-probe-20261024-r2",
+    "state": {
+      "crisis": {
+        "active": {},
+        "can_plan": true,
+        "history": [],
+        "next_warning_day": 2,
+        "schema": 1
+      },
+      "history": [],
+      "mood": 60,
+      "neighbor": {
+        "ending": "",
+        "resolution": "",
+        "stage": "closed"
+      },
+      "promises": [],
+      "recollections": [],
+      "relations": {
+        "ning": 0,
+        "traveler": 0,
+        "zhou": 0
+      },
+      "role": "escort",
+      "stock": {
+        "firewood": 0,
+        "flatbread": 2,
+        "mugwort": 1,
+        "nails": 1,
+        "rice": 12,
+        "water": 2,
+        "wood": 2
+      },
+      "trade": {
+        "actors": {
+          "ning": {
+            "available": false,
+            "breach_total": 0,
+            "breaches": 0,
+            "favors": 0,
+            "trust": 0
+          },
+          "traveler": {
+            "available": false,
+            "breach_total": 0,
+            "breaches": 0,
+            "favors": 0,
+            "trust": 0
+          },
+          "zhou": {
+            "available": false,
+            "breach_total": 0,
+            "breaches": 0,
+            "favors": 0,
+            "trust": 0
+          }
+        },
+        "aid": [],
+        "debt": {},
+        "schema": 1
+      }
+    },
+    "time": 0
+  },
+  "status": 200,
+  "result": {
+    "plan": {
+      "schema": 1,
+      "crisis": {
+        "kind": "fuel_shortage",
+        "actor": "zhou",
+        "warning_day": 2,
+        "real": true
+      },
+      "days": [
+        {
+          "day": 2,
+          "actor": "zhou",
+          "title": "柴道风声",
+          "text": "老周扛着半捆干柴路过，说山下运柴便道这两天不太对劲，车辙断在半路。他棚下还存着一点引火柴，愿意先换口吃的；消息是真是假，眼下还没人查实。",
+          "choices": [
+            {
+              "id": "rice_for_firewood",
+              "text": "用一单位米换两单位柴",
+              "result": "老周接过米，把棚下存着的两捆引柴递给你，并提醒你近来柴路恐怕不稳。",
+              "req": {
+                "rice": 1
+              },
+              "give": {
+                "firewood": 2
+              },
+              "mood": 1,
+              "relation": 0
+            },
+            {
+              "id": "hold_rice",
+              "text": "先不换，继续观望",
+              "result": "你保住了米。老周耸耸肩，说等柴路真断了，别怨他没提前打招呼。",
+              "req": {},
+              "give": {},
+              "mood": 0,
+              "relation": -1
+            }
+          ]
+        },
+        {
+          "day": 3,
+          "actor": "ning",
+          "title": "阿宁换米",
+          "text": "阿宁没有提迁居的事，只把院门掩得很紧。她听见外边有关柴路的传闻，仍开门问能不能匀一把米；她手里有一小包陈艾，可以拿来交换。",
+          "choices": [
+            {
+              "id": "trade_rice_mugwort",
+              "text": "用一单位米换陈艾",
+              "result": "阿宁把陈艾递给你，低声说了声谢谢，院门又轻轻合上。",
+              "req": {
+                "rice": 1
+              },
+              "give": {
+                "mugwort": 1
+              },
+              "mood": 0,
+              "relation": 1
+            },
+            {
+              "id": "lend_rice_water",
+              "text": "先借她一单位米",
+              "result": "阿宁说等明天烧热了水，会分你一碗应急，没有提搬家或病人好转。",
+              "req": {
+                "rice": 1
+              },
+              "give": {},
+              "mood": 0,
+              "relation": 1,
+              "after": {
+                "days": 1,
+                "give": {
+                  "water": 1
+                },
+                "text": "阿宁如约端来一单位热水。"
+              }
+            },
+            {
+              "id": "decline_ning",
+              "text": "拒绝匀米",
+              "result": "阿宁点点头，没有多求，只说各家都有难处。",
+              "req": {},
+              "give": {},
+              "mood": 0,
+              "relation": -1
+            }
+          ]
+        },
+        {
+          "day": 4,
+          "actor": "traveler",
+          "title": "过路客求火",
+          "text": "过路客抱着半袋干粮，说沿路柴车变少，想在入黑前找一捆柴火热食。他不肯赊欠，只愿拿饼换；至于柴路是不是真断了，他也只听见风声。",
+          "choices": [
+            {
+              "id": "firewood_for_bread",
+              "text": "用一单位柴换两张饼",
+              "result": "过路客立刻把两张干饼塞给你，抱着柴去一旁生火。",
+              "req": {
+                "firewood": 1
+              },
+              "give": {
+                "flatbread": 2
+              },
+              "mood": 1,
+              "relation": 1
+            },
+            {
+              "id": "rice_for_bread",
+              "text": "用一单位米换一张饼",
+              "result": "过路客分出一张饼，说米能直接嚼，柴火却还得想法子。",
+              "req": {
+                "rice": 1
+              },
+              "give": {
+                "flatbread": 1
+              },
+              "mood": 0,
+              "relation": 0
+            },
+            {
+              "id": "listen_only",
+              "text": "不交易，只听他说路上见闻",
+              "result": "你没有出物资。过路客说路上的空柴车确实多了几辆，但说罢便不肯再深谈。",
+              "req": {},
+              "give": {},
+              "mood": 1,
+              "relation": 0
+            }
+          ]
+        }
+      ]
+    },
+    "source": "ark-plan",
+    "model": "auto",
+    "response_id": "resp_021792829524793923718d11d313173fa258a554449eb871faec3",
+    "usage": {
+      "prompt_tokens": 2194,
+      "completion_tokens": 2543,
+      "total_tokens": 4737
+    },
+    "reasoning_effort": "low"
+  }
+}

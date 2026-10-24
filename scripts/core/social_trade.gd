@@ -4,6 +4,7 @@ const State = preload("res://scripts/core/state.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
+const Crisis = preload("res://scripts/core/crisis.gd")
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 const GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const OFFERS := {
@@ -48,7 +49,12 @@ static func quote(run: Dictionary, actor: String) -> Dictionary:
 		if int(person.breaches) > 0:
 			price += int(person.breaches)
 			reasons.append("未化解失约 %d 笔，加收米 %d" % [int(person.breaches), int(person.breaches)])
-		existing = {"actor": actor, "day": day, "req": {"rice": price}, "give": OFFERS[actor].give.duplicate(), "reason": "；".join(reasons) + "。当日报价固定。", "used": false}
+		var market := Crisis.market_effect(run, actor)
+		price += int(market.get("price_add", 0))
+		var give: Dictionary = OFFERS[actor].give.duplicate()
+		for item in market.get("omit", []): give.erase(item)
+		if str(market.get("reason", "")) != "": reasons.append(str(market.reason))
+		existing = {"actor": actor, "day": day, "req": {"rice": price}, "give": give, "reason": "；".join(reasons) + "。当日报价固定。", "used": false}
 		s.quotes[actor] = existing
 	existing["id"] = _token(run, actor)
 	return existing.duplicate(true)
