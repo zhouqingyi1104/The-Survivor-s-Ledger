@@ -72,6 +72,7 @@ static func render(meta: Dictionary, compact := false) -> String:
 		section += _mainline_section(summary.get("mainline", {}))
 		section += _identity_section(summary.get("identity", {}), compact)
 		section += _opening_section(summary.get("opening", {}), compact)
+		section += _cycle_section(summary.get("cycle_inquiry", {}), compact)
 		section += "\n"
 		if text.to_utf16_buffer().size() + section.to_utf16_buffer().size() > (MAX_CHARS - 100) * 2:
 			# Keep the newest complete life across all systems. Trim repeated prose,
@@ -158,6 +159,25 @@ static func _opening_section(value, compact := false) -> String:
 		out += "- 备劫第 %d 日：%s\n" % [int(fact.day), line(fact.result, 50 if compact else 80)]
 	return out
 
+
+static func _cycle_section(value, compact := false) -> String:
+	var cycle := Past.cycle_snapshot(value)
+	if cycle.is_empty(): return ""
+	var out := "\n### 旧世轮回调查\n\n只记已经公开的玩家残梦与今世调查；残梦不等于NPC觉醒，旧承诺不是新世债务。未完工作和待送回礼不能写成已完成，私有未公开真相不归档。\n\n"
+	if cycle.published.is_empty(): out += "- 合卷时没有公开轮回调查。\n"
+	var kinds := {"promise": "旧约", "breach": "失约", "rescue": "救助"}
+	var stages := {"lead": "残梦已公开，尚未查访", "interviewed": "已查访，尚未查证", "verified": "已经查证今世处境，尚未选择方案", "working": "方案已开工但尚未完工", "resolved": "本世处置已经完成", "expired": "本世调查期限已过"}
+	for entry in cycle.published:
+		out += "- %s · %s，来源第 %d 世：%s。" % [Past.ACTORS[entry.actor], kinds[entry.kind], int(entry.source_life), stages[entry.stage]]
+		if not entry.evidence.is_empty(): out += "实际查证：%s。" % ("本世确有缺口" if entry.evidence.condition == "need" else "本世暂时安稳")
+		if entry.route != "": out += "实际选择 %s。" % line(entry.route, 24)
+		if not entry.delivery.is_empty(): out += "%s：%s。" % ["固定回礼已经兑现" if entry.delivery.done else "仍有固定回礼待送，不是已收物资", Data.describe_items(entry.delivery.give)]
+		out += "\n"
+		if entry.last_result != "": out += "  " + line(entry.last_result, 60 if compact else 120) + "\n"
+	if not cycle.work.is_empty(): out += "- 合卷时未完成：%s，原定第 %d 日完成；已经扣料不代表已生效。\n" % [line(cycle.work.label, 40), int(cycle.work.end_t) / 1440 + 1]
+	for fact in cycle.history.slice(maxi(0, cycle.history.size() - (1 if compact else 3))):
+		out += "- 第 %d 日 · %s：%s\n" % [int(fact.day), Past.ACTORS[fact.actor], line(fact.result, 40 if compact else 80)]
+	return out
 
 static func read_context(path: String) -> Dictionary:
 	if path == "" or not FileAccess.file_exists(path): return {}

@@ -4,13 +4,53 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {createBridge,validatePlan,validateSnapshot,buildPrompt,arkProvider,NPC_DIALOGUE,validateNpcContext,validateDialogueContext,validateDialogueRows,validateMainlineContext,validateIdentityContext,IDENTITY_CAPS,IDENTITY_TAGS,validateOpeningContext,OPENING_CHOICES,OPENING_TAGS} from './bridge.mjs';
+import {createBridge,validatePlan,validateSnapshot,buildPrompt,arkProvider,NPC_DIALOGUE,validateNpcContext,validateDialogueContext,validateDialogueRows,validateMainlineContext,validateIdentityContext,IDENTITY_CAPS,IDENTITY_TAGS,validateOpeningContext,OPENING_CHOICES,OPENING_TAGS,validateCycleContext,validateCyclePlanning,validateCycleRows} from './bridge.mjs';
 const plan=JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/director-plan.json',import.meta.url)));
 const snapshot={schema:1,request_id:'fixture-0-0',session:'fixture',revision:0,current_day:0,time:0,state:{role:'escort',stock:{wood:1,rice:5},mood:60,neighbor:{stage:'waiting',resolution:'',ending:''},relations:{ning:0,zhou:0,traveler:0},history:[],promises:[]}};
 async function start(options){const b=createBridge(options);await new Promise(r=>b.server.listen(0,'127.0.0.1',r));return {...b,url:`http://127.0.0.1:${b.server.address().port}`};}
 const request=(b,body=snapshot,headers={})=>fetch(b.url+'/plan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+b.token,...headers},body:JSON.stringify(body)});
 const close=b=>new Promise(r=>b.server.close(r));
 const openingFixture=(choice='plain',role='escort')=>({schema:1,role,choice,applied:true,effects:{silver_cost:0,hours:0,spent:{},gained:{},contacts:{},first_warning:{}},legacy_tags:[...OPENING_TAGS]});
+const cycleFixture=()=>({schema:1,revision:0,published:[],work:{},history:[],planning:{schema:1,revision:0,slots:[{id:'cycle:old:ning',actor:'ning',kind:'rescue',earliest_day:2,latest_day:4,default_day:3,cues:['old_note','familiar_dream','folded_page']}]},last_result:''});
+test('cycle validates public context and private future scheduling without old source prose',()=>{
+  const v=cycleFixture();assert(validateCycleContext(v,0,0));assert(validateCyclePlanning(v.planning,0));
+  const s=structuredClone(snapshot);s.state.cycle_inquiry=v;assert(validateSnapshot(s));
+  v.planning.slots[0].default_day=6;assert(validateCycleContext(v,0,0),'A later local fallback remains valid while AI can schedule inside the next three days');
+  const old=structuredClone(snapshot);assert(validateSnapshot(old),'Older snapshots remain supported without cases');
+});
+test('cycle rejects private truth, invented qualification and malformed current evidence',()=>{
+  for(const change of [v=>v.sources=[],v=>v.private_condition='need',v=>v.planning.slots[0].source_id='private',v=>v.planning.slots[0].fact='旧世未觉醒事实',v=>v.planning.slots[0].cues=['award'],v=>v.planning.slots.push(v.planning.slots[0]),v=>v.planning.revision++,v=>v.history=null,v=>v.revision=1.5,v=>v.work={case_id:'unknown',action:'verify',end_t:0,label:'免费查证'}]){const v=cycleFixture();change(v);assert.equal(validateCycleContext(v,0,0),false);}
+  const base=cycleFixture();base.planning.slots=[];base.published=[{id:'case',actor:'ning',kind:'rescue',status:'helped',stage:'lead',publish_day:3,deadline_t:10800,evidence:{},route:'',delivery:{},last_result:'残梦出现',source_life:1}];
+  assert(validateCycleContext(base,3,3060));
+  for(const change of [v=>v.published[0].private_condition='need',v=>v.published[0].evidence={condition:'need',text:'提前看穿'},v=>v.published[0].source_id='old',v=>v.published[0].stage='sealed',v=>v.published[0].route='renew',v=>v.published[0].status='cured',v=>v.published[0].deadline_t++]){const v=structuredClone(base);change(v);assert.equal(validateCycleContext(v,3,3060),false);}
+  base.published[0].stage='resolved';base.published[0].route='decline';assert(validateCycleContext(base,3,3060),'A player can decline before verification without inventing evidence');
+});
+test('cycle planning rows only schedule the offered case once inside its actual window',()=>{
+  const c=cycleFixture().planning,row={case_id:c.slots[0].id,day:2,cue:'old_note'};
+  assert(validateCycleRows([row],c));assert(validateCycleRows([],null));assert.equal(validateCycleRows([row],null),false);
+  for(const change of [r=>r.case_id='unknown',r=>r.day=1,r=>r.day=5,r=>r.cue='reveal_truth',r=>r.req={},r=>r.fact='救活了',r=>r.source_id='private',r=>r.day=2.5]){const r=structuredClone(row);change(r);assert.equal(validateCycleRows([r],c),false);}
+  assert.equal(validateCycleRows([row,row],c),false);
+  const p=structuredClone(plan);p.cycle_plan=[row];assert(validatePlan(p,0,undefined,undefined,c));
+  for(const key of ['evidence','source','award','route']){const p=structuredClone(plan);p[key]={};assert.equal(validatePlan(p,0,undefined,undefined,c),false);}
+  p.cycle_plan[0].give={rice:1};assert.equal(validatePlan(p,0,undefined,undefined,c),false);
+});
+test('cycle prompt preserves actor knowledge, current work, signed terms and offline play',()=>{
+  const s=structuredClone(snapshot);s.state.cycle_inquiry=cycleFixture();const prompt=buildPrompt(s);
+  for(const phrase of ['玩家残梦属于玩家知识，不是NPC觉醒','evidence为空不能说已查清','route为空不能替玩家答应','未完work和delivery.done=false不能写成已完成','断网或慢请求时本地计划完整执行','点击不等待AI','不能发明案例、真相、NPC片段、成本、奖励、来源ID'])assert(prompt.includes(phrase),phrase);
+  assert(!prompt.includes('reasoning_effort":"high'));
+});
+test('cycle slow planning keeps health responsive and cannot generate duplicate requests',async()=>{
+  let calls=0,release;const waiting=new Promise(r=>release=r);
+  const s=structuredClone(snapshot);s.state.cycle_inquiry=cycleFixture();const p=structuredClone(plan);p.cycle_plan=[{case_id:s.state.cycle_inquiry.planning.slots[0].id,day:2,cue:'folded_page'}];
+  const b=await start({cooldown:0,provider:async()=>{calls++;await waiting;return {plan:p,source:'ark-plan'};}});
+  try{
+    const pending=request(b,s);await new Promise(r=>setTimeout(r,25));
+    const health=await fetch(b.url+'/health',{headers:{Authorization:'Bearer '+b.token}});assert.equal(health.status,200);
+    assert.equal((await request(b,s)).status,409);assert.equal(calls,1);
+    release();const done=await pending;assert.equal(done.status,200);assert.deepEqual((await done.json()).plan.cycle_plan,p.cycle_plan);
+    assert.equal((await request(b,s)).status,200);assert.equal(calls,1,'A completed exact request is cached');
+  }finally{release();await close(b);}
+});
 test('opening strictly validates six public fields and bounded actual effects',()=>{
   for(const choice of OPENING_CHOICES){
     const role=['scholar','escort','herbalist','watchman'].find(r=>choice.startsWith(r+'_'))??'escort';

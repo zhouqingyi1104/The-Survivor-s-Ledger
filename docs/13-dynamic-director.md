@@ -6,7 +6,7 @@
 
 玩家经营宅院，世界也在行动。AI 基于真实库存、身份、关系、已发生事件和玩家选择，规划接下来三天；规则系统负责验证与兑现成本和后果。
 
-下表保留最初首版的设计边界；危机、NPC、主线、身份专法及可变开局的后续实际交付见本文件后续阶段记录和文档18—22。
+下表保留最初首版的设计边界；危机、NPC、主线、身份专法、可变开局与轮回调查的后续实际交付见本文件后续阶段记录和文档18—23。
 
 | 玩法 | 有趣之处 | 最初首版范围（历史设计） |
 |---|---|---|
@@ -64,6 +64,16 @@
 开局锁定第一场危机的目录类型、线人和第2或3日预兆槽位，真假仍由本地种子规则固定并保密，玩家仍须核实、准备、求助、观望或补救。导演不能重排这个首场槽位，之后的可规划槽位继续遵守 `state.crisis.can_plan` 与公开后锁定规则；已展示报价、债务、回礼与已发生事件不改写。AI输出没有 `opening/birth/inherited/effects/first_warning` 等新权限，不得替选、切换或重复补发开局物资，也不能宣称危机已成真或已经免疫。
 
 非普通开局已应用，或出生旧世资格可见时，普通AI事件标题、正文、选项、结果和延迟配送改用本地经济效果说明，原数值和已许承诺保持；真实本地觉醒及受控NPC目录短句保留。运行时继续使用 **ARK Plan、low reasoning** 在后台预规划未来三日，不在玩家点击时等待网络或模型；本批契约、离线失败路径和来源校验没有新增真实ARK调用，不能据此宣称本批模型叙事质量已经实测。
+
+## 跨轮回事件与调查边界（M4第三批）
+
+真实封存的旧约、失约与实际救助，出生固定为最多两宗、人物不重复的本世调查；每人最新原因另有最多三条的永久索引，详细八世裁切不抹掉已确认来源。玩家的残梦是调查起点，不是NPC觉醒；只有本人实际觉醒、世次与事实ID都对应的片段，才能用来互证，仍需付水与完成查证工作。未觉醒时可以自行查访与核对今世账页，不等待角色或模型，见[23](23-cycle-inquiry.md)。
+
+可选 `state.cycle_inquiry` 恰含七字段：`schema/revision/published/work/history/planning/last_result`。`published` 最多两宗且只传已公开阶段、人物、来源世次、时限、真实调查证据、互斥选择与固定回礼。`evidence={}` 不能宣称已查清；处境 `need/stable` 完成今世查证后才公开。`work` 只含案ID、动作、完工时间和标签；原料投入不等于已经完成。`delivery.done=false` 仍是待送，不能再次发放。私有来源ID/正文、出生来源全文、尚未查出的处境及未公开案件不放入 `published`。`planning` 只提供未来合法案ID、人物、类型、时间窗口与审核提示ID，不授予NPC旧世知识。
+
+AI在采购期和游玩后台预取未来三天时，可返回顶层 `cycle_plan` 数组，最多两行且每案唯一；每行恰为 `{case_id,day,cue}`，只能拷贝对应slot案ID、选择窗口内日期及 `old_note/familiar_dream/folded_page` 审核ID。排期接受一次即锁定，已公开案、期限、现有调查、已选方案与固定回礼不受重规划改写。无可调度slot时必须省略或给空数组；旧客户端与缺此字段的旧快照继续可用。模型不能创造新案、真相、调查进度、NPC觉醒、代价或奖品，也不能通过普通事件代办调查、偿债或补发回礼；受控案文由本地规则说明。
+
+线程HTTP、15秒选择去抖、45秒请求间隔、持久去重与旧run/session/revision/档案哈希丢弃机制继续使用。没有合格规划、断网、慢请求或关闭动态世情时，本地第3/6日方案仍完整推进，查访、核对、选择和回礼均不发同步网络请求。当前schema与本地行为检查不等于真实模型叙事质量验收。
 
 ## 必须验证的反例
 
@@ -143,5 +153,36 @@ for(const input of contexts){
   }
 }
 console.log('Actual Godot opening contexts: 15/15 strict schema and privacy PASS; no ARK calls');
+'@ | node --input-type=module
+```
+
+## M4轮回调查相关验证（2026-10-24）
+
+- `res://tests/cycle_memory.tscn`：90检查、0失败；真实封存来源与出生固定、三人物永久索引、重复/未来/每日/自由文案拒绝、实际调查/处置/回礼和Markdown读写、未完工归档与七系统8000 UTF-16预算通过，真实根Memory字节不变。
+- `node --test --test-name-pattern="cycle" tools/director/bridge.test.mjs`：5项独立契约通过。严格七字段公开上下文、排期三字段白名单、私有真相/来源/越权效果拒绝；慢模拟provider等待时health仍响应，同请求进行中拒绝重复、完成后缓存不重复调用。此命令不依赖TEMP导出文件。
+- 实际Godot导出的八份公开快照单独显式校验8/8：残梦公开、查访完成、今世查证、方案工作中、方案完成、固定回礼已兑现、未查证拒绝与未查证到期。私有来源/处境没有冒充公开信息；阶段匹配不靠手写JSON推断。
+- 必要回归：`past_lives_rules.tscn` 8/8组123检查、`memory_file_flow.tscn` 9/9组68检查、`node --test --test-name-pattern="archive|recollections|Memory.md" tools/director/bridge.test.mjs` 7项通过。既有Godot退出资源警告保留，没有扩大为全量发行验证。
+- 本批真实ARK **low reasoning调用1次、无重试**：使用实际Godot公开调查快照，返回3场未来事件和1条第3日 `old_note` 排期，39.6秒；严格snapshot/plan契约通过，usage为prompt 4225、completion 1536、total 5761。实际Godot离线回放19检查通过（仅绑定测试局的临时生命/会话ID，模型文本、经济字段与排期不改）；不将这次契约通过推成模型永不虚构或完整叙事质量验收。玩家完整轮回、长期平衡、CI、导出发行 **NOT RUN**。上节历史计数保留。
+
+在项目根PowerShell复现实际八份公开快照验证（不调用ARK）：
+
+```powershell
+& 'tools/godot/Godot_v4.7.2-stable_win64_console.exe' --headless --path . res://tests/cycle_memory.tscn
+@'
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {validateSnapshot} from './tools/director/bridge.mjs';
+const rows=JSON.parse(fs.readFileSync(path.join(os.tmpdir(),'ledger-cycle-public-fixtures.json'),'utf8'));
+assert.equal(rows.length,8);
+for(const row of rows){
+  assert.equal(validateSnapshot(row),true);
+  const raw=JSON.stringify(row.state.cycle_inquiry);
+  for(const field of ['source_id','sources','private_condition','fact_id','paid']){
+    assert.ok(!raw.includes('"'+field+'"'),field);
+  }
+}
+console.log('Actual Godot cycle contexts: 8/8 strict schema and privacy PASS; no ARK calls');
 '@ | node --input-type=module
 ```

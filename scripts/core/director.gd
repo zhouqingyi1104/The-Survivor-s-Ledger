@@ -11,6 +11,7 @@ const Dialogue = preload("res://scripts/core/npc_dialogue.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
 const Opening = preload("res://scripts/core/opening.gd")
+const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
 const GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 
@@ -56,7 +57,7 @@ static func snapshot(run: Dictionary, archive: Dictionary = {}) -> Dictionary:
 			"neighbor": {"stage": n.get("stage", "waiting"), "resolution": n.get("resolution", ""), "ending": n.get("ending", "")},
 			"relations": d.relations.duplicate(), "history": d.history.duplicate(true), "promises": d.promises.duplicate(true),
 			"recollections": Past.public_memories(run), "trade": Trade.context(run), "crisis": Crisis.context(run),
-			"npcs": Npc.context(run), "npc_dialogue": Dialogue.context(run), "mainline": Mainline.context(run), "identity": Identity.context(run), "opening": Opening.context(run)}}
+			"npcs": Npc.context(run), "npc_dialogue": Dialogue.context(run), "mainline": Mainline.context(run), "identity": Identity.context(run), "opening": Opening.context(run), "cycle_inquiry": Cycle.context(run)}}
 	if not archive.is_empty() and not Past.daily(run):
 		result.state["archive"] = archive.duplicate()
 		result.request_id += "-m" + str(archive.get("sha256", "")).left(16)
@@ -82,11 +83,27 @@ static func goods_ok(value, limit := 3) -> bool:
 			return false
 	return true
 
-static func validate(plan, base_day: int, dialogue_candidates = null) -> bool:
-	if not plan is Dictionary or not keys_ok(plan, ["schema", "days", "crisis", "npc_dialogue"]) or plan.get("schema") != 1 or not plan.get("days") is Array or plan.days.size() != 3:
+static func _cycle_plan_valid(rows, candidates) -> bool:
+	if not rows is Array or rows.size() > 2: return false
+	if candidates == null: return rows.is_empty()
+	if not candidates is Dictionary or not candidates.get("slots") is Array: return false
+	var seen := []
+	for row in rows:
+		if not row is Dictionary or row.size() != 3 or not row.get("case_id") is String or row.case_id in seen: return false
+		var found := false
+		for slot in candidates.slots:
+			if slot.id == row.case_id and integer_ok(row.get("day"), int(slot.earliest_day), int(slot.latest_day)) and row.get("cue", "") in slot.cues: found = true
+		if not found: return false
+		seen.append(row.case_id)
+	return true
+
+
+static func validate(plan, base_day: int, dialogue_candidates = null, cycle_candidates = null) -> bool:
+	if not plan is Dictionary or not keys_ok(plan, ["schema", "days", "crisis", "npc_dialogue", "cycle_plan"]) or plan.get("schema") != 1 or not plan.get("days") is Array or plan.days.size() != 3:
 		return false
 	if plan.has("crisis") and not Crisis.valid_proposal(plan.crisis, base_day): return false
 	if plan.has("npc_dialogue") and not Dialogue.valid_rows(plan.npc_dialogue, dialogue_candidates): return false
+	if plan.has("cycle_plan") and not _cycle_plan_valid(plan.cycle_plan, cycle_candidates): return false
 	var used := []
 	for e in plan.days:
 		if not e is Dictionary or not keys_ok(e, ["day", "actor", "title", "text", "choices"]): return false
@@ -113,9 +130,12 @@ static func validate(plan, base_day: int, dialogue_candidates = null) -> bool:
 
 static func accept(run: Dictionary, sent: Dictionary, plan) -> bool:
 	var d := state(run)
-	if not run.get("phase", "") in ["pre", "post"] or not d.enabled or Past.daily(run) or sent.session != d.session or int(sent.revision) != int(d.revision) or int(run.t) < int(sent.time) or int(run.pday) > int(sent.current_day) + 3 or not validate(plan, int(sent.current_day), sent.get("state", {}).get("npc_dialogue", {})):
+	if not run.get("phase", "") in ["pre", "post"] or not d.enabled or Past.daily(run) or sent.session != d.session or int(sent.revision) != int(d.revision) or int(run.t) < int(sent.time) or int(run.pday) > int(sent.current_day) + 3 or not validate(plan, int(sent.current_day), sent.get("state", {}).get("npc_dialogue", {}), sent.get("state", {}).get("cycle_inquiry", {}).get("planning", {})):
 		return false
 	if plan.has("npc_dialogue") and not Dialogue.current_rows(run, plan.npc_dialogue): return false
+	if plan.has("cycle_plan"):
+		if int(sent.get("state", {}).get("cycle_inquiry", {}).get("revision", -1)) != int(Cycle.state(run).revision) or not Cycle.valid_rows(run, plan.cycle_plan): return false
+		if not Cycle.accept(run, plan.cycle_plan): return false
 	if plan.has("npc_dialogue"): Dialogue.accept(run, sent.state.npc_dialogue, plan.npc_dialogue)
 	d.queue = []
 	if plan.has("crisis"): Crisis.propose(run, plan.crisis, int(sent.current_day))
@@ -138,7 +158,7 @@ static func poll(run: Dictionary) -> String:
 		if not p.done and int(run.pday) >= int(p.day):
 			Inv.add_all(run.home, p.give)
 			p.done = true
-			var delivery_text := "按原约送来物资" if _crisis_text_guard(run) or _mainline_text_guard(run) or _identity_text_guard(run) or _opening_text_guard(run) else str(p.text)
+			var delivery_text := "按原约送来物资" if _crisis_text_guard(run) or _mainline_text_guard(run) or _identity_text_guard(run) or _opening_text_guard(run) or _cycle_text_guard(run) else str(p.text)
 			State.note(run, "约定兑现 · %s：%s（%s）" % [ACTORS[p.actor], delivery_text, describe(p.give)])
 			Past.record(run, str(p.actor), "delivery_%d" % int(p.day), "你曾收到%s按约送来的%s。" % [ACTORS[p.actor], describe(p.give)], 1)
 	d.promises = d.promises.filter(func(p): return not p.done)
@@ -169,7 +189,7 @@ static func describe(items: Dictionary) -> String:
 
 static func entry(run: Dictionary) -> Dictionary:
 	var event: Dictionary = state(run).active
-	if event.is_empty() or event.has("past_memory") or not (event.get("crisis_rules_text", false) or event.get("npc_rules_text", false) or _crisis_text_guard(run) or _mainline_text_guard(run) or _identity_text_guard(run) or _opening_text_guard(run)):
+	if event.is_empty() or event.has("past_memory") or not (event.get("crisis_rules_text", false) or event.get("npc_rules_text", false) or _crisis_text_guard(run) or _mainline_text_guard(run) or _identity_text_guard(run) or _opening_text_guard(run) or _cycle_text_guard(run)):
 		return event
 	return _rules_text(event)
 
@@ -188,6 +208,13 @@ static func _identity_text_guard(run: Dictionary) -> bool:
 static func _opening_text_guard(run: Dictionary) -> bool:
 	var opening := Opening.context(run)
 	return bool(opening.get("applied", false)) and opening.get("choice", "") != "plain" or not opening.get("legacy_tags", []).is_empty()
+
+
+static func _cycle_text_guard(run: Dictionary) -> bool:
+	# Accepted unpublished plans leave the candidate list, but still require
+	# safe wording until their local clock publishes a real clue.
+	var cycle := Cycle.state(run)
+	return not Past.daily(run) and not cycle.get("closed", false) and not cycle.get("legacy", false) and not cycle.cases.is_empty()
 
 
 ## Crisis evidence is authored by the rules. A model cannot disclose its private

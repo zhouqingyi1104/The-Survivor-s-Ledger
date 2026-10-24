@@ -1,0 +1,369 @@
+{
+  "fixture": "真实ARK回答，输入为隔离游戏测试局；无玩家存档或凭据",
+  "recorded_on": "2026-10-24",
+  "elapsed_ms": 39599,
+  "snapshot": {
+    "current_day": 1,
+    "request_id": "719-c69b15acaeb219a5-0-1",
+    "revision": 0,
+    "schema": 1,
+    "session": "719-c69b15acaeb219a5",
+    "state": {
+      "crisis": {
+        "active": {},
+        "can_plan": false,
+        "history": [],
+        "next_warning_day": 100000,
+        "schema": 1
+      },
+      "cycle_inquiry": {
+        "history": [],
+        "last_result": "",
+        "planning": {
+          "revision": 0,
+          "schema": 1,
+          "slots": [
+            {
+              "actor": "zhou",
+              "cues": [
+                "old_note",
+                "familiar_dream",
+                "folded_page"
+              ],
+              "default_day": 3,
+              "earliest_day": 2,
+              "id": "cycle:94f7298c249c4563ec1010c2f75be81e:zhou",
+              "kind": "breach",
+              "latest_day": 4
+            }
+          ]
+        },
+        "published": [],
+        "revision": 0,
+        "schema": 1,
+        "work": {}
+      },
+      "history": [],
+      "identity": {
+        "chosen": "",
+        "completed_t": -1,
+        "history": [],
+        "learned": [],
+        "legacy_tags": [],
+        "role": "herbalist",
+        "schema": 1
+      },
+      "mainline": {
+        "ending": {},
+        "evidence": {
+          "mortuary": false,
+          "temple": false
+        },
+        "history": [],
+        "interventions": {
+          "disrupt_t": -1,
+          "ritual_t": -1
+        },
+        "published": false,
+        "route": "",
+        "schema": 1,
+        "stage": "waiting",
+        "start_day": 3
+      },
+      "mood": 100,
+      "neighbor": {
+        "ending": "",
+        "resolution": "",
+        "stage": "closed"
+      },
+      "npc_dialogue": {
+        "schema": 1,
+        "slots": []
+      },
+      "npcs": {
+        "actors": {
+          "ning": {
+            "actor": "ning",
+            "goal": "等待下一次安排",
+            "memory": {},
+            "name": "阿宁",
+            "plan": {},
+            "policy": {
+              "credit_allowed": true,
+              "price_add": 0,
+              "reason": "自主周转照常，已签的报价、欠账和回礼不变。"
+            },
+            "stock": {
+              "mugwort": 3,
+              "rice": 3
+            }
+          },
+          "traveler": {
+            "actor": "traveler",
+            "goal": "等待下一次安排",
+            "memory": {},
+            "name": "过路客",
+            "plan": {},
+            "policy": {
+              "credit_allowed": true,
+              "price_add": 0,
+              "reason": "自主周转照常，已签的报价、欠账和回礼不变。"
+            },
+            "stock": {
+              "firewood": 3,
+              "rice": 3
+            }
+          },
+          "zhou": {
+            "actor": "zhou",
+            "goal": "等待下一次安排",
+            "memory": {},
+            "name": "木料场老周",
+            "plan": {},
+            "policy": {
+              "credit_allowed": true,
+              "price_add": 0,
+              "reason": "自主周转照常，已签的报价、欠账和回礼不变。"
+            },
+            "stock": {
+              "rice": 3,
+              "wood": 3
+            }
+          }
+        },
+        "history": [],
+        "next_day": 100000,
+        "revision": 0,
+        "schema": 1
+      },
+      "opening": {
+        "applied": false,
+        "choice": "",
+        "effects": {
+          "contacts": {},
+          "first_warning": {},
+          "gained": {},
+          "hours": 0,
+          "silver_cost": 0,
+          "spent": {}
+        },
+        "legacy_tags": [],
+        "role": "herbalist",
+        "schema": 1
+      },
+      "promises": [],
+      "recollections": [],
+      "relations": {
+        "ning": 0,
+        "traveler": 0,
+        "zhou": 0
+      },
+      "role": "herbalist",
+      "stock": {
+        "firewood": 10,
+        "flatbread": 0,
+        "mugwort": 10,
+        "nails": 0,
+        "rice": 20,
+        "water": 20,
+        "wood": 10
+      },
+      "trade": {
+        "actors": {
+          "ning": {
+            "available": false,
+            "breach_total": 0,
+            "breaches": 0,
+            "favors": 0,
+            "trust": 0
+          },
+          "traveler": {
+            "available": false,
+            "breach_total": 0,
+            "breaches": 0,
+            "favors": 0,
+            "trust": 0
+          },
+          "zhou": {
+            "available": false,
+            "breach_total": 0,
+            "breaches": 0,
+            "favors": 0,
+            "trust": 0
+          }
+        },
+        "aid": [],
+        "debt": {},
+        "schema": 1
+      }
+    },
+    "time": 120
+  },
+  "result": {
+    "plan": {
+      "schema": 1,
+      "days": [
+        {
+          "day": 2,
+          "actor": "zhou",
+          "title": "木料换米",
+          "text": "老周清料场时露出米缸底，提出先换两升米救急。他指着脚边两张干木板说，货当场抬走；若肯少换些，他隔日也愿补一份人情。",
+          "choices": [
+            {
+              "id": "fair_trade",
+              "text": "用两米换两木板",
+              "result": "老周点头称公道，当场把木板递给你。",
+              "req": {
+                "rice": 2
+              },
+              "give": {
+                "wood": 2
+              },
+              "mood": 0,
+              "relation": 0
+            },
+            {
+              "id": "half_credit",
+              "text": "先给一斗米",
+              "result": "老周松了口气，记下这份周转，两日后把木板送来。",
+              "req": {
+                "rice": 1
+              },
+              "give": {},
+              "mood": 0,
+              "relation": 1,
+              "after": {
+                "days": 2,
+                "give": {
+                  "wood": 2
+                },
+                "text": "老周依约扛来两张木板。"
+              }
+            },
+            {
+              "id": "refuse_zhou",
+              "text": "回绝换米",
+              "result": "你留下米，老周没再勉强，只把木板往料场里挪了挪。",
+              "req": {},
+              "give": {},
+              "mood": -1,
+              "relation": -1
+            }
+          ]
+        },
+        {
+          "day": 3,
+          "actor": "traveler",
+          "title": "夜路备艾",
+          "text": "过路客整理背架，说前路宿处潮秽，想换些艾草随身。他愿意拿出干柴，也可以先取一小束，次日补还。",
+          "choices": [
+            {
+              "id": "take_firewood",
+              "text": "用两束艾换三柴",
+              "result": "过路客把三捆干柴数给你，将艾草仔细塞进包里。",
+              "req": {
+                "mugwort": 2
+              },
+              "give": {
+                "firewood": 3
+              },
+              "mood": 0,
+              "relation": 0
+            },
+            {
+              "id": "wait_repayment",
+              "text": "先给一束艾",
+              "result": "过路客道了声方便，次日取来两捆柴相还。",
+              "req": {
+                "mugwort": 1
+              },
+              "give": {},
+              "mood": 0,
+              "relation": 1,
+              "after": {
+                "days": 1,
+                "give": {
+                  "firewood": 2
+                },
+                "text": "过路客按约送来两捆柴。"
+              }
+            },
+            {
+              "id": "keep_mugwort",
+              "text": "留艾不换",
+              "result": "你没有拿出艾草，过路客便重新束紧背架。",
+              "req": {},
+              "give": {},
+              "mood": 0,
+              "relation": -1
+            }
+          ]
+        },
+        {
+          "day": 4,
+          "actor": "ning",
+          "title": "烘艾借火",
+          "text": "阿宁在檐下翻拣艾草，怕返潮走散药香，想借两捆柴烘屋。她愿分出三把干艾，也可以只讨一捆，隔日再补薄礼。",
+          "choices": [
+            {
+              "id": "exchange_fuel",
+              "text": "给两捆柴换三艾",
+              "result": "阿宁把艾草分好，抱柴去烘屋，连说这样稳妥。",
+              "req": {
+                "firewood": 2
+              },
+              "give": {
+                "mugwort": 3
+              },
+              "mood": 0,
+              "relation": 0
+            },
+            {
+              "id": "lend_one",
+              "text": "先给一捆柴",
+              "result": "阿宁谢过你，隔日送来一张干饼答谢。",
+              "req": {
+                "firewood": 1
+              },
+              "give": {},
+              "mood": 0,
+              "relation": 1,
+              "after": {
+                "days": 1,
+                "give": {
+                  "flatbread": 1
+                },
+                "text": "阿宁送来一张干饼。"
+              }
+            },
+            {
+              "id": "decline_ning",
+              "text": "不愿分柴",
+              "result": "你留下柴火，阿宁低声说再另想法子。",
+              "req": {},
+              "give": {},
+              "mood": -1,
+              "relation": -1
+            }
+          ]
+        }
+      ],
+      "cycle_plan": [
+        {
+          "case_id": "cycle:94f7298c249c4563ec1010c2f75be81e:zhou",
+          "day": 3,
+          "cue": "old_note"
+        }
+      ]
+    },
+    "source": "ark-plan",
+    "model": "auto",
+    "response_id": "resp_0217928429704433a391e43edef5299850de6066b8d72e2dbea3e",
+    "usage": {
+      "prompt_tokens": 4225,
+      "completion_tokens": 1536,
+      "total_tokens": 5761
+    },
+    "reasoning_effort": "low"
+  }
+}
