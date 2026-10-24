@@ -57,7 +57,7 @@ func set_mode(run: Dictionary, actor: String, mode: String) -> void:
 
 func test_initial_and_priorities() -> void:
 	var base := sample()
-	check(base.version == 16 and Npc.state(base).next_day == 2, "New run NPC version/start day wrong")
+	check(base.version == Migrate.VERSION and Npc.state(base).next_day == 2, "New run NPC version/start day wrong")
 	for actor in Npc.ACTORS:
 		check(Npc.view(base, actor).stock == {"rice": 3, Npc.FOCAL[actor]: 3}, "Initial finite stock wrong")
 	check(Npc.next_boundary(base) == 1560, "First decision boundary wrong")
@@ -250,7 +250,7 @@ func test_guards_saves_and_daily() -> void:
 	at(legacy, 12)
 	legacy.pday = 1
 	var upgraded := Migrate.save({"run": legacy.duplicate(true), "snapshots": {"11": legacy.duplicate(true)}})
-	check(upgraded.run.version == 16 and upgraded.snapshots["11"].version == 16, "NPC migration missing current/snapshot")
+	check(upgraded.run.version == Migrate.VERSION and upgraded.snapshots["11"].version == Migrate.VERSION, "NPC migration missing current/snapshot")
 	check(Npc.state(upgraded.run).next_day == 13 and Npc.state(upgraded.snapshots["11"]).next_day == 13, "Legacy migration trusted pday or backfilled history")
 	check(Npc.poll(upgraded.run) == "" and Npc.view(upgraded.run, "ning").plan.is_empty(), "Legacy archive got retroactive autonomous action")
 	var daily_a := sample()

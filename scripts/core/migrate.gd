@@ -14,12 +14,13 @@ extends RefCounted
 ##   v14：纸鹤往来（run.trade），旧卷仅补空账本，不追认借债和失约。
 ##   v15：危机时钟（run.crisis），旧卷从当前日之后安排预兆，不追补历史。
 ##   v16：NPC自主周转（run.npcs），旧卷从当前时钟日之后决策，不追补历史。
+##   v17：二十日主线（run.mainline），旧卷从当前时钟日之后调查，不补造本世证据。
 
 const Post = preload("res://scripts/core/post.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 
-const VERSION := 16
+const VERSION := 17
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -155,5 +156,7 @@ static func upgrade(run: Dictionary) -> Dictionary:
 			run["crisis"] = {}
 	if v < 16:
 		run["npcs"] = {}
+	if v < 17:
+		run["mainline"] = {}
 	run.version = VERSION
 	return run
