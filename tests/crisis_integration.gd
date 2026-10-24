@@ -9,6 +9,7 @@ const Director = preload("res://scripts/core/director.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
+const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 var checks := 0
 var failures := 0
 
@@ -27,6 +28,9 @@ func sample() -> Dictionary:
 	Pre.start_disaster(run)
 	Neighbor.state(run).stage = "closed"
 	Director.state(run).enabled = false
+	# Isolate the crisis surcharge here; npc_integration verifies stacking
+	# with actual autonomous supply policies, without weakening these prices.
+	Npcs.state(run).next_day = 100000
 	run.home = {"rice": 50, "wood": 10, "firewood": 10, "nails": 10, "mugwort": 10, "water": 10, "flatbread": 10}
 	return run
 

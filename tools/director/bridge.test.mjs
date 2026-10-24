@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {createBridge,validatePlan,validateSnapshot,buildPrompt,arkProvider} from './bridge.mjs';
+import {createBridge,validatePlan,validateSnapshot,buildPrompt,arkProvider,NPC_DIALOGUE,validateNpcContext,validateDialogueContext,validateDialogueRows} from './bridge.mjs';
 const plan=JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/director-plan.json',import.meta.url)));
 const snapshot={schema:1,request_id:'fixture-0-0',session:'fixture',revision:0,current_day:0,time:0,state:{role:'escort',stock:{wood:1,rice:5},mood:60,neighbor:{stage:'waiting',resolution:'',ending:''},relations:{ning:0,zhou:0,traveler:0},history:[],promises:[]}};
 async function start(options){const b=createBridge(options);await new Promise(r=>b.server.listen(0,'127.0.0.1',r));return {...b,url:`http://127.0.0.1:${b.server.address().port}`};}
@@ -32,6 +32,57 @@ const publicCrisis=()=>{
   return s;
 };
 const crisisPlan=()=>({...structuredClone(plan),crisis:{kind:'well_freeze',actor:'ning',warning_day:2,real:true}});
+const autonomous=()=>{
+  const s=structuredClone(snapshot);s.current_day=2;s.time=1560;s.request_id='fixture-0-2';
+  const actors={},slots=[];
+  for(const [actor,focus] of Object.entries({ning:'mugwort',zhou:'wood',traveler:'firewood'})){
+    const id=`npc:fixture-life:${actor}:2`,tone=actor==='ning'?'warm':actor==='zhou'?'guarded':'plain';
+    actors[actor]={actor,name:actor,stock:{rice:4,[focus]:3},goal:'自行周转',plan:{id,day:2,due_t:2040,mode:'gather',focus,reason_codes:[tone==='warm'?'trust':tone==='guarded'?'distrust':'routine'],reason:'按眼前家底安排。',response:'',req:{[focus]:1},reserved:{},status:'pending'},policy:{price_add:0,credit_allowed:true,reason:'尚未收紧往来。'},memory:{}};
+    slots.push({actor,decision_id:id,tone,openers:Object.keys(NPC_DIALOGUE[actor].openers).filter(k=>['all',tone].includes(NPC_DIALOGUE[actor].openers[k].tone)),closers:Object.keys(NPC_DIALOGUE[actor].closers).filter(k=>['all',tone].includes(NPC_DIALOGUE[actor].closers[k].tone))});
+  }
+  s.state.npcs={schema:1,revision:1,next_day:3,actors,history:[{day:2,t:1560,actor:'ning',action:'announce',result:'阿宁公开了今日打算。'}]};
+  s.state.npc_dialogue={schema:1,slots};return s;
+};
+const dialoguePlan=(s=autonomous())=>{
+  const p=structuredClone(plan);for(const e of p.days)e.day+=2;
+  p.npc_dialogue=s.state.npc_dialogue.slots.map(slot=>({actor:slot.actor,decision_id:slot.decision_id,opener:slot.openers.at(-1),closer:slot.closers.at(-1)}));return p;
+};
+test('npc dialogue accepts only reviewed actor phrases bound to the public decision and tone',()=>{
+  const s=autonomous(),p=dialoguePlan(s);
+  assert(validateSnapshot(s));assert(validateNpcContext(s.state.npcs));assert(validateDialogueContext(s.state.npc_dialogue,s.state.npcs));
+  assert(validatePlan(p,2,null,s.state.npc_dialogue));assert(validateDialogueRows(p.npc_dialogue,s.state.npc_dialogue));
+  for(const actor of Object.keys(NPC_DIALOGUE))for(const group of ['openers','closers']){
+    assert(Object.keys(NPC_DIALOGUE[actor][group]).length>=6,'each actor has independently varied reviewed expressions');
+    for(const tone of ['plain','warm','guarded'])assert(Object.values(NPC_DIALOGUE[actor][group]).filter(v=>['all',tone].includes(v.tone)).length>=6);
+  }
+  const cases=[p=>p.npc_dialogue=null,p=>p.npc_dialogue={},p=>p.npc_dialogue.push(p.npc_dialogue[0]),p=>p.npc_dialogue[0].actor='secret',p=>p.npc_dialogue[0].decision_id='another-life',p=>p.npc_dialogue[0].opener='z_o1',p=>p.npc_dialogue[0].opener='n_o9',p=>p.npc_dialogue[0].closer='invented',p=>p.npc_dialogue[0].text='井已修复，前世全知',p=>p.npc_dialogue[0].give={rice:3},p=>p.npc_dialogue[0].debug=false,p=>delete p.npc_dialogue[0].closer];
+  for(const mutate of cases){const bad=dialoguePlan(s);mutate(bad);assert.equal(validatePlan(bad,2,null,s.state.npc_dialogue),false);}
+  assert.equal(validatePlan(p,2,null,null),false,'legacy snapshot cannot authorize a new NPC dialogue');
+});
+test('npc dialogue public snapshots reject private state, malformed inventories, hidden memories and stale decisions',()=>{
+  const cases=[s=>s.state.npcs.pending={real:true},s=>s.state.npcs.schema=2,s=>s.state.npcs.actors.ning.stock.rice=21,s=>s.state.npcs.actors.ning.stock.wood=1,s=>s.state.npcs.actors.ning.actor='zhou',s=>s.state.npcs.actors.ning.memory.inherited=[],s=>s.state.npcs.actors.ning.memory={fact:'旧事',response:'awaken_now'},s=>s.state.npcs.actors.ning.plan.real=true,s=>s.state.npcs.actors.ning.plan.due_t++,s=>s.state.npcs.actors.ning.plan.reason_codes=['reveal_secret'],s=>s.state.npcs.actors.ning.plan.reserved={rice:2},s=>s.state.npcs.actors.ning.policy.price_add=2,s=>s.state.npcs.history[0].secret=true,s=>s.state.npc_dialogue.slots[0].decision_id='stale',s=>s.state.npcs.actors.ning.plan.status='done',s=>s.state.npc_dialogue.slots[0].text='越界',s=>s.state.npc_dialogue.slots[0].openers.push('n_o9'),s=>s.state.npc_dialogue.slots.push(s.state.npc_dialogue.slots[0])];
+  for(const mutate of cases){const s=autonomous();mutate(s);assert.equal(validateSnapshot(s),false);}
+  const old=structuredClone(snapshot);assert(validateSnapshot(old),'legacy inputs remain supported');
+  const awake=autonomous();awake.state.npcs.actors.ning.memory={fact:'你曾交出艾草，康复尚未确认。',response:'acknowledge'};awake.state.recollections=[{actor:'ning',life:1,age:1,fact_id:'ning:medicine',...awake.state.npcs.actors.ning.memory}];assert(validateSnapshot(awake));
+  const unseen=autonomous();unseen.state.npcs.actors.ning.memory={fact:'不属于本人的私有旧世',response:''};assert.equal(validateSnapshot(unseen),false,'NPC memory must match its own actual public recollection');
+  for(const malformed of [{},null,'hidden',42]){const bad=structuredClone(awake);bad.state.recollections=malformed;assert.equal(validateSnapshot(bad),false,'malformed memory input must reject rather than throw');}
+  const missing=autonomous();missing.state.npc_dialogue={schema:1,slots:[]};assert(validateSnapshot(missing),'already read speech has no editable slot');
+});
+test('npc dialogue prompt delegates only phrase IDs while preserving local facts and choices',()=>{
+  const s=autonomous(),prompt=buildPrompt(s);
+  for(const rule of ['四字段之外一律禁止','严格逐字拷贝该slot的decision_id','不能返回句子','本地规则填写','不能改其计划、资源、期限、行动或人情','即使编剧看见archive或crisis.real'])assert(prompt.includes(rule),rule);
+  assert(prompt.includes('n_o8'));assert(prompt.includes(NPC_DIALOGUE.ning.openers.n_o8.text));assert(prompt.endsWith(JSON.stringify(s)));
+});
+test('npc dialogue mock provider caches a valid bounded answer and does not add model calls',async()=>{
+  const s=autonomous();let calls=0;const b=await start({cooldown:0,provider:async received=>{calls++;assert.deepEqual(received.state.npcs,s.state.npcs);return {source:'fixture',plan:dialoguePlan(received)};}});
+  try{const first=await request(b,s);assert.equal(first.status,200);assert.deepEqual((await first.json()).plan.npc_dialogue,dialoguePlan(s).npc_dialogue);assert.equal((await request(b,s)).status,200);assert.equal(calls,1);}finally{await close(b);}
+});
+test('npc dialogue mock provider cannot replace a phrase ID with free prose, effects or another decision',async()=>{
+  for(const mutate of [p=>p.npc_dialogue[0].opener='我知道传闻是假',p=>p.npc_dialogue[0].decision_id='stale',p=>p.npc_dialogue[0].give={water:1}]){
+    const s=autonomous();let calls=0;const b=await start({cooldown:0,provider:async()=>{calls++;const p=dialoguePlan(s);mutate(p);return {source:'fixture',plan:p};}});
+    try{const response=await request(b,s);assert.equal(response.status,503);assert.deepEqual(await response.json(),{error:'invalid_plan'});assert.equal((await request(b,s)).status,409);assert.equal(calls,1);}finally{await close(b);}
+  }
+});
 test('crisis proposals extend only the bounded top-level planning contract and honor the open local slot',()=>{
   assert(validatePlan(plan,0),'legacy plans still omit a crisis proposal');
   assert(validatePlan(crisisPlan(),0,planningCrisis().state.crisis));

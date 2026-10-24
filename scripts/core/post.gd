@@ -20,6 +20,7 @@ const Director = preload("res://scripts/core/director.gd")
 const Companion = preload("res://scripts/core/companion.gd")
 const Trade = preload("res://scripts/core/social_trade.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
+const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -124,6 +125,9 @@ static func advance(run: Dictionary, minutes: int) -> String:
 		var work_end := int(run.busy.get("end", 0))
 		if work_end > int(run.t) and int(run.t) + step > work_end:
 			step = work_end - int(run.t)
+		var npc_boundary := Npcs.next_boundary(run)
+		if npc_boundary > int(run.t) and int(run.t) + step > npc_boundary:
+			step = npc_boundary - int(run.t)
 		for cp in checkpoints(run):
 			if m < cp and m + step > cp:
 				step = cp - m
@@ -682,10 +686,22 @@ static func begin_day(run: Dictionary) -> void:
 static func trade_refresh(run: Dictionary) -> String:
 	# Settle world clocks before calculating market terms or honoring payments.
 	crisis_refresh(run)
+	Trade.state(run)
+	var npc_result := Npcs.poll(run)
+	if npc_result != "":
+		Director.note_world(run, "邻人与商情 · 自主行动", npc_result)
 	var result := Trade.poll(run)
 	if result != "":
 		Director.note_choice(run, "纸鹤往来 · 履约与期限", result)
 	return ""
+
+
+static func npc_action(run: Dictionary, actor: String, action: String, token: String) -> String:
+	trade_refresh(run)
+	var result := Npcs.act(run, actor, action, token)
+	if result == "":
+		Director.note_choice(run, "邻人与商情 · " + str(Trade.contact(run, actor).get("name", actor)), str(Npcs.view(run, actor).get("last_result", "")))
+	return result
 
 
 static func crisis_refresh(run: Dictionary) -> String:

@@ -5,6 +5,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
+const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 const GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const OFFERS := {
@@ -51,10 +52,13 @@ static func quote(run: Dictionary, actor: String) -> Dictionary:
 			reasons.append("未化解失约 %d 笔，加收米 %d" % [int(person.breaches), int(person.breaches)])
 		var market := Crisis.market_effect(run, actor)
 		price += int(market.get("price_add", 0))
+		var npc_market := Npcs.market_effect(run, actor)
+		price = maxi(1, price + int(npc_market.get("price_add", 0)))
 		var give: Dictionary = OFFERS[actor].give.duplicate()
 		for item in market.get("omit", []): give.erase(item)
 		if str(market.get("reason", "")) != "": reasons.append(str(market.reason))
-		existing = {"actor": actor, "day": day, "req": {"rice": price}, "give": give, "reason": "；".join(reasons) + "。当日报价固定。", "used": false}
+		if str(npc_market.get("reason", "")) != "": reasons.append(str(npc_market.reason))
+		existing = {"actor": actor, "day": day, "req": {"rice": price}, "give": give, "reason": "；".join(reasons) + "。当日报价固定。", "credit_allowed": bool(npc_market.get("credit_allowed", true)), "used": false}
 		s.quotes[actor] = existing
 	existing["id"] = _token(run, actor)
 	return existing.duplicate(true)
@@ -96,6 +100,7 @@ static func _action_block(run: Dictionary, actor: String, action: String, q: Dic
 		"favor":
 			if int(person.favors) < 1: return "对方还没有欠你的人情。"
 		"credit":
+			if not q.get("credit_allowed", true): return "这份报价形成时对方收紧往来，只接受现货或已有的人情；新报价条件可随之后行动改变。"
 			if not debt.is_empty(): return "先清偿已有欠账，不能借新还旧。"
 			if int(person.breaches) > 0: return "失约尚未补救，暂不赊欠。"
 			if int(person.trust) < 2: return "信任达到 2 才愿意赊欠。"

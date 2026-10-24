@@ -6,6 +6,8 @@ const Data = preload("res://scripts/core/data.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 const Trade = preload("res://scripts/core/social_trade.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
+const Npc = preload("res://scripts/core/npc_autonomy.gd")
+const Dialogue = preload("res://scripts/core/npc_dialogue.gd")
 const GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 
@@ -24,6 +26,21 @@ static func note_choice(run: Dictionary, title: String, result: String) -> void:
 	while d.history.size() > 12:
 		d.history.pop_front()
 
+
+## A background NPC update replans the future, without starving today's
+## already prepared opportunity at every 08:00 announcement. Its economics
+## stay fixed; local wording avoids stale claims about the new NPC decision.
+static func note_world(run: Dictionary, title: String, result: String) -> void:
+	var d := state(run)
+	var today := []
+	for event in d.queue:
+		if int(event.get("day", -1)) == int(run.pday) and not int(run.pday) in d.days and str(event.get("uid", "")) != str(d.active.get("uid", "")):
+			var copy: Dictionary = event.duplicate(true)
+			copy["npc_rules_text"] = true
+			today.append(copy)
+	note_choice(run, title, result)
+	d.queue = today
+
 static func snapshot(run: Dictionary, archive: Dictionary = {}) -> Dictionary:
 	var d := state(run)
 	var n: Dictionary = run.get("neighbor", {})
@@ -35,7 +52,8 @@ static func snapshot(run: Dictionary, archive: Dictionary = {}) -> Dictionary:
 		"state": {"role": str(run.role), "stock": stock, "mood": State.attr(run, "mood"),
 			"neighbor": {"stage": n.get("stage", "waiting"), "resolution": n.get("resolution", ""), "ending": n.get("ending", "")},
 			"relations": d.relations.duplicate(), "history": d.history.duplicate(true), "promises": d.promises.duplicate(true),
-			"recollections": Past.public_memories(run), "trade": Trade.context(run), "crisis": Crisis.context(run)}}
+			"recollections": Past.public_memories(run), "trade": Trade.context(run), "crisis": Crisis.context(run),
+			"npcs": Npc.context(run), "npc_dialogue": Dialogue.context(run)}}
 	if not archive.is_empty() and not Past.daily(run):
 		result.state["archive"] = archive.duplicate()
 		result.request_id += "-m" + str(archive.get("sha256", "")).left(16)
@@ -61,10 +79,11 @@ static func goods_ok(value, limit := 3) -> bool:
 			return false
 	return true
 
-static func validate(plan, base_day: int) -> bool:
-	if not plan is Dictionary or not keys_ok(plan, ["schema", "days", "crisis"]) or plan.get("schema") != 1 or not plan.get("days") is Array or plan.days.size() != 3:
+static func validate(plan, base_day: int, dialogue_candidates = null) -> bool:
+	if not plan is Dictionary or not keys_ok(plan, ["schema", "days", "crisis", "npc_dialogue"]) or plan.get("schema") != 1 or not plan.get("days") is Array or plan.days.size() != 3:
 		return false
 	if plan.has("crisis") and not Crisis.valid_proposal(plan.crisis, base_day): return false
+	if plan.has("npc_dialogue") and not Dialogue.valid_rows(plan.npc_dialogue, dialogue_candidates): return false
 	var used := []
 	for e in plan.days:
 		if not e is Dictionary or not keys_ok(e, ["day", "actor", "title", "text", "choices"]): return false
@@ -91,8 +110,10 @@ static func validate(plan, base_day: int) -> bool:
 
 static func accept(run: Dictionary, sent: Dictionary, plan) -> bool:
 	var d := state(run)
-	if not run.get("phase", "") in ["pre", "post"] or not d.enabled or sent.session != d.session or int(sent.revision) != int(d.revision) or int(run.t) < int(sent.time) or int(run.pday) > int(sent.current_day) + 3 or not validate(plan, int(sent.current_day)):
+	if not run.get("phase", "") in ["pre", "post"] or not d.enabled or Past.daily(run) or sent.session != d.session or int(sent.revision) != int(d.revision) or int(run.t) < int(sent.time) or int(run.pday) > int(sent.current_day) + 3 or not validate(plan, int(sent.current_day), sent.get("state", {}).get("npc_dialogue", {})):
 		return false
+	if plan.has("npc_dialogue") and not Dialogue.current_rows(run, plan.npc_dialogue): return false
+	if plan.has("npc_dialogue"): Dialogue.accept(run, sent.state.npc_dialogue, plan.npc_dialogue)
 	d.queue = []
 	if plan.has("crisis"): Crisis.propose(run, plan.crisis, int(sent.current_day))
 	for e in plan.days:
@@ -145,7 +166,7 @@ static func describe(items: Dictionary) -> String:
 
 static func entry(run: Dictionary) -> Dictionary:
 	var event: Dictionary = state(run).active
-	if event.is_empty() or event.has("past_memory") or not (event.get("crisis_rules_text", false) or _crisis_text_guard(run)):
+	if event.is_empty() or event.has("past_memory") or not (event.get("crisis_rules_text", false) or event.get("npc_rules_text", false) or _crisis_text_guard(run)):
 		return event
 	return _rules_text(event)
 

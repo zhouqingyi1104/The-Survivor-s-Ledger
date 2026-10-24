@@ -1,0 +1,444 @@
+{
+  "snapshot": {
+    "current_day": 2,
+    "request_id": "npc-dialogue-explicit-probe-20261024-0-2",
+    "revision": 0,
+    "schema": 1,
+    "session": "npc-dialogue-explicit-probe-20261024",
+    "state": {
+      "crisis": {
+        "active": {
+          "actor": "ning",
+          "confirmed": "unknown",
+          "end_t": 7320,
+          "id": "crisis-1",
+          "impact_t": 5040,
+          "investigated": false,
+          "kind": "well_freeze",
+          "outcome": "",
+          "protected": false,
+          "response": "",
+          "stage": "warning",
+          "warning_day": 2
+        },
+        "can_plan": false,
+        "history": [
+          {
+            "action": "warning",
+            "actor": "ning",
+            "day": 2,
+            "kind": "well_freeze",
+            "result": "阿宁传来井口冻裂的风声：井沿结起薄冰，汲水绳变得发硬。 第 4 日 18:00 可能发生；可核实、提前处置、请线人帮忙，或本次观望。"
+          }
+        ],
+        "next_warning_day": 9,
+        "schema": 1
+      },
+      "history": [],
+      "mood": 60,
+      "neighbor": {
+        "ending": "",
+        "resolution": "",
+        "stage": "closed"
+      },
+      "npc_dialogue": {
+        "schema": 1,
+        "slots": [
+          {
+            "actor": "ning",
+            "closers": [
+              "n_c1",
+              "n_c2",
+              "n_c3",
+              "n_c4",
+              "n_c5",
+              "n_c6"
+            ],
+            "decision_id": "npc:npc-fictional-probe-life:ning:2",
+            "openers": [
+              "n_o1",
+              "n_o2",
+              "n_o3",
+              "n_o4",
+              "n_o5",
+              "n_o6"
+            ],
+            "tone": "plain"
+          },
+          {
+            "actor": "zhou",
+            "closers": [
+              "z_c1",
+              "z_c2",
+              "z_c3",
+              "z_c4",
+              "z_c5",
+              "z_c6",
+              "z_c9",
+              "z_c10"
+            ],
+            "decision_id": "npc:npc-fictional-probe-life:zhou:2",
+            "openers": [
+              "z_o1",
+              "z_o2",
+              "z_o3",
+              "z_o4",
+              "z_o5",
+              "z_o6",
+              "z_o9",
+              "z_o10"
+            ],
+            "tone": "guarded"
+          },
+          {
+            "actor": "traveler",
+            "closers": [
+              "t_c1",
+              "t_c2",
+              "t_c3",
+              "t_c4",
+              "t_c5",
+              "t_c6",
+              "t_c7",
+              "t_c8"
+            ],
+            "decision_id": "npc:npc-fictional-probe-life:traveler:2",
+            "openers": [
+              "t_o1",
+              "t_o2",
+              "t_o3",
+              "t_o4",
+              "t_o5",
+              "t_o6",
+              "t_o7",
+              "t_o8"
+            ],
+            "tone": "warm"
+          }
+        ]
+      },
+      "npcs": {
+        "actors": {
+          "ning": {
+            "actor": "ning",
+            "goal": "备货自保",
+            "memory": {
+              "fact": "你前世交过艾草，后续病情尚未确认。",
+              "response": "acknowledge"
+            },
+            "name": "阿宁",
+            "plan": {
+              "day": 2,
+              "due_t": 2040,
+              "focus": "mugwort",
+              "id": "npc:npc-fictional-probe-life:ning:2",
+              "mode": "stockpile",
+              "reason": "公开的危机风声与自己的生计有关，先留物自保；尚未核实的真假不作判断。",
+              "reason_codes": [
+                "crisis_well"
+              ],
+              "req": {
+                "mugwort": 1
+              },
+              "reserved": {},
+              "response": "",
+              "status": "pending"
+            },
+            "policy": {
+              "credit_allowed": true,
+              "price_add": 0,
+              "reason": "自主周转照常，已签的报价、欠账和回礼不变。"
+            },
+            "stock": {
+              "mugwort": 3,
+              "rice": 2
+            }
+          },
+          "traveler": {
+            "actor": "traveler",
+            "goal": "主动回报",
+            "memory": {},
+            "name": "过路客",
+            "plan": {
+              "day": 2,
+              "due_t": 2040,
+              "focus": "firewood",
+              "id": "npc:npc-fictional-probe-life:traveler:2",
+              "mode": "share",
+              "reason": "现世信任已达 3，因此愿从自己的周转物资里回报。",
+              "reason_codes": [
+                "trust"
+              ],
+              "req": {
+                "firewood": 1
+              },
+              "reserved": {},
+              "response": "",
+              "status": "pending"
+            },
+            "policy": {
+              "credit_allowed": true,
+              "price_add": 0,
+              "reason": "自主周转照常，已签的报价、欠账和回礼不变。"
+            },
+            "stock": {
+              "firewood": 3,
+              "rice": 2
+            }
+          },
+          "zhou": {
+            "actor": "zhou",
+            "goal": "收紧往来",
+            "memory": {},
+            "name": "木料场老周",
+            "plan": {
+              "day": 2,
+              "due_t": 2040,
+              "focus": "wood",
+              "id": "npc:npc-fictional-probe-life:zhou:2",
+              "mode": "guard",
+              "reason": "当下信任为 -3，缺少信赖，因此收紧下一份往来。",
+              "reason_codes": [
+                "distrust"
+              ],
+              "req": {
+                "wood": 1
+              },
+              "reserved": {},
+              "response": "",
+              "status": "pending"
+            },
+            "policy": {
+              "credit_allowed": true,
+              "price_add": 0,
+              "reason": "自主周转照常，已签的报价、欠账和回礼不变。"
+            },
+            "stock": {
+              "rice": 2,
+              "wood": 3
+            }
+          }
+        },
+        "history": [
+          {
+            "action": "decide",
+            "actor": "ning",
+            "day": 2,
+            "result": "阿宁决定备货自保：公开的危机风声与自己的生计有关，先留物自保；尚未核实的真假不作判断。 第 2 日 16:00 执行，之前可以支援、凭情改托或由他安排。",
+            "t": 1560
+          },
+          {
+            "action": "decide",
+            "actor": "zhou",
+            "day": 2,
+            "result": "木料场老周决定收紧往来：当下信任为 -3，缺少信赖，因此收紧下一份往来。 第 2 日 16:00 执行，之前可以支援、凭情改托或由他安排。",
+            "t": 1560
+          },
+          {
+            "action": "decide",
+            "actor": "traveler",
+            "day": 2,
+            "result": "过路客决定主动回报：现世信任已达 3，因此愿从自己的周转物资里回报。 第 2 日 16:00 执行，之前可以支援、凭情改托或由他安排。",
+            "t": 1560
+          }
+        ],
+        "next_day": 3,
+        "revision": 3,
+        "schema": 1
+      },
+      "promises": [],
+      "recollections": [
+        {
+          "actor": "ning",
+          "age": 1,
+          "fact": "你前世交过艾草，后续病情尚未确认。",
+          "fact_id": "ning:medicine",
+          "life": 1,
+          "response": "acknowledge"
+        }
+      ],
+      "relations": {
+        "ning": 0,
+        "traveler": 0,
+        "zhou": 0
+      },
+      "role": "escort",
+      "stock": {
+        "firewood": 0,
+        "flatbread": 2,
+        "mugwort": 1,
+        "nails": 1,
+        "rice": 12,
+        "water": 2,
+        "wood": 2
+      },
+      "trade": {
+        "actors": {
+          "ning": {
+            "available": true,
+            "breach_total": 0,
+            "breaches": 0,
+            "favors": 0,
+            "trust": 0
+          },
+          "traveler": {
+            "available": true,
+            "breach_total": 0,
+            "breaches": 0,
+            "favors": 0,
+            "trust": 3
+          },
+          "zhou": {
+            "available": true,
+            "breach_total": 0,
+            "breaches": 0,
+            "favors": 0,
+            "trust": -3
+          }
+        },
+        "aid": [],
+        "debt": {},
+        "schema": 1
+      }
+    },
+    "time": 1560
+  },
+  "status": 200,
+  "result": {
+    "plan": {
+      "schema": 1,
+      "days": [
+        {
+          "day": 3,
+          "actor": "ning",
+          "title": "存水换米",
+          "text": "阿宁抱着小半袋米来，只说井口风声未定，各家都该有点预备；她不敢把传言当真，却想先凑些存水。她没提迁居，也没说病人怎样，只把米放在脚边，等你掂量。",
+          "choices": [
+            {
+              "id": "swap_water_rice",
+              "text": "给她一份水，收两份米",
+              "result": "阿宁收下存水，把两份米递给你，说这是现结，互不拖欠。",
+              "req": {
+                "water": 1
+              },
+              "give": {
+                "rice": 2
+              },
+              "relation": 1,
+              "mood": 1
+            },
+            {
+              "id": "decline_water",
+              "text": "婉拒，说自己水也不多",
+              "result": "阿宁点点头，把米袋重新抱紧，没有再劝。",
+              "req": {},
+              "give": {},
+              "relation": -1,
+              "mood": 0
+            }
+          ]
+        },
+        {
+          "day": 4,
+          "actor": "zhou",
+          "title": "短钉换板",
+          "text": "老周亲自来敲门，话不多，先把两块短木板靠在门边。木料场近日收紧，他不愿赊欠，只说场院松了处榫口，若你肯让一枚铁钉，木板便现钱现货般换走。",
+          "choices": [
+            {
+              "id": "trade_nails_wood",
+              "text": "给他一枚铁钉",
+              "result": "老周接过铁钉，把两块短木板推给你，彼此当面两清。",
+              "req": {
+                "nails": 1
+              },
+              "give": {
+                "wood": 2
+              },
+              "relation": 1,
+              "mood": 0
+            },
+            {
+              "id": "keep_nails",
+              "text": "铁钉要留着自己用",
+              "result": "老周没有强求，只收起木板，说那就各留各的家底。",
+              "req": {},
+              "give": {},
+              "relation": -1,
+              "mood": 0
+            }
+          ]
+        },
+        {
+          "day": 5,
+          "actor": "traveler",
+          "title": "路客分柴",
+          "text": "过路客背来一捆柴，见你院里柴少，便把话摊开：他可以先分出一份柴，算个人情往来；若你不愿白收，也可用米再换两份。怎么取舍，他都不催。",
+          "choices": [
+            {
+              "id": "take_gift_firewood",
+              "text": "收下他送的一份柴",
+              "result": "过路客把一份柴放下，笑说能把火气续上便好。",
+              "req": {},
+              "give": {
+                "firewood": 1
+              },
+              "relation": 1,
+              "mood": 2
+            },
+            {
+              "id": "buy_two_firewood",
+              "text": "用一份米换两份柴",
+              "result": "你取出米，他数出两份柴捆好，双方都觉得公道。",
+              "req": {
+                "rice": 1
+              },
+              "give": {
+                "firewood": 2
+              },
+              "relation": 0,
+              "mood": 1
+            },
+            {
+              "id": "refuse_firewood",
+              "text": "谢绝他的柴",
+              "result": "过路客把柴收回，没有见怪，只说各人有各人的难处。",
+              "req": {},
+              "give": {},
+              "relation": 0,
+              "mood": -1
+            }
+          ]
+        }
+      ],
+      "npc_dialogue": [
+        {
+          "actor": "ning",
+          "decision_id": "npc:npc-fictional-probe-life:ning:2",
+          "opener": "n_o1",
+          "closer": "n_c2"
+        },
+        {
+          "actor": "zhou",
+          "decision_id": "npc:npc-fictional-probe-life:zhou:2",
+          "opener": "z_o9",
+          "closer": "z_c1"
+        },
+        {
+          "actor": "traveler",
+          "decision_id": "npc:npc-fictional-probe-life:traveler:2",
+          "opener": "t_o3",
+          "closer": "t_c5"
+        }
+      ]
+    },
+    "source": "ark-plan",
+    "model": "auto",
+    "response_id": "resp_021792832142811f3d3e58bfdffea9769710a7767b276c3d30939",
+    "usage": {
+      "prompt_tokens": 4429,
+      "completion_tokens": 2641,
+      "total_tokens": 7070
+    },
+    "reasoning_effort": "low"
+  }
+}

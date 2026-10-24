@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "actors": {
+    "ning": {
+      "openers": {
+        "n_o1": {"text": "先听我把打算说完，可好？", "tone": "all"},
+        "n_o2": {"text": "日子要一寸一寸地挪，我也得拿个主意。", "tone": "all"},
+        "n_o3": {"text": "我把话写在这里，免得彼此猜。", "tone": "all"},
+        "n_o4": {"text": "你且听听，合不合适再说。", "tone": "all"},
+        "n_o5": {"text": "有些事总要想清楚了再做。", "tone": "all"},
+        "n_o6": {"text": "这点盘算，我想亲口告诉你。", "tone": "all"},
+        "n_o7": {"text": "与你说话，我愿意少绕几个弯。", "tone": "warm"},
+        "n_o8": {"text": "你愿意听，我便细细说。", "tone": "warm"},
+        "n_o9": {"text": "我还是把界限先说清楚。", "tone": "guarded"},
+        "n_o10": {"text": "话可以慢慢讲，主意得由我自己拿。", "tone": "guarded"}
+      },
+      "closers": {
+        "n_c1": {"text": "你也顾着自己的日子，别勉强。", "tone": "all"},
+        "n_c2": {"text": "听过便好，怎么回应由你。", "tone": "all"},
+        "n_c3": {"text": "心里有数，总比相互猜着强。", "tone": "all"},
+        "n_c4": {"text": "愿咱们都能把眼前的路看稳些。", "tone": "all"},
+        "n_c5": {"text": "话说到这里，你慢慢斟酌。", "tone": "all"},
+        "n_c6": {"text": "我不替你拿主意。", "tone": "all"},
+        "n_c7": {"text": "愿你我说话，都能留些暖意。", "tone": "warm"},
+        "n_c8": {"text": "能这样好好商量，我心里是欢喜的。", "tone": "warm"},
+        "n_c9": {"text": "先照说清的办，别靠猜。", "tone": "guarded"},
+        "n_c10": {"text": "我说得直，你也不必急着答应。", "tone": "guarded"}
+      }
+    },
+    "zhou": {
+      "openers": {
+        "z_o1": {"text": "盘算得明白，手上才不乱。", "tone": "all"},
+        "z_o2": {"text": "我这人嘴笨，先说打算。", "tone": "all"},
+        "z_o3": {"text": "咱把事情摊开讲。", "tone": "all"},
+        "z_o4": {"text": "一桩是一桩，听我讲完再定。", "tone": "all"},
+        "z_o5": {"text": "过日子也像打榫，落手前得量。", "tone": "all"},
+        "z_o6": {"text": "我的算盘是这样打的。", "tone": "all"},
+        "z_o7": {"text": "咱说话可以敞亮些。", "tone": "warm"},
+        "z_o8": {"text": "跟你商量，我就不卖关子了。", "tone": "warm"},
+        "z_o9": {"text": "规矩先摆在前头。", "tone": "guarded"},
+        "z_o10": {"text": "话说实在些，省得各想各的。", "tone": "guarded"}
+      },
+      "closers": {
+        "z_c1": {"text": "你掂量自己的家底再回话。", "tone": "all"},
+        "z_c2": {"text": "别急着点头，想妥了再说。", "tone": "all"},
+        "z_c3": {"text": "把话讲透，心里就少个疙瘩。", "tone": "all"},
+        "z_c4": {"text": "能不能搭手，你自己定。", "tone": "all"},
+        "z_c5": {"text": "这便是我的打算。", "tone": "all"},
+        "z_c6": {"text": "各人的日子，都得各人掂量。", "tone": "all"},
+        "z_c7": {"text": "愿咱们说句实话都不费劲。", "tone": "warm"},
+        "z_c8": {"text": "有商有量，比闷着强。", "tone": "warm"},
+        "z_c9": {"text": "先看清楚，免得回头争执。", "tone": "guarded"},
+        "z_c10": {"text": "我只把眼前的话说定，不多夸口。", "tone": "guarded"}
+      }
+    },
+    "traveler": {
+      "openers": {
+        "t_o1": {"text": "路要自己选，话先讲明白。", "tone": "all"},
+        "t_o2": {"text": "容我说说眼下的盘算。", "tone": "all"},
+        "t_o3": {"text": "与其绕弯，不如开门见山。", "tone": "all"},
+        "t_o4": {"text": "我习惯先把利害想清楚。", "tone": "all"},
+        "t_o5": {"text": "你听个明白，再作自己的选择。", "tone": "all"},
+        "t_o6": {"text": "这番打算，不必藏着掖着。", "tone": "all"},
+        "t_o7": {"text": "能坦坦荡荡说话，是件舒心事。", "tone": "warm"},
+        "t_o8": {"text": "与你商量，我愿说得细些。", "tone": "warm"},
+        "t_o9": {"text": "情面归情面，分寸也得留着。", "tone": "guarded"},
+        "t_o10": {"text": "你我先把边界说清。", "tone": "guarded"}
+      },
+      "closers": {
+        "t_c1": {"text": "你按自己的难处取舍便是。", "tone": "all"},
+        "t_c2": {"text": "怎么选，我都不替你开口。", "tone": "all"},
+        "t_c3": {"text": "想清楚再应，不必抢这一句话。", "tone": "all"},
+        "t_c4": {"text": "各自心里有杆秤，就好说话。", "tone": "all"},
+        "t_c5": {"text": "话摆在这里，留你斟酌。", "tone": "all"},
+        "t_c6": {"text": "你有你的路，我也有我的打算。", "tone": "all"},
+        "t_c7": {"text": "愿这番商量让彼此心里亮些。", "tone": "warm"},
+        "t_c8": {"text": "话说得投机，人也轻快些。", "tone": "warm"},
+        "t_c9": {"text": "照明白的话办，少些误会。", "tone": "guarded"},
+        "t_c10": {"text": "我不强求，你也莫含糊应承。", "tone": "guarded"}
+      }
+    }
+  }
+}
