@@ -12,6 +12,138 @@ const IDENTITY_ROLES := ["scholar", "escort", "herbalist", "watchman"]
 const IDENTITY_TAGS := ["sealed_lamps", "escaped_city", "gave_medicine", "returned_evidence"]
 const IDENTITY_CAPS := {"scholar_collate": "scribe_talisman", "scholar_diagram": "paper_ritual", "escort_intercept": "", "escort_convoy": "early_convoy", "herbalist_lure": "efficient_plague", "herbalist_ink": "medicinal_talisman", "watchman_lane": "light_escape", "watchman_intel": "wave_intel"}
 const IDENTITY_REQUIRED := {"scholar_diagram": "sealed_lamps", "escort_convoy": "escaped_city", "herbalist_ink": "gave_medicine", "watchman_intel": "returned_evidence"}
+const OPENING_TAGS := ["breach_ning", "breach_zhou", "breach_traveler", "crisis_well_freeze", "crisis_fuel_shortage", "crisis_herb_shortage"]
+const OPENING_CHOICES := ["plain", "scholar_stock", "scholar_neighbors", "scholar_lamps", "escort_stock", "escort_neighbors", "escort_oldroad", "herbalist_stock", "herbalist_neighbors", "herbalist_oldcase", "watchman_stock", "watchman_neighbors", "watchman_oldledger", "cash_account", "old_crisis"]
+const OPENING_GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread", "talisman_paper", "cinnabar", "caltrops", "plague_powder", "salve", "lamp_oil"]
+
+## This separate six-tag index records executed old-life outcomes. Identity
+## unlocks retain their own four-tag index; prose and trust never prove a breach.
+static func _opening_recent(b: Dictionary) -> Array:
+	var ids := {}
+	var ordinals := {}
+	for life in b.lives:
+		if not life is Dictionary: continue
+		var id = life.get("id", "")
+		var ordinal = life.get("life", -1)
+		if id is String: ids[id] = int(ids.get(id, 0)) + 1
+		if _trade_integer(ordinal, 1, int(b.count)): ordinals[int(ordinal)] = int(ordinals.get(int(ordinal), 0)) + 1
+	var latest := {}
+	for life in b.lives:
+		if not life is Dictionary: continue
+		var id = life.get("id", "")
+		var ordinal = life.get("life", -1)
+		if not id is String or id.strip_edges().is_empty() or id.length() > 80 or not id in b.sealed_ids or int(ids.get(id, 0)) != 1: continue
+		if not _trade_integer(ordinal, 1, int(b.count)) or int(ordinals.get(int(ordinal), 0)) != 1: continue
+		var summary = life.get("summary", {})
+		if not summary is Dictionary or not summary.get("role", "") in IDENTITY_ROLES or not summary.get("mode", "") in ["寻常轮回", "守到死"] or not _trade_integer(summary.get("day"), 0, 100000): continue
+		var tags := []
+		var trade := trade_snapshot(summary.get("trade", {}))
+		if not trade.is_empty():
+			for actor in ACTORS:
+				if int(trade.actors[actor].breach_total) >= 1: tags.append("breach_" + actor)
+		var crisis := crisis_snapshot(summary.get("crisis", {}))
+		if not crisis.is_empty():
+			var outcomes: Array = crisis.completed.duplicate()
+			if not crisis.active.is_empty(): outcomes.append(crisis.active)
+			for a in outcomes:
+				if a.stage != "resolved" or a.confirmed != "real" or int(a.impact_t) >= int(summary.day) * 1440: continue
+				if a.outcome == "averted" and a.protected and a.response in ["prepare", "aid"]:
+					tags.append("crisis_" + str(a.kind))
+				elif a.outcome == "repaired" and a.response == "emergency" and int(a.impact_t) < int(a.end_t):
+					tags.append("crisis_" + str(a.kind))
+		for tag in tags:
+			if int(latest.get(tag, {}).get("source_life", 0)) < int(ordinal): latest[tag] = {"tag": tag, "source_life": int(ordinal), "source_id": id}
+	return _opening_merge(latest.values())
+
+static func _opening_merge(sources: Array) -> Array:
+	var latest := {}
+	for source in sources:
+		if int(latest.get(source.tag, {}).get("source_life", 0)) < int(source.source_life): latest[source.tag] = source.duplicate()
+	var result := []
+	for tag in OPENING_TAGS:
+		if latest.has(tag): result.append(latest[tag])
+	return result
+
+static func _opening_retained(meta: Dictionary) -> Array:
+	var b := book(meta)
+	var recent := _opening_recent(b)
+	var confirmed := recent.duplicate(true)
+	var cached = b.get("opening_legacy", [])
+	if not cached is Array or cached.size() > OPENING_TAGS.size(): return _opening_merge(confirmed)
+	var tag_counts := {}
+	for source in cached:
+		if source is Dictionary and source.get("tag") is String: tag_counts[source.tag] = int(tag_counts.get(source.tag, 0)) + 1
+	var seen := []
+	for source in cached:
+		if not source is Dictionary or source.size() != 3 or not source.get("tag", "") in OPENING_TAGS or source.tag in seen or int(tag_counts.get(source.tag, 0)) != 1: continue
+		seen.append(source.tag)
+		if not _trade_integer(source.get("source_life"), 1, int(b.count)) or not source.get("source_id") is String or source.source_id.strip_edges().is_empty() or source.source_id.length() > 80 or not source.source_id in b.sealed_ids: continue
+		var has_detail := false
+		for life in b.lives:
+			if life is Dictionary and (life.get("id", "") == source.source_id or life.get("life", -1) == source.source_life): has_detail = true
+		if has_detail and not source in recent: continue
+		confirmed.append({"tag": source.tag, "source_life": int(source.source_life), "source_id": source.source_id})
+	return _opening_merge(confirmed)
+
+static func opening_inheritance(meta: Dictionary) -> Array:
+	return identity_inheritance(meta) + _opening_retained(meta)
+
+static func _opening_goods(value) -> bool:
+	if not value is Dictionary or value.size() > OPENING_GOODS.size(): return false
+	for item in value:
+		if not item in OPENING_GOODS or not _trade_integer(value[item], 1, 4): return false
+	return true
+
+## Applied deltas are public facts, while birth inventory and source IDs remain private.
+static func opening_snapshot(value) -> Dictionary:
+	if not value is Dictionary or value.get("schema") != 1 or not value.get("choice", "") in OPENING_CHOICES + [""] or not value.get("applied") is bool: return {}
+	var effects = value.get("effects", {})
+	if not effects is Dictionary: return {}
+	# Migrated pre-opening saves intentionally carry no grant receipt. Their
+	# neutral plain choice is readable without inferring any resource delta.
+	if value.applied and value.choice == "plain" and effects.is_empty(): effects = {"silver_cost": 0, "hours": 0, "spent": {}, "gained": {}, "contacts": {}, "first_warning": {}}
+	if not value.applied:
+		if value.choice != "" or (not effects.is_empty() and effects != {"silver_cost": 0, "hours": 0, "spent": {}, "gained": {}, "contacts": {}, "first_warning": {}}): return {}
+	elif value.choice == "": return {}
+	if value.applied:
+		if effects.size() != 6: return {}
+		for key in effects:
+			if not key in ["silver_cost", "hours", "spent", "gained", "contacts", "first_warning"]: return {}
+		if not _trade_integer(effects.get("silver_cost"), 0, 3000) or not _trade_integer(effects.get("hours"), 0, 6) or not _opening_goods(effects.get("spent")) or not _opening_goods(effects.get("gained")): return {}
+		if not effects.get("contacts") is Dictionary or effects.contacts.size() > 3: return {}
+		for actor in effects.contacts:
+			var contact = effects.contacts[actor]
+			if not actor in ACTORS or not contact is Dictionary or contact.size() != 2 or not _trade_integer(contact.get("trust"), -1, 2) or not _trade_integer(contact.get("favors"), 0, 1): return {}
+		var warning = effects.get("first_warning")
+		if not warning is Dictionary: return {}
+		if not warning.is_empty() and (warning.size() != 3 or not warning.get("kind", "") in CRISIS_KINDS or not warning.get("actor", "") in ACTORS or not _trade_integer(warning.get("warning_day"), 2, 3)): return {}
+		if value.choice == "plain" and effects != {"silver_cost": 0, "hours": 0, "spent": {}, "gained": {}, "contacts": {}, "first_warning": {}}: return {}
+	var history = value.get("history", [])
+	if not history is Array or history.size() > 8: return {}
+	var out := {"schema": 1, "choice": value.choice, "applied": value.applied, "effects": effects.duplicate(true), "history": []}
+	for entry in history:
+		if not entry is Dictionary or entry.size() != 3 or not _trade_integer(entry.get("day"), 0, 3) or not entry.get("action") is String or entry.action.is_empty() or entry.action.length() > 40 or not entry.get("result") is String or entry.result.is_empty() or entry.result.length() > 240: return {}
+		out.history.append({"day": int(entry.day), "action": entry.action, "result": entry.result})
+	return out
+
+static func _opening_archive(run: Dictionary) -> Dictionary:
+	var raw = run.get("opening", {})
+	var safe := opening_snapshot(raw)
+	if safe.is_empty() or not safe.applied or safe.choice == "plain": return safe
+	if daily(run): return {}
+	var choice: String = safe.choice
+	if not choice in ["cash_account", "old_crisis"] and not choice.begins_with(str(run.get("role", "")) + "_"): return {}
+	var needed: String = {"scholar_lamps": "sealed_lamps", "escort_oldroad": "escaped_city", "herbalist_oldcase": "gave_medicine", "watchman_oldledger": "returned_evidence", "cash_account": "breach_", "old_crisis": "crisis_"}.get(choice, "")
+	if needed != "":
+		var p := state(run)
+		var inherited = raw.get("inherited", [])
+		if not inherited is Array or inherited.size() > 10: return {}
+		var found := false
+		for source in inherited:
+			if not source is Dictionary or source.size() != 3 or not source.get("tag", "") in IDENTITY_TAGS + OPENING_TAGS or not _trade_integer(source.get("source_life"), 1, int(p.get("generation", 0)) - 1) or not source.get("source_id") is String or source.source_id.is_empty() or source.source_id.length() > 80 or source.source_id == p.id: continue
+			if source.tag == needed or (needed in ["breach_", "crisis_"] and str(source.tag).begins_with(needed)): found = true
+		if not found: return {}
+	return safe
 
 ## Keep a bounded account of this life's actual work, never its private source IDs.
 ## This module cannot import Identity/State without creating a dependency cycle.
@@ -251,7 +383,7 @@ static func crisis_snapshot(value) -> Dictionary:
 	return {"schema": 1, "active": active, "completed": settled, "history": facts}
 
 static func fresh_book() -> Dictionary:
-	return {"version": 1, "count": 0, "lives": [], "sealed_ids": [], "identity_legacy": []}
+	return {"version": 1, "count": 0, "lives": [], "sealed_ids": [], "identity_legacy": [], "opening_legacy": []}
 
 
 ## Final public NPC facts only. Dialogue caches and unawakened memories are not
@@ -318,6 +450,7 @@ static func begin(run: Dictionary, meta: Dictionary) -> void:
 	run["past_lives"] = p
 	# Fixed at birth; an old save never learns from lives sealed after its start.
 	run["identity"] = {"schema": 1, "inherited": identity_inheritance(meta)}
+	run["opening"] = {"schema": 1, "inherited": opening_inheritance(meta), "birth": {"silver": int(run.get("silver", 0)), "home": run.get("home", {}).duplicate(true), "role": str(run.get("role", "")), "seed": int(run.get("seed", 0))}}
 	p.generation = int(b.count) + 1
 	var candidates := {}
 	for life in b.lives:
@@ -364,6 +497,7 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 		p.archived = true
 		return false
 	var retained := identity_inheritance(meta)
+	var opening_retained := _opening_retained(meta)
 	var ordinal := int(b.count) + 1
 	var facts := []
 	if not daily(run):
@@ -387,12 +521,15 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 		if run.get("phase", "") == "ending" and not mainline.ending.is_empty(): summary.outcome = mainline.ending.title
 	var identity := _identity_archive(run)
 	if not identity.is_empty(): summary["identity"] = identity
+	var opening := _opening_archive(run)
+	if not opening.is_empty(): summary["opening"] = opening
 	b.lives.append({"id": p.id, "life": ordinal, "facts": facts, "summary": summary})
 	b.sealed_ids.append(p.id)
 	b.count = ordinal
 	# Preserve genuine older experience before dropping detailed narratives.
 	# A daily life contributes no sources, but cannot erase older normal ones.
 	b["identity_legacy"] = _identity_merge(retained + _identity_recent(b))
+	b["opening_legacy"] = _opening_merge(opening_retained + _opening_recent(b))
 	while b.lives.size() > KEEP_LIVES: b.lives.pop_front()
 	p.generation = ordinal
 	p.archived = true

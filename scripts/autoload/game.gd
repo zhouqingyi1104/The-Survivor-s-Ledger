@@ -15,6 +15,8 @@ const Migrate = preload("res://scripts/core/migrate.gd")
 const MemoryFile = preload("res://scripts/core/life_memory_file.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
+const Opening = preload("res://scripts/core/opening.gd")
+const Director = preload("res://scripts/core/director.gd")
 
 const SAVE_PATH := "user://save.json"
 const META_PATH := "user://meta.json"
@@ -50,6 +52,7 @@ var pending_difficulty := "normal"
 ##   pending_daily    每日一局——种子按本地日期给，同一天所有人同一副牌
 var pending_endless := false
 var pending_daily := false
+var pending_opening_setup: Dictionary = {}
 
 
 func _ready() -> void:
@@ -120,19 +123,27 @@ func role_unlocked(role_id: String) -> bool:
 	return true
 
 
-func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = [], endless := false, daily := false, companions: Array = []) -> void:
-	run = State.new_run(role_id, meta, daily_seed() if daily else randi(), difficulty_id, goals, boons, vows)
+func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = [], endless := false, daily := false, companions: Array = [], opening_id := "plain") -> String:
+	# Validate and apply on a candidate. A stale/invalid selection cannot replace a life.
+	var candidate := State.new_run(role_id, meta, daily_seed() if daily else randi(), difficulty_id, goals, boons, vows)
 	# 守到死：Post.ack_dawn 看 run.endless —— 第 20 日天亮照常开新的一天，不进结局
-	run.endless = endless
+	candidate.endless = endless
 	if daily:
-		run.flags["daily"] = today_text()
+		candidate.flags["daily"] = today_text()
 		# Past.begin runs before this flag. Daily runs carry no private legacy source.
-		run.identity = {}
+		candidate.identity = {}
+		candidate.opening["inherited"] = []
 	# 同院的人（备劫前带回来的帮手）
-	run.companions = companions.duplicate()
+	candidate.companions = companions.duplicate()
+	var result := Opening.apply(candidate, opening_id, str(Opening.view(candidate).token))
+	if result != "": return result
+	if opening_id != "plain": Director.note_choice(candidate, "今世开局筹备", str(Opening.view(candidate).summary))
+	run = candidate
 	snapshots = {}
 	last_gain = {}
+	pending_opening_setup = {}
 	_after()
+	return ""
 
 
 ## 今天（本地日期）写成 2026-10-24。
@@ -147,6 +158,7 @@ func daily_seed() -> int:
 
 ## 选完身份，先去定难度（原版 DifficultySelect / ChallengeSetup）。
 func pick_difficulty(role_id: String) -> void:
+	pending_opening_setup = {}
 	pending_role = role_id
 	pending_difficulty = "normal"
 	go("difficulty")
@@ -207,8 +219,29 @@ func restart_from_cover(expected_life := "") -> void:
 	# 同院的人也带过去——回到三日之前，院里还是这几个人（誓约/凭仗/了愿另说，
 	# 那三样是"这一局挑的挑战"，重开不带走）
 	var mates: Array = (run.get("companions", []) as Array).duplicate()
+	var opening_id := str(run.get("opening", {}).get("choice", "plain"))
+	if opening_id == "": opening_id = "plain"
 	end_run(Ledger.ending_bonus(run))
-	new_game(role_id, d, [], [], [], endless, daily, mates)
+	var result := new_game(role_id, d, [], [], [], endless, daily, mates, opening_id)
+	if result != "":
+		new_game(role_id, d, [], [], [], endless, daily, mates, "plain")
+		toast.emit("先前开局已不适用，这一世使用普通行囊；可在结局页另选开局。")
+
+
+## Settle this life once, then explicitly choose how to prepare the next one.
+func choose_next_opening(expected_life := "") -> void:
+	if not _same_life(expected_life) or not run.get("phase", "") in ["dead", "ending"]: return
+	var role_id := str(run.role)
+	var difficulty_id := str(run.get("difficulty", "normal"))
+	var setup := {"endless": bool(run.get("endless", false)), "daily": Past.daily(run), "mates": (run.get("companions", []) as Array).duplicate()}
+	end_run(Ledger.ending_bonus(run))
+	run = {}
+	snapshots = {}
+	_delete_save()
+	pending_role = role_id
+	pending_difficulty = difficulty_id
+	pending_opening_setup = setup
+	go("challenge")
 
 
 func close_book(expected_life := "") -> void:

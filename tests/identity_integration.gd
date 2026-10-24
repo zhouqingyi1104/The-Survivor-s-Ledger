@@ -206,7 +206,7 @@ func test_migration_and_time() -> void:
 	var run := sample("watchman", "returned_evidence")
 	run.version = 17
 	var migrated := Migrate.save({"run": run.duplicate(true), "snapshots": {"2": run.duplicate(true)}})
-	check(migrated.run.version == 18 and migrated.run.identity.is_empty() and migrated.snapshots["2"].identity.is_empty(), "Legacy run gained future inheritance during migration")
+	check(migrated.run.version == Migrate.VERSION and migrated.run.identity.is_empty() and migrated.snapshots["2"].identity.is_empty(), "Legacy run gained future inheritance during migration")
 	var late := mortuary("watchman")
 	select(late, "watchman_lane")
 	make_routes(late)

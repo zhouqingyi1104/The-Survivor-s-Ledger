@@ -15,9 +15,26 @@ const ACTIONS := {"investigate": ["核实风声", 30, 4], "prepare": ["提前处
 
 static func state(run: Dictionary) -> Dictionary:
 	if not run.get("crisis") is Dictionary or run.crisis.is_empty():
-		run["crisis"] = {"schema": 1, "revision": 0, "serial": 0, "next_warning_day": maxi(2, int(run.get("pday", 0)) + 1), "pending": {}, "active": {}, "history": [], "completed": [], "last_result": ""}
+		run["crisis"] = {"schema": 1, "revision": 0, "serial": 0, "next_warning_day": maxi(2, int(run.get("pday", 0)) + 1), "pending": {}, "opening_reservation": {}, "active": {}, "history": [], "completed": [], "last_result": ""}
 	return run.crisis
 
+## Reserve before any first warning/proposal; never revise a published contract.
+## No import of Opening: that module already depends on Trade and Crisis.
+static func reserve_opening(run: Dictionary, kind: String, actor: String, warning_day: int) -> bool:
+	if not kind in KINDS or not actor in ACTORS or not warning_day in [2, 3] or Past.daily(run): return false
+	if run.get("phase", "") != "pre" or int(run.get("day", 0)) != 1 or int(run.get("hour", -1)) != State.OPEN_HOUR or run.get("loc", "") != "home" or int(run.get("t", -1)) != 0: return false
+	var opening: Dictionary = run.get("opening", {})
+	var birth: Dictionary = opening.get("birth", {})
+	if opening.get("applied", false) or birth.get("role", "") != run.get("role", "") or birth.get("seed") != run.get("seed") or birth.get("silver") != run.get("silver") or birth.get("home", {}) != run.get("home", {}): return false
+	var trade: Dictionary = run.get("trade", {})
+	if not trade.get("quotes", {}).is_empty() or not trade.get("debt", {}).is_empty() or not trade.get("aid", []).is_empty(): return false
+	var s := state(run)
+	if int(s.serial) != 0 or not s.active.is_empty() or not s.pending.is_empty() or not s.get("opening_reservation", {}).is_empty(): return false
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("opening-crisis:%s:%s:%s:%s:%d" % [str(run.get("seed", 0)), str(run.get("role", "")), kind, actor, warning_day])
+	s["opening_reservation"] = {"kind": kind, "actor": actor, "warning_day": warning_day, "real": rng.randf() < 0.75}
+	s.next_warning_day = warning_day
+	return true
 static func _warning_t(day: int) -> int:
 	return (day - 1) * 1440 + 120
 
@@ -90,12 +107,14 @@ static func poll(run: Dictionary) -> String:
 		_resolved(run, a, "endured")
 		facts.append(_fact(run, "endured", "%s的影响自然结束，相关行动与后续新报价恢复；已展示的报价仍保持原价。" % CATALOG[a.kind].title))
 	if (a.is_empty() or a.stage == "resolved") and int(run.t) >= _warning_t(int(s.next_warning_day)):
-		var proposal: Dictionary = s.pending if not s.pending.is_empty() else _fallback(run)
+		var reservation: Dictionary = s.get("opening_reservation", {})
+		var proposal: Dictionary = reservation if not reservation.is_empty() else (s.pending if not s.pending.is_empty() else _fallback(run))
 		s.serial = int(s.serial) + 1
 		var day := int(s.next_warning_day)
 		s.active = {"id": "crisis-%d" % int(s.serial), "kind": str(proposal.kind), "actor": str(proposal.actor), "warning_day": day, "impact_t": (day + 1) * 1440 + 720, "end_t": (day + 3) * 1440 + 120, "real": bool(proposal.real), "stage": "warning", "confirmed": "unknown", "investigated": false, "response": "", "protected": false, "outcome": "", "work": {}}
 		s.next_warning_day = day + 7
 		s.pending = {}
+		s["opening_reservation"] = {}
 		facts.append(_fact(run, "warning", "%s传来%s：%s 第 %d 日 18:00 可能发生；可核实、提前处置、请线人帮忙，或本次观望。" % [ACTORS[s.active.actor], CATALOG[s.active.kind].title, CATALOG[s.active.kind].sign, day + 2]))
 	return "\n".join(facts)
 
@@ -248,7 +267,7 @@ static func context(run: Dictionary) -> Dictionary:
 		active = _public_active(s.active)
 	var day := int(run.get("pday", 0))
 	var slot := int(s.next_warning_day)
-	var can_plan: bool = str(run.get("phase", "")) in ["pre", "post"] and not Past.daily(run) and (s.active.is_empty() or s.active.stage == "resolved") and int(run.get("t", 0)) < _warning_t(slot) and slot >= maxi(2, day + 1) and slot <= day + 3
+	var can_plan: bool = str(run.get("phase", "")) in ["pre", "post"] and not Past.daily(run) and s.get("opening_reservation", {}).is_empty() and (s.active.is_empty() or s.active.stage == "resolved") and int(run.get("t", 0)) < _warning_t(slot) and slot >= maxi(2, day + 1) and slot <= day + 3
 	return {"schema": 1, "next_warning_day": slot, "can_plan": can_plan, "active": active, "history": s.history.duplicate(true)}
 
 static func valid_proposal(proposal, base_day: int) -> bool:
