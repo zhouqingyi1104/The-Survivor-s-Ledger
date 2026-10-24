@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://tests/social_trade_rules.gd" id="1"]
+[node name="SocialTradeRules" type="Node"]
+script = ExtResource("1")
