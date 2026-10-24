@@ -19,6 +19,7 @@ const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
+const Mainline = preload("res://scripts/core/mainline.gd")
 
 ## 每档流速：游戏分钟 / 现实秒
 const SPEEDS := [0.0, 4.0, 10.0, 24.0]
@@ -899,7 +900,7 @@ func _left_top(run: Dictionary) -> void:
 	# 尸潮预警
 	var f := VBoxContainer.new()
 	f.add_theme_constant_override("separation", 2)
-	var wave := Defense.wave_for_day(run.pday, float(State.diff(run).wave_mul))
+	var wave := Defense.wave_for_run(run, int(run.pday))
 	if not wave.is_empty() and int(run.wave_day) != int(run.pday):
 		f.add_child(Hud.title("今夜尸潮", 19, Hud.RED))
 		var mods := Defense.mod_names(wave)
@@ -910,7 +911,7 @@ func _left_top(run: Dictionary) -> void:
 	else:
 		var next := 0
 		for d in range(int(run.pday) + 1, int(run.pday) + 10):
-			if not Defense.wave_for_day(d, float(State.diff(run).wave_mul)).is_empty():
+			if not Defense.wave_for_run(run, d).is_empty():
 				next = d
 				break
 		f.add_child(Hud.title("预兆", 19, Hud.GOLD))
@@ -973,6 +974,18 @@ func _left_top(run: Dictionary) -> void:
 	task.custom_minimum_size.x = 280
 	quest.add_child(task)
 	_live["neighbor"] = task
+	var main_row := HBoxContainer.new()
+	main_row.add_child(Hud.title("尸劫来历", 18, Hud.GOLD))
+	var main_entry := Hud.button("调查 / 出路", Dialogs.mainline)
+	main_entry.set_meta("mainline_entry", true)
+	main_row.add_child(main_entry)
+	quest.add_child(main_row)
+	var main_summary := Hud.text(Mainline.summary(run), 13, Hud.GOLD)
+	main_summary.custom_minimum_size.x = 280
+	main_summary.clip_text = true
+	main_summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	quest.add_child(main_summary)
+	_live["mainline"] = main_summary
 	v.add_child(Hud.panel(quest))
 	hud.add_child(v)
 	Hud.pin(v, Control.PRESET_TOP_LEFT, 14)
@@ -1002,7 +1015,7 @@ func _right_top(run: Dictionary) -> void:
 	top.add_child(texts)
 	var dial := ClockDial.new()
 	dial.custom_minimum_size = Vector2(104, 104)
-	if not Defense.wave_for_day(run.pday, float(State.diff(run).wave_mul)).is_empty():
+	if not Defense.wave_for_run(run, int(run.pday)).is_empty():
 		dial.alert_minute = 22 * 60
 	top.add_child(dial)
 	_live.dial = dial
@@ -1157,6 +1170,9 @@ func _update_live() -> void:
 		return
 	if _live.has("neighbor"):
 		(_live.neighbor as Label).text = Neighbor.summary(run)
+	if _live.has("mainline"):
+		(_live.mainline as Label).text = Mainline.summary(run)
+		(_live.mainline as Label).tooltip_text = Mainline.summary(run)
 	if _live.has("npc_pending"):
 		var count: int = Dialogs.npc_pending_count(run)
 		(_live.npc_pending as Label).text = "邻里待介入 %d · J" % count if count > 0 else "J"

@@ -87,4 +87,4 @@
 - `mainline_rules.tscn`：253检查通过；`mainline_integration.tscn`：207检查通过；`mainline_memory.tscn`：83检查通过，包含恶意AI标题/正文/选项/结果/配送隔离、原始模型内容保留、数值和承诺不变、本地觉醒仍可展示。
 - `node --test --test-name-pattern="mainline" tools/director/bridge.test.mjs`：4项通过，只有模拟provider；拒绝私有字段、伪造证据、越权结局权限及新增控制字段，失败请求不自动重发。
 - Godot实际导出的5份虚构快照（未公开、坚守、撤离、破阵、义庄调查）均通过Node严格快照校验；本批没有新增真实ARK调用，不将契约验证说成模型永不虚构事实。
-- 邻居419、导演34、NPC接入69、危机接入64、交易接入430检查通过。主线窗口最终结果待确认；玩家整局、长期平衡、CI、导出发行NOT RUN。部分Godot场景仍有既有退出资源警告。
+- 邻居419、导演34、NPC接入69、危机接入64、交易接入430检查通过。主线窗口349检查通过；玩家整局、长期平衡、CI、导出发行NOT RUN。部分Godot场景仍有既有退出资源警告。

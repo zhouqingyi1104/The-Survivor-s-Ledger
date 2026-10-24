@@ -9,7 +9,8 @@ const Figure = preload("res://scripts/world/character.gd")
 const Data = preload("res://scripts/core/data.gd")
 
 const ENTRY := Vector3(0, 0, 5.2)
-const SPOT_POS := [Vector3(-5.0, 0, -3.6), Vector3(0.0, 0, -4.4), Vector3(5.0, 0, -3.6), Vector3(-5.6, 0, 1.6), Vector3(5.6, 0, 1.6)]
+# 熟练搜寻的四处物资、邻人药账和主线专点可同时存在，六处必须各自可达。
+const SPOT_POS := [Vector3(-5.0, 0, -3.6), Vector3(0.0, 0, -4.4), Vector3(5.0, 0, -3.6), Vector3(-5.6, 0, 1.6), Vector3(5.6, 0, 1.6), Vector3(0.0, 0, 1.6)]
 const SPOT_RADIUS := 1.7
 
 var sky: Dictionary
@@ -196,9 +197,13 @@ func sync(run: Dictionary) -> void:
 		return
 	for k in mini(_spots.size(), ex.spots.size()):
 		var done: bool = ex.spots[k].done or ex.caught
-		_spots[k].glow.visible = not done
-		_spots[k].label.text = _spots[k].name + ("（已翻过）" if ex.spots[k].done else "")
-		_spots[k].label.modulate = Color("#9a948a") if done else Color("#ffe3a0")
+		var marker := str(ex.spots[k].get("mainline", ""))
+		var work: Dictionary = run.get("mainline", {}).get("work", {})
+		var working: bool = marker != "" and str(work.get("action", "")) == "search_" + marker and not ex.caught
+		_spots[k].glow.visible = not done or working
+		var status := "（调查中）" if working else ("（已封阵）" if marker == "ritual" and ex.spots[k].done else ("（已调查）" if marker != "" and ex.spots[k].done else ("（已翻过）" if ex.spots[k].done else "")))
+		_spots[k].label.text = _spots[k].name + status
+		_spots[k].label.modulate = Color("#9a948a") if done and not working else Color("#ffe3a0")
 	if ex.caught and _hunter == null:
 		_hunter = Figure.new()
 		add_child(_hunter)

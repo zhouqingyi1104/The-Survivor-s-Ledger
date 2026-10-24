@@ -31,10 +31,10 @@ func build() -> void:
 		"翻回去", Game.rewind, not can_rewind, "残页用尽了" if int(run.rebirths_left) <= 0 else ""))
 	row.add_child(_card("翻回扉页", "“从第一页重新写——这次你知道该写什么。”",
 		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷\n收获　道心 +%d" % gain.total,
-		"重新来过", Game.restart_from_cover))
+		"重新来过", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
 	row.add_child(_card("合上此录", "“到这里就够了。”",
 		"结算　这一卷到此为止\n收获　道心 +%d\n之后　回到标题，可去参悟心法" % gain.total,
-		"合上", Game.close_book))
+		"合上", Game.close_book.bind(str(run.get("past_lives", {}).get("id", "")))))
 	var detail := []
 	for l in gain.lines:
 		detail.append("%s +%d" % [l[0], l[1]])

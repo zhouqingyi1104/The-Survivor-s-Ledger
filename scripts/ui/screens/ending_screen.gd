@@ -2,20 +2,21 @@ extends "res://scripts/ui/screens/screen_base.gd"
 ## 劫满：熬过第二十夜后的结局三选。对应原版 EndingChoice（继续坚守 / 带着记忆重走 / 合上日志）。
 
 const Ledger = preload("res://scripts/core/ledger.gd")
-const ENDING_BONUS := Ledger.ENDING_BONUS
+const Mainline = preload("res://scripts/core/mainline.gd")
 
 
 func build() -> void:
 	var run: Dictionary = Game.run
+	var outcome := Mainline.ending(run)
 	var center := UI.full_rect(CenterContainer.new())
 	add_child(center)
 	var v := UI.vbox(14)
 	v.custom_minimum_size.x = 1080
 	center.add_child(v)
-	var title := UI.heading("劫 满", 64, UI.CINNABAR)
+	var title := UI.heading(str(outcome.get("title", "劫 满")), 64, UI.CINNABAR)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(title)
-	var line := UI.label("第二十一日的太阳照进院子。你活下来了——斩尸 %d 只，守住尸潮 %d 次。" % [int(run.kills), int(run.waves_survived)], 21)
+	var line := UI.para(str(outcome.get("text", "你活下来了。")) + "\n斩尸 %d 只，守住尸潮 %d 次。" % [int(run.kills), int(run.waves_survived)], 21)
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(line)
 
@@ -25,15 +26,15 @@ func build() -> void:
 		if id in run.known_clues:
 			known += 1
 	var truth := "残卷 %d / %d。" % [known, clues.size()]
-	if known >= clues.size():
-		truth += "五篇残卷拼在一起：尸劫是青云观主炼尸所致。七星灯还亮着——下一卷，也许能在血月前上山。"
-	else:
-		truth += "这场尸劫的来历，还藏在没读到的残卷里。"
+	truth += "本世调查与路线选择已留在这一卷中，合卷或再入轮回时写入前世档案。"
 	var t := UI.para(truth, 18, UI.DAI)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
 
-	var gain := Ledger.daoxin_gain(run, ENDING_BONUS)
+	var gain := Ledger.daoxin_gain(run, Ledger.ending_bonus(run))
+	var bonus := UI.label("本世结局奖励：道心 +%d（总收获见下方）" % Ledger.ending_bonus(run), 17, UI.DAI)
+	bonus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	v.add_child(bonus)
 	# 每日一局：这一局还没落盘（道心是点了"重走/合上"才结算），先把记分板预览出来
 	var dday := str(run.get("flags", {}).get("daily", ""))
 	if dday != "":
@@ -44,12 +45,15 @@ func build() -> void:
 
 	var row := UI.hbox(16)
 	v.add_child(row)
-	row.add_child(_card("留在这里", "“门还在，灶还热，那就接着住。”",
-		"继续　在这座宅院里守下去\n之后　每三夜一波尸潮，越来越凶\n结算　等你合上此录时再算道心", "守 下 去", Game.keep_living))
+	if bool(outcome.get("can_continue", false)):
+		row.add_child(_card("留在这里", "“门还在，灶还热，那就接着住。”",
+			"继续　在这座宅院里守下去\n之后　每三夜一波尸潮，越来越凶\n结算　等你合上此录时再算道心", "守 下 去", Game.keep_living.bind(str(run.get("past_lives", {}).get("id", "")))))
+	else:
+		v.add_child(UI.para("这条路线已结案；可以带着记忆重走，或合上这一卷。", 17, UI.DAI))
 	row.add_child(_card("再入轮回", "“这一回，我知道该往哪走。”",
-		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷\n收获　道心 +%d" % gain.total, "重 走", Game.restart_from_cover))
+		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷\n收获　道心 +%d" % gain.total, "重 走", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
 	row.add_child(_card("合上此录", "“到这里就够了。”",
-		"结算　这一卷到此为止\n收获　道心 +%d" % gain.total, "合 上", Game.close_book))
+		"结算　这一卷到此为止\n收获　道心 +%d" % gain.total, "合 上", Game.close_book.bind(str(run.get("past_lives", {}).get("id", "")))))
 
 
 func _card(title: String, quote: String, body_text: String, btn: String, cb: Callable) -> Control:

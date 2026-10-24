@@ -25,7 +25,7 @@
 
 ## 规则与边界
 
-- 新增 `scripts/core/mainline.gd`，run.mainline独立保存schema/revision/start_day/stage/evidence/route/interventions/work/ending/history。存档v17，旧卷从当前时钟日之后开始，不追认已调查或破阵；当前局/快照一并升级。
+- 新增 `scripts/core/mainline.gd`，run.mainline独立保存schema/revision/start_day/stage/evidence/route/interventions/work/ending/history，私有carried校验证物来源。存档v17，旧卷从当前时钟日之后开始，不追认已调查或破阵；当前局/快照一并升级。公开context不含carried或施工私有数据。
 - stage：waiting/contact/fallback/mortuary/mortuary_choice/temple/routes/escape_ready/ritual_ready/sealed/hold/closed/failed/endless；公开后deadline固定。route为空/hold/escape/ritual；evidence仅本世mortuary、temple；interventions记录断运/封阵完成时刻。
 - API：state/poll/view/options/act(run,action,token)/complete(run,data)/summary/context；objective(run,pid)/add_objective(run,pid,spots)/search_objective(run,spot)/begin_return(run,ex)；wave_effect(run,day)/finish_dawn(run)/ending(run)/continue_block(run)/continued(run)。
 - view提供title/summary/goal/target/target_name/objective/costs/deadlines/evidence/route/interventions/token/last_result/history；options只提供本阶段action的id/text/hint/block。token绑定本世、revision与阶段，实际t校验期限。搜索标记mainline=mortuary/temple/ritual，与neighbor隔离。
@@ -49,3 +49,24 @@
 ## 必须验证
 
 继承五残卷仍需取证；拒绝/错过道士有替代；专点与邻居并存；缺料、未来/过期/跨世token、双击、忙碌、睡觉、外出与中断不免费生效；返程未满60分钟无证据；暴露追捕丢证且可重试；冷却只开放调查不刷新loot；预报/实际一致且不改共享配置/整晚锁；三结局奖励/了愿/继续生活边界；日局无跨世捷径、旧局/快照迁移、存读档/回溯无重复；AI不造事实；最终合卷实际更新Memory而非假写测试。玩家整局、长期平衡、CI、导出发布若未运行均写NOT RUN。
+
+## 本地交付与验证结果
+
+玩家入口：宅院「调查 / 出路」，或「劫余录 → 尸劫来历 · 调查与出路」。面板显示专属目标、成本、期限、当前工作和本世记录；地图显示青云观封锁原因。现场调查显示剩余分钟，工作期间不能再翻找或跳过返程。熟练搜寻的四处普通物资可与邻人药账、主线运尸簿共存，六处物理位置各自可达。
+
+| 实际执行 | 结果 | 验证范围 |
+|---|---|---|
+| Godot 4.7.2 headless `res://tests/mainline_rules.tscn` | PASS 253检查 | 本世证据、替代路线、工作成本、期限、跨世与重复操作、迁移与回溯 |
+| Godot headless `res://tests/mainline_integration.tscn` | PASS 207检查 | Post真实时钟、追捕丢证与即时死亡、调查冷却、真实开夜减潮和预报一致、残潮后结案 |
+| Godot headless `res://tests/mainline_memory.tscn` | PASS 83检查 | 三结局奖励/了愿/无尽边界、整轮去重、真实测试Memory写入读回、公开AI事实与恶意文案隔离 |
+| Godot真实窗口 `res://tests/mainline_ui.tscn` | PASS 349检查 | 真实鼠标/E键、调查及返程存读与回溯、地图锁观、六目标可达、三结局按钮和实际合卷 |
+| `node --test --test-name-pattern="mainline" tools/director/bridge.test.mjs` | PASS 4项 | 严格主线上下文、越权输出拒绝、模拟provider契约 |
+| Godot实际导出5份虚构快照，Node严格校验 | PASS 5/5 | waiting、hold、escape、ritual、mortuary公开快照 |
+
+必要相关回归均PASS：`npc_rules`439、`neighbor_story`419、`director_rules`34、`npc_integration`69、`crisis_integration`64、`social_trade_integration`430、`npc_memory`36检查；`memory_file_flow`9/9组68检查。交易旧fixture初次因新增主线公告多记一次revision而失败，隔离该fixture主线时钟后保留严格单次事实断言并重跑通过；主线与世界时钟组合由联合场景验证。本批未执行全量发布测试。
+
+对抗检查修复：主线调查改为可见工作后，致命即时追捕必须在返回UI前检查死亡；预报/实际开夜先计算干预再写wave_day；物资冷却不足以完成调查时阻止空跑；六点共存不复用物理位置；工作中不标作已调查，被追捕也不把未搜点显示为已封阵。完整档案过长时压缩重复叙述，保留最新一世交易、危机、NPC与主线结算，8000 UTF-16预算和原始meta均保持。
+
+已查看8张1280×720窗口图，开发机临时目录为 `ledger-mainline-{contact,map,six-targets,investigating,routes,hold,escape,ritual}.png`。窗口检查使用隔离里程碑状态及真实操作，并非玩家连续完成20夜。部分headless场景仍有4 ObjectDB/2 resources退出警告，最终窗口有CanvasItem/ObjectDB及4条GL纹理释放警告；本批未修复这些退出资源问题。
+
+本批真实ARK调用0次，未更改玩家根Memory、凭据或依赖。玩家完整一轮、长期经济平衡、更多分辨率、CI、独立安装包与发行部署均NOT RUN。

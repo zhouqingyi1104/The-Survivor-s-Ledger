@@ -19,6 +19,7 @@ const Trade = preload("res://scripts/core/social_trade.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
 const Npc = preload("res://scripts/core/npc_autonomy.gd")
 const NpcDialogue = preload("res://scripts/core/npc_dialogue.gd")
+const Mainline = preload("res://scripts/core/mainline.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -91,22 +92,106 @@ func journal() -> void:
 
 
 func _journal(body: VBoxContainer) -> void:
+	var content := UI.vbox(8)
 	var d := Director.state(_run())
-	body.add_child(UI.label("人情往来：" + " · ".join(Director.ACTORS.keys().map(func(id): return "%s %+d" % [Director.ACTORS[id], int(d.relations[id])])), 16))
+	content.add_child(UI.label("人情往来：" + " · ".join(Director.ACTORS.keys().map(func(id): return "%s %+d" % [Director.ACTORS[id], int(d.relations[id])])), 16))
 	for promise in d.promises:
-		body.add_child(UI.para("第 %d 日 · %s 约定送来 %s" % [promise.day, Director.ACTORS[promise.actor], Director.describe(promise.give)], 16))
-	body.add_child(UI.button("前世记忆 · 查看旧世与觉醒", past_lives))
-	body.add_child(UI.para(Neighbor.summary(_run()), 17))
-	body.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
-	body.add_child(UI.button("纸鹤往来 · 交易与欠账", social_trade))
-	body.add_child(UI.button("邻人与商情 · 目标与行动", npc_autonomy))
-	body.add_child(UI.button("风声与危机 · 查验与筹备", crisis))
+		content.add_child(UI.para("第 %d 日 · %s 约定送来 %s" % [promise.day, Director.ACTORS[promise.actor], Director.describe(promise.give)], 16))
+	content.add_child(UI.button("尸劫来历 · 调查与出路", mainline))
+	content.add_child(UI.button("前世记忆 · 查看旧世与觉醒", past_lives))
+	content.add_child(UI.para(Neighbor.summary(_run()), 17))
+	content.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
+	content.add_child(UI.button("纸鹤往来 · 交易与欠账", social_trade))
+	content.add_child(UI.button("邻人与商情 · 目标与行动", npc_autonomy))
+	content.add_child(UI.button("风声与危机 · 查验与筹备", crisis))
 	var lines: Array = _run().get("log", [])
-	var log_height := mini(320, maxi(120, int(get_viewport().get_visible_rect().size.y) - 480 - d.promises.size() * 34))
-	var s := UI.scroll(UI.log_view(lines, lines.size(), 17), log_height)
+	var s := UI.scroll(UI.log_view(lines, lines.size(), 17), 180)
 	var bar := s.get_v_scroll_bar()
 	bar.changed.connect(func(): s.scroll_vertical = int(bar.max_value))
-	body.add_child(s)
+	content.add_child(s)
+	var scroll := UI.scroll(content, mini(480, maxi(220, int(get_viewport().get_visible_rect().size.y) - 190)))
+	scroll.name = "JournalDetailsScroll"
+	body.add_child(scroll)
+
+
+func mainline() -> void:
+	Game.act(func(): return Post.trade_refresh(Game.run))
+	UI.open_modal("mainline", "尸劫来历 · 调查与出路", _mainline, true, 860)
+
+
+func _mainline(body: VBoxContainer) -> void:
+	var run := _run()
+	var view := Mainline.view(run)
+	var content := UI.vbox(10)
+	content.add_child(UI.label(str(view.get("title", "尸劫来历")), 22, UI.GOLD))
+	content.add_child(UI.para("当前目标：" + str(view.get("goal", "暂守宅院")), 19))
+	content.add_child(UI.para(str(view.get("summary", "")), 17))
+	var map_entry := UI.button("外出地点 · 查看路线与封锁", _mainline_map)
+	map_entry.set_meta("mainline_map", true)
+	content.add_child(map_entry)
+	for deadline in view.get("deadlines", []):
+		content.add_child(UI.para("期限：" + str(deadline), 17, UI.CINNABAR))
+	for cost in view.get("costs", []):
+		content.add_child(UI.para("行动与代价：" + str(cost), 16))
+	var evidence: Dictionary = view.get("evidence", {})
+	content.add_child(UI.para("本世已交回证据：义庄运尸簿%s · 七灯及后山图%s\n旧世残卷可供阅读，不能代替这一世亲自调查和完成返程。" % [" ✓" if bool(evidence.get("mortuary", false)) else " 未取回", " ✓" if bool(evidence.get("temple", false)) else " 未取回"], 16, UI.JADE))
+	var routes := {"": "尚未锁定", "hold": "坚守宅院", "escape": "备好撤离", "ritual": "备好破阵"}
+	content.add_child(UI.para("本世路线：" + str(routes.get(str(view.get("route", "")), "尚未锁定")), 17, UI.GOLD))
+	var interventions: Dictionary = view.get("interventions", {})
+	content.add_child(UI.para("已完成干预：断运%s；封阵%s。\n尸潮变化只计实际完工，已经开战的整夜安排保持原样。" % ["（" + _crisis_when(int(interventions.disrupt_t)) + "）" if int(interventions.get("disrupt_t", -1)) >= 0 else " 未做", "（" + _crisis_when(int(interventions.ritual_t)) + "）" if int(interventions.get("ritual_t", -1)) >= 0 else " 未做"], 16))
+	var target := str(view.get("target", ""))
+	var objective: Dictionary = view.get("objective", {})
+	if target != "":
+		content.add_child(UI.label("调查地点：" + str(view.get("target_name", target)), 19, UI.GOLD))
+		if not objective.is_empty():
+			content.add_child(UI.para("专属目标：%s\n%s" % [str(objective.get("name", "")), str(objective.get("hint", ""))], 17))
+		var block := Post.can_act(run, 10)
+		if block == "": block = Explore.point_block(run, target)
+		if block == "" and Post.day_minute(run) + 60 >= Post.CURFEW_AT: block = "天快黑了，无法完成出门路程。"
+		if block != "": content.add_child(UI.para(block, 15, UI.CINNABAR))
+		var depart := UI.button("出门去" + str(view.get("target_name", target)), _mainline_depart.bind(target), block != "", block)
+		depart.set_meta("mainline_depart", target)
+		content.add_child(depart)
+	var work: Dictionary = view.get("work", {})
+	if not work.is_empty(): content.add_child(UI.para("正在执行：%s · %s 完工。开始付出的材料不退，完工才生效。" % [str(run.get("busy", {}).get("label", "主线事务")), _crisis_when(int(work.get("end_t", 0)))], 17, UI.GOLD))
+	if str(view.get("last_result", "")) != "": content.add_child(UI.para("最近结果：" + str(view.last_result), 17, UI.JADE))
+	for option in Mainline.options(run):
+		var card := UI.vbox(4)
+		card.add_child(UI.para(str(option.hint), 16))
+		var block := str(option.block)
+		if block != "": card.add_child(UI.para(block, 15, UI.CINNABAR))
+		var button := UI.button(str(option.text), _mainline_do.bind(str(option.id), str(view.get("token", ""))), block != "", block)
+		button.set_meta("mainline_action", str(option.id))
+		card.add_child(button)
+		content.add_child(UI.panel(card))
+	content.add_child(UI.sep())
+	content.add_child(UI.label("本世调查记录", 19, UI.GOLD))
+	var history: Array = view.get("history", [])
+	if history.is_empty(): content.add_child(UI.para("尚无本世调查记录。", 16))
+	for k in range(history.size() - 1, -1, -1):
+		var entry: Dictionary = history[k]
+		content.add_child(UI.para("第 %d 日 %s · %s" % [int(entry.get("day", 0)), _trade_clock(int(entry.get("t", 0))), str(entry.get("result", ""))], 15))
+	var scroll := UI.scroll(content, mini(470, maxi(210, int(get_viewport().get_visible_rect().size.y) - 210)))
+	scroll.name = "MainlineDetailsScroll"
+	body.add_child(scroll)
+
+
+func _mainline_do(action: String, token: String) -> void:
+	var result = Game.act(func(): return Post.mainline_action(Game.run, action, token))
+	if typeof(result) == TYPE_STRING and result == "" and (Post.is_busy(Game.run) or Game.run.get("phase", "") != "post"):
+		for key in ["mainline", "journal"]: UI.close_modal(key)
+
+
+func _mainline_depart(target: String) -> void:
+	UI.close_modal("mainline")
+	UI.close_modal("journal")
+	_act(func(): return Post.act_explore(Game.run, target))
+
+
+func _mainline_map() -> void:
+	UI.close_modal("mainline")
+	UI.close_modal("journal")
+	explore_pick()
 
 
 ## 只读公开意图；HUD计数不能把未看过的角色对话提前冻结。
@@ -673,7 +758,9 @@ func _explore_pick(body: VBoxContainer) -> void:
 	var run := _run()
 	body.add_child(UI.para("来回各要一个时辰的路，酉时（21:00）前必须回家。每翻一处，阳气就外泄一分，满了会被尸群嗅到。", 16))
 	var v := UI.vbox(8)
-	for pid in Explore.visible_points(run):
+	var visible := Explore.visible_points(run)
+	if not "taoist_temple" in visible: visible.append("taoist_temple")
+	for pid in visible:
 		var p: Dictionary = Data.table("map_points")[pid]
 		var h := UI.hbox(10)
 		var info := UI.vbox(2)
@@ -688,13 +775,17 @@ func _explore_pick(body: VBoxContainer) -> void:
 			head.add_child(UI.tag("未到访", UI.DAI))
 		info.add_child(head)
 		info.add_child(UI.para(p.desc, 15))
+		var main_objective := Mainline.objective(run, pid)
+		if not main_objective.is_empty():
+			info.add_child(UI.para("本世调查：" + str(main_objective.name) + " · " + str(main_objective.get("hint", "")), 15, UI.GOLD))
 		h.add_child(info)
-		var block := Explore.point_block(run, pid)
+		var block := "尚未找到进山路线，可先在尸劫来历中调查义庄。" if not pid in Explore.visible_points(run) else Explore.point_block(run, pid)
 		if block == "":
 			block = Post.can_act(run, 10)
 		if block == "" and Post.day_minute(run) + 60 >= Post.CURFEW_AT:
 			block = "天快黑了"
 		_action(h, "出发", func(): _go_explore(pid), block)
+		h.get_child(h.get_child_count() - 1).set_meta("explore_depart", pid)
 		v.add_child(h)
 	body.add_child(UI.scroll(v, 460))
 
@@ -768,7 +859,7 @@ func _night_plan(body: VBoxContainer) -> void:
 	if not run.plan_due:
 		UI.close_modal("night_plan")
 		return
-	var wave := Defense.wave_for_day(int(run.pday), float(State.diff(run).wave_mul))
+	var wave := Defense.wave_for_run(run, int(run.pday))
 	var total := Defense._count(wave)
 	var mods := Defense.mod_names(wave)
 	body.add_child(UI.para("更鼓敲过二更。街那头铜锣响了，门缝里透进一片火把的光——今夜要来 %d 只%s，分三轮撞门、窗、院墙。" % [
