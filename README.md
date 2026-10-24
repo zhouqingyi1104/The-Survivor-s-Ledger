@@ -1,18 +1,34 @@
-# 劫余录 · The Survivor's Ledger（原型 v0.4）
+# 劫余录 · The Survivor's Ledger（原型，迭代到 v0.9 之后）
+
+> 文档更新于 2026-10-24，内容以当前代码为准。标题页角落仍显示「原型 v0.6」，是界面上的版本号没跟着改，不代表功能停在 v0.6。
 
 古风尸变 + 写实灾荒 + 一点东方仙侠的生存模拟。玩法结构、界面布局和交互方式参考《Survival Log / 生存日志》（灾前囤货 → 灾后经营 → 轮回），文本、数值、图标都是原创——没有从原版提取或复用任何美术资产。模型和贴图一部分是公开的免费素材（Poly Haven、cs-studio、Quaternius），其余用代码拼；来源和许可证见游戏标题页的"制作名单"和 [docs/03-art-assets.md](docs/03-art-assets.md)。
 
-- 原版逆向分析：[01-survival-log-analysis.md](docs/01-survival-log-analysis.md)
-- 中国风设计：[02-chinese-style-design.md](docs/02-chinese-style-design.md)
-- 美术资源清单与接入情况：[03-art-assets.md](docs/03-art-assets.md)
-- **玩法诊断（v0.4 实测）**：[04-gameplay-diagnosis.md](docs/04-gameplay-diagnosis.md)
-- **玩法完善方案（v0.5）**：[05-gameplay-plan-v0.5.md](docs/05-gameplay-plan-v0.5.md)
-- **夜战三式（v0.6）**：[06-night-defense-v0.6.md](docs/06-night-defense-v0.6.md)
+**先看这三篇**（描述的是现状）：
+
 - **当前内容路线图**：[10-roadmap.md](docs/10-roadmap.md)
-- **第一步 · 邻居求药**：[11-neighbor-medicine.md](docs/11-neighbor-medicine.md)
-- **运行时 AI 世情与后续玩法**：[13-dynamic-director.md](docs/13-dynamic-director.md)
-- **前世记忆与运行档案**：[14-past-lives.md](docs/14-past-lives.md)
-- 截图：[docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；v0.6 的夜战见 `night_policy.png` 与 `night_panel.png`）
+- **对照原版的功能清单（有什么、缺什么）**：[07-survival-log-features.md](docs/07-survival-log-features.md)
+- 中国风设计（世界观、系统映射、数值、迭代路线）：[02-chinese-style-design.md](docs/02-chinese-style-design.md)
+
+**分系统的设计与验证记录**：
+
+| 文档 | 内容 | 状态 |
+|---|---|---|
+| [01-survival-log-analysis.md](docs/01-survival-log-analysis.md) | 原版逆向分析（静态证据） | 参考资料 |
+| [03-art-assets.md](docs/03-art-assets.md) | 美术与声音素材清单、许可证、接入方式 | 已接入 |
+| [04-gameplay-diagnosis.md](docs/04-gameplay-diagnosis.md) | v0.4 玩法诊断（实测曲线） | 历史记录 |
+| [05-gameplay-plan-v0.5.md](docs/05-gameplay-plan-v0.5.md) | v0.5 体温、尸潮曲线、事件、功德 | 已实现；守夜一章被 06 取代 |
+| [06-night-defense-v0.6.md](docs/06-night-defense-v0.6.md) | 夜战：三面 × 三轮、守夜方针、开门迎敌、架刀 | 已实现 |
+| [08-difficulty-balance-v0.8.md](docs/08-difficulty-balance-v0.8.md) | 四档难度预设与平衡验收 | 已实现 |
+| [09-challenge-mode-design.md](docs/09-challenge-mode-design.md) | 挑战自选（誓约 / 凭仗 / 了愿）、无尽、守到死、每日一局与记分板 | 已实现 |
+| [11-neighbor-medicine.md](docs/11-neighbor-medicine.md) | 邻居求药支线 | 已实现，未经玩家验收 |
+| [12-neighbor-ai-review.md](docs/12-neighbor-ai-review.md) | 邻居支线的 ARK 离线策划记录 | 历史记录 |
+| [13-dynamic-director.md](docs/13-dynamic-director.md) | 运行时 AI 世情导演（滚动规划三日） | 已实现首版 |
+| [14-past-lives.md](docs/14-past-lives.md) | 前世记忆与 `Memory.md` 运行档案 | 已实现 |
+| [15-companions.md](docs/15-companions.md) | 同院的人（带帮手搭伙） | 已实现 |
+| [16-craft-tradeoffs.md](docs/16-craft-tradeoffs.md) | 工作台加工：烧炭 / 配避瘟散 / 压干粮 | 已实现 |
+
+截图在 [docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；夜战见 `night_policy.png` 与 `night_panel.png`；开局模式与同院见 `challenge_modes.png`、`challenge_mates.png`）。
 
 ## 运行
 
@@ -30,7 +46,7 @@
 ./tools/godot/Godot_v4.7.2-stable_win64.exe --path .
 ```
 
-存档在 `user://save.json`，跨轮回的记忆（道心、心法、残卷）在 `user://meta.json`。旧版本的存档读档时会自动升级（`scripts/core/migrate.gd`）。Windows 上的位置是 `%APPDATA%\Godot\app_userdata\劫余录\`。
+存档在 `user://save.json`，跨轮回的记忆（道心、心法、残卷、每日一局记分、前世事实）在 `user://meta.json`。旧版本的存档读档时会自动升级（`scripts/core/migrate.gd`）。Windows 上的位置是 `%APPDATA%\Godot\app_userdata\劫余录\`。
 
 **动态世情**：双击 `启动游戏.bat` 会同时启动本地后台桥接器；用 Godot 打开工程也会尝试自动启动。当前开发机使用已经认证的 ARK Agent Plan（`agent-plan_cn-beijing_personal`）、默认 `auto` 路由、low reasoning；需要本机 Node.js 与 ARK CLI，游戏不保存 ARK 密钥。后台提前规划未来三日，选择会影响之后的人情与事件，已经答应的隔日回报会写入存档。设置中可以关闭「动态世情」。未配置、断网或请求失败时仍可玩原有内容；每日一局保持固定事件以保证同日条件一致。预取频率与实测记录见文档 13。
 
@@ -66,7 +82,8 @@
    - **架刀**：`K` 或右键单击（右键拖动仍是转视角）。抬起后 0.35 秒内咬进来的那一口被架住——不掉血、把僵尸推开 1.4 米并让它趔趄；收刀 1.15 秒，架成功只算 0.6 秒。一次只挡一口，被四五只围住时只能救自己一回。
    - 被啃过的院子**看得见**：原地留碎屑和暗渍，砸掉的家具当场塌成一堆木料，米袋、柴垛、菜畦按新数量重画。
    - **砸烂的家具要重做**：灶台 / 工作台塌了会一直塌着（存档也带着），点它只剩「重修」——木料 2 + 铁钉 1、一个半时辰。修好之前做不了饭、也修不了门窗。**开门放僵尸进来，代价能延续到第二天。**
-   - **添置家具**：工作台 →「添置家具…」，18 件里挑一件，回到院里**点地面放下**（`R` 转向、`Esc` 取消）。屋里院里的空地都能摆，只是不能堵住门口到正屋的中路、不能和已有家具挤在一起；料不够或已到上限的会直接写出来。摆好的点它就能**拆掉，退一半料**（向下取整）。
+   - **添置家具**：工作台 →「添置家具…」，18 件里挑一件，回到院里**点地面放下**（`R` 转向、`Esc` 取消）。屋里院里的空地都能摆，只是不能堵住门口到正屋的中路、不能和已有家具挤在一起；料不够或已到上限的会直接写出来。摆好的点它就能**拆掉，退一半料**（向下取整）。摆好的家具都还**不能挪位**，想换地方只能拆了重摆；床榻、书案、储物柜、灶台、工作台是开局就有的固定家具，连拆也不行。
+   - **工作台加工**（各一个时辰、6 点精力）：**烧炭**（柴 2 → 木炭 1，更轻，且不会"后半夜弱火"）、**配避瘟散**（艾草 3 → 避瘟散 1）、**压干粮**（米 1 → 炊饼 4，不占灶、省柴水）、**画符**（符纸 2 + 朱砂 1 → 镇尸符 2，要先在事件里学会）。取舍见 [16-craft-tradeoffs.md](docs/16-craft-tradeoffs.md)。
    - 演出仍是「先算后演」：第一轮有 3D 演出（可以跳过），后两轮以面板和战报呈现。功德可以在**神龛求签**（同一天求得越多越贵）。
 4. **死亡**：翻**生死簿残页**——翻回昨日（折寿元）、翻回扉页（结算道心重来），或者合上此录。
 5. **劫满**：熬过第二十夜，可以守宅（转无尽）、再入轮回或合上此录。道心用来参悟**心法**（永久能力）。
@@ -77,10 +94,17 @@
 data/                 配置表（JSON），对应原版的 124 张 Config_* 表，改数值只改这里
 scripts/core/         纯逻辑，不依赖界面，可以无界面测试
   data.gd  rng.gd  inv.gd  state.gd       读表、可存档随机数、物品仓、局面状态
-  pre.gd                                   备劫：走动、买卖、当铺、营造订制、囤货清单
-  post.gd                                  劫中：每日流程、时段行动、入夜
-  defense.gd  explore.gd  events.gd        尸潮夜袭、外出搜寻、随机事件
-  ledger.gd                                功过格、求签、心愿、道心、生死簿快照
+  pre.gd                                   备劫：走动、买卖、当铺、营造订制、载具、囤货清单
+  post.gd                                  劫中：连续时间、每日流程、各项行动、取暖、加工
+  home.gd                                  宅院家具：摆放、造价、拆除，捕鼠笼 / 炭盆 / 香炉等每日功用
+  defense.gd  night_fight.gd               尸潮三面三轮结算、院门前开门迎敌与架刀
+  explore.gd  events.gd                    外出搜寻（暴露、沦陷）、事件
+  companion.gd                             同院的人（帮手每天干一件事、吃一份口粮）
+  neighbor.gd                              邻居求药支线（预先写好的确定性剧情）
+  director.gd                              世情导演的规则校验：AI 输出只当数据，越权、超预算一律拒收
+  past_lives.gd  life_memory_file.gd       前世记忆：只归档真实做过的选择；读写根目录 Memory.md
+  ledger.gd                                功过格、求签、心愿、道心、挑战结算、每日记分、生死簿快照
+  migrate.gd                               旧存档逐版升级
 scripts/world/              3D 场景
   assets.gd                                第三方素材：PBR 材质、家具模型、铺面模型
   kit.gd  arch.gd  props.gd                色板与基本体、徽派建筑构件、家具 / 物资堆 / 作物 / 守具
@@ -90,16 +114,22 @@ scripts/world/              3D 场景
   outline.gd                               悬停描边
   home_world.gd  wave_show.gd              宅院、入夜尸潮演出
   city_world.gd  ruin_world.gd             临川城、外出废墟
+  title_vignette.gd                        标题页背后的雪夜院门远景
 scripts/autoload/game.gd   全局单例：当前一局、存读档、界面切换
 scripts/autoload/audio.gd  声音（Sfx）：音效、环境声、配乐，三条总线
+scripts/autoload/story_director.gd  世情导演的异步预取客户端，从不阻塞操作和游戏时间
 scripts/ui/                界面（全部用代码搭）：ui_kit.gd 纸本主题，hud_kit.gd 场景 HUD 主题，widgets/ 时辰表盘，
                            icon_art.gd + icon_view.gd 物品与家具的图标（纯代码画的墨线淡彩，不用图片），
                            main.gd 弹窗层，dialogs.gd 各种弹窗，
-                           screens/ 各界面（pre / post / explore 是 3D 场景 + HUD，其余是 2D 页面）
+                           screens/ 各界面（pre / post / explore 是 3D 场景 + HUD；difficulty 定难度、challenge 立愿与同院，其余是 2D 页面）
 scripts/dev/demo.gd        截图演示场景
-assets/third_party/        下载的原始素材包（Poly Haven 模型贴图、cs-studio、Quaternius）
+assets/third_party/        下载的原始素材包（Poly Haven 模型贴图、cs-studio、Quaternius、声音）
 assets/models/             转换后的模型：buildings/（cs-studio 铺面 GLB）、characters/（换好衣服的人物 GLB）
-tests/                     无界面整局模拟、界面冒烟测试、脚本编译检查；city_shots 逐个拍城里的铺子
+assets/audio/              挑选并转好的 OGG：sfx / amb / music
+tools/pipeline/            素材下载、Blender 转换、声音合成与整理脚本
+tools/director/            世情导演的本地桥接器（Node.js），调 ARK CLI；start.ps1 由启动脚本拉起
+tests/                     整局模拟、界面冒烟、脚本编译检查，以及各系统的回归测试（见下）
+Memory.md                  前世记忆的运行档案，每轮结算自动改写，属于本机玩家
 ```
 
 一局的全部状态是一个 Dictionary（`Game.run`），所以存档就是 JSON，翻生死簿就是深拷贝快照。
@@ -125,11 +155,30 @@ tests/                     无界面整局模拟、界面冒烟测试、脚本�
 - `ui_smoke`：在 3D 场景里走完整流程：城里走路订货买货、熬过三日、宅院里寻路去打水、做饭吃饭、进废墟翻找回家、天黑就寝、天亮翻功过格、第二夜尸潮演出与战报、存读档、翻生死簿、合上此录。存档写到测试专用文件，不会碰你的存档。
 - `check_scripts`：把所有脚本加载一遍，确认都能编译。
 
+各系统的回归测试（`.tscn` 用 `res://tests/<名字>.tscn` 跑；都不碰玩家存档，也不调用真实的 ARK）：
+
+| 测试 | 测什么 |
+|---|---|
+| `neighbor_story` / `neighbor_ui` | 邻居求药各分支的规则，以及窗口里的完整交互 |
+| `director_rules` | 世情导演的校验：越权物品、超预算、旧响应、重复发奖都要被拒 |
+| `director_async_ui` | 真实套接字 + 故意变慢的模拟服务，确认等待时人照样能走、时间照样走 |
+| `director_recorded_ui` | 离线重放一次已授权的 ARK 真实回答，不再生成、不重试 |
+| `past_lives_rules` / `past_lives_ui` | 前世事实只来自真实选择、觉醒抽取和界面展示 |
+| `memory_file_flow` | 结算 → 写 Memory.md → 下一世规划读取的整条流程（隔离的临时文件） |
+| `player_animation` / `title_input` | 真实输入能驱动移动与动画；标题页按钮能被鼠标点到 |
+| `city_routes` | 城里任意两地之间的走法 |
+| `sky_clarity` | 新旧雾浓度在同一机位下的对比图 |
+
+`tools/director/` 下的桥接器另有 Node 测试：`node --test tools/director/bridge.test.mjs`。
+
 开发用的体检工具（会弹窗口）：
 
 - `tests/play_check.tscn`：在真实界面里体检宅院——导航网格覆盖图、点地面走路、打水后能否接着走、真实鼠标的点击 / 右键拖动 / 滚轮、遮挡截图、不锁帧的帧时间和绘制调用。可以读一份存档的副本（只读不回写）：`-- --save=<路径> --shots=<截图目录>`。
 - `tests/anim_speed.gd`：量走 / 跑动作原本的步速，人物按实际速度挑步态、调播放速度就靠它量的数。
 - `tests/city_shots.tscn`：逐个拍城里的铺子，检查模型朝向和比例。
+- `tests/screen_shot.tscn`：把某个 2D 界面摆出来拍一张，检查排版和文案。
+- `tests/hero_shot.tscn` / `check_hero.tscn`：从几个角度拍主角，逐项报挂件在不在、挂在哪。
+- `tests/inspect_assets.gd` / `inspect_model.gd`：打印导入后素材的节点、骨骼、尺寸和自带动作。
 
 截图（会弹出一个游戏窗口，截完自动关闭）：
 
@@ -137,7 +186,7 @@ tests/                     无界面整局模拟、界面冒烟测试、脚本�
 ./tools/godot/Godot_v4.7.2-stable_win64_console.exe --path . --resolution 1280x720 -- --demo=post --shot=res://docs/screenshots/post.png
 ```
 
-可用的 demo：`title credits roles talents pre crowd post closeup hall kitchen menu night sleep wave wave_blood dawn cook garden build omens inventory explore_pick explore plan night_panel gate_fight wreck furnish event dead ending`。演出类的加 `--delay=6` 截到中途。
+可用的 demo：`title credits roles talents pre crowd post closeup hall kitchen menu settings night sleep wave wave_blood dawn cook garden build omens inventory explore_pick explore plan night_panel gate_fight wreck furnish placing event dead ending`。演出类的加 `--delay=6` 截到中途。
 
 ## 导出注意
 
@@ -161,8 +210,10 @@ tests/                     无界面整局模拟、界面冒烟测试、脚本�
 - 备劫（临川城）的 HUD 和弹窗还是宣纸风格；宅院、废墟上的弹窗已经换成和 HUD 一致的夜色。
 - 尸潮是"先算结果、再演出来"。v0.6 把一夜拆成三轮，轮间可以修墙、贴符、布守具、出门迎战，但每一轮本身仍是结算，不是实时砍杀。
 - 体温在 v0.5 才真正咬人：柴炭断供后第 3 夜起每晚固定掉血，白天最多回暖到 60；想更硬就调 `scripts/core/post.gd` 顶部的 `RATE`。
-- 取暖只有"烧炭 / 烧柴 / 发电机带暖气"三条路，没有原作那么多的电器（原作有发电机、暖气、无人机、机器人一整套能源和自动化）。机器人自动干农活这条减负设计还没有，中后期所有行动都实打实耗精力。
+- 取暖只有"烧炭 / 烧柴 / 发电机带暖气"三条路，没有原作那么多的电器（原作有发电机、暖气、无人机、机器人一整套能源和自动化）。减负目前只有"同院的人"（最多 2 个帮手，各干一件固定的活），没有可配置的自动化。
+- 经营的深度还浅：物品没有保质期和霉变，烹饪只有 8 道固定菜谱（不能自由配料），作物只有 4 种，没有施肥和温室，没有酿造 / 染色等加工面板。缺口逐条见 [07-survival-log-features.md](docs/07-survival-log-features.md)。
 - 备劫三日还是按时辰的回合制（走一趟扣几个时辰），只有劫中是连续时间。
 - 字体用的是系统楷体（KaiTi）。别的系统上会回退到其他中文字体，正式版应该内置一套开源字体。
-- 数值只用机器人策略粗调过，还没经过真人试玩。
-- 纸鹤交易、邻家小妹、真相线目前都还是随机事件，没有成体系。
+- 数值只用机器人策略调过（挑战、难度有多局实测），还没经过真人试玩。
+- 叙事：邻居求药是一条完整支线，世情导演能按局面生成后续事件，前世记忆会让人物偶尔记起旧事；但**纸鹤传书（对应原版的手机）、图鉴、成就**都还没有，残卷只有 5 页，道士—义庄—青云观的主线还没贯通（路线图 M3）。
+- 世情导演依赖本机的 Node.js 和已认证的 ARK CLI；没有它们时只玩固定内容，游戏照常能玩。

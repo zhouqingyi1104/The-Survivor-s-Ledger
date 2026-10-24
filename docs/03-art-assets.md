@@ -1,4 +1,7 @@
-# 美术资源清单（候选，待确认下载）
+# 美术与声音素材清单
+
+> **现状（2026-10-24）**：第一、六、七节的素材都已下载并接入游戏；第二节（Sketchfab，要登录）一件都没下；第八节的主角女身是 2026-10-23 另行接入的。
+> 第一到第五节保留的是 2026-10-22 的调研记录，"推荐下载"等字样是当时的说法。
 
 > 原则：只用**允许商用**的公开资源。首选 CC0（公有领域，不用署名），其次 CC-BY（要署名）。
 > 不用 NonCommercial（禁止商用）、不用引用他人 IP 的同人模型、**不提取原版《生存日志》的任何美术资产**。
@@ -101,7 +104,7 @@ CC-BY 的资源用上以后，在游戏的"制作名单"里写明：模型名、
 | Poly Haven 家具 | 正屋：条案作神龛供桌、屏风、两把圈椅、宫灯；罗汉榻作床（睡觉、小憩时人躺上去）；书案用茶几 + 方凳；储物柜；院里折凳、枯树干，各处瓷瓶瓷罐 | `home_world.gd` 的 `_furniture()` / `_decor()`，经 `assets.gd` 的 `prop()` 加载并按包围盒加碰撞 |
 | Poly Haven 贴图 | 粉墙 `white_stucco`、雪地 `snow_02`、青石板 `cobblestone_floor_08` / `square_cobblestone`、木作 `brown_planks_09`、屋顶 `grey_roof_tiles` | `kit.gd` 的 `PBR` 表 → `assets.gd` 的 `pbr()`（世界坐标三面投影，不用 UV） |
 | cs-studio 铺面 | 书肆、菜市、当铺、杂货铺、营造坊、青云观（同一批模型换配色、转朝向），南岸河边的凉亭 | `city_world.gd` 的 `MODEL_SHOPS`；缺文件时退回代码拼的厅堂 |
-| Quaternius 人物 | 主角四种身份、街上百姓（男女）、僵尸：同一副骨骼，四个体型（男 / 女 × 短褂 / 长袍） | `character.gd`（换色、冠帽黄符灯笼挂骨骼、动作状态机、僵尸平举双臂的骨骼修改器） |
+| Quaternius 人物 | 街上百姓（男女）、僵尸；v0.4 时也用作主角（2026-10-23 起主角改用第八节的女身）。同一副骨骼，四个体型（男 / 女 × 短褂 / 长袍） | `character.gd`（换色、冠帽黄符灯笼挂骨骼、动作状态机、僵尸平举双臂的骨骼修改器） |
 | Quaternius 动画库 | 走、正式步、待机、提灯、干活（蹲、跪修、捡拾、施法）、坐、倒地 | 所有人物共用一份 `AnimationLibrary`，不做重定向 |
 
 下载了没用上的：`chinese_commode`（4.5 米宽，宅子里放不下）、`roof_09`、`beige_wall_001`。
@@ -133,7 +136,7 @@ blender -b --factory-startup --python tools/pipeline/bl_dress.py -- \
 
 ### 还能做的
 
-- 人物是"超级英雄"体型，袍服从身体网格派生，近看偏紧身；以后可以换 Quaternius 服装包（280 MB，要另行同意下载）或在 Blender 里做宽袖长袍。
+- 百姓和僵尸用的 Quaternius 人物是"超级英雄"体型，袍服从身体网格派生，近看偏紧身；以后可以换 Quaternius 服装包（280 MB，要另行同意下载）或在 Blender 里做宽袖长袍。
 - 米行、铁匠铺、药铺、家宅还是代码拼的；cs-studio 其他中式建筑包是付费的。
 - 写实家具（Poly Haven）和低多边形铺面（cs-studio）风格不完全一致，可以统一调色或加一层描边 / 色调后处理拉近。
 
@@ -167,3 +170,21 @@ python -I tools/pipeline/build_audio.py assets/third_party/audio/raw <合成输�
 - 脚步按动作的步点响，屋里木地板、院里石板、城里雪地各一种声音；跑起来步点自然变密。
 - 宅院白天低低一点古筝、入夜只剩风雪；戌时一更起，每更先一声更鼓再按更数敲梆子；夜里偶尔一阵风、远处一声赶尸铃。
 - 尸潮来时开锣、换激战曲，僵尸低吼和砸门声在 3D 里定位。
+
+## 八、主角女身（413 Games，CC0，2026-10-23 接入）
+
+| 项 | 内容 |
+|---|---|
+| 来源 | [Anime Maid Character by 413 Games](https://413games.itch.io/maid-character)，CC0 1.0；许可证原文和获取记录在 `assets/third_party/413games/SOURCE-LICENSE.txt`、`NOTICE.txt` |
+| 文件 | `assets/third_party/413games/`：`base-motion-v7.glb`（女仆装）和 moon 一套（戴尖帽、换配色） |
+| 改动 | 只重绑贴图、转 GLB，几何体保持原样。moon 的配色和尖帽是本项目自己做的，**尖帽不属于第三方素材，也不以 CC0 再发布** |
+| 用在哪 | 主角（`character.gd` 里 `hero = true`）一律用女身 moon 那套，再加本项目的"仙气"装束：披帛、腰绦、步摇、灵光，配色月白 / 青灰。想换回女仆装只改 `character.gd` 里一个值 |
+| 动画 | 这套是 Mixamo 骨架，用模型自带的 `Camp_*` 动作；Quaternius 那套照旧用 UAL 动画库（`character.gd` 的 `RIGS` 表分开处理） |
+| 注意 | `NOTICE.txt` 写明：开发机上另下的 MMD 角色包**不是**这套素材，没有清过商用授权，不在仓库里也不能放进游戏 |
+| 检查工具 | `tests/hero_shot.tscn` 从几个角度拍主角，`tests/check_hero.tscn` 逐项报挂件在不在、挂在哪 |
+
+标题页"制作名单"（`data/credits.json`）目前**还没有列 413 Games**。CC0 不强制署名，但其他 CC0 来源都列了，建议补上。
+
+## 九、图标（代码绘制，没有第三方素材）
+
+57 件物品和 18 件家具的图标全部由 `scripts/ui/icon_art.gd` 用 CanvasItem 现画（墨线 + 淡彩），不用任何图片；`icon_view.gd` 负责显示。背包、灶房、添置家具三处在用。要换成手绘图，把 `icon_art.gd` 换成贴图查表即可。
