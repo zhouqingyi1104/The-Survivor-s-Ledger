@@ -70,6 +70,7 @@ static func render(meta: Dictionary, compact := false) -> String:
 		section += _crisis_section(summary.get("crisis", {}), compact)
 		section += _npc_section(summary.get("npcs", {}), compact)
 		section += _mainline_section(summary.get("mainline", {}))
+		section += _identity_section(summary.get("identity", {}), compact)
 		section += "\n"
 		if text.to_utf16_buffer().size() + section.to_utf16_buffer().size() > (MAX_CHARS - 100) * 2:
 			# Keep the newest complete life across all systems. Trim repeated prose,
@@ -104,9 +105,11 @@ static func _mainline_section(value) -> String:
 	if story.is_empty(): return ""
 	var stages := {"waiting": "尚未公开主线", "contact": "道士尚待接待", "fallback": "自查路线待办", "mortuary": "义庄取证待办", "mortuary_choice": "义庄证据待处置", "temple": "青云观取证待办", "routes": "最终路线待选", "escape_ready": "已备撤离，尚未离城", "ritual_ready": "已备封阵，尚未熄灯", "sealed": "七灯已熄，仍须守残潮", "hold": "锁定守宅", "closed": "本世已结案", "failed": "未完成路线，转守宅", "endless": "继续守宅无尽"}
 	var routes := {"": "尚未锁定", "hold": "坚守", "escape": "撤离", "ritual": "破阵"}
-	var work_names := {"host": "接待道士", "self_route": "自行打听义庄路线", "disrupt": "截断运尸支路", "copy": "抄录运尸簿", "prepare_escape": "筹备撤离行装", "prepare_ritual": "筹备封阵法具", "escape": "沿后山道撤离", "search_mortuary": "义庄现场取证", "search_temple": "青云观现场取证", "search_ritual": "青云观现场封阵", "return_mortuary": "携义庄证物返程", "return_temple": "携青云观证物返程"}
+	var work_names := {"host": "接待道士", "self_route": "自行打听义庄路线", "disrupt": "截断运尸支路", "copy": "抄录运尸簿", "prepare_escape": "筹备撤离行装", "prepare_ritual": "筹备封阵法具", "prepare_light_escape": "筹备轻装撤离", "prepare_convoy": "筹备旧路早行", "prepare_paper_ritual": "筹备纸阵封阵", "escape": "沿后山道撤离", "search_mortuary": "义庄现场取证", "search_temple": "青云观现场取证", "search_ritual": "青云观现场封阵", "return_mortuary": "携义庄证物返程", "return_temple": "携青云观证物返程"}
 	var out := "\n### 旧世主线与结局\n\n以下为旧世本世取证、施工和结案；旧残卷、旧路线与旧施工不等于新世已完成，未觉醒NPC不能据此得知旧事。\n\n"
 	out += "- 进度：%s；路线：%s。\n" % [stages[story.stage], routes[story.route]]
+	if story.route == "escape" and story.has("escape_method"): out += "- 本世撤离方式：%s；筹备和实际离城仍须分别完成。\n" % {"normal": "常规山道", "light": "更夫轻装更道", "convoy": "趟子手旧路早行"}[story.escape_method]
+	if story.route == "ritual" and story.has("ritual_method"): out += "- 本世封阵方式：%s；筹备不等于已完成现场封阵。\n" % {"normal": "常规法具", "paper": "书生纸阵"}[story.ritual_method]
 	out += "- 今世已实际交回证据：义庄%s；青云观%s。\n" % ["已取回" if story.evidence.mortuary else "未取回", "已取回" if story.evidence.temple else "未取回"]
 	for key in ["disrupt_t", "ritual_t"]:
 		var time := int(story.interventions[key])
@@ -117,6 +120,24 @@ static func _mainline_section(value) -> String:
 	for fact in story.history.slice(maxi(0, story.history.size() - 4)):
 		out += "- 第 %d 日：%s\n" % [int(fact.day), line(fact.result, 80)]
 	return out
+
+static func _identity_section(value, compact := false) -> String:
+	var identity := Past.identity_snapshot(value)
+	if identity.is_empty(): return ""
+	var names := {"scholar_collate": "书生校勘符诀", "scholar_diagram": "书生推演纸阵", "escort_intercept": "趟子手强截运尸", "escort_convoy": "趟子手勘旧路早行", "herbalist_lure": "学徒药饵引尸", "herbalist_ink": "学徒研制药墨", "watchman_lane": "更夫轻装探路", "watchman_intel": "更夫辨认残潮"}
+	var skills := {"scribe_talisman": "校勘制符工法", "paper_ritual": "纸阵封阵筹备", "early_convoy": "第17日起旧路早行", "efficient_plague": "节料配避瘟散", "medicinal_talisman": "药墨制符", "light_escape": "轻装撤离筹备", "wave_intel": "第11/17/20夜尸数与特性情报"}
+	var out := "\n### 旧世身份专属解法\n\n以下只记录旧世本人的选择和完成工法。旧世经验只解锁新世备选，不等于今世已学习、已取证或已施工；NPC仍须本人实际觉醒才知道旧事。\n\n"
+	if identity.chosen == "": out += "- 合卷时身份工作尚未完工，专属能力尚未生效。\n" if not identity.work.is_empty() else "- 合卷时尚未选择身份解法。\n"
+	elif int(identity.completed_t) < 0: out += "- 已选择%s，但合卷时没有完工，专属能力尚未生效。\n" % names[identity.chosen]
+	else:
+		out += "- 第 %d 日完成%s。\n" % [int(identity.completed_t) / 1440 + 1, names[identity.chosen]]
+		if identity.learned.is_empty(): out += "- 这次设卡已按本世规则截断运尸，没有额外传承配方。\n"
+		else: out += "- 本世实际掌握：%s；不会自动搬成新世成果。\n" % skills[identity.learned[0]]
+	if not identity.work.is_empty(): out += "- 合卷时未完成工作：%s；原定第 %d 日完工，投入不代表已经学会或已经生效。\n" % [names[identity.work.action], int(identity.work.end_t) / 1440 + 1]
+	for fact in identity.history.slice(maxi(0, identity.history.size() - (2 if compact else 4))):
+		out += "- 第 %d 日：%s\n" % [int(fact.day), line(fact.result, 60 if compact else 80)]
+	return out
+
 
 static func read_context(path: String) -> Dictionary:
 	if path == "" or not FileAccess.file_exists(path): return {}

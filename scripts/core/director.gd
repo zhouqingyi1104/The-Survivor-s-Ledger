@@ -9,6 +9,7 @@ const Crisis = preload("res://scripts/core/crisis.gd")
 const Npc = preload("res://scripts/core/npc_autonomy.gd")
 const Dialogue = preload("res://scripts/core/npc_dialogue.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const Identity = preload("res://scripts/core/identity_paths.gd")
 const GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 
@@ -54,7 +55,7 @@ static func snapshot(run: Dictionary, archive: Dictionary = {}) -> Dictionary:
 			"neighbor": {"stage": n.get("stage", "waiting"), "resolution": n.get("resolution", ""), "ending": n.get("ending", "")},
 			"relations": d.relations.duplicate(), "history": d.history.duplicate(true), "promises": d.promises.duplicate(true),
 			"recollections": Past.public_memories(run), "trade": Trade.context(run), "crisis": Crisis.context(run),
-			"npcs": Npc.context(run), "npc_dialogue": Dialogue.context(run), "mainline": Mainline.context(run)}}
+			"npcs": Npc.context(run), "npc_dialogue": Dialogue.context(run), "mainline": Mainline.context(run), "identity": Identity.context(run)}}
 	if not archive.is_empty() and not Past.daily(run):
 		result.state["archive"] = archive.duplicate()
 		result.request_id += "-m" + str(archive.get("sha256", "")).left(16)
@@ -136,7 +137,7 @@ static func poll(run: Dictionary) -> String:
 		if not p.done and int(run.pday) >= int(p.day):
 			Inv.add_all(run.home, p.give)
 			p.done = true
-			var delivery_text := "按原约送来物资" if _crisis_text_guard(run) or _mainline_text_guard(run) else str(p.text)
+			var delivery_text := "按原约送来物资" if _crisis_text_guard(run) or _mainline_text_guard(run) or _identity_text_guard(run) else str(p.text)
 			State.note(run, "约定兑现 · %s：%s（%s）" % [ACTORS[p.actor], delivery_text, describe(p.give)])
 			Past.record(run, str(p.actor), "delivery_%d" % int(p.day), "你曾收到%s按约送来的%s。" % [ACTORS[p.actor], describe(p.give)], 1)
 	d.promises = d.promises.filter(func(p): return not p.done)
@@ -167,7 +168,7 @@ static func describe(items: Dictionary) -> String:
 
 static func entry(run: Dictionary) -> Dictionary:
 	var event: Dictionary = state(run).active
-	if event.is_empty() or event.has("past_memory") or not (event.get("crisis_rules_text", false) or event.get("npc_rules_text", false) or _crisis_text_guard(run) or _mainline_text_guard(run)):
+	if event.is_empty() or event.has("past_memory") or not (event.get("crisis_rules_text", false) or event.get("npc_rules_text", false) or _crisis_text_guard(run) or _mainline_text_guard(run) or _identity_text_guard(run)):
 		return event
 	return _rules_text(event)
 
@@ -178,6 +179,10 @@ static func _crisis_text_guard(run: Dictionary) -> bool:
 
 static func _mainline_text_guard(run: Dictionary) -> bool:
 	return bool(Mainline.context(run).get("published", false))
+
+static func _identity_text_guard(run: Dictionary) -> bool:
+	var identity := Identity.context(run)
+	return identity.get("chosen", "") != "" or not identity.get("legacy_tags", []).is_empty()
 
 
 ## Crisis evidence is authored by the rules. A model cannot disclose its private
