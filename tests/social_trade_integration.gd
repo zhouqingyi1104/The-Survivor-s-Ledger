@@ -10,6 +10,7 @@ const Events = preload("res://scripts/core/events.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Npcs = preload("res://scripts/core/npc_autonomy.gd")
+const Mainline = preload("res://scripts/core/mainline.gd")
 var checks := 0
 var failures := 0
 
@@ -29,9 +30,10 @@ func sample() -> Dictionary:
 	at(run, 2)
 	run.home = {"rice": 40, "wood": 8, "nails": 6, "mugwort": 8, "water": 10, "plague_powder": 1}
 	Director.state(run).enabled = false
-	# This legacy suite measures exactly one trade fact. NPC/world-clock
-	# combinations have their own npc_integration scene; keep assertions exact.
+	# This legacy suite measures exactly one trade fact. NPC and mainline clock
+	# combinations have their own integration scenes; keep assertions exact.
 	Npcs.state(run).next_day = 100000
+	Mainline.state(run).start_day = 100000
 	return run
 
 func action(run: Dictionary, actor: String, id: String) -> String:

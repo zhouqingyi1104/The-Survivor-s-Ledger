@@ -11,6 +11,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
+const Mainline = preload("res://scripts/core/mainline.gd")
 
 ## 每漏进一只僵尸，这一面掉多少耐久：越往后尸群越凶（第 2 夜 6，第 20 夜 10）。
 const LEAK_BASE := 5
@@ -42,6 +43,21 @@ static func wave_for_day(day: int, mul := 1.0) -> Dictionary:
 		return _scaled({"day": day, "count": int(e.base) + int(e.step) * (n - 1),
 			"mods": ENDLESS_MODS[n % ENDLESS_MODS.size()]}, mul)
 	return {}
+
+
+## 本世实际尸潮：先应用难度和已完工主线；开夜后始终读取整夜锁定值。
+static func wave_for_run(run: Dictionary, day: int) -> Dictionary:
+	# Once a night has started, every caller observes that exact locked wave.
+	var night: Dictionary = run.get("night", {})
+	if not night.is_empty() and int(night.get("wave", {}).get("day", -1)) == day:
+		return night.wave.duplicate(true)
+	var base := wave_for_day(day, float(State.diff(run).wave_mul))
+	if base.is_empty(): return {}
+	var wave: Dictionary = base.duplicate(true)
+	var effect := Mainline.wave_effect(run, day)
+	for modifier in effect.get("remove_mods", []): wave.mods.erase(modifier)
+	wave.count = maxi(1, int(round(float(wave.count) * float(effect.get("count_mul", 1.0)))))
+	return wave
 
 
 ## 按难度乘数缩放尸潮数量；mods 里的 count_mul 之后还会再乘一次，别在这里重复算。
@@ -86,7 +102,7 @@ static func forecast(run: Dictionary) -> Array:
 	var out := []
 	var horizon := 2 if State.has_facility(run, "watchtower") else 1
 	for d in range(run.pday, run.pday + horizon + 1):
-		var w := wave_for_day(d, float(State.diff(run).wave_mul))
+		var w := wave_for_run(run, d)
 		if w.is_empty():
 			continue
 		var when := "今夜" if d == run.pday else ("明夜" if d == run.pday + 1 else "后夜")
@@ -94,6 +110,8 @@ static func forecast(run: Dictionary) -> Array:
 		if not w.mods.is_empty():
 			omen = Data.table("waves").mods[w.mods[0]].omen
 		var line := "%s尸潮。%s" % [when, omen]
+		var intervention := str(Mainline.wave_effect(run, d).get("reason", ""))
+		if intervention != "": line += "（%s）" % intervention
 		if State.has_talent(run, "lingjue"):
 			line += "（灵觉：约 %d 只）" % _count(w)
 		out.append(line)

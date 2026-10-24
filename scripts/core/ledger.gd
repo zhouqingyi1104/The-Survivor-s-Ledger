@@ -8,6 +8,7 @@ const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 const Companion = preload("res://scripts/core/companion.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
+const Mainline = preload("res://scripts/core/mainline.gd")
 
 const OMEN_SLOTS := 3
 const REROLL_COST := 1
@@ -129,9 +130,17 @@ static func settle(run: Dictionary) -> Dictionary:
 ## 否则「赢一局」和「输一局」的道心差会被少算 10 点（之前就少算了，见 docs/09 第 16 节）。
 const ENDING_BONUS := 10
 
+## Leaving early is a completed story, but is not surviving the twentieth night.
+static func ending_bonus(run: Dictionary) -> int:
+	if run.is_empty() or run.get("phase", "") != "ending" or int(run.get("pday", 0)) < State.STORY_DAYS: return 0
+	var ending := Mainline.ending(run)
+	return ENDING_BONUS if ending.get("kind", "") in ["hold", "ritual"] else 0
+
 
 ## 一轮结束时得多少道心。死在第 N 日只算活过 N-1 日。
 static func daoxin_gain(run: Dictionary, bonus := 0) -> Dictionary:
+	if run.is_empty(): return {"lines": [], "total": 0, "days": 0}
+	bonus = mini(maxi(0, int(bonus)), ending_bonus(run))
 	var days := int(run.pday)
 	if run.phase == "dead":
 		days = maxi(0, days - 1)
@@ -236,6 +245,8 @@ static func goal_results(run: Dictionary) -> Array:
 		var met := true
 		if g.has("phase") and str(run.get("phase", "")) != str(g.phase):
 			met = false
+		if g.get("phase", "") == "ending" and ending_bonus(run) == 0:
+			met = false
 		if met and float(run.get(g.get("stat", ""), 0.0)) < float(g.get("at_least", 0.0)):
 			met = false
 		out.append({"id": id, "name": str(g.get("name", id)), "met": met,
@@ -250,9 +261,12 @@ static func merge_memory(run: Dictionary, meta: Dictionary) -> void:
 			meta.clues.append(c)
 
 
-static func end_run(run: Dictionary, meta: Dictionary, bonus := 0) -> Dictionary:
-	var gain := daoxin_gain(run, bonus)
-	Past.archive(run, meta)
+static func end_run(run: Dictionary, meta: Dictionary, bonus := -1) -> Dictionary:
+	if run.is_empty(): return {"lines": [], "total": 0, "days": 0, "settled": false}
+	var gain := daoxin_gain(run, ending_bonus(run) if bonus < 0 else bonus)
+	# The archive's stable life identity also fences every other settlement effect.
+	# A rewind or a duplicate UI callback must not award currency/daily scores again.
+	if not Past.archive(run, meta): return {"lines": [], "total": 0, "days": gain.days, "settled": false}
 	merge_memory(run, meta)
 	record_daily(run, meta, int(gain.total))
 	meta.daoxin = int(meta.daoxin) + int(gain.total)
@@ -260,6 +274,7 @@ static func end_run(run: Dictionary, meta: Dictionary, bonus := 0) -> Dictionary
 	meta.best_day = maxi(int(meta.best_day), int(gain.days))
 	if run.phase == "dead":
 		meta.deaths = int(meta.deaths) + 1
+	gain["settled"] = true
 	return gain
 
 

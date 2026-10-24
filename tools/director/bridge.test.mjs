@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import {createBridge,validatePlan,validateSnapshot,buildPrompt,arkProvider,NPC_DIALOGUE,validateNpcContext,validateDialogueContext,validateDialogueRows} from './bridge.mjs';
+import {createBridge,validatePlan,validateSnapshot,buildPrompt,arkProvider,NPC_DIALOGUE,validateNpcContext,validateDialogueContext,validateDialogueRows,validateMainlineContext} from './bridge.mjs';
 const plan=JSON.parse(fs.readFileSync(new URL('../../tests/fixtures/director-plan.json',import.meta.url)));
 const snapshot={schema:1,request_id:'fixture-0-0',session:'fixture',revision:0,current_day:0,time:0,state:{role:'escort',stock:{wood:1,rice:5},mood:60,neighbor:{stage:'waiting',resolution:'',ending:''},relations:{ning:0,zhou:0,traveler:0},history:[],promises:[]}};
 async function start(options){const b=createBridge(options);await new Promise(r=>b.server.listen(0,'127.0.0.1',r));return {...b,url:`http://127.0.0.1:${b.server.address().port}`};}
@@ -47,6 +47,32 @@ const dialoguePlan=(s=autonomous())=>{
   const p=structuredClone(plan);for(const e of p.days)e.day+=2;
   p.npc_dialogue=s.state.npc_dialogue.slots.map(slot=>({actor:slot.actor,decision_id:slot.decision_id,opener:slot.openers.at(-1),closer:slot.closers.at(-1)}));return p;
 };
+const investigating=()=>{
+  const s=structuredClone(snapshot);s.current_day=7;s.time=6*1440+120;s.request_id='fixture-0-7';
+  s.state.mainline={schema:1,published:true,start_day:3,stage:'mortuary_choice',evidence:{mortuary:true,temple:false},route:'',interventions:{disrupt_t:-1,ritual_t:-1},ending:{},history:[{day:7,t:6*1440,action:'returned',result:'本世已实际取回义庄运尸簿；尚未断运或抄录。'}]};return s;
+};
+test('mainline accepts bounded public current-life investigation and legacy ending context',()=>{
+  const s=investigating();assert(validateSnapshot(s));assert(validateMainlineContext(s.state.mainline));
+  const waiting=investigating();Object.assign(waiting.state.mainline,{published:false,stage:'waiting',evidence:{mortuary:false,temple:false},history:[]});assert(validateSnapshot(waiting));
+  for(const kind of ['hold','escape','ritual']){
+    const ended=investigating();Object.assign(ended.state.mainline,{stage:'closed',route:kind,ending:{kind,title:'实际结局',text:'按本世实际结果结案。',bonus:kind==='escape'?0:10,can_continue:kind==='hold'}});assert(validateSnapshot(ended));
+  }
+  const legacy=waiting;Object.assign(legacy.state.mainline,{published:true,ending:{kind:'hold',title:'守过劫夜',text:'旧卷原有的守满结局。',bonus:10,can_continue:true}});assert(validateSnapshot(legacy),'old ending may predate an explicit current-life quest');
+});
+test('mainline rejects hidden working data, invented effects, malformed public evidence and wrong ending permissions',()=>{
+  const cases=[s=>s.state.mainline.work={data:{secret:true}},s=>s.state.mainline.private=true,s=>s.state.mainline.stage='completed_by_ai',s=>s.state.mainline.evidence.temple='yes',s=>s.state.mainline.evidence={mortuary:false,temple:true},s=>s.state.mainline.interventions.disrupt_t=-2,s=>s.state.mainline.interventions.ritual_t=500,s=>s.state.mainline.interventions.wave_mul=.1,s=>s.state.mainline.history[0].real=false,s=>s.state.mainline.history[0].result='字'.repeat(241),s=>s.state.mainline.history=Array(17).fill(s.state.mainline.history[0]),s=>s.state.mainline.published=false,s=>s.state.mainline.ending={kind:'escape',title:'离城',text:'离城。',bonus:10,can_continue:false},s=>s.state.mainline.ending={kind:'ritual',title:'熄灯',text:'熄灯。',bonus:10,can_continue:true}];
+  for(const mutate of cases){const s=investigating();mutate(s);assert.equal(validateSnapshot(s),false);}
+  for(const field of ['mainline','clue','flag','wave','ending','complete']){const p=structuredClone(plan);p[field]={};assert.equal(validatePlan(p,0),false);const c=structuredClone(plan);c.days[0].choices[0][field]=true;assert.equal(validatePlan(c,0),false);}
+});
+test('mainline prompt keeps current-life proof separate from archive and authorizes no new model effects',()=>{
+  const s=investigating(),prompt=buildPrompt(s);
+  for(const rule of ['旧世archive/残卷不能代替本世evidence','必须实际调查并完成返程','route只代表已锁定路线，不代表ending已经完成','不能绕过这个规则编造调查成果','不得输出mainline/clue/flag/unlock/wave/ending/complete','普通物资交换不能代办调查、筹备、封阵、撤离'])assert(prompt.includes(rule),rule);
+  assert(prompt.endsWith(JSON.stringify(s)));
+});
+test('mainline mock provider cannot complete a quest or replay a paid attempt through added story fields',async()=>{
+  const s=investigating();let calls=0;const b=await start({cooldown:0,provider:async()=>{calls++;const p=structuredClone(plan);for(const event of p.days)event.day+=7;p.mainline={stage:'closed',ending:'ritual'};return {source:'fixture',plan:p};}});
+  try{const response=await request(b,s);assert.equal(response.status,503);assert.deepEqual(await response.json(),{error:'invalid_plan'});assert.equal((await request(b,s)).status,409);assert.equal(calls,1);}finally{await close(b);}
+});
 test('npc dialogue accepts only reviewed actor phrases bound to the public decision and tone',()=>{
   const s=autonomous(),p=dialoguePlan(s);
   assert(validateSnapshot(s));assert(validateNpcContext(s.state.npcs));assert(validateDialogueContext(s.state.npc_dialogue,s.state.npcs));

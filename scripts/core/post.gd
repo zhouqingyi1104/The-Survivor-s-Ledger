@@ -21,6 +21,7 @@ const Companion = preload("res://scripts/core/companion.gd")
 const Trade = preload("res://scripts/core/social_trade.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
 const Npcs = preload("res://scripts/core/npc_autonomy.gd")
+const Mainline = preload("res://scripts/core/mainline.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -110,7 +111,7 @@ static func advance(run: Dictionary, minutes: int) -> String:
 	var left := minutes
 	while left > 0:
 		if run.phase != "post":
-			return "dead"
+			return "ending" if run.phase == "ending" else "dead"
 		trade_refresh(run)
 		if Neighbor.poll(run) != "":
 			return "event"
@@ -138,6 +139,8 @@ static func advance(run: Dictionary, minutes: int) -> String:
 		if State.check_death(run, _death_cause(run)):
 			return "dead"
 		_check_busy(run)
+		if run.phase != "post":
+			return "ending" if run.phase == "ending" else "dead"
 		var stop := _checkpoint(run, m + step)
 		if stop != "":
 			return stop
@@ -237,12 +240,12 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 			if not run.explore.is_empty():
 				return "curfew"
 			# 今夜有尸潮：先让玩家定守夜方针，再放时间走
-			if not Defense.wave_for_day(run.pday, float(State.diff(run).wave_mul)).is_empty() and int(run.wave_day) != int(run.pday) and str(run.get("night_policy", "")) == "":
+			if not Defense.wave_for_run(run, int(run.pday)).is_empty() and int(run.wave_day) != int(run.pday) and str(run.get("night_policy", "")) == "":
 				run.plan_due = true
 				run.sleeping = false
 				return "plan"
 		WAVE_AT:
-			if not Defense.wave_for_day(run.pday, float(State.diff(run).wave_mul)).is_empty() and int(run.wave_day) != int(run.pday):
+			if not Defense.wave_for_run(run, int(run.pday)).is_empty() and int(run.wave_day) != int(run.pday):
 				run.wave_due = true
 				run.sleeping = false
 				run.busy = {}
@@ -321,8 +324,7 @@ static func ack_dawn(run: Dictionary) -> void:
 	run.dawn_due = false
 	run.report = {}
 	if int(run.pday) >= State.STORY_DAYS and not run.endless:
-		run.phase = "ending"
-		State.note(run, "天亮了。第二十一日的太阳照进院子——劫，满了。")
+		Mainline.finish_dawn(run)
 		return
 	begin_day(run)
 
@@ -332,8 +334,8 @@ static func resolve_wave(run: Dictionary) -> Dictionary:
 	if not run.wave_due:
 		return {}
 	run.wave_due = false
+	var wave := Defense.wave_for_run(run, int(run.pday))
 	run.wave_day = run.pday
-	var wave := Defense.wave_for_day(int(run.pday), float(State.diff(run).wave_mul))
 	Defense.start_night(run, wave)
 	var rep := Defense.next_round(run)
 	if run.phase == "post":
@@ -403,7 +405,7 @@ static func choose_policy(run: Dictionary, id: String) -> String:
 static func _spot_for(run: Dictionary, mode: String) -> String:
 	if mode == "gate":
 		return "gate"
-	var wave := Defense.wave_for_day(int(run.pday), float(State.diff(run).wave_mul))
+	var wave := Defense.wave_for_run(run, int(run.pday))
 	var best := "gate"
 	var worst := -999.0
 	for sid in Defense.SURFACES:
@@ -418,7 +420,7 @@ static func _spot_for(run: Dictionary, mode: String) -> String:
 
 ## 21:00 弹窗用的四档：[id, 名称, 说明, 亲守面, 今夜预计漏几只]
 static func policy_options(run: Dictionary) -> Array:
-	var wave := Defense.wave_for_day(int(run.pday), float(State.diff(run).wave_mul))
+	var wave := Defense.wave_for_run(run, int(run.pday))
 	var out := []
 	for id in Data.table("waves").policies:
 		var p: Dictionary = Data.table("waves").policies[id]
@@ -686,6 +688,7 @@ static func begin_day(run: Dictionary) -> void:
 static func trade_refresh(run: Dictionary) -> String:
 	# Settle world clocks before calculating market terms or honoring payments.
 	crisis_refresh(run)
+	mainline_refresh(run)
 	Trade.state(run)
 	var npc_result := Npcs.poll(run)
 	if npc_result != "":
@@ -694,6 +697,21 @@ static func trade_refresh(run: Dictionary) -> String:
 	if result != "":
 		Director.note_choice(run, "纸鹤往来 · 履约与期限", result)
 	return ""
+
+
+static func mainline_refresh(run: Dictionary) -> String:
+	var result := Mainline.poll(run)
+	if result != "":
+		Director.note_world(run, "尸劫来历 · 调查与出路", result)
+	return ""
+
+
+static func mainline_action(run: Dictionary, action: String, token: String) -> String:
+	trade_refresh(run)
+	var result := Mainline.act(run, action, token)
+	if result == "":
+		Director.note_choice(run, "尸劫来历 · 主线选择", str(Mainline.state(run).last_result))
+	return result
 
 
 static func npc_action(run: Dictionary, actor: String, action: String, token: String) -> String:
@@ -772,6 +790,9 @@ static func _check_busy(run: Dictionary) -> void:
 ## 做完了，见成果。
 static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 	match kind:
+		"mainline":
+			var result := Mainline.complete(run, data)
+			if result != "": Director.note_choice(run, "主线行动完成", result)
 		"crisis":
 			var result := Crisis.complete(run, data)
 			if result != "": Director.note_choice(run, "危机行动完成", result)
@@ -1185,11 +1206,20 @@ static func act_explore(run: Dictionary, pid: String) -> String:
 
 
 static func search(run: Dictionary, idx: int) -> Dictionary:
-	if run.explore.is_empty() or blocked(run):
+	if run.explore.is_empty() or blocked(run) or is_busy(run) or run.sleeping or not run.fight.is_empty():
 		return {}
+	var story_revision := int(Mainline.state(run).revision)
 	var res := Explore.search(run, idx)
+	if int(Mainline.state(run).revision) != story_revision:
+		Director.note_choice(run, "尸劫来历 · 实地行动", str(Mainline.state(run).last_result))
+	if str(res.get("blocked", "")) != "": return res
 	if not res.is_empty():
 		State.add_attr(run, "energy", -float(ACTIONS.search[2]))
+		if res.get("mainline", false):
+			# Unlike ordinary searches, work now waits on the live clock. A fatal
+			# immediate capture must settle death before yielding back to the UI.
+			State.check_death(run, "主线调查时被尸群追上，没能逃回宅院。")
+			return res
 		run["neighbor_searching"] = true
 		advance(run, int(ACTIONS.search[1]))
 		run.erase("neighbor_searching")
@@ -1201,10 +1231,14 @@ static func search(run: Dictionary, idx: int) -> Dictionary:
 static func finish_explore(run: Dictionary) -> Dictionary:
 	if run.explore.is_empty():
 		return {}
+	if is_busy(run):
+		return {} # Finish or actually interrupt field work before starting return travel.
 	if run.pending_event == "n_cabinet":
 		return {} # Resolve the opened cabinet before leaving its scene.
+	var field_state: Dictionary = run.explore.duplicate(true)
 	var summary := Explore.finish(run)
 	if run.phase == "post":
+		if Mainline.begin_return(run, field_state): return summary
 		run["neighbor_travel"] = true
 		advance(run, int(ACTIONS.travel[1]))
 		run.erase("neighbor_travel")

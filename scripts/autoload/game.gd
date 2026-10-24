@@ -13,6 +13,8 @@ const Pre = preload("res://scripts/core/pre.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Migrate = preload("res://scripts/core/migrate.gd")
 const MemoryFile = preload("res://scripts/core/life_memory_file.gd")
+const Mainline = preload("res://scripts/core/mainline.gd")
+const Past = preload("res://scripts/core/past_lives.gd")
 
 const SAVE_PATH := "user://save.json"
 const META_PATH := "user://meta.json"
@@ -175,16 +177,26 @@ func rewind() -> void:
 
 
 ## 这一轮结束（翻回扉页 / 合上 / 劫满），结算道心。
-func end_run(bonus := 0) -> Dictionary:
+func ending_bonus(value: Dictionary = {}) -> int:
+	return Ledger.ending_bonus(run if value.is_empty() else value)
+
+
+func _same_life(expected_life: String) -> bool:
+	return not run.is_empty() and (expected_life == "" or str(Past.state(run).id) == expected_life)
+
+
+func end_run(bonus := -1) -> Dictionary:
+	if run.is_empty(): return {"lines": [], "total": 0, "days": 0, "settled": false}
 	last_gain = Ledger.end_run(run, meta, bonus)
-	if run.phase == "ending":
+	if last_gain.get("settled", false) and run.phase == "ending":
 		meta.endings = int(meta.endings) + 1
 	save_meta()
 	return last_gain
 
 
 ## 带着记忆回到三日之前（同一身份重开）。
-func restart_from_cover() -> void:
+func restart_from_cover(expected_life := "") -> void:
+	if not _same_life(expected_life): return
 	var role_id: String = run.role
 	var d := str(run.get("difficulty", "normal"))
 	# 开局模式（守到死 / 每日一局）跟着带过去，别让重开一局把模式丢了
@@ -193,12 +205,13 @@ func restart_from_cover() -> void:
 	# 同院的人也带过去——回到三日之前，院里还是这几个人（誓约/凭仗/了愿另说，
 	# 那三样是"这一局挑的挑战"，重开不带走）
 	var mates: Array = (run.get("companions", []) as Array).duplicate()
-	end_run(Ledger.ENDING_BONUS if run.phase == "ending" else 0)
+	end_run(Ledger.ending_bonus(run))
 	new_game(role_id, d, [], [], [], endless, daily, mates)
 
 
-func close_book() -> void:
-	end_run(Ledger.ENDING_BONUS if run.phase == "ending" else 0)
+func close_book(expected_life := "") -> void:
+	if not _same_life(expected_life): return
+	end_run(Ledger.ending_bonus(run))
 	run = {}
 	snapshots = {}
 	_delete_save()
@@ -207,7 +220,16 @@ func close_book() -> void:
 
 
 ## 劫满后守宅：转无尽，尸潮继续升级。
-func keep_living() -> void:
+func keep_living(expected_life := "") -> void:
+	if not _same_life(expected_life): return
+	var block := Mainline.continue_block(run)
+	if block != "":
+		toast.emit(block)
+		return
+	block = Mainline.continued(run)
+	if block != "":
+		toast.emit(block)
+		return
 	run.endless = true
 	run.phase = "post"
 	Post.begin_day(run)

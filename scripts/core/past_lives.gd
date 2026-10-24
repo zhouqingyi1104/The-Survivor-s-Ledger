@@ -6,6 +6,37 @@ const KEEP_FACTS := 12
 const MAX_AWAKENINGS := 2
 const TRADE_GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const CRISIS_KINDS := ["well_freeze", "fuel_shortage", "herb_shortage"]
+const MAINLINE_STAGES := ["waiting", "contact", "fallback", "mortuary", "mortuary_choice", "temple", "routes", "escape_ready", "ritual_ready", "sealed", "hold", "closed", "failed", "endless"]
+const MAINLINE_WORK := ["host", "self_route", "disrupt", "copy", "prepare_escape", "prepare_ritual", "escape", "search_mortuary", "search_temple", "search_ritual", "return_mortuary", "return_temple"]
+
+## Raw rule state only; no imports that would form State/Director dependency cycles.
+static func mainline_snapshot(value) -> Dictionary:
+	if not value is Dictionary or value.get("schema") != 1 or not value.get("stage", "") in MAINLINE_STAGES: return {}
+	if not _trade_integer(value.get("start_day"), 1, 100001) or not value.get("route", "") in ["", "hold", "escape", "ritual"]: return {}
+	var evidence = value.get("evidence")
+	var interventions = value.get("interventions")
+	if not evidence is Dictionary or not evidence.get("mortuary") is bool or not evidence.get("temple") is bool: return {}
+	if not interventions is Dictionary or not _trade_integer(interventions.get("disrupt_t"), -1, 144000000) or not _trade_integer(interventions.get("ritual_t"), -1, 144000000): return {}
+	var result := {"schema": 1, "start_day": int(value.start_day), "stage": value.stage, "evidence": {"mortuary": evidence.mortuary, "temple": evidence.temple},
+		"route": value.route, "interventions": {"disrupt_t": int(interventions.disrupt_t), "ritual_t": int(interventions.ritual_t)}, "ending": {}, "work": {}, "history": []}
+	var ending = value.get("ending", {})
+	if not ending is Dictionary: return {}
+	if not ending.is_empty():
+		if not ending.get("kind", "") in ["hold", "escape", "ritual"] or not ending.get("title") is String or ending.title.is_empty() or ending.title.length() > 40 or not ending.get("text") is String or ending.text.is_empty() or ending.text.length() > 240: return {}
+		if not _trade_integer(ending.get("bonus"), 0, 10) or not ending.get("can_continue") is bool or ending.bonus != (0 if ending.kind == "escape" else 10) or ending.can_continue != (ending.kind == "hold"): return {}
+		result.ending = {"kind": ending.kind, "title": ending.title, "text": ending.text, "bonus": int(ending.bonus), "can_continue": ending.can_continue}
+	var work = value.get("work", {})
+	if not work is Dictionary: return {}
+	if not work.is_empty():
+		if not work.get("action", "") in MAINLINE_WORK or not _trade_integer(work.get("end_t"), 0, 144000000): return {}
+		result.work = {"action": work.action, "end_t": int(work.end_t)}
+	var history = value.get("history", [])
+	if not history is Array or history.size() > 16: return {}
+	for entry in history:
+		if not entry is Dictionary or not _trade_integer(entry.get("day"), 1, 100000) or not _trade_integer(entry.get("t"), 0, 144000000): return {}
+		if not entry.get("action") is String or entry.action.is_empty() or entry.action.length() > 32 or not entry.get("result") is String or entry.result.is_empty() or entry.result.length() > 240: return {}
+		result.history.append({"day": int(entry.day), "t": int(entry.t), "action": entry.action, "result": entry.result})
+	return result
 
 static func _trade_integer(value, low: int, high: int) -> bool:
 	return (value is int or value is float) and is_finite(float(value)) and float(value) == floorf(float(value)) and value >= low and value <= high
@@ -210,6 +241,10 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 	if not crisis.is_empty(): summary["crisis"] = crisis
 	var npcs := npc_snapshot(run.get("npcs", {}))
 	if not npcs.is_empty(): summary["npcs"] = npcs
+	var mainline := mainline_snapshot(run.get("mainline", {}))
+	if not mainline.is_empty():
+		summary["mainline"] = mainline
+		if run.get("phase", "") == "ending" and not mainline.ending.is_empty(): summary.outcome = mainline.ending.title
 	b.lives.append({"id": p.id, "life": ordinal, "facts": facts, "summary": summary})
 	b.sealed_ids.append(p.id)
 	b.count = ordinal

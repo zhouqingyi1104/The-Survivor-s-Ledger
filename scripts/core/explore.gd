@@ -7,6 +7,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
+const Mainline = preload("res://scripts/core/mainline.gd")
 
 const EXPOSURE_MAX := 100
 
@@ -24,14 +25,18 @@ static func visible_points(run: Dictionary) -> Array:
 
 ## 返回 ""（可去）或者不能去的原因。
 static func point_block(run: Dictionary, pid: String) -> String:
+	if not Data.table("map_points").has(pid): return "没有这个可探索的地方。"
 	var p: Dictionary = Data.table("map_points")[pid]
+	if p.has("unlock_flag") and not State.flag(run, p.unlock_flag): return "尚未找到这里的进山路，先查清主线线索。"
 	if run.pday < int(p.get("unlock_day", 0)):
 		return "第 %d 日后才打听到这里" % p.unlock_day
 	if p.has("fall_day") and run.pday >= int(p.fall_day):
 		return "已沦陷，尸群占了这里"
 	var until := int(run.points.get(pid, {}).get("looted_until", 0))
 	if until > run.pday:
-		return "被搜空了，还要 %d 日才缓得过来" % (until - run.pday)
+		var objective := Mainline.objective(run, pid)
+		if objective.is_empty(): return "被搜空了，还要 %d 日才缓得过来" % (until - run.pday)
+		if str(objective.get("block", "")) != "": return str(objective.block)
 	return ""
 
 
@@ -53,10 +58,13 @@ static func begin(run: Dictionary, pid: String) -> void:
 	var p: Dictionary = Data.table("map_points")[pid]
 	var n := mini(p.spots.size(), 3 + (1 if State.prof_level(run, "search") >= 2 else 0))
 	var spots := []
-	for s in Rng.shuffled(run, p.spots).slice(0, n):
-		spots.append({"name": s, "done": false})
+	var only_investigate := int(run.points.get(pid, {}).get("looted_until", 0)) > int(run.pday) and not Mainline.objective(run, pid).is_empty()
+	if not only_investigate:
+		for s in Rng.shuffled(run, p.spots).slice(0, n):
+			spots.append({"name": s, "done": false})
 	Neighbor.add_objective(run, pid, spots)
-	run.explore = {"point": pid, "spots": spots, "exposure": 0, "bag": {}, "caught": false, "notes": []}
+	Mainline.add_objective(run, pid, spots)
+	run.explore = {"point": pid, "spots": spots, "exposure": 0, "bag": {}, "caught": false, "notes": [], "only_investigate": only_investigate}
 	State.add_attr(run, "energy", -6)
 	if not pid in run.points:
 		run.points[pid] = {"looted_until": 0, "visits": 0}
@@ -87,6 +95,12 @@ static func search(run: Dictionary, idx: int) -> Dictionary:
 	var spot: Dictionary = ex.spots[idx]
 	if spot.done or ex.caught:
 		return {}
+	if spot.has("mainline"):
+		var result := Mainline.search_objective(run, spot)
+		if not result.is_empty() and int(ex.exposure) >= EXPOSURE_MAX and str(result.get("blocked", "")) == "":
+			result["caught"] = true
+			_caught(run, Data.table("map_points")[ex.point])
+		return result
 	if spot.has("neighbor"):
 		return Neighbor.search_objective(run, spot)
 	spot.done = true
@@ -141,6 +155,9 @@ static func search(run: Dictionary, idx: int) -> Dictionary:
 static func _caught(run: Dictionary, p: Dictionary) -> void:
 	var ex: Dictionary = run.explore
 	ex.caught = true
+	if str(run.get("busy", {}).get("kind", "")) == "mainline": run.busy = {}
+	Mainline.lost_cargo(run)
+	ex.erase("mainline_cargo")
 	var dmg := 8 + int(p.danger) * 4
 	State.add_attr(run, "hp", -dmg)
 	var chance := 0.2 + 0.05 * int(p.danger)
@@ -173,9 +190,11 @@ static func finish(run: Dictionary) -> Dictionary:
 	var p: Dictionary = Data.table("map_points")[pid]
 	var searched := 0
 	for s in ex.spots:
+		if s.has("mainline") or s.has("neighbor"): continue
 		if s.done:
 			searched += 1
-	var all_done: bool = searched == ex.spots.size()
+	var ordinary: int = ex.spots.filter(func(s): return not s.has("mainline") and not s.has("neighbor")).size()
+	var all_done: bool = searched == ordinary
 	if searched > 0:
 		run.points[pid].looted_until = run.pday + (int(p.restock) if all_done else int(ceil(p.restock / 2.0)))
 	Inv.add_all(run.home, ex.bag)
