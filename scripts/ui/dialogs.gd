@@ -22,6 +22,7 @@ const NpcDialogue = preload("res://scripts/core/npc_dialogue.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
 const Opening = preload("res://scripts/core/opening.gd")
+const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -106,6 +107,9 @@ func _journal(body: VBoxContainer) -> void:
 	var identity_entry := UI.button("身份与旧世 · 专属解法", identity_paths)
 	identity_entry.set_meta("identity_entry", "journal")
 	content.add_child(identity_entry)
+	var cycle_entry := UI.button("轮回调查 · 旧诺与今证", cycle_inquiry)
+	cycle_entry.set_meta("cycle_entry", "journal")
+	content.add_child(cycle_entry)
 	content.add_child(UI.button("前世记忆 · 查看旧世与觉醒", past_lives))
 	content.add_child(UI.para(Neighbor.summary(_run()), 17))
 	content.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
@@ -603,6 +607,71 @@ func _trade_do(actor: String, action: String, quote_id: String) -> void:
 	Game.act(func(): return Post.trade_action(Game.run, actor, action, quote_id))
 
 
+func cycle_inquiry() -> void:
+	if Game.run.is_empty(): return
+	Game.act(func(): return Post.trade_refresh(Game.run))
+	for key in ["journal", "past_lives"]: UI.close_modal(key)
+	UI.open_modal("cycle_inquiry", "轮回调查 · 旧诺与今证", _cycle_inquiry, true, 860)
+
+
+func _cycle_inquiry(body: VBoxContainer) -> void:
+	var run := _run()
+	var view := Cycle.view(run)
+	var content := UI.vbox(10)
+	content.add_child(UI.para(str(view.get("summary", "")), 17))
+	content.add_child(UI.para("旧世的承诺和记忆只能提供方向；查访、核账与新的约定，都要在今世实际完成。宅院内即可调查，开始付出材料与精力，完工后才得证或生效。", 15, UI.INK_SOFT))
+	var work: Dictionary = view.get("work", {})
+	if not work.is_empty():
+		var remaining := maxi(0, int(work.get("end_t", 0)) - int(run.get("t", 0)))
+		content.add_child(UI.para("正在进行：%s · 还需 %d 分钟。中断不退已付材料，尚未完成的工作不算兑现。" % [str(work.get("label", "轮回调查")), remaining], 17, UI.GOLD))
+	for entry in view.get("cases", []):
+		if not entry is Dictionary: continue
+		var card := UI.vbox(6)
+		card.set_meta("cycle_case", str(entry.get("id", "")))
+		card.set_meta("cycle_stage", str(entry.get("stage", "")))
+		card.add_child(UI.label(str(entry.get("title", "旧世来信")) + " · " + str(entry.get("stage_label", entry.get("stage", ""))), 20, UI.GOLD))
+		var source := str(entry.get("source_label", ""))
+		if source != "": card.add_child(UI.para("旧世来源：" + source, 16, UI.JADE))
+		if str(entry.get("stage", "")) == "sealed":
+			card.add_child(UI.para("这是玩家带入的旧梦，尚未在今世查访，也不代表邻人已经觉醒。", 15, UI.INK_SOFT))
+		for field in ["publish_text", "clue", "evidence_text"]:
+			var line := str(entry.get(field, ""))
+			if line != "": card.add_child(UI.para(line, 16, UI.JADE if field == "evidence_text" else UI.INK))
+		var deadline := str(entry.get("deadline_text", ""))
+		if deadline != "": card.add_child(UI.para("期限：" + deadline, 16, UI.CINNABAR))
+		var result := str(entry.get("last_result", ""))
+		if result != "": card.add_child(UI.para("本世结果：" + result, 16, UI.JADE))
+		for option in entry.get("options", []):
+			if not option is Dictionary: continue
+			var hint := str(option.get("hint", ""))
+			if hint != "": card.add_child(UI.para(hint, 16))
+			var block := str(option.get("block", ""))
+			if block != "": card.add_child(UI.para(block, 15, UI.CINNABAR))
+			var button := UI.button(str(option.get("text", option.get("id", ""))), _cycle_do.bind(str(entry.get("id", "")), str(option.get("id", "")), str(view.get("token", "")), str(Past.state(run).get("id", ""))), block != "", block)
+			button.set_meta("cycle_action", str(option.get("id", "")))
+			button.set_meta("cycle_case_id", str(entry.get("id", "")))
+			card.add_child(button)
+		content.add_child(UI.panel(card))
+	content.add_child(UI.sep())
+	content.add_child(UI.label("轮回调查 · 本世记录", 19, UI.GOLD))
+	var history: Array = view.get("history", [])
+	if history.is_empty(): content.add_child(UI.para("尚未进行今世调查。旧梦出现后，可先查访再决定是否续约、补偿或重新救助。", 16))
+	for k in range(history.size() - 1, -1, -1):
+		var entry = history[k]
+		if entry is Dictionary:
+			content.add_child(UI.para("第 %d 日 · %s" % [int(entry.get("day", 0)), str(entry.get("result", ""))], 15))
+	var scroll := UI.scroll(content, mini(450, maxi(210, int(get_viewport().get_visible_rect().size.y) - 210)))
+	scroll.name = "CycleInquiryScroll"
+	body.add_child(scroll)
+
+
+func _cycle_do(case_id: String, action: String, token: String, life: String) -> void:
+	if Game.run.is_empty() or str(Past.state(Game.run).get("id", "")) != life: return
+	var result = Game.act(func(): return Post.cycle_action(Game.run, case_id, action, token))
+	if typeof(result) == TYPE_STRING and result == "" and Post.is_busy(Game.run):
+		for key in ["cycle_inquiry", "journal", "past_lives"]: UI.close_modal(key)
+
+
 func past_lives() -> void:
 	UI.open_modal("past_lives", "前世记忆 · 生死簿留痕", _past_lives, true, 820)
 
@@ -615,6 +684,9 @@ func _past_lives(body: VBoxContainer) -> void:
 	if Past.daily(run):
 		body.add_child(UI.para("每日一局不唤醒或归档人物前世记忆，保持同日条件一致。", 16, UI.GOLD))
 	var content := UI.vbox(10)
+	var cycle_entry := UI.button("轮回调查 · 查访旧诺、失约与救助", cycle_inquiry)
+	cycle_entry.set_meta("cycle_entry", "past_lives")
+	content.add_child(cycle_entry)
 	content.add_child(UI.label("本世带入的身份经验", 21, UI.GOLD))
 	var sources := _identity_inheritance(Identity.view(run).get("inheritance", []))
 	content.add_child(UI.para(sources if sources != "" else "本世尚未带入符合条件的身份经验。只有真实发生并归档的经历才会解锁新解法。", 16))

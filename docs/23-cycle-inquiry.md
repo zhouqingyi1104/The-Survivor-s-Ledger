@@ -64,3 +64,7 @@
 真实ARK PLAN low reasoning **1次、无重试**：实际Godot测试局快照验证通过后调用现有套餐，39.6秒返回3场未来事件与1条第3日`old_note`调查排期。模型字段原样为`auto`，usage prompt 4225、completion 1536、total 5761。回答保存在`tests/fixtures/cycle-ark-recorded.json`，不含凭据、玩家存档或推理正文；`cycle_recorded.tscn`离线回放19检查通过，只绑定临时测试局生命/会话ID，经济、模型文本和排期不改。接受计划不花物、不发奖、不觉醒NPC，到日后仍必须完成付米与实际查证。
 
 流畅度边界：新增Node慢provider检查证明有旧案候选时health仍可响应，进行中重复请求拒绝、完成后缓存不二次生成；既有`director_async_ui.tscn`在本次接入后单项回归通过，本地服务故意延迟2秒时仍处理帧、W实际移动超过0.5，事件缓冲和存读回礼、旧响应拒绝正常。该窗口场景初始无旧案，不能把它说成新调查全链慢网络实测；真实39.6秒模型等待不在游戏点击路径中。均未触玩家真实档案。
+
+界面：`cycle_ui.tscn` 599检查、既有`past_lives_ui.tscn` 51检查通过，gl_compatibility、1280×720、exit 0。三入口、第一世/每日、未公开案、旧世来源与今证分离、六路线和三退出、匹配碎片、真实工作与中断、读档/旧按钮/跨世、待送与已兑状态均覆盖。七张本批截图逐张检查，root另抽查查证页和滚动后的三种互斥选择；长内容可滚动，成本与期限、底部按钮可见。测试鼠标在同帧顺序push真实press/release，并检查hover和pressed观测，不用直接发按钮信号或重试掩盖丢击。
+
+复现本地规则/接入/归档/回放：`tools/godot/Godot_v4.7.2-stable_win64_console.exe --headless --path . res://tests/cycle_rules.tscn`（将末尾替换为`cycle_integration.tscn`、`cycle_memory.tscn`、`cycle_recorded.tscn`）。窗口：去掉`--headless`，加入`--rendering-method gl_compatibility --resolution 1280x720`，末尾为`res://tests/cycle_ui.tscn`。这些复验不再调用ARK。部分场景仍有既有CanvasItem/ObjectDB/GL纹理退出提示；完整二十日玩家轮回、长期平衡、更多分辨率、CI、独立包与部署均 **NOT RUN**。没有新增依赖或修改凭据。

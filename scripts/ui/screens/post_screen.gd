@@ -986,6 +986,13 @@ func _left_top(run: Dictionary) -> void:
 	main_summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	quest.add_child(main_summary)
 	_live["mainline"] = main_summary
+	var cycle_row := HBoxContainer.new()
+	cycle_row.add_child(Hud.title("轮回旧案", 18, Hud.GOLD))
+	var cycle_entry := Hud.button("调查 / 续诺", Dialogs.cycle_inquiry)
+	cycle_entry.set_meta("cycle_entry", "hud")
+	cycle_entry.tooltip_text = "查访前世的承诺、失约与救助；旧梦和邻人的觉醒片段都须今世查证。"
+	cycle_row.add_child(cycle_entry)
+	quest.add_child(cycle_row)
 	v.add_child(Hud.panel(quest))
 	hud.add_child(v)
 	Hud.pin(v, Control.PRESET_TOP_LEFT, 14)
