@@ -15,6 +15,184 @@ const IDENTITY_REQUIRED := {"scholar_diagram": "sealed_lamps", "escort_convoy": 
 const OPENING_TAGS := ["breach_ning", "breach_zhou", "breach_traveler", "crisis_well_freeze", "crisis_fuel_shortage", "crisis_herb_shortage"]
 const OPENING_CHOICES := ["plain", "scholar_stock", "scholar_neighbors", "scholar_lamps", "escort_stock", "escort_neighbors", "escort_oldroad", "herbalist_stock", "herbalist_neighbors", "herbalist_oldcase", "watchman_stock", "watchman_neighbors", "watchman_oldledger", "cash_account", "old_crisis"]
 const OPENING_GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread", "talisman_paper", "cinnabar", "caltrops", "plague_powder", "salve", "lamp_oil"]
+const CYCLE_KINDS := ["promise", "breach", "rescue"]
+const CYCLE_STATUSES := {"promise": ["pledged", "kept"], "breach": ["broken"], "rescue": ["helped"]}
+
+## Executed receipts have a closed vocabulary. Narrative, trust, and a model's
+## prose never manufacture an old promise or a successful rescue.
+static func _cycle_fact_id(actor: String, kind: String, status: String, id: String) -> bool:
+	if not actor in ACTORS or not kind in CYCLE_KINDS or not status in CYCLE_STATUSES[kind]: return false
+	if id == "medicine": return actor == "ning"
+	var pattern := RegEx.new()
+	var action := "credit" if status == "pledged" else "repay"
+	pattern.compile("^trade_[1-9][0-9]{0,5}_%s$" % action if kind == "promise" else "^trade_overdue_[1-9][0-9]{0,5}$")
+	if kind != "rescue" and pattern.search(id) != null: return true
+	return id in ["cycle_promise_kept", "cycle_breach_repaired", "cycle_rescue_given", "cycle_promise_broken", "cycle_breach_broken", "cycle_rescue_broken"] and ((id.ends_with("_broken") and kind == "breach") or (id == "cycle_rescue_given" and kind == "rescue") or (id in ["cycle_promise_kept", "cycle_breach_repaired"] and kind == "promise" and status == "kept"))
+
+static func _cycle_fact(actor: String, kind: String, status: String) -> String:
+	if kind == "rescue": return "你曾实际向%s送出救助；这不证明对方已经康复。" % ACTORS[actor]
+	if kind == "breach": return "你曾对%s许下约定，却没能依约完成。" % ACTORS[actor]
+	return "你曾实际履行对%s的约定。" % ACTORS[actor] if status == "kept" else "你曾对%s许下约定；旧世合卷时尚未兑现。" % ACTORS[actor]
+
+static func record_cycle(run: Dictionary, actor: String, kind: String, status: String, fact_id: String) -> void:
+	if daily(run) or not _cycle_fact_id(actor, kind, status, fact_id): return
+	var p := state(run)
+	if p.archived: return
+	if not p.get("cycle_receipts") is Array: p["cycle_receipts"] = []
+	var receipt := {"actor": actor, "kind": kind, "status": status, "fact_id": fact_id, "day": int(run.get("pday", 0)), "t": int(run.get("t", 0))}
+	if not _cycle_receipt(receipt, int(run.get("pday", 0))).is_empty():
+		# Keep the latest executed cause for each person; repeated dealings with
+		# one actor cannot erase another person's single meaningful rescue.
+		p.cycle_receipts = p.cycle_receipts.filter(func(old): return old is Dictionary and old.get("actor", "") != actor)
+		p.cycle_receipts.append(receipt)
+		while p.cycle_receipts.size() > 12: p.cycle_receipts.pop_front()
+		if fact_id.begins_with("cycle_"): record(run, actor, fact_id, _cycle_fact(actor, kind, status), -1 if kind == "breach" else 1)
+
+static func _cycle_receipt(value, last_day: int) -> Dictionary:
+	if not value is Dictionary or value.size() != 6 or not value.get("actor") is String or not value.get("kind") is String or not value.get("status") is String or not value.get("fact_id") is String: return {}
+	if not _cycle_fact_id(value.actor, value.kind, value.status, value.fact_id) or not _trade_integer(value.get("day"), 1, last_day) or not _trade_integer(value.get("t"), (int(value.day) - 1) * 1440, int(value.day) * 1440 - 1): return {}
+	return {"actor": value.actor, "kind": value.kind, "status": value.status, "fact_id": value.fact_id, "day": int(value.day), "t": int(value.t)}
+
+static func _cycle_source(value, count: int) -> Dictionary:
+	if not value is Dictionary or value.size() != 8 or not value.get("actor") is String or not value.get("kind") is String or not value.get("status") is String or not value.get("fact_id") is String: return {}
+	if not _cycle_fact_id(value.actor, value.kind, value.status, value.fact_id) or not _trade_integer(value.get("source_life"), 1, count) or not value.get("source_id") is String or value.source_id.strip_edges().is_empty() or value.source_id.length() > 80 or not _trade_integer(value.get("day"), 1, 100000): return {}
+	if value.get("fact", "") != _cycle_fact(value.actor, value.kind, value.status): return {}
+	return value.duplicate(true)
+
+static func _cycle_merge(sources: Array) -> Array:
+	var latest := {}
+	for source in sources:
+		if int(latest.get(source.actor, {}).get("source_life", 0)) <= int(source.source_life): latest[source.actor] = source.duplicate(true)
+	var result := []
+	for actor in ACTORS:
+		if latest.has(actor): result.append(latest[actor])
+	return result
+
+static func _cycle_recent(b: Dictionary) -> Array:
+	var ids := {}; var ordinals := {}
+	for life in b.lives:
+		if not life is Dictionary: continue
+		if life.get("id") is String: ids[life.id] = int(ids.get(life.id, 0)) + 1
+		if _trade_integer(life.get("life"), 1, int(b.count)): ordinals[int(life.life)] = int(ordinals.get(int(life.life), 0)) + 1
+	var sources := []
+	for life in b.lives:
+		if not life is Dictionary or not life.get("id") is String or not life.id in b.sealed_ids or life.id.is_empty() or life.id.length() > 80 or int(ids.get(life.id, 0)) != 1 or not _trade_integer(life.get("life"), 1, int(b.count)) or int(ordinals.get(int(life.life), 0)) != 1: continue
+		var summary = life.get("summary", {})
+		if not summary is Dictionary or not summary.get("role", "") in IDENTITY_ROLES or not summary.get("mode", "") in ["寻常轮回", "守到死"] or not _trade_integer(summary.get("day"), 1, 100000): continue
+		var receipts := []
+		var raw = summary.get("cycle_receipts", [])
+		if raw is Array and raw.size() <= 12:
+			for receipt in raw:
+				var safe := _cycle_receipt(receipt, int(summary.day))
+				if not safe.is_empty(): receipts.append(safe)
+		# An older book may only have the final structured ledger and exact
+		# executed medicine fact. These are conservative migration evidence.
+		if not summary.has("cycle_receipts"):
+			var trade := trade_snapshot(summary.get("trade", {}))
+			if not trade.is_empty():
+				if not trade.debt.is_empty() and not trade.debt.overdue and int(summary.day) <= int(trade.debt.due_day):
+					var credit_day := maxi(1, int(trade.debt.due_day) - 2)
+					if credit_day <= int(summary.day): receipts.append({"actor": trade.debt.actor, "kind": "promise", "status": "pledged", "fact_id": "trade_%d_credit" % credit_day, "day": credit_day, "t": (credit_day - 1) * 1440})
+				for actor in ACTORS:
+					if int(trade.actors[actor].breach_total) <= 0: continue
+					var evidence := {"actor": actor, "kind": "breach", "status": "broken", "fact_id": "trade_overdue_%d" % int(summary.day), "day": int(summary.day), "t": (int(summary.day) - 1) * 1440}
+					var old_facts = life.get("facts", [])
+					var matched_day := -1
+					if old_facts is Array and old_facts.size() <= KEEP_FACTS:
+						for fact in old_facts:
+							if valid_fact(fact) and fact.actor == actor and fact.valence == -1 and str(fact.fact_id).begins_with("trade_overdue_") and _cycle_fact_id(actor, "breach", "broken", fact.fact_id) and _trade_integer(fact.get("day"), maxi(1, matched_day), int(summary.day)):
+								evidence.fact_id = fact.fact_id; evidence.day = int(fact.day); evidence.t = (int(fact.day) - 1) * 1440
+								matched_day = int(fact.day)
+					receipts.append(evidence)
+			var facts = life.get("facts", [])
+			if facts is Array and facts.size() <= KEEP_FACTS:
+				for fact in facts:
+					if valid_fact(fact) and fact.actor == "ning" and fact.fact_id == "medicine" and fact.fact == "你曾把药交给阿宁。" and fact.valence == 1 and _trade_integer(fact.get("day"), 1, int(summary.day)):
+						receipts.append({"actor": "ning", "kind": "rescue", "status": "helped", "fact_id": "medicine", "day": int(fact.day), "t": (int(fact.day) - 1) * 1440})
+		var by_actor := {}
+		for receipt in receipts:
+			if int(by_actor.get(receipt.actor, {}).get("t", -1)) <= int(receipt.t): by_actor[receipt.actor] = receipt
+		for receipt in by_actor.values(): sources.append({"actor": receipt.actor, "kind": receipt.kind, "status": receipt.status, "source_life": int(life.life), "source_id": life.id, "fact_id": receipt.fact_id, "fact": _cycle_fact(receipt.actor, receipt.kind, receipt.status), "day": int(receipt.day)})
+	return _cycle_merge(sources)
+
+static func cycle_inheritance(meta: Dictionary) -> Array:
+	var b := book(meta)
+	var recent := _cycle_recent(b)
+	var confirmed := recent.duplicate(true)
+	var cached = b.get("cycle_legacy", [])
+	if not cached is Array or cached.size() > 3: return _cycle_merge(confirmed)
+	var counts := {}
+	for source in cached:
+		if source is Dictionary and source.get("actor") is String: counts[source.actor] = int(counts.get(source.actor, 0)) + 1
+	for value in cached:
+		var source := _cycle_source(value, int(b.count))
+		if source.is_empty() or int(counts.get(source.actor, 0)) != 1 or not source.source_id in b.sealed_ids: continue
+		var detailed := false
+		for life in b.lives:
+			if life is Dictionary and (life.get("id", "") == source.source_id or life.get("life", -1) == source.source_life): detailed = true
+		if detailed and not source in recent: continue
+		confirmed.append(source)
+	return _cycle_merge(confirmed)
+
+## Publicly discovered investigations only. Private sources, hidden condition,
+## future publication, and construction inputs never enter the writer archive.
+static func cycle_snapshot(value) -> Dictionary:
+	if not value is Dictionary or value.get("schema") != 1: return {}
+	var rows = value.get("published", value.get("cases", []))
+	if not rows is Array or rows.size() > 2: return {}
+	var out := {"schema": 1, "published": [], "work": {}, "history": [], "last_result": ""}
+	var actors := []; var ids := []
+	for row in rows:
+		if not row is Dictionary: return {}
+		var stage = row.get("stage", "")
+		if stage == "sealed": continue
+		if not stage in ["lead", "interviewed", "verified", "working", "resolved", "expired"] or not row.get("id") is String or row.id.is_empty() or row.id.length() > 120 or row.id in ids or not row.get("actor", "") in ACTORS or row.actor in actors: return {}
+		if not row.get("kind", "") in CYCLE_KINDS or not row.get("status", "") in CYCLE_STATUSES[row.kind] or not _trade_integer(row.get("publish_day"), 2, 100000) or not _trade_integer(row.get("deadline_t"), 0, 144003000) or int(row.deadline_t) != (int(row.publish_day) + 4) * 1440 + 720: return {}
+		var source_life = row.get("source_life", row.get("source", {}).get("source_life", -1))
+		if not _trade_integer(source_life, 1, 999999): return {}
+		if row.has("source"):
+			var source := _cycle_source(row.source, 999999)
+			if source.is_empty() or source.actor != row.actor or source.kind != row.kind or source.status != row.status: return {}
+		var evidence = row.get("evidence", {})
+		if not evidence is Dictionary or (not evidence.is_empty() and (evidence.size() != 2 or not evidence.get("condition", "") in ["need", "stable"] or not evidence.get("text") is String or evidence.text.is_empty() or evidence.text.length() > 240)): return {}
+		var route = row.get("route", "")
+		var allowed_routes: Array = {"promise": ["renew", "small_pact"], "breach": ["pay_repair", "cash_restart"], "rescue": ["help_again", "mutual_help"]}[row.kind]
+		if not route in ["", "decline", "expired"] + allowed_routes: return {}
+		if stage in ["lead", "interviewed"] and not evidence.is_empty() or (stage in ["verified", "working"] or stage == "resolved" and route != "decline") and evidence.is_empty(): return {}
+		if stage in ["lead", "interviewed", "verified"] and route != "": return {}
+		var delivery = row.get("delivery", {})
+		if not delivery is Dictionary or (not delivery.is_empty() and (delivery.size() != 3 or not _trade_integer(delivery.get("due_t"), 0, 144003000) or not _trade_goods(delivery.get("give")) or not delivery.get("done") is bool)): return {}
+		if not delivery.is_empty() and stage != "resolved": return {}
+		var result = row.get("last_result", "")
+		if not result is String or result.length() > 240: return {}
+		out.published.append({"id": row.id, "actor": row.actor, "kind": row.kind, "status": row.status, "stage": stage, "publish_day": int(row.publish_day), "deadline_t": int(row.deadline_t), "evidence": evidence.duplicate(true), "route": route, "delivery": delivery.duplicate(true), "last_result": result, "source_life": int(source_life)})
+		actors.append(row.actor); ids.append(row.id)
+	var work = value.get("work", {})
+	if not work is Dictionary: return {}
+	if not work.is_empty():
+		if not work.get("case_id", "") in ids or not work.get("action", "") in ["inquire", "verify", "verify_fragment", "renew", "small_pact", "pay_repair", "cash_restart", "help_again", "mutual_help"] or not _trade_integer(work.get("end_t"), 0, 144003000) or not work.get("label") is String or work.label.is_empty() or work.label.length() > 80: return {}
+		out.work = {"case_id": work.case_id, "action": work.action, "end_t": int(work.end_t), "label": work.label}
+	var history = value.get("history", [])
+	if not history is Array or history.size() > 12: return {}
+	for entry in history:
+		if not entry is Dictionary or entry.size() != 5 or not _trade_integer(entry.get("day"), 1, 100000) or not entry.get("actor", "") in ACTORS or not entry.get("case_id") is String or entry.case_id.is_empty() or entry.case_id.length() > 120 or not entry.get("action") is String or entry.action.is_empty() or entry.action.length() > 40 or not entry.get("result") is String or entry.result.is_empty() or entry.result.length() > 240: return {}
+		out.history.append(entry.duplicate(true))
+	var last = value.get("last_result", "")
+	if not last is String or last.length() > 240: return {}
+	out.last_result = last
+	return out
+
+static func _cycle_archive(run: Dictionary) -> Dictionary:
+	var raw = run.get("cycle_inquiry", {})
+	var safe := cycle_snapshot(raw)
+	if safe.is_empty(): return {}
+	if daily(run): return {"schema": 1, "published": [], "work": {}, "history": [], "last_result": ""}
+	var p := state(run)
+	for row in raw.get("cases", []):
+		if row.get("stage", "") == "sealed": continue
+		var source = row.get("source", {})
+		if _cycle_source(source, int(p.get("generation", 0)) - 1).is_empty() or source.source_id == p.id or int(row.get("publish_day", 100001)) > int(run.get("pday", 0)): return {}
+	return safe
 
 ## This separate six-tag index records executed old-life outcomes. Identity
 ## unlocks retain their own four-tag index; prose and trust never prove a breach.
@@ -451,6 +629,9 @@ static func begin(run: Dictionary, meta: Dictionary) -> void:
 	# Fixed at birth; an old save never learns from lives sealed after its start.
 	run["identity"] = {"schema": 1, "inherited": identity_inheritance(meta)}
 	run["opening"] = {"schema": 1, "inherited": opening_inheritance(meta), "birth": {"silver": int(run.get("silver", 0)), "home": run.get("home", {}).duplicate(true), "role": str(run.get("role", "")), "seed": int(run.get("seed", 0))}}
+	var cycle_sources := cycle_inheritance(meta)
+	cycle_sources.sort_custom(func(a, c): return int(a.source_life) > int(c.source_life) if a.source_life != c.source_life else str(a.actor) < str(c.actor))
+	run["cycle_inquiry"] = {"schema": 1, "sources": cycle_sources.slice(0, 2)}
 	p.generation = int(b.count) + 1
 	var candidates := {}
 	for life in b.lives:
@@ -498,6 +679,7 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 		return false
 	var retained := identity_inheritance(meta)
 	var opening_retained := _opening_retained(meta)
+	var cycle_retained := cycle_inheritance(meta)
 	var ordinal := int(b.count) + 1
 	var facts := []
 	if not daily(run):
@@ -523,6 +705,16 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 	if not identity.is_empty(): summary["identity"] = identity
 	var opening := _opening_archive(run)
 	if not opening.is_empty(): summary["opening"] = opening
+	var receipts := []
+	if not daily(run) and p.get("cycle_receipts") is Array and p.cycle_receipts.size() <= 12:
+		for value in p.cycle_receipts:
+			var receipt := _cycle_receipt(value, int(summary.day))
+			if not receipt.is_empty() and int(receipt.t) <= int(run.get("t", 0)): receipts.append(receipt)
+	# Old current lives without receipt support remain eligible only through
+	# their conservative, already recorded final ledger and exact medicine fact.
+	if p.has("cycle_receipts"): summary["cycle_receipts"] = receipts
+	var cycle := _cycle_archive(run)
+	if not cycle.is_empty(): summary["cycle_inquiry"] = cycle
 	b.lives.append({"id": p.id, "life": ordinal, "facts": facts, "summary": summary})
 	b.sealed_ids.append(p.id)
 	b.count = ordinal
@@ -530,6 +722,7 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 	# A daily life contributes no sources, but cannot erase older normal ones.
 	b["identity_legacy"] = _identity_merge(retained + _identity_recent(b))
 	b["opening_legacy"] = _opening_merge(opening_retained + _opening_recent(b))
+	b["cycle_legacy"] = _cycle_merge(cycle_retained + _cycle_recent(b))
 	while b.lives.size() > KEEP_LIVES: b.lives.pop_front()
 	p.generation = ordinal
 	p.archived = true

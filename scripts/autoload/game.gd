@@ -133,6 +133,7 @@ func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boo
 		# Past.begin runs before this flag. Daily runs carry no private legacy source.
 		candidate.identity = {}
 		candidate.opening["inherited"] = []
+		candidate.cycle_inquiry = {"schema": 1, "closed": true, "sources": []}
 	# 同院的人（备劫前带回来的帮手）
 	candidate.companions = companions.duplicate()
 	var result := Opening.apply(candidate, opening_id, str(Opening.view(candidate).token))

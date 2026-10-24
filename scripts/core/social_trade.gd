@@ -163,6 +163,7 @@ static func act(run: Dictionary, actor: String, action: String, quote_id: String
 			var due := int(run.pday) + 2
 			s.debt = {"id": quote_id + ":debt", "actor": actor, "req": {"rice": int(q.req.rice) + 1}, "give": q.give.duplicate(), "due_day": due, "due_t": (due - 1) * 1440 + 720, "overdue": false}
 			Inv.add_all(run.home, q.give)
+			Past.record_cycle(run, actor, "promise", "pledged", "trade_%d_credit" % int(run.pday))
 			result = "赊得%s，约定第 %d 日 18:00 前交还%s；约定物资固定，逾期信任 -2、失约 +1。今日机会已用。" % [Data.describe_items(q.give), due, Data.describe_items(s.debt.req)]
 		"aid":
 			var req: Dictionary = OFFERS[actor].aid_req
@@ -188,6 +189,7 @@ static func act(run: Dictionary, actor: String, action: String, quote_id: String
 				valence = 0
 			else:
 				_trust(person, 1, "按时清偿，信任 +1")
+				Past.record_cycle(run, actor, "promise", "kept", "trade_%d_repay" % int(run.pday))
 				result += "按时还款，信任 +1。"
 			s.debt = {}
 		"compensate":
@@ -214,6 +216,7 @@ static func _overdue(run: Dictionary) -> String:
 	_history(run, str(debt.actor), "overdue", result)
 	State.note(run, "纸鹤往来 · " + result)
 	Past.record(run, str(debt.actor), "trade_overdue_%d" % int(debt.due_day), "你曾未能按期向%s清偿%s。" % [ACTORS[debt.actor], Data.describe_items(debt.req)], -1)
+	Past.record_cycle(run, str(debt.actor), "breach", "broken", "trade_overdue_%d" % int(debt.due_day))
 	return result
 
 static func poll(run: Dictionary) -> String:

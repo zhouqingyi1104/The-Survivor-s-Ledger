@@ -25,12 +25,16 @@ static func record(run: Dictionary, choice: String, result: String) -> void:
 	State.note(run, "隔墙求药：" + result)
 	Director.note_choice(run, "隔墙求药 · " + choice, result)
 	match choice:
+		"promise": Past.record_cycle(run, "ning", "promise", "pledged", "medicine")
 		"donate_home", "deliver": Past.record(run, "ning", "medicine", "你曾把药交给阿宁。", 1)
 		"refuse": Past.record(run, "ning", "medicine", "你曾没有答应阿宁的求药。", -1)
 		"keep": Past.record(run, "ning", "medicine", "你曾把为邻人取回的药留给自己。", -1)
 		"deadline": Past.record(run, "ning", "medicine", "你曾答应取药，却没能按期送到阿宁手中。", -1)
 		"share": Past.record(run, "ning", "account", "你曾把守庄人的药账交给阿宁，一同追查线索。", 1)
 		"seal": Past.record(run, "ning", "account", "你曾取到药账后选择封存，没有交给阿宁。", -1)
+	# Only executed decisions make structured sources for a later life.
+	if choice in ["donate_home", "deliver"]: Past.record_cycle(run, "ning", "rescue", "helped", "medicine")
+	if choice in ["keep", "deadline"]: Past.record_cycle(run, "ning", "breach", "broken", "medicine")
 
 static func ready_for_home(run: Dictionary) -> bool:
 	return run.get("explore", {}).is_empty() and not run.get("neighbor_travel", false) and not run.get("sleeping", false) and run.get("busy", {}).is_empty()

@@ -23,6 +23,7 @@ const Crisis = preload("res://scripts/core/crisis.gd")
 const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
+const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -692,6 +693,8 @@ static func trade_refresh(run: Dictionary) -> String:
 	mainline_refresh(run)
 	var identity_result := Identity.poll(run)
 	if identity_result != "": Director.note_world(run, "身份与旧世 · 工作中断", identity_result)
+	var cycle_result := Cycle.poll(run)
+	if cycle_result != "": Director.note_world(run, "轮回调查 · 旧诺与今证", cycle_result)
 	Trade.state(run)
 	var npc_result := Npcs.poll(run)
 	if npc_result != "":
@@ -722,6 +725,14 @@ static func identity_action(run: Dictionary, action: String, token: String) -> S
 	var result := Identity.act(run, action, token)
 	if result == "":
 		Director.note_choice(run, "身份与旧世 · 专属解法", str(Identity.state(run).get("work", {}).get("label", action)))
+	return result
+
+
+static func cycle_action(run: Dictionary, case_id: String, action: String, token: String) -> String:
+	trade_refresh(run)
+	var result := Cycle.act(run, case_id, action, token)
+	if result == "":
+		Director.note_choice(run, "轮回调查 · 今世选择", str(Cycle.state(run).get("last_result", action)))
 	return result
 
 
@@ -811,6 +822,9 @@ static func _check_busy(run: Dictionary) -> void:
 ## 做完了，见成果。
 static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 	match kind:
+		"cycle_inquiry":
+			var result := Cycle.complete(run, data)
+			if result != "": Director.note_choice(run, "轮回调查 · 工作完成", result)
 		"identity":
 			var result := Identity.complete(run, data)
 			if result != "": Director.note_choice(run, "身份解法完成", result)
