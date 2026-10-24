@@ -50,7 +50,8 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 	var hp_max: int = int(round(float(role_data.hp_max) * float(d.get("hp_mul", 1.0))))
 	var silver: int = int(round(float(role_data.silver) * float(d.get("silver_mul", 1.0))))
 	var run := {
-		"version": 14, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
+		"version": 15, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
+		"crisis": {},
 		"trade": {},
 		"director": {},
 		"neighbor": {},

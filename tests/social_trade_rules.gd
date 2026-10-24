@@ -233,7 +233,7 @@ func test_invalid_and_migration() -> void:
 	legacy.neighbor = {"resolution": "late"}
 	var payload := {"run": legacy.duplicate(true), "snapshots": {"1": legacy.duplicate(true)}}
 	var upgraded := Migrate.save(payload)
-	check(upgraded.run.version == 14 and upgraded.snapshots["1"].version == 14, "Run/snapshot migration not applied")
+	check(upgraded.run.version == Migrate.VERSION and upgraded.snapshots["1"].version == Migrate.VERSION, "Run/snapshot migration not applied")
 	check(upgraded.run.trade.is_empty() and upgraded.snapshots["1"].trade.is_empty(), "Legacy migration fabricated a trade history")
 	var context := Trade.context(upgraded.run)
 	check(context.actors.ning.trust == 2 and context.actors.zhou.trust == -3, "Legacy actual relations not folded into trust")

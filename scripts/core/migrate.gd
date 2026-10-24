@@ -12,12 +12,13 @@ extends RefCounted
 ##   v10：邻居求药完整链。v11：运行时三日导演。v12：前世记忆与稳定世代身份。
 ##   v13：同院的人（run.companions），老存档当成没带帮手。
 ##   v14：纸鹤往来（run.trade），旧卷仅补空账本，不追认借债和失约。
+##   v15：危机时钟（run.crisis），旧卷从当前日之后安排预兆，不追补历史。
 
 const Post = preload("res://scripts/core/post.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 
-const VERSION := 14
+const VERSION := 15
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -148,5 +149,8 @@ static func upgrade(run: Dictionary) -> Dictionary:
 	if v < 14:
 		if not run.get("trade") is Dictionary:
 			run["trade"] = {}
+	if v < 15:
+		if not run.get("crisis") is Dictionary:
+			run["crisis"] = {}
 	run.version = VERSION
 	return run
