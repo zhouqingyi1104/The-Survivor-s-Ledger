@@ -18,6 +18,7 @@ const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Companion = preload("res://scripts/core/companion.gd")
+const Trade = preload("res://scripts/core/social_trade.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -108,6 +109,7 @@ static func advance(run: Dictionary, minutes: int) -> String:
 	while left > 0:
 		if run.phase != "post":
 			return "dead"
+		trade_refresh(run)
 		if Neighbor.poll(run) != "":
 			return "event"
 		if blocked(run):
@@ -122,6 +124,7 @@ static func advance(run: Dictionary, minutes: int) -> String:
 		_tick(run, step / 60.0)
 		run.t = int(run.t) + step
 		left -= step
+		trade_refresh(run)
 		if State.check_death(run, _death_cause(run)):
 			return "dead"
 		_check_busy(run)
@@ -666,6 +669,23 @@ static func begin_day(run: Dictionary) -> void:
 	State.note(run, "%s。%s" % [w.name, w.desc])
 	for line in Defense.forecast(run):
 		State.note(run, line)
+	trade_refresh(run)
+
+
+## 纸鹤交易在本地结算；到期事实也会使尚未展示的 AI 规划失效。
+static func trade_refresh(run: Dictionary) -> String:
+	var result := Trade.poll(run)
+	if result != "":
+		Director.note_choice(run, "纸鹤往来 · 履约与期限", result)
+	return ""
+
+
+static func trade_action(run: Dictionary, actor: String, action: String, quote_id: String) -> String:
+	trade_refresh(run)
+	var result := Trade.act(run, actor, action, quote_id)
+	if result == "":
+		Director.note_choice(run, "纸鹤往来 · " + str(Trade.contact(run, actor).name), str(Trade.state(run).last_result))
+	return result
 
 
 ## 返回 "" 表示可以做事，否则是原因。

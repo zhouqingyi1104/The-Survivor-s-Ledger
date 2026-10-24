@@ -4,6 +4,7 @@ const State = preload("res://scripts/core/state.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
+const Trade = preload("res://scripts/core/social_trade.gd")
 const GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 
@@ -33,7 +34,7 @@ static func snapshot(run: Dictionary, archive: Dictionary = {}) -> Dictionary:
 		"state": {"role": str(run.role), "stock": stock, "mood": State.attr(run, "mood"),
 			"neighbor": {"stage": n.get("stage", "waiting"), "resolution": n.get("resolution", ""), "ending": n.get("ending", "")},
 			"relations": d.relations.duplicate(), "history": d.history.duplicate(true), "promises": d.promises.duplicate(true),
-			"recollections": Past.public_memories(run)}}
+			"recollections": Past.public_memories(run), "trade": Trade.context(run)}}
 	if not archive.is_empty() and not Past.daily(run):
 		result.state["archive"] = archive.duplicate()
 		result.request_id += "-m" + str(archive.get("sha256", "")).left(16)
@@ -147,6 +148,7 @@ static func choose(run: Dictionary, index: int) -> String:
 	Inv.take_all(run.home, c.get("req", {}))
 	Inv.add_all(run.home, c.get("give", {}))
 	State.add_attr(run, "mood", int(c.get("mood", 0)))
+	Trade.influence(run, str(e.actor), int(c.get("relation", 0)), "世情 · " + str(e.title))
 	d.relations[e.actor] = clampi(int(d.relations[e.actor]) + int(c.get("relation", 0)), -10, 10)
 	var result: String = c.result
 	var a: Dictionary = c.get("after", {})

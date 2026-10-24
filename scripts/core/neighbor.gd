@@ -5,6 +5,7 @@ const State = preload("res://scripts/core/state.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
+const Trade = preload("res://scripts/core/social_trade.gd")
 const DEADLINE := 3 * 1440 + 720 # Day 4, 18:00; time begins at day 1, 06:00.
 const CABINET := "封存药柜"
 const ACCOUNT := "守庄人药账"
@@ -20,6 +21,7 @@ static func state(run: Dictionary) -> Dictionary:
 
 static func record(run: Dictionary, choice: String, result: String) -> void:
 	state(run).history.append({"t": int(run.t), "choice": choice, "result": result})
+	Trade.observe_neighbor(run, choice)
 	State.note(run, "隔墙求药：" + result)
 	Director.note_choice(run, "隔墙求药 · " + choice, result)
 	match choice:

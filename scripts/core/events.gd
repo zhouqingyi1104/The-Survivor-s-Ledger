@@ -27,7 +27,9 @@ static func roll(run: Dictionary) -> String:
 	var events: Dictionary = Data.table("events")
 	for id in events:
 		var e: Dictionary = events[id]
-		if e.get("story", "") != "" or id in ["neighbor_girl", "girl_gift"]:
+		# Active correspondence replaces legacy fixed-price draws; already shown
+		# legacy events retain their original signed terms through choose().
+		if e.get("story", "") != "" or id in ["neighbor_girl", "girl_gift", "paper_crane", "paper_crane_wood"]:
 			continue
 		if run.pday < int(e.get("min_day", 1)) or run.pday > int(e.get("max_day", 999)):
 			continue
