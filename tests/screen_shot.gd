@@ -1,7 +1,7 @@
 extends Node
 ## 开发用：把某个界面摆出来拍一张，检查排版和文案。
 ## 运行：godot --path . res://tests/screen_shot.tscn -- --screen=pre --goto=rice_shop
-##   --screen=  界面 id（difficulty / roles / pre / post）
+##   --screen=  界面 id（difficulty / roles / pre / post / settings / title）
 ##   --goto=    仅 pre/post：把角色先挪到某个地点（home / rice_shop / builder …）
 ##   --pick=    仅 challenge：先勾上这几项再拍（逗号分隔，id 见 data/challenge.json）
 ##   --mode=    仅 challenge：endless / daily，拍"选了开局模式"的状态
@@ -54,7 +54,12 @@ func _ready() -> void:
 			Game.run.loc = goto
 		Game.go(which)
 	else:
-		Game.go(which)
+		Game.go("title" if which == "settings" else which)
+	# 设置弹窗：标题上开（不在游戏里，没有动态世情和回标题那两行）
+	if which == "settings":
+		Dialogs.settings(false)
+		for k in 10:
+			await get_tree().process_frame
 	# 挑战页想拍"选中态"：--pick=slay_200,extra_oil,no_door
 	if which == "challenge" and pick != "":
 		var scr: Node = _current_screen(main)
@@ -102,6 +107,17 @@ func _ready() -> void:
 	var name := which if goto == "" else "%s_%s" % [which, goto]
 	img.save_png(out.path_join("%s.png" % name))
 	print("saved ", name)
+	# 设置弹窗比一屏高：滚到底再拍一张按键区（前一张只拍得到画面三项和前几行）
+	if which == "settings":
+		var modal: Control = main._modals.get("settings")
+		if modal != null:
+			for sc in modal.find_children("*", "ScrollContainer", true, false):
+				sc.scroll_vertical = int((sc as ScrollContainer).get_v_scroll_bar().max_value)
+		for k in 30:
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(out.path_join("settings_keys.png"))
+		print("saved settings_keys")
 	get_tree().quit()
 
 

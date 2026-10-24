@@ -129,6 +129,12 @@ static func key_name(key: int) -> String:
 	return OS.get_keycode_string(int(key))
 
 
+## 第一个绑定键的显示名（HUD 提示用，一行放不下两个键）。没有绑定返回 ""。
+static func first_key_name(action: String) -> String:
+	var keys := keys_of(action)
+	return key_name(keys[0]) if not keys.is_empty() else ""
+
+
 ## 启动默认绑定的快照。boot() 里取，恢复默认时用。
 static func snapshot() -> Dictionary:
 	var out := {}

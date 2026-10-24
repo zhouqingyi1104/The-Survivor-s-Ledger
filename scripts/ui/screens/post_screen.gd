@@ -20,6 +20,7 @@ const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const InputCfg = preload("res://scripts/core/input_cfg.gd")
 
 ## 每档流速：游戏分钟 / 现实秒
 const SPEEDS := [0.0, 4.0, 10.0, 24.0]
@@ -51,6 +52,8 @@ var _menu_spot := ""
 var _hover := ""
 var _pending := Callable()
 var _pending_spot := ""
+## HUD 上的快捷键提示（动作名 → 那个显示键名的 Label）。改键后 refresh_key_hints 刷新。
+var _key_hints: Dictionary = {}
 var _acc := 0.0
 var _press_pos := Vector2.ZERO
 var _rpress := Vector2.ZERO
@@ -499,6 +502,17 @@ func _update_hover(ui_blocked: bool) -> void:
 	Outline.set_outline(world.spot_nodes.get(_hover), false)
 	_hover = id
 	Outline.set_outline(world.spot_nodes.get(_hover), true)
+
+
+## HUD 快捷键提示读 InputMap（改键后由设置弹窗调 refresh_key_hints 刷新）。
+func _hotkey_text(action: String) -> String:
+	return InputCfg.first_key_name(action)
+
+
+## 改键后刷新 HUD 上的快捷键提示，不然提示还写着旧键、骗人。
+func refresh_key_hints() -> void:
+	for action in _key_hints:
+		(_key_hints[action] as Label).text = _hotkey_text(action)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -1040,10 +1054,14 @@ func _right_top(run: Dictionary) -> void:
 	_live["npc_pending"] = journal_subtitle
 	col.add_child(journal_row)
 	col.add_child(Hud.func_row("神龛求签", "功德 %d" % int(run.merit), "签", func(): perform("shrine", "上香")))
-	col.add_child(Hud.func_row("存货", "I", "囊", Dialogs.inventory))
+	var inv_row := Hud.func_row("存货", _hotkey_text("inventory"), "囊", Dialogs.inventory)
+	_key_hints["inventory"] = inv_row.get_child(0).get_child(1)
+	col.add_child(inv_row)
 	if Post.in_night(Game.run):
 		col.add_child(Hud.func_row("夜战", "第 %d 轮" % (int(Game.run.night.round) + 1), "战", Dialogs.night_panel))
-	col.add_child(Hud.func_row("设置", "Esc", "设", func(): Dialogs.settings(true)))
+	var set_row := Hud.func_row("设置", _hotkey_text("cancel"), "设", func(): Dialogs.settings(true))
+	_key_hints["cancel"] = set_row.get_child(0).get_child(1)
+	col.add_child(set_row)
 	# 环境：院子冷不冷、今夜有没有生火
 	var env := VBoxContainer.new()
 	env.add_theme_constant_override("separation", 2)

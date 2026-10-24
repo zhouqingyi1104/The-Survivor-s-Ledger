@@ -23,6 +23,8 @@ const Mainline = preload("res://scripts/core/mainline.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
 const Opening = preload("res://scripts/core/opening.gd")
 const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
+const InputCfg = preload("res://scripts/core/input_cfg.gd")
+const VideoCfg = preload("res://scripts/core/video_cfg.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -1544,17 +1546,64 @@ func _checklist(body: VBoxContainer) -> void:
 
 const VOLUME_ROWS := [["music", "配乐"], ["sfx", "音效"], ["amb", "风声环境"]]
 
+## 改键捕获节点（常驻，active 时才收键）、正在改的那一行、各行动作当前键名标签。
+var _capture: Control
+var _rebinding: Dictionary = {}
+var _key_labels: Dictionary = {}
 
-## 设置：三条音量；在游戏里打开时还能回标题（进度已自动存档）。
+
+func _ready() -> void:
+	_capture = preload("res://scripts/ui/key_capture.gd").new()
+	_capture.captured.connect(_on_key_captured)
+	add_child(_capture)
+
+
+## 设置：画面、按键、音量；在游戏里打开时还能回标题（进度已自动存档）。
 func settings(in_game := false) -> void:
 	UI.open_modal("settings", "设置", _settings.bind(in_game), true, 560)
 
 
 func _settings(body: VBoxContainer, in_game: bool) -> void:
+	# 十七行按键加音量，720 高放不下：内容进滚动容器，底部按钮露在外面
+	var content := UI.vbox(8)
 	if in_game and not Game.run.is_empty():
 		var enabled: bool = Director.state(Game.run).enabled
-		body.add_child(UI.button("动态世情：" + ("开启" if enabled else "关闭"), func(): StoryDirector.set_enabled(not enabled)))
-		body.add_child(UI.para("根据往来与处境在后台准备后续事件；关闭后，已许下的约定仍会兑现。", 15))
+		content.add_child(UI.button("动态世情：" + ("开启" if enabled else "关闭"), func(): StoryDirector.set_enabled(not enabled)))
+		content.add_child(UI.para("根据往来与处境在后台准备后续事件；关闭后，已许下的约定仍会兑现。", 15))
+	content.add_child(UI.sep())
+	content.add_child(UI.heading("画面", 20))
+	var video := VideoCfg.read()
+	# 按钮装在行里、回调 bind 整行：GDScript 的 lambda 不能引用正在初始化的变量，
+	# 循环变量也不能直接捕获（十七行按键会全变成最后一行），一律 bind 快照 + 从行里取按钮
+	var fs_row := UI.hbox(8)
+	fs_row.add_child(UI.button("全屏：" + ("开" if bool(video.fullscreen) else "关"),
+		_toggle_video.bind("fullscreen", video, fs_row)))
+	content.add_child(fs_row)
+	var res_row := UI.hbox(8)
+	res_row.add_child(UI.button("分辨率：" + _res_text(int(video.resolution)),
+		_cycle_resolution.bind(video, res_row)))
+	content.add_child(res_row)
+	var vs_row := UI.hbox(8)
+	vs_row.add_child(UI.button("垂直同步：" + ("开" if bool(video.vsync) else "关"),
+		_toggle_video.bind("vsync", video, vs_row)))
+	content.add_child(vs_row)
+	content.add_child(UI.para("分辨率只改窗口大小，画面随之缩放；三项重启后仍然算数。", 14, UI.INK_FAINT))
+	content.add_child(UI.sep())
+	content.add_child(UI.heading("按键", 20))
+	content.add_child(UI.para("点「改键」后按新键即成；Esc 取消。一个键只归一个动作，冲突会提示给了谁。", 15))
+	_key_labels.clear()
+	for action in InputCfg.ORDER:
+		var row := UI.hbox(8)
+		row.add_child(UI.fixed_width(UI.label(InputCfg.LABELS[action], 16), 108))
+		var keys_label := UI.fixed_width(UI.label(_keys_text(action), 15, UI.INK_SOFT), 110)
+		_key_labels[action] = keys_label
+		row.add_child(keys_label)
+		row.add_child(UI.expand(UI.label("", 14)))
+		row.add_child(UI.button("改键", _start_rebind.bind(action, keys_label, row)))
+		content.add_child(row)
+	content.add_child(UI.sep())
+	content.add_child(UI.button("按键全部恢复默认", _restore_default_keys))
+	content.add_child(UI.sep())
 	for row in VOLUME_ROWS:
 		var key: String = row[0]
 		var h := UI.hbox(12)
@@ -1573,14 +1622,96 @@ func _settings(body: VBoxContainer, in_game: bool) -> void:
 		slider.drag_ended.connect(_on_volume_done.bind(key))
 		h.add_child(slider)
 		h.add_child(pct)
-		body.add_child(h)
-	body.add_child(UI.para("声音素材：Kenney、OpenGameArt、BiteMe Games（CC0）；梆子、更鼓、赶尸铃、铜锣为程序合成。", 14, UI.INK_FAINT))
+		content.add_child(h)
+	content.add_child(UI.para("声音素材：Kenney、OpenGameArt、BiteMe Games（CC0）；梆子、更鼓、赶尸铃、铜锣为程序合成。", 14, UI.INK_FAINT))
 	if in_game:
-		body.add_child(UI.sep())
+		content.add_child(UI.sep())
 		var row := UI.hbox()
 		row.add_child(UI.para("进度已自动存档，回到标题后可以续写。", 15))
 		row.add_child(UI.button("回到标题", func(): Game.go("title")))
-		body.add_child(row)
+		content.add_child(row)
+	body.add_child(UI.scroll(content, mini(460, maxi(240, int(get_viewport().get_visible_rect().size.y) - 170))))
+
+
+func _res_text(index: int) -> String:
+	var size: Array = VideoCfg.SIZES[clampi(index, 0, VideoCfg.SIZES.size() - 1)]
+	return "%d × %d" % [int(size[0]), int(size[1])]
+
+
+func _keys_text(action: String) -> String:
+	var names: Array = []
+	for key in InputCfg.keys_of(action):
+		names.append(InputCfg.key_name(key))
+	return " / ".join(names) if not names.is_empty() else "（无）"
+
+
+## 开关类画面选项：翻值、存、套窗口，再把自己按钮上的文字翻过来。
+func _toggle_video(key: String, video: Dictionary, row: HBoxContainer) -> void:
+	video[key] = not bool(video[key])
+	VideoCfg.save(video)
+	VideoCfg.apply(video)
+	var btn: Button = row.get_child(row.get_child_count() - 1)
+	var on := bool(video[key])
+	btn.text = ("全屏：" if key == "fullscreen" else "垂直同步：") + ("开" if on else "关")
+
+
+## 分辨率在三档里循环（点一下换一档，比下拉少一次点击）。
+func _cycle_resolution(video: Dictionary, row: HBoxContainer) -> void:
+	video["resolution"] = (int(video["resolution"]) + 1) % VideoCfg.SIZES.size()
+	VideoCfg.save(video)
+	VideoCfg.apply(video)
+	var btn: Button = row.get_child(row.get_child_count() - 1)
+	btn.text = "分辨率：" + _res_text(int(video["resolution"]))
+
+
+## 点「改键」：松开焦点（不然空格/回车会顺带触发按钮），等捕获节点送键来。
+func _start_rebind(action: String, keys_label: Label, row: HBoxContainer) -> void:
+	var btn: Button = row.get_child(row.get_child_count() - 1)
+	_rebinding = {"action": action, "label": keys_label, "button": btn}
+	btn.text = "按下新键…"
+	btn.disabled = true
+	get_viewport().gui_release_focus()
+	_capture.active = true
+
+
+func _on_key_captured(key: int) -> void:
+	if _rebinding.is_empty():
+		return
+	var r: Dictionary = _rebinding
+	_rebinding = {}
+	var btn: Button = r["button"]
+	var keys_label: Label = r["label"]
+	var action: String = r["action"]
+	btn.disabled = false
+	btn.text = "改键"
+	if key == KEY_ESCAPE:
+		Game.toast.emit("没改，还是原来的键。")
+		return
+	var owner := InputCfg.owner_of(key)
+	if owner != "" and owner != action:
+		Game.toast.emit("这个键已经给了「%s」，没改。" % InputCfg.LABELS.get(owner, owner))
+		return
+	if InputCfg.rebind(action, key):
+		keys_label.text = _keys_text(action)
+		_refresh_key_hints()
+
+
+## 改键后宅院 HUD 上的快捷键提示要跟着变（不然提示骗人）。
+func _refresh_key_hints() -> void:
+	var host: Node = get_tree().current_scene
+	if host == null:
+		return
+	var screen: Node = host.get("_screen")
+	if screen != null and screen.has_method("refresh_key_hints"):
+		screen.refresh_key_hints()
+
+
+func _restore_default_keys() -> void:
+	InputCfg.restore()
+	for action in _key_labels:
+		(_key_labels[action] as Label).text = _keys_text(action)
+	_refresh_key_hints()
+	Game.toast.emit("按键都恢复默认了。")
 
 
 func _on_volume(value: float, key: String, pct: Label) -> void:

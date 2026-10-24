@@ -192,6 +192,8 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 | `opening_rules` / `opening_integration` / `opening_memory` / `opening_ui` | M4可变开局15项，真实钱物/时辰/信用/NPC/首危机、固定旧世来源、每日空手/旧档/跨世边界；分别664/61/275/609检查通过，新增Node开局4项及实际Godot快照15/15通过；受影响主线窗口本批354检查通过，相关回归见[22](docs/22-variable-openings.md) |
 | `cycle_rules` / `cycle_integration` / `cycle_memory` / `cycle_ui` / `cycle_recorded` | 旧诺/失约/救助、今世计时查证、匹配NPC碎片、互斥后果和固定新约；本批266/73/90/599/19检查通过，Node轮回5项、实际Godot快照8/8，前世窗口回归51检查；真实ARK low 1次及无网络回放，慢请求边界见[23](docs/23-cycle-inquiry.md) |
 | `player_animation` / `title_input` | 真实输入能驱动移动与动画；标题页按钮能被鼠标点到 |
+| `input_settings` / `settings_ui` | 按键重绑与画面选项：默认绑定合同、改绑/冲突/取消/恢复默认、cfg 往返与脏数据；设置弹窗的真实鼠标 + 捕获键全流程（`settings_ui` 要窗口模式跑，画面选项会真的改窗口） |
+| `difficulty_ui` | 选难度界面整张卡点得中、切得动、不叠层（窗口模式，真实鼠标路由） |
 | `city_routes` | 城里任意两地之间的走法 |
 | `sky_clarity` | 新旧雾浓度在同一机位下的对比图 |
 
@@ -202,7 +204,7 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 - `tests/play_check.tscn`：在真实界面里体检宅院——导航网格覆盖图、点地面走路、打水后能否接着走、真实鼠标的点击 / 右键拖动 / 滚轮、遮挡截图、不锁帧的帧时间和绘制调用。可以读一份存档的副本（只读不回写）：`-- --save=<路径> --shots=<截图目录>`。
 - `tests/anim_speed.gd`：量走 / 跑动作原本的步速，人物按实际速度挑步态、调播放速度就靠它量的数。
 - `tests/city_shots.tscn`：逐个拍城里的铺子，检查模型朝向和比例。
-- `tests/screen_shot.tscn`：把某个 2D 界面摆出来拍一张，检查排版和文案。
+- `tests/screen_shot.tscn`：把某个 2D 界面摆出来拍一张，检查排版和文案。`--screen=` 支持 difficulty / roles / pre / post / settings / title；`settings` 会在标题上开设置弹窗，并滚到底再拍一张按键区。
 - `tests/hero_shot.tscn` / `check_hero.tscn`：从几个角度拍主角，逐项报挂件在不在、挂在哪。
 - `tests/inspect_assets.gd` / `inspect_model.gd`：打印导入后素材的节点、骨骼、尺寸和自带动作。
 

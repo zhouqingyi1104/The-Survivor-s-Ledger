@@ -11,6 +11,7 @@ const CamRig = preload("res://scripts/world/cam_rig.gd")
 const K = preload("res://scripts/world/kit.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const InputCfg = preload("res://scripts/core/input_cfg.gd")
 
 ## 这个界面上弹的窗用夜色（main.gd 看这个）
 var dark_ui := true
@@ -109,11 +110,13 @@ func _update_hint() -> void:
 		_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 70)
 		return
 	_hint.visible = _near != -1
+	# 键位提示读 InputMap：玩家改过 interact 就显示新键，不写死 [E]
+	var ek := InputCfg.first_key_name("interact")
 	if _near == -2:
-		_hint_label.text = "[E] 回家（背着 %.1f 斤）" % Inv.weight(ex.bag)
+		_hint_label.text = "[%s] 回家（背着 %.1f 斤）" % [ek, Inv.weight(ex.bag)]
 	elif _near >= 0 and _near < ex.spots.size():
 		var s: Dictionary = ex.spots[_near]
-		_hint_label.text = "[E] 翻找 · %s" % s.name if not s.done else "%s · 已经翻过了" % s.name
+		_hint_label.text = "[%s] 翻找 · %s" % [ek, s.name] if not s.done else "%s · 已经翻过了" % s.name
 	_hint.reset_size()
 	_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 70)
 
