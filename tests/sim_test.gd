@@ -1357,6 +1357,9 @@ func test_mode() -> void:
 	var with_end := State.new_run("scholar", State.new_meta(), 1, "normal", [], [], [])
 	with_end.phase = "post"
 	with_end.pday = 20
+	# t 要跟 pday 对齐：第 20 夜天亮时 t = pday × 一天分钟数，主线（Mainline.finish_dawn）
+	# 按 t 算天数，只改 pday 会被当成"天才第 1 天"，进不了结局
+	with_end.t = int(with_end.pday) * Post.DAY
 	with_end.dawn_due = true
 	Post.ack_dawn(with_end)
 	check(str(with_end.phase) == "ending", "寻常局第 20 日天亮该进结局（%s）" % str(with_end.phase))

@@ -265,6 +265,9 @@ func run_flow() -> void:
 	# 否则后面的死亡 / 翻页断言会撞上"第 21 日、无尽模式"这个不一样的局面。
 	var keep: Dictionary = Game.run.duplicate(true)
 	Game.run.pday = 20
+	# t 要跟 pday 对齐：第 20 夜天亮时 t = pday × 一天分钟数，主线（Mainline.finish_dawn）
+	# 按 t 算天数，只改 pday 会被当成"天才第 3 天"，进不了结局
+	Game.run.t = int(Game.run.pday) * Post.DAY
 	Game.run.dawn_due = true
 	Post.ack_dawn(Game.run)
 	check(Game.run.phase == "ending", "第 20 日天亮没转结局：%s" % str(Game.run.phase))
