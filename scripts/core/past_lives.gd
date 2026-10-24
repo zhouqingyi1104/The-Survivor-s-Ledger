@@ -4,6 +4,46 @@ const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过�
 const KEEP_LIVES := 8
 const KEEP_FACTS := 12
 const MAX_AWAKENINGS := 2
+const TRADE_GOODS := ["rice", "firewood", "wood", "water", "nails", "mugwort", "flatbread"]
+
+static func _trade_integer(value, low: int, high: int) -> bool:
+	return (value is int or value is float) and is_finite(float(value)) and float(value) == floorf(float(value)) and value >= low and value <= high
+
+static func _trade_goods(value) -> bool:
+	if not value is Dictionary or value.is_empty() or value.size() > 3: return false
+	for item in value:
+		if not item in TRADE_GOODS or not _trade_integer(value[item], 1, 8): return false
+	return true
+
+static func _trade_commitment(value, debt: bool) -> Dictionary:
+	if not value is Dictionary or not value.get("actor", "") in ACTORS: return {}
+	if not value.get("id") is String or value.id.strip_edges().is_empty() or value.id.length() > 80: return {}
+	if not _trade_goods(value.get("req")) or not _trade_goods(value.get("give")): return {}
+	if not _trade_integer(value.get("due_day"), 1, 100002) or not _trade_integer(value.get("due_t"), 0, 144003000): return {}
+	if int(value.due_t) != (int(value.due_day) - 1) * 1440 + (720 if debt else 120): return {}
+	if debt and not value.get("overdue") is bool: return {}
+	var out := {"id": value.id, "actor": value.actor, "req": value.req.duplicate(), "give": value.give.duplicate(), "due_day": int(value.due_day), "due_t": int(value.due_t)}
+	if debt: out["overdue"] = value.overdue
+	return out
+
+## Copy only bounded final facts; never initialize a ledger or depend on Trade/State.
+static func trade_snapshot(value) -> Dictionary:
+	if not value is Dictionary or value.get("schema") != 1 or not value.get("actors") is Dictionary: return {}
+	var actors := {}
+	for actor in ACTORS:
+		var person = value.actors.get(actor)
+		if not person is Dictionary or not _trade_integer(person.get("trust"), -5, 5) or not _trade_integer(person.get("favors"), 0, 3) or not _trade_integer(person.get("breaches"), 0, 3): return {}
+		if not _trade_integer(person.get("breach_total"), int(person.breaches), 100000): return {}
+		actors[actor] = {"trust": int(person.trust), "favors": int(person.favors), "breaches": int(person.breaches), "breach_total": int(person.breach_total)}
+	if not value.get("debt") is Dictionary or not value.get("aid") is Array or value.aid.size() > 3: return {}
+	var debt := _trade_commitment(value.debt, true) if not value.debt.is_empty() else {}
+	if not value.debt.is_empty() and debt.is_empty(): return {}
+	var aid := []
+	for promise in value.aid:
+		var confirmed := _trade_commitment(promise, false)
+		if confirmed.is_empty(): return {}
+		aid.append(confirmed)
+	return {"schema": 1, "actors": actors, "debt": debt, "aid": aid}
 
 static func fresh_book() -> Dictionary:
 	return {"version": 1, "count": 0, "lives": [], "sealed_ids": []}
@@ -94,6 +134,8 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 		"outcome": "死亡" if run.get("phase") == "dead" else ("劫满" if run.get("phase") == "ending" else "合卷"),
 		"cause": str(run.get("death_cause", "")).left(160), "waves": int(run.get("waves_survived", 0)), "kills": int(run.get("kills", 0)),
 		"choices": history.slice(maxi(0, history.size() - 8)), "relations": run.get("director", {}).get("relations", {}).duplicate()}
+	var trade := trade_snapshot(run.get("trade", {}))
+	if not trade.is_empty(): summary["trade"] = trade
 	b.lives.append({"id": p.id, "life": ordinal, "facts": facts, "summary": summary})
 	b.sealed_ids.append(p.id)
 	b.count = ordinal

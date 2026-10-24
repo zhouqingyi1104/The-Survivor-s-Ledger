@@ -1,6 +1,7 @@
 extends RefCounted
 ## Human-readable runtime archive. Planning reads this file, not a renamed JSON copy.
 const Past = preload("res://scripts/core/past_lives.gd")
+const Data = preload("res://scripts/core/data.gd")
 const MAX_CHARS := 8000
 const ROLES := {"scholar": "落第书生", "escort": "镖局趟子手", "herbalist": "药铺学徒", "watchman": "打更人"}
 
@@ -28,9 +29,23 @@ static func render(meta: Dictionary) -> String:
 			for choice in summary.choices:
 				section += "- 第 %d 日 · %s：%s\n" % [int(choice.get("day", 0)), line(choice.get("title", ""), 40), line(choice.get("result", ""), 120)]
 		if not summary.get("relations", {}).is_empty():
-			section += "\n### 结算时人情\n\n"
+			section += "\n### 结算时世情关系\n\n"
 			for actor in Past.ACTORS:
 				if summary.relations.has(actor): section += "- %s：%+d\n" % [Past.ACTORS[actor], int(summary.relations[actor])]
+		var trade := Past.trade_snapshot(summary.get("trade", {}))
+		if not trade.is_empty():
+			section += "\n### 旧世交易结算\n\n以下为旧世合卷时账本；旧债和待收回礼不带入新世，不是本世债务或可领取奖励。\n\n"
+			for actor in Past.ACTORS:
+				var person: Dictionary = trade.actors[actor]
+				section += "- %s：信任 %+d；欠你的人情 %d；未化解失约 %d；累计失约 %d。\n" % [Past.ACTORS[actor], int(person.trust), int(person.favors), int(person.breaches), int(person.breach_total)]
+			if trade.debt.is_empty():
+				section += "- 未清旧债：无。\n"
+			else:
+				var debt: Dictionary = trade.debt
+				section += "- 未清旧债：欠%s%s；约定第 %d 日 18:00 前偿还；%s。已赊取：%s。\n" % [Past.ACTORS[debt.actor], Data.describe_items(debt.req), int(debt.due_day), "当时已逾期" if debt.overdue else "当时尚未逾期", Data.describe_items(debt.give)]
+			if trade.aid.is_empty(): section += "- 待收旧世回礼：无。\n"
+			for gift in trade.aid:
+				section += "- 待收旧世回礼：%s约定第 %d 日 08:00 送来%s；你已交出%s。\n" % [Past.ACTORS[gift.actor], int(gift.due_day), Data.describe_items(gift.give), Data.describe_items(gift.req)]
 		section += "\n"
 		if text.to_utf16_buffer().size() + section.to_utf16_buffer().size() > (MAX_CHARS - 100) * 2:
 			text += "较早轮回的更多细节已按篇幅省略；上文优先保留最近完结的一轮。\n"
