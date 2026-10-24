@@ -18,6 +18,7 @@ const Outline = preload("res://scripts/world/outline.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
+const Crisis = preload("res://scripts/core/crisis.gd")
 
 ## 每档流速：游戏分钟 / 现实秒
 const SPEEDS := [0.0, 4.0, 10.0, 24.0]
@@ -361,7 +362,11 @@ func advance(mins: int) -> void:
 	var busy_before := Post.is_busy(run)
 	var sleep_before: bool = run.sleeping
 	var hour_before := Post.clock(run) / 60
+	var crisis_before := str(Crisis.view(run).get("id", ""))
 	var stop := Post.advance(run, mins)
+	if run.phase == "post" and str(Crisis.view(run).get("id", "")) != crisis_before:
+		# 首次公开及下一场预兆都需要搭卡片；不能依赖碰巧出现随机事件。
+		Game.refresh()
 	if stop == "raid" and not run.raid_report.is_empty():
 		var r: Dictionary = run.raid_report
 		Game.toast.emit("溃兵夜袭：" + ("被挡在门外" if r.repelled else "破门抢走了" + Data.describe_items(r.stolen)))
@@ -599,7 +604,7 @@ func actions_for(id: String) -> Array:
 				tend = "还没种东西"
 			return [["浇水 · 收成（45 分钟）", _act(func(): return Post.act_garden(Game.run)), tend], ["播种 / 查看菜畦…", Dialogs.garden, ""]]
 		"well":
-			return [["打水（15 分钟）", _act(func(): return Post.draw_water(Game.run)), "今天已经打过了" if run.well_used else Post.can_act(run, 2)]]
+			return [["打水（15 分钟）", _act(func(): return Post.draw_water(Game.run)), Post.water_block(run)]]
 		"bed":
 			var sleep_block := Post.can_act(run, 0)
 			if sleep_block == "" and not Post.is_night(run) and State.attr(run, "energy") >= 30:
@@ -818,9 +823,44 @@ func build_hud() -> void:
 	_right_bottom(run)
 	_left_bottom(run)
 	_center_bottom(run)
+	_crisis_hud(run)
 	_update_live()
 	_update_crops()
 	_scene_audio(run)
+
+
+func _crisis_hud(run: Dictionary) -> void:
+	var view := Crisis.view(run)
+	if view.is_empty(): return
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	var head := HBoxContainer.new()
+	head.add_child(Hud.title("风声 · " + str(view.title), 17, Hud.GOLD))
+	head.add_child(UI.spacer())
+	var entry := Hud.button("查验 / 筹备", Dialogs.crisis, false, "风声与危机 · 查验与筹备", 13)
+	entry.set_meta("crisis_entry", true)
+	head.add_child(entry)
+	col.add_child(head)
+	var sign := Hud.text(str(view.sign), 13, Hud.TEXT)
+	sign.custom_minimum_size.x = 316
+	sign.clip_text = true
+	sign.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	sign.tooltip_text = str(view.sign)
+	col.add_child(sign)
+	var source := Hud.text("%s · %s" % [str(view.source), Dialogs.crisis_status(view)], 13, Hud.SUB)
+	source.clip_text = true
+	source.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	col.add_child(source)
+	_live["crisis_source"] = source
+	var countdown := Hud.text(Dialogs.crisis_clock_text(view), 15, Hud.RED if str(view.stage) == "impact" else Hud.CYAN, true)
+	col.add_child(countdown)
+	_live["crisis_countdown"] = countdown
+	_live["crisis_stage"] = str(view.stage)
+	var panel := Hud.panel(col)
+	panel.name = "CrisisHUDCard"
+	panel.custom_minimum_size.x = 340
+	hud.add_child(panel)
+	Hud.pin(panel, Control.PRESET_CENTER_TOP, 14)
 
 
 func _left_top(run: Dictionary) -> void:
@@ -1039,7 +1079,7 @@ func _quick_actions(run: Dictionary) -> Array:
 			q.append(["吃 " + Data.item_name(best), func(): Dialogs._use(best), true])
 	if run.plague and Inv.count(run.home, "plague_powder") > 0:
 		q.append(["服 避瘟散", func(): Dialogs._use("plague_powder"), true])
-	if not run.well_used and not Post.is_night(run):
+	if Post.water_block(run) == "" and not Post.is_night(run):
 		q.append(["打水", func(): perform("well", "打水"), false])
 	if Post.is_night(run) and not run.sleeping:
 		q.append(["就寝", func(): perform("bed", "就寝"), false])
@@ -1113,6 +1153,13 @@ func _update_live() -> void:
 		return
 	if _live.has("neighbor"):
 		(_live.neighbor as Label).text = Neighbor.summary(run)
+	if _live.has("crisis_countdown"):
+		var crisis_view := Crisis.view(run)
+		(_live.crisis_countdown as Label).text = Dialogs.crisis_clock_text(crisis_view)
+		(_live.crisis_source as Label).text = "%s · %s" % [str(crisis_view.get("source", "")), Dialogs.crisis_status(crisis_view)]
+		if str(crisis_view.get("stage", "")) != str(_live.crisis_stage):
+			_live.crisis_stage = str(crisis_view.get("stage", ""))
+			(_live.crisis_countdown as Label).add_theme_color_override("font_color", Hud.RED if _live.crisis_stage == "impact" else (Hud.GREEN if _live.crisis_stage == "resolved" else Hud.CYAN))
 	if _live.has("time"):
 		(_live.time as Label).text = "%s  %s" % [Post.shichen(run), Post.clock_text(run)]
 	if _live.has("dial"):

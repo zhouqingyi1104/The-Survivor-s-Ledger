@@ -16,6 +16,7 @@ const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 const Trade = preload("res://scripts/core/social_trade.gd")
+const Crisis = preload("res://scripts/core/crisis.gd")
 
 var _trade_actor := "ning"
 
@@ -95,12 +96,92 @@ func _journal(body: VBoxContainer) -> void:
 	body.add_child(UI.para(Neighbor.summary(_run()), 17))
 	body.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
 	body.add_child(UI.button("纸鹤往来 · 交易与欠账", social_trade))
+	body.add_child(UI.button("风声与危机 · 查验与筹备", crisis))
 	var lines: Array = _run().get("log", [])
-	var log_height := mini(360, maxi(160, int(get_viewport().get_visible_rect().size.y) - 330 - d.promises.size() * 34))
+	var log_height := mini(360, maxi(160, int(get_viewport().get_visible_rect().size.y) - 420 - d.promises.size() * 34))
 	var s := UI.scroll(UI.log_view(lines, lines.size(), 17), log_height)
 	var bar := s.get_v_scroll_bar()
 	bar.changed.connect(func(): s.scroll_vertical = int(bar.max_value))
 	body.add_child(s)
+
+
+func crisis() -> void:
+	Game.act(func(): return Post.crisis_refresh(Game.run))
+	UI.open_modal("crisis", "风声与危机 · 查验与筹备", _crisis, true, 850)
+
+
+func crisis_status(view: Dictionary) -> String:
+	var certainty: String = {"unknown": "尚未核实", "real": "已核实 · 属实", "false": "已核实 · 虚惊"}.get(str(view.get("confirmed", "unknown")), "尚未核实")
+	if str(view.get("stage", "")) == "impact": return "危机已发生 · " + certainty
+	if str(view.get("stage", "")) == "resolved":
+		return {"averted": "已结案 · 提前防住", "false_alarm": "已结案 · 虚惊", "endured": "已结案 · 影响结束", "repaired": "已结案 · 补救完成"}.get(str(view.get("outcome", "")), "已结案")
+	return "预兆 · " + certainty
+
+
+func crisis_clock_text(view: Dictionary) -> String:
+	if view.is_empty(): return "暂无公开预兆"
+	if str(view.get("stage", "")) == "resolved": return crisis_status(view)
+	var target := int(view.get("end_t", 0)) if str(view.get("stage", "")) == "impact" else int(view.get("impact_t", 0))
+	var left := maxi(0, target - int(_run().get("t", 0)))
+	var duration := "%d天%02d:%02d" % [left / 1440, (left % 1440) / 60, left % 60] if left >= 1440 else "%02d:%02d" % [left / 60, left % 60]
+	var prefix := "影响结束还有 " if str(view.get("stage", "")) == "impact" else ("预计发生还有 " if str(view.get("confirmed", "")) == "real" else "可能发生还有 ")
+	return prefix + duration
+
+
+func _crisis_when(t: int) -> String:
+	return "第 %d 日 %s" % [t / 1440 + 1, _trade_clock(t)]
+
+
+func _crisis(body: VBoxContainer) -> void:
+	var run := _run()
+	var view := Crisis.view(run)
+	var content := UI.vbox(10)
+	if view.is_empty():
+		content.add_child(UI.para("近日尚无公开预兆。新的风声会出现在宅院上方；断网也照常推进，不需要等人回信。", 18))
+	else:
+		content.add_child(UI.label(str(view.title) + " · " + crisis_status(view), 20, UI.GOLD))
+		content.add_child(UI.para("预兆：%s\n线索来源：%s" % [str(view.sign), str(view.source)], 17))
+		content.add_child(UI.para(crisis_clock_text(view), 19, UI.CINNABAR if str(view.stage) == "impact" else UI.GOLD))
+		content.add_child(UI.para("预告发生：%s\n若成真的自然恢复：%s" % [_crisis_when(int(view.impact_t)), _crisis_when(int(view.end_t))], 16))
+		var evidence := str(view.get("evidence", ""))
+		content.add_child(UI.para("已知证据：" + (evidence if evidence != "" else "尚未取得证据，不能确定这则风声是否属实。"), 17, UI.JADE if evidence != "" else UI.INK_SOFT))
+		if str(view.get("effect", "")) != "":
+			content.add_child(UI.para(str(view.effect), 16))
+		var responses := {"": "尚未选择", "prepare": "自行筹备", "aid": "请线人帮忙", "ignore": "本次观望（已放弃后续提前处置机会）", "emergency": "事后补救"}
+		content.add_child(UI.para("本场应对：%s%s" % [responses.get(str(view.get("response", "")), "已记录"), " · 防护已完成" if bool(view.get("protected", false)) else ""], 16))
+		var work: Dictionary = view.get("work", {})
+		if not work.is_empty():
+			content.add_child(UI.para("正在执行：%s · 预计 %s 完成。材料已经付出，工作完成才生效。" % [{"investigate": "核实风声", "prepare": "提前处置", "aid": "请线人帮忙", "emergency": "事后补救"}.get(str(work.get("action", "")), "危机事务"), _crisis_when(int(work.end_t))], 17, UI.GOLD))
+		if str(view.get("last_result", "")) != "":
+			content.add_child(UI.para("最新危机记录：" + str(view.last_result), 17, UI.JADE))
+		for option in Crisis.options(run):
+			var card := UI.vbox(4)
+			card.add_child(UI.para(str(option.hint), 16))
+			var block := str(option.block)
+			if block != "": card.add_child(UI.para(block, 15, UI.CINNABAR))
+			var button := UI.button(str(option.text), _crisis_do.bind(str(option.id), str(view.token)), block != "", block)
+			button.set_meta("crisis_action", str(option.id))
+			card.add_child(button)
+			content.add_child(UI.panel(card))
+	content.add_child(UI.sep())
+	content.add_child(UI.label("危机记录 · 最近十二条", 19, UI.GOLD))
+	var history: Array = Crisis.state(run).get("history", [])
+	if history.is_empty(): content.add_child(UI.para("尚无公开危机或实际处置记录。", 16))
+	var titles := {"well_freeze": "井口冻裂", "fuel_shortage": "运柴中断", "herb_shortage": "药草挤兑"}
+	for k in range(history.size() - 1, maxi(-1, history.size() - 13), -1):
+		var entry: Dictionary = history[k]
+		content.add_child(UI.para("第 %d 日 · %s · %s：%s" % [int(entry.day), titles.get(str(entry.kind), "风声"), Trade.ACTORS.get(str(entry.actor), "线人"), str(entry.result)], 15))
+	var scroll := UI.scroll(content, mini(450, maxi(200, int(get_viewport().get_visible_rect().size.y) - 220)))
+	scroll.name = "CrisisDetailsScroll"
+	body.add_child(scroll)
+
+
+func _crisis_do(action: String, token: String) -> void:
+	var result = Game.act(func(): return Post.crisis_action(Game.run, action, token))
+	if typeof(result) == TYPE_STRING and result == "" and Post.is_busy(Game.run):
+		# 劫余录也会暂停宅院时钟；两层都合上，才能让实际工作推进。
+		UI.close_modal("crisis")
+		UI.close_modal("journal")
 
 
 func social_trade() -> void:
