@@ -2,6 +2,7 @@ extends "res://scripts/ui/screens/screen_base.gd"
 ## 选身份。对应原版 SelectPeople。
 
 const Pre = preload("res://scripts/core/pre.gd")
+const Identity = preload("res://scripts/core/identity_paths.gd")
 
 
 func build() -> void:
@@ -40,11 +41,17 @@ func _card(id: String, r: Dictionary) -> Control:
 	v.add_child(UI.label("【%s】" % r.trait, 19, UI.CINNABAR))
 	v.add_child(UI.para(r.trait_desc, 16))
 	v.add_child(UI.para("随身：" + Data.describe_items(r.items), 16, UI.INK_FAINT))
+	var identity := Identity.preview(id, Game.meta)
+	v.add_child(UI.para("身份解法：" + str(identity.get("headline", "")), 15, UI.DAI))
+	var source_count: int = identity.get("inheritance", []).size()
+	v.add_child(UI.para("旧世经验：%d 条可带入；开局后在劫余录查看来源与代价。" % source_count if source_count > 0 else "旧世经验：尚无符合条件的经历，仍有本职解法。", 15, UI.INK_SOFT))
 	var gap := Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(gap)
 	if unlocked:
-		v.add_child(UI.seal_button("就是他了", func(): Game.pick_difficulty(id)))
+		var pick := UI.seal_button("就是他了", func(): Game.pick_difficulty(id))
+		pick.set_meta("identity_role", id)
+		v.add_child(pick)
 	else:
 		v.add_child(UI.button(r.get("unlock_desc", "未解锁"), func(): pass, true))
 	var p := UI.panel(v)

@@ -20,6 +20,7 @@ const Crisis = preload("res://scripts/core/crisis.gd")
 const Npc = preload("res://scripts/core/npc_autonomy.gd")
 const NpcDialogue = preload("res://scripts/core/npc_dialogue.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const Identity = preload("res://scripts/core/identity_paths.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -98,6 +99,9 @@ func _journal(body: VBoxContainer) -> void:
 	for promise in d.promises:
 		content.add_child(UI.para("第 %d 日 · %s 约定送来 %s" % [promise.day, Director.ACTORS[promise.actor], Director.describe(promise.give)], 16))
 	content.add_child(UI.button("尸劫来历 · 调查与出路", mainline))
+	var identity_entry := UI.button("身份与旧世 · 专属解法", identity_paths)
+	identity_entry.set_meta("identity_entry", "journal")
+	content.add_child(identity_entry)
 	content.add_child(UI.button("前世记忆 · 查看旧世与觉醒", past_lives))
 	content.add_child(UI.para(Neighbor.summary(_run()), 17))
 	content.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
@@ -114,6 +118,79 @@ func _journal(body: VBoxContainer) -> void:
 	body.add_child(scroll)
 
 
+func identity_paths() -> void:
+	Game.act(func(): return Post.trade_refresh(Game.run))
+	for key in ["journal", "mainline", "past_lives"]: UI.close_modal(key)
+	UI.open_modal("identity", "身份与旧世 · 专属解法", _identity_paths, true, 860)
+
+
+static func _identity_inheritance(sources: Array) -> String:
+	var labels := {"sealed_lamps": "曾完成七灯封阵", "escaped_city": "曾实际离城", "gave_medicine": "曾赠药救邻", "returned_evidence": "曾带回义庄证物"}
+	var parts := PackedStringArray()
+	for source in sources:
+		if source is Dictionary and labels.has(str(source.get("tag", ""))):
+			parts.append("第 %d 世 · %s" % [int(source.get("source_life", 0)), str(labels[source.tag])])
+	return "；".join(parts)
+
+
+func _identity_paths(body: VBoxContainer) -> void:
+	var run := _run()
+	var view := Identity.view(run)
+	var content := UI.vbox(10)
+	content.add_child(UI.label(str(view.get("role_name", "本世身份")) + " · " + str(view.get("title", "专属解法")), 22, UI.GOLD))
+	content.add_child(UI.para(str(view.get("summary", "")), 17))
+	var sources := _identity_inheritance(view.get("inheritance", []))
+	content.add_child(UI.para("本世带入的经验：" + (sources if sources != "" else "尚无符合条件的旧世经历。"), 16, UI.JADE))
+	content.add_child(UI.para("旧世经验属于你自己的记忆；邻人仍只知道自己已经觉醒的片段。本世调查和返程不能省略。", 15, UI.INK_SOFT))
+	var story := UI.button("查看本世调查目标与出路", _identity_story)
+	story.set_meta("identity_story", true)
+	content.add_child(story)
+	var work: Dictionary = view.get("work", {})
+	if not work.is_empty():
+		var remaining := maxi(0, int(work.get("end_t", 0)) - int(run.get("t", 0)))
+		content.add_child(UI.para("正在执行：%s · 还需 %d 分钟。完工才生效，中断不退材料。" % [str(work.get("label", "身份解法")), remaining], 17, UI.GOLD))
+	for option in view.get("options", []):
+		var card := UI.vbox(5)
+		card.add_child(UI.para(str(option.get("hint", "")), 16))
+		card.add_child(UI.para("行动与代价：" + str(option.get("cost_text", "")), 16, UI.GOLD))
+		var block := str(option.get("block", ""))
+		if block != "": card.add_child(UI.para(block, 15, UI.CINNABAR))
+		var button := UI.button(str(option.get("text", option.id)), _identity_do.bind(str(option.id), str(view.get("token", "")), str(Past.state(run).get("id", ""))), block != "", block)
+		button.set_meta("identity_action", str(option.id))
+		card.add_child(button)
+		content.add_child(UI.panel(card))
+	var intel := str(view.get("intel", ""))
+	if intel != "":
+		var intel_details := UI.vbox(5)
+		intel_details.name = "IdentityIntel"
+		intel_details.add_child(UI.label("更路情报 · 真实尸潮", 19, UI.GOLD))
+		intel_details.add_child(UI.para(intel, 16))
+		for line in Post.identity_intel(run): intel_details.add_child(UI.para(str(line), 16, UI.JADE))
+		content.add_child(intel_details)
+	content.add_child(UI.sep())
+	content.add_child(UI.label("本世身份选择记录", 19, UI.GOLD))
+	var history: Array = view.get("history", [])
+	if history.is_empty(): content.add_child(UI.para("尚未作出身份选择。完成本世义庄取证并返宅后，再决定如何处置；公共断运和抄录仍可选。", 16))
+	for k in range(history.size() - 1, -1, -1):
+		var entry: Dictionary = history[k]
+		content.add_child(UI.para("第 %d 日 %s · %s" % [int(entry.get("day", 0)), _trade_clock(int(entry.get("t", 0))), str(entry.get("result", ""))], 15))
+	var scroll := UI.scroll(content, mini(470, maxi(210, int(get_viewport().get_visible_rect().size.y) - 210)))
+	scroll.name = "IdentityDetailsScroll"
+	body.add_child(scroll)
+
+
+func _identity_do(action: String, token: String, life: String) -> void:
+	if Game.run.is_empty() or str(Past.state(Game.run).get("id", "")) != life: return
+	var result = Game.act(func(): return Post.identity_action(Game.run, action, token))
+	if typeof(result) == TYPE_STRING and result == "" and Post.is_busy(Game.run):
+		for key in ["identity", "journal", "mainline", "past_lives"]: UI.close_modal(key)
+
+
+func _identity_story() -> void:
+	UI.close_modal("identity")
+	mainline()
+
+
 func mainline() -> void:
 	Game.act(func(): return Post.trade_refresh(Game.run))
 	UI.open_modal("mainline", "尸劫来历 · 调查与出路", _mainline, true, 860)
@@ -126,6 +203,9 @@ func _mainline(body: VBoxContainer) -> void:
 	content.add_child(UI.label(str(view.get("title", "尸劫来历")), 22, UI.GOLD))
 	content.add_child(UI.para("当前目标：" + str(view.get("goal", "暂守宅院")), 19))
 	content.add_child(UI.para(str(view.get("summary", "")), 17))
+	var identity_entry := UI.button("身份与旧世 · 查看专属解法", identity_paths)
+	identity_entry.set_meta("identity_entry", "mainline")
+	content.add_child(identity_entry)
 	var map_entry := UI.button("外出地点 · 查看路线与封锁", _mainline_map)
 	map_entry.set_meta("mainline_map", true)
 	content.add_child(map_entry)
@@ -495,6 +575,12 @@ func _past_lives(body: VBoxContainer) -> void:
 	if Past.daily(run):
 		body.add_child(UI.para("每日一局不唤醒或归档人物前世记忆，保持同日条件一致。", 16, UI.GOLD))
 	var content := UI.vbox(10)
+	content.add_child(UI.label("本世带入的身份经验", 21, UI.GOLD))
+	var sources := _identity_inheritance(Identity.view(run).get("inheritance", []))
+	content.add_child(UI.para(sources if sources != "" else "本世尚未带入符合条件的身份经验。只有真实发生并归档的经历才会解锁新解法。", 16))
+	var identity_entry := UI.button("身份与旧世 · 查看经验能解开的选择", identity_paths)
+	identity_entry.set_meta("identity_entry", "past_lives")
+	content.add_child(identity_entry)
 	content.add_child(UI.label("本世觉醒", 21, UI.GOLD))
 	var awakened := Past.public_memories(run)
 	if awakened.is_empty():
@@ -707,9 +793,15 @@ func _build(body: VBoxContainer) -> void:
 	for cid in crafts:
 		var c: Dictionary = crafts[cid]
 		var h := UI.hbox(10)
-		h.add_child(UI.expand(UI.para("%s：%s　用料：%s" % [c.name, c.desc, req_text(run.home, c["in"])], 16, UI.INK)))
+		var info := UI.vbox(3)
+		UI.expand(info)
+		info.add_child(UI.para("%s：%s\n用料：%s　产出：%s" % [c.name, c.desc, req_text(run.home, c["in"]), Data.describe_items(c.out)], 16, UI.INK))
 		var block := Post.craft_block(run, cid)
-		_action(h, "%s（一个时辰）" % str(c.get("verb", "做")), func(): _start("build", func(): return Post.act_craft(Game.run, cid)), block)
+		if block != "": info.add_child(UI.para(block, 15, UI.CINNABAR))
+		h.add_child(info)
+		var craft_button := UI.button("%s（60 分钟 · 精力 6）" % str(c.get("verb", "做")), func(): _start("build", func(): return Post.act_craft(Game.run, cid)), block != "", block)
+		craft_button.set_meta("identity_craft", str(cid))
+		h.add_child(craft_button)
 		v.add_child(h)
 	v.add_child(UI.sep())
 	v.add_child(UI.label("修缮　用木料 1 根（有 %d），没木料时拆 2 捆柴顶上（有 %d），耐久 +%d" % [
