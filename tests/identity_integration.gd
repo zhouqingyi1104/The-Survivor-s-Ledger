@@ -227,6 +227,16 @@ func test_migration_and_time() -> void:
 	action(plain, "copy")
 	finish_work(plain)
 	check(Post.identity_action(plain, "scholar_collate", str(Identity.view(plain).token)) != "", "Identity stacked after ordinary copy")
+	var meta := State.new_meta()
+	var prior := State.new_run("herbalist", meta, 818)
+	at(prior, 2)
+	Past.record(prior, "ning", "medicine", "你曾实际把药交给阿宁。", 1)
+	check(Past.archive(prior, meta), "Could not seal actual medicine source")
+	Game.meta = meta
+	Game.new_game("herbalist", "normal", [], [], [], false, true)
+	check(Past.daily(Game.run) and Identity.state(Game.run).inherited.is_empty(), "Real Game.new_game late daily flag retained private legacy sources")
+	Game.new_game("herbalist", "normal", [], [], [], false, false)
+	check(not Identity.state(Game.run).inherited.is_empty(), "Ordinary real new_game lost the same verified legacy")
 
 func _ready() -> void:
 	Game.no_save = true

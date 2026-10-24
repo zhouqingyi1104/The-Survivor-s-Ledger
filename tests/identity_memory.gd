@@ -192,6 +192,54 @@ func test_identity_snapshot_and_rewind(meta: Dictionary) -> void:
 	check(not restored.is_empty() and Identity.state(restored).chosen == "" and Identity.state(restored).learned.is_empty(), "Rewind retained an undone identity capability")
 	check(not Archive.render(meta).contains("本世真实完工"), "Unsealed discarded identity entered old-life Memory")
 
+func test_persistent_experience_index() -> void:
+	var meta := State.new_meta()
+	var old_run := State.new_run("herbalist", meta, 918)
+	var medicine := medicine_life(meta)
+	var evidence := evidence_life(meta, "returned", 8)
+	var original := Past.identity_inheritance(meta)
+	check(original.size() == 2 and meta.past_lives.identity_legacy == original, "Successful sealing did not persist bounded experience")
+	var last_before := {}
+	for k in 9:
+		var quiet := sample(meta, "scholar", 1)
+		last_before = quiet.duplicate(true)
+		check(Past.archive(quiet, meta), "Could not seal an intervening ordinary life")
+	check(meta.past_lives.lives.size() == 8 and not meta.past_lives.lives.any(func(life): return life.id in [Past.state(medicine).id, Past.state(evidence).id]), "Experience fixture did not trim both original detailed lives")
+	check(Past.identity_inheritance(meta) == original and meta.past_lives.identity_legacy.size() <= 4, "Confirmed experience disappeared after more than eight quiet lives")
+	var born := State.new_run("herbalist", meta, 919)
+	check(Identity.state(born).inherited == original and Identity.state(old_run).inherited.is_empty(), "Persistent index was not fixed at birth or retroactively changed an older run")
+	check(Past.public_memories(born).is_empty() and Past.state(born).inherited.is_empty(), "Permanent player experience invented a retained NPC memory")
+	var before := meta.duplicate(true)
+	check(not Past.archive(last_before, meta) and meta == before, "Repeated old archive changed the persistent index")
+	var daily := sample(meta, "escort", 19)
+	daily.flags.daily = "2026-10-24"
+	Mainline.state(daily).evidence = {"mortuary": true, "temple": true}
+	Mainline.state(daily).interventions.ritual_t = int(daily.t) - 90
+	var indexed: Array = meta.past_lives.identity_legacy.duplicate(true)
+	check(Past.archive(daily, meta) and meta.past_lives.identity_legacy == indexed, "Daily outcome contributed new persistent experience")
+	var fixed: Array = Identity.state(born).inherited.duplicate(true)
+	evidence_life(meta, "returned", 8)
+	check(Identity.state(born).inherited == fixed and Past.identity_inheritance(meta) != fixed, "Newer experience did not update future births independently of the existing one")
+	var no_index := meta.duplicate(true)
+	no_index.past_lives.erase("identity_legacy")
+	check(not "gave_medicine" in tags(no_index), "Missing legacy index reconstructed an already-discarded distant fact from counts")
+	var malformed := State.new_meta()
+	malformed.past_lives.count = 3
+	malformed.past_lives.sealed_ids = ["valid-sealed-id"]
+	malformed.past_lives.identity_legacy = [{"tag": "gave_medicine", "source_life": 1, "source_id": "unknown-id"}, {"tag": "returned_evidence", "source_life": 4, "source_id": "valid-sealed-id"}]
+	check(Past.identity_inheritance(malformed).is_empty(), "Unknown or future cached source granted experience")
+	var legacy := State.new_meta()
+	medicine_life(legacy)
+	evidence_life(legacy, "returned", 8)
+	var prior := Past.identity_inheritance(legacy)
+	legacy.past_lives.erase("identity_legacy")
+	for k in 9:
+		var quiet_daily := sample(legacy, "scholar", 1)
+		quiet_daily.flags.daily = "2026-10-24"
+		check(Past.archive(quiet_daily, legacy), "Could not seal a daily life during legacy-index upgrade")
+	check(Past.identity_inheritance(legacy) == prior and legacy.past_lives.identity_legacy == prior, "Daily-only play erased genuine normal experience while upgrading an old book")
+	check(Identity.state(State.new_run("watchman", legacy, 920)).inherited == prior, "Normal birth after nine daily lives lost the upgraded permanent experience")
+
 func test_real_file_and_daily(meta: Dictionary) -> Dictionary:
 	Game.meta = meta.duplicate(true)
 	Game.run = sample(Game.meta)
@@ -315,6 +363,7 @@ func _ready() -> void:
 	var meta := test_sealed_sources_and_immutability()
 	test_invalid_sources(meta)
 	test_identity_snapshot_and_rewind(meta)
+	test_persistent_experience_index()
 	var archive := test_real_file_and_daily(meta)
 	test_writer_guard_and_actual_context(meta, archive)
 	test_budget(meta)

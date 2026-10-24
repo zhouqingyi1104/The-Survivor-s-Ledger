@@ -70,9 +70,8 @@ static func _identity_archive(run: Dictionary) -> Dictionary:
 		if not found: return {}
 	return safe
 
-## Unlock from sealed structured outcomes. Markdown and free narrative are not proof.
-static func identity_inheritance(meta: Dictionary) -> Array:
-	var b := book(meta)
+## Validate available detailed records before they are trimmed to eight lives.
+static func _identity_recent(b: Dictionary) -> Array:
 	var id_counts := {}
 	var ordinal_counts := {}
 	for life in b.lives:
@@ -109,6 +108,37 @@ static func identity_inheritance(meta: Dictionary) -> Array:
 	for tag in IDENTITY_TAGS:
 		if latest.has(tag): result.append(latest[tag])
 	return result
+
+static func _identity_merge(sources: Array) -> Array:
+	var latest := {}
+	for source in sources:
+		if int(latest.get(source.tag, {}).get("source_life", 0)) < int(source.source_life): latest[source.tag] = source.duplicate()
+	var result := []
+	for tag in IDENTITY_TAGS:
+		if latest.has(tag): result.append(latest[tag])
+	return result
+
+## The bounded index outlives detailed narrative. A new life pins this result;
+## old saves never query it to acquire experience from a later-sealed life.
+static func identity_inheritance(meta: Dictionary) -> Array:
+	var b := book(meta)
+	var recent := _identity_recent(b)
+	var confirmed := recent.duplicate(true)
+	var cached = b.get("identity_legacy", [])
+	if not cached is Array or cached.size() > IDENTITY_TAGS.size(): return _identity_merge(confirmed)
+	var used := []
+	for source in cached:
+		if not source is Dictionary or source.size() != 3 or not source.get("tag", "") in IDENTITY_TAGS or source.tag in used: continue
+		used.append(source.tag)
+		if not _trade_integer(source.get("source_life"), 1, int(b.count)) or not source.get("source_id") is String or source.source_id.strip_edges().is_empty() or source.source_id.length() > 80 or not source.source_id in b.sealed_ids: continue
+		var has_detail := false
+		for life in b.lives:
+			if life is Dictionary and (life.get("id", "") == source.source_id or life.get("life", -1) == source.source_life): has_detail = true
+		# While detail exists it must still independently prove this exact fact.
+		# After trimming, only the index written at successful sealing survives.
+		if has_detail and not source in recent: continue
+		confirmed.append({"tag": source.tag, "source_life": int(source.source_life), "source_id": source.source_id})
+	return _identity_merge(confirmed)
 
 ## Raw rule state only; no imports that would form State/Director dependency cycles.
 static func mainline_snapshot(value) -> Dictionary:
@@ -221,7 +251,7 @@ static func crisis_snapshot(value) -> Dictionary:
 	return {"schema": 1, "active": active, "completed": settled, "history": facts}
 
 static func fresh_book() -> Dictionary:
-	return {"version": 1, "count": 0, "lives": [], "sealed_ids": []}
+	return {"version": 1, "count": 0, "lives": [], "sealed_ids": [], "identity_legacy": []}
 
 
 ## Final public NPC facts only. Dialogue caches and unawakened memories are not
@@ -333,6 +363,7 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 	if p.archived or p.id in b.sealed_ids or (int(p.generation) > 0 and int(p.generation) <= int(b.count)):
 		p.archived = true
 		return false
+	var retained := identity_inheritance(meta)
 	var ordinal := int(b.count) + 1
 	var facts := []
 	if not daily(run):
@@ -359,6 +390,9 @@ static func archive(run: Dictionary, meta: Dictionary) -> bool:
 	b.lives.append({"id": p.id, "life": ordinal, "facts": facts, "summary": summary})
 	b.sealed_ids.append(p.id)
 	b.count = ordinal
+	# Preserve genuine older experience before dropping detailed narratives.
+	# A daily life contributes no sources, but cannot erase older normal ones.
+	b["identity_legacy"] = _identity_merge(retained + _identity_recent(b))
 	while b.lives.size() > KEEP_LIVES: b.lives.pop_front()
 	p.generation = ordinal
 	p.archived = true
