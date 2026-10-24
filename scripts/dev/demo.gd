@@ -12,7 +12,7 @@ const NightFight = preload("res://scripts/core/night_fight.gd")
 
 static func setup(scene: String) -> void:
 	match scene:
-		"title", "credits":
+		"title":
 			Game.meta.runs = 2
 			Game.meta.best_day = 14
 			Game.meta.daoxin = 23
@@ -176,8 +176,6 @@ static func setup(scene: String) -> void:
 ## 界面建好以后再做的事（比如入夜演出、在宅院里走到某处）。
 static func after_screen(scene: String, screen: Node) -> void:
 	match scene:
-		"credits":
-			screen._show_credits()
 		"night":
 			screen.player.position = Vector3(-1.5, 0, 1.0)
 		"post":

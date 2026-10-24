@@ -60,7 +60,6 @@ func build() -> void:
 	menu.add_child(_item("心法 · 道心 %d" % int(meta.daoxin), func(): Game.go("talents")))
 	menu.add_child(_item("残卷 %d / %d" % [meta.clues.size(), Data.table("clues").size()], _show_clues))
 	menu.add_child(_item("设置", func(): Dialogs.settings(false)))
-	menu.add_child(_item("制作名单", _show_credits))
 	menu.add_child(_item("退出", func(): get_tree().quit()))
 
 	# ---- 左下角：题名 ----
@@ -249,24 +248,6 @@ func _build_clues(body: VBoxContainer) -> void:
 	if Game.meta.clues.size() >= clues.size():
 		body.add_child(UI.sep())
 		body.add_child(UI.para("五篇残卷拼在一起，真相只有一个：尸劫是青云观主炼尸所致。下一卷，也许可以在血月之前上山。", 18, UI.CINNABAR))
-
-
-func _show_credits() -> void:
-	UI.open_modal("credits", "制作名单", _build_credits, true, 680)
-
-
-## 第三方美术资源的来源和许可证（data/credits.json）。
-func _build_credits(body: VBoxContainer) -> void:
-	var credits: Dictionary = Data.table("credits")
-	# 条目多了会超出屏幕，放进滚动区
-	var list := UI.vbox(8)
-	for id in credits:
-		var row := UI.vbox(2)
-		row.add_child(UI.label(credits[id].name, 20, UI.CINNABAR))
-		for line in credits[id].lines:
-			row.add_child(UI.para(line, 16))
-		list.add_child(row)
-	body.add_child(UI.scroll(list, 520))
 
 
 ## 版本号只在 project.godot 的 application/config/version 里维护（0.10.0 → "0.10"），界面不再写死。

@@ -2,7 +2,7 @@ extends RefCounted
 ## 配置表读取。对应原版 ConfigManager + Config_*.bytes（MemoryPack），这里换成 res://data/*.json。
 
 const TABLES := ["items", "shops", "facilities", "roles", "talents", "recipes", "crops",
-	"devices", "map_points", "waves", "weather", "omens", "wishes", "events", "clues", "credits",
+	"devices", "map_points", "waves", "weather", "omens", "wishes", "events", "clues",
 	"furniture", "difficulty", "challenge", "companions"]
 
 static var _tables: Dictionary = {}

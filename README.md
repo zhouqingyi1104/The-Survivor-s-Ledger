@@ -2,7 +2,7 @@
 
 > 文档更新于 2026-10-24，内容以当前代码为准。版本号只在 `project.godot` 的 `application/config/version` 里维护，标题页角落直接读它。
 
-古风尸变 + 写实灾荒 + 一点东方仙侠的生存模拟。玩法结构、界面布局和交互方式参考《Survival Log / 生存日志》（灾前囤货 → 灾后经营 → 轮回），文本、数值、图标都是原创——没有从原版提取或复用任何美术资产。模型和贴图一部分是公开的免费素材（Poly Haven、cs-studio、Quaternius），其余用代码拼；来源和许可证见游戏标题页的"制作名单"和 [docs/03-art-assets.md](docs/03-art-assets.md)。
+古风尸变 + 写实灾荒 + 一点东方仙侠的生存模拟。玩法结构、界面布局和交互方式参考《Survival Log / 生存日志》（灾前囤货 → 灾后经营 → 轮回），文本、数值、图标都是原创——没有从原版提取或复用任何美术资产。模型和贴图一部分是公开的免费素材（Poly Haven、cs-studio、Quaternius），其余用代码拼；来源和许可证见 [docs/03-art-assets.md](docs/03-art-assets.md)（游戏里不再有"制作名单"页）。
 
 **先看这三篇**（描述的是现状）：
 
@@ -186,7 +186,7 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 ./tools/godot/Godot_v4.7.2-stable_win64_console.exe --path . --resolution 1280x720 -- --demo=post --shot=res://docs/screenshots/post.png
 ```
 
-可用的 demo：`title credits roles talents pre crowd post closeup hall kitchen menu settings night sleep wave wave_blood dawn cook garden build omens inventory explore_pick explore plan night_panel gate_fight wreck furnish placing event dead ending`。演出类的加 `--delay=6` 截到中途。
+可用的 demo：`title roles talents pre crowd post closeup hall kitchen menu settings night sleep wave wave_blood dawn cook garden build omens inventory explore_pick explore plan night_panel gate_fight wreck furnish placing event dead ending`。演出类的加 `--delay=6` 截到中途。
 
 ## 导出注意
 

@@ -93,7 +93,7 @@ Sketchfab 的下载需要登录账号，我不能代为注册或登录。以下�
 
 ## 五、署名
 
-CC-BY 的资源用上以后，在游戏的"制作名单"里写明：模型名、作者、许可证、链接。CC0 的不强制，但会一并列出致谢。
+CC-BY 的资源用上以后，必须在游戏里写明模型名、作者、许可证、链接。目前用到的全是 CC0 或不要求署名的素材，所以游戏里没有"制作名单"页（2026-10-24 删掉了）；来源和许可证只记在本文。
 
 ## 六、接入情况（v0.4，2026-10-22）
 
@@ -142,7 +142,7 @@ blender -b --factory-startup --python tools/pipeline/bl_dress.py -- \
 
 ## 七、声音（v0.4，2026-10-22）
 
-全部是 CC0（可商用、不用署名，制作名单里一并致谢），原始包在 `assets/third_party/audio/`（`.gdignore`，引擎不导入），
+全部是 CC0（可商用、不用署名），原始包在 `assets/third_party/audio/`（`.gdignore`，引擎不导入），
 挑出来转好的 OGG 在 `assets/audio/`（约 4.3 MB）。
 
 | 来源 | 内容 | 用在哪 |
@@ -183,7 +183,7 @@ python -I tools/pipeline/build_audio.py assets/third_party/audio/raw <合成输�
 | 注意 | `NOTICE.txt` 写明：开发机上另下的 MMD 角色包**不是**这套素材，没有清过商用授权，不在仓库里也不能放进游戏 |
 | 检查工具 | `tests/hero_shot.tscn` 从几个角度拍主角，`tests/check_hero.tscn` 逐项报挂件在不在、挂在哪 |
 
-标题页"制作名单"（`data/credits.json`）已列 413 Games，并写明尖帽和仙气装束是本作自己做的。
+游戏里没有"制作名单"页（2026-10-24 删掉了）。CC0 不要求署名；本作在尖帽和仙气装束上的改动只记在本文。
 
 ## 九、图标（代码绘制，没有第三方素材）
 
