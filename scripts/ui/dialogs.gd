@@ -17,8 +17,11 @@ const Director = preload("res://scripts/core/director.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 const Trade = preload("res://scripts/core/social_trade.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
+const Npc = preload("res://scripts/core/npc_autonomy.gd")
+const NpcDialogue = preload("res://scripts/core/npc_dialogue.gd")
 
 var _trade_actor := "ning"
+var _npc_actor := "ning"
 
 ## 家具的功用，摆出来能做什么（写给人看的）
 const FN_TEXT := {
@@ -96,13 +99,129 @@ func _journal(body: VBoxContainer) -> void:
 	body.add_child(UI.para(Neighbor.summary(_run()), 17))
 	body.add_child(UI.button("邻里事务 · 目标与选择记录", neighbor))
 	body.add_child(UI.button("纸鹤往来 · 交易与欠账", social_trade))
+	body.add_child(UI.button("邻人与商情 · 目标与行动", npc_autonomy))
 	body.add_child(UI.button("风声与危机 · 查验与筹备", crisis))
 	var lines: Array = _run().get("log", [])
-	var log_height := mini(360, maxi(160, int(get_viewport().get_visible_rect().size.y) - 420 - d.promises.size() * 34))
+	var log_height := mini(320, maxi(120, int(get_viewport().get_visible_rect().size.y) - 480 - d.promises.size() * 34))
 	var s := UI.scroll(UI.log_view(lines, lines.size(), 17), log_height)
 	var bar := s.get_v_scroll_bar()
 	bar.changed.connect(func(): s.scroll_vertical = int(bar.max_value))
 	body.add_child(s)
+
+
+## 只读公开意图；HUD计数不能把未看过的角色对话提前冻结。
+func npc_pending_count(run: Dictionary) -> int:
+	var count := 0
+	for actor in Trade.ACTORS:
+		var plan: Dictionary = Npc.view(run, actor).get("plan", {})
+		if str(plan.get("status", "")) == "pending" and str(plan.get("response", "")) == "" and int(run.get("t", 0)) < int(plan.get("due_t", 0)):
+			count += 1
+	return count
+
+
+func npc_autonomy() -> void:
+	Game.act(func(): return Post.trade_refresh(Game.run))
+	UI.open_modal("npc_autonomy", "邻人与商情 · 目标与行动", _npc_autonomy, true, 850)
+
+
+func _npc_pick(actor: String) -> void:
+	_npc_actor = actor
+	if UI.host != null and UI.host.has_modal("npc_autonomy"):
+		UI.host._modals.npc_autonomy._queue()
+
+
+func _npc_trade() -> void:
+	_trade_actor = _npc_actor
+	UI.close_modal("npc_autonomy")
+	social_trade()
+
+
+func _trade_npc() -> void:
+	_npc_actor = _trade_actor
+	UI.close_modal("social_trade")
+	npc_autonomy()
+
+
+func _npc_autonomy(body: VBoxContainer) -> void:
+	var run := _run()
+	body.add_child(UI.para("他们每天 08:00 公开打算、16:00 自行执行。你可以提前介入；没有回应也会照常行动。", 16))
+	var tabs := UI.hbox(8)
+	for actor in Trade.ACTORS:
+		var tab := UI.button(("● " if actor == _npc_actor else "") + str(Trade.ACTORS[actor]), _npc_pick.bind(actor))
+		tab.set_meta("npc_contact", actor)
+		tabs.add_child(UI.expand(tab))
+	body.add_child(tabs)
+	var content := UI.vbox(10)
+	var view := Npc.view(run, _npc_actor)
+	var person := Trade.contact(run, _npc_actor)
+	content.add_child(UI.label("%s · 信任 %+d · 人情 %d" % [str(view.get("name", Trade.ACTORS[_npc_actor])), int(person.trust), int(person.favors)], 20, UI.GOLD))
+	var stock := UI.para("自主周转库存：" + Data.describe_items(view.get("stock", {})), 17)
+	stock.name = "NpcStockSummary"
+	content.add_child(stock)
+	content.add_child(UI.para("这是对方用于生活和自主行动的物资；现货报价、赊欠和已约回礼使用独立契约货盘。", 15, UI.INK_SOFT))
+	content.add_child(UI.label("当前目标：" + str(view.get("goal", "等待下一日安排")), 19, UI.GOLD))
+	content.add_child(UI.para("决定原因：" + str(view.get("reason", "尚未公开今日决定。")), 16))
+	var memory: Dictionary = view.get("memory", {})
+	if memory.is_empty():
+		content.add_child(UI.para("前世片段：本人尚未觉醒；旧世档案不会直接左右他的决定。", 15, UI.INK_SOFT))
+	else:
+		var reply: String = {"": "尚未回应", "acknowledge": "你承认似曾相识", "compensate": "你用今世行动回应", "dismiss": "你只当作旧梦"}.get(str(memory.get("response", "")), "已回应")
+		content.add_child(UI.para("已觉醒片段：%s\n%s。" % [str(memory.get("fact", "")), reply], 16, UI.GOLD))
+	var plan: Dictionary = view.get("plan", {})
+	if plan.is_empty():
+		content.add_child(UI.para("下一次决定：%s。" % _crisis_when(int(view.get("next_decision_t", 0))), 17))
+	else:
+		var pending := str(plan.get("status", "")) == "pending"
+		var left := maxi(0, int(plan.get("due_t", 0)) - int(run.t))
+		content.add_child(UI.para("%s：%s · %s%s" % ["下一行动" if pending else "今日行动", str(view.get("title", view.get("goal", "自主安排"))), _crisis_when(int(plan.get("due_t", 0))), "（还有 %d小时%02d分）" % [left / 60, left % 60] if pending else " · 已执行"], 17, UI.GOLD))
+		var response: String = {"": "尚未介入", "support": "送物支援", "favor": "凭情改托（已预留送货）" if pending else "凭情改托（已送达）", "decline": "由他安排"}.get(str(plan.get("response", "")), "已记录")
+		content.add_child(UI.para("本次回应：" + response, 16))
+		if not pending:
+			content.add_child(UI.para("下一次决定：%s；将根据届时库存、人情和公开局势重新安排。" % _crisis_when(int(view.get("next_decision_t", 0))), 16))
+		if not plan.get("reserved", {}).is_empty():
+			content.add_child(UI.para("已约送达：%s；从对方周转物资预留，16:00 到家。" % Data.describe_items(plan.reserved), 16, UI.JADE))
+	if str(view.get("effect", "")) != "":
+		content.add_child(UI.para("按此计划的实际后果：" + str(view.effect), 17, UI.JADE))
+	var spoken: Dictionary = NpcDialogue.render(run, _npc_actor)
+	if bool(spoken.get("changed", false)): Game.save_game()
+	var speech := UI.para(str(view.get("name", Trade.ACTORS[_npc_actor])) + "说：" + str(spoken.get("text", "")), 17)
+	speech.name = "NpcDialogueText"
+	content.add_child(UI.panel(speech))
+	var policy: Dictionary = view.get("policy", {})
+	content.add_child(UI.para("新报价政策：%s；%s。\n%s" % ["加收米 %d" % int(policy.get("price_add", 0)) if int(policy.get("price_add", 0)) > 0 else "无额外加价", "允许按信任赊欠" if bool(policy.get("credit_allowed", true)) else "暂停新报价赊欠", str(policy.get("reason", "尚未调整"))], 16))
+	content.add_child(UI.para("已展示的当日报价、已签欠账和回礼继续按原约；今日行动可能改变以后新建的报价和明日决定。", 15, UI.INK_SOFT))
+	if str(view.get("last_result", "")) != "":
+		content.add_child(UI.para("最近结果：" + str(view.last_result), 17, UI.JADE))
+	for option in Npc.options(run, _npc_actor):
+		var card := UI.vbox(4)
+		card.add_child(UI.para(str(option.hint), 16))
+		var block := str(option.block)
+		if block != "": card.add_child(UI.para(block, 15, UI.CINNABAR))
+		var button := UI.button(str(option.text), _npc_do.bind(_npc_actor, str(option.id), str(view.get("token", ""))), block != "", block)
+		button.set_meta("npc_action", str(option.id))
+		button.set_meta("npc_actor", _npc_actor)
+		card.add_child(button)
+		content.add_child(UI.panel(card))
+	var trade_button := UI.button("纸鹤往来 · 查看此人的现货与欠账", _npc_trade)
+	trade_button.set_meta("npc_trade_entry", true)
+	content.add_child(trade_button)
+	content.add_child(UI.sep())
+	content.add_child(UI.label("自主行动记录 · 最近十二条", 19, UI.GOLD))
+	var history: Array = Npc.state(run).get("history", [])
+	var found := false
+	for k in range(history.size() - 1, -1, -1):
+		var entry: Dictionary = history[k]
+		if str(entry.get("actor", "")) != _npc_actor: continue
+		found = true
+		content.add_child(UI.para("第 %d 日 %s · %s" % [int(entry.get("day", 0)), _trade_clock(int(entry.get("t", 0))), str(entry.get("result", ""))], 15))
+	if not found: content.add_child(UI.para("尚无此人的公开行动记录。", 16))
+	var scroll := UI.scroll(content, mini(430, maxi(190, int(get_viewport().get_visible_rect().size.y) - 270)))
+	scroll.name = "NpcDetailsScroll"
+	body.add_child(scroll)
+
+
+func _npc_do(actor: String, action: String, token: String) -> void:
+	Game.act(func(): return Post.npc_action(Game.run, actor, action, token))
 
 
 func crisis() -> void:
@@ -201,6 +320,9 @@ func _social_trade(body: VBoxContainer) -> void:
 	var run := _run()
 	var ctx := Trade.context(run)
 	body.add_child(UI.para("第 2 日起，每日 08:00–18:00 可在家联系。每人每天一份货；婉拒也会放弃当天机会。", 16))
+	var autonomy := UI.button("邻人与商情 · 查看此人的目标与行动", _trade_npc)
+	autonomy.set_meta("trade_npc_entry", true)
+	body.add_child(autonomy)
 	var tabs := UI.hbox(8)
 	for actor in ["ning", "zhou", "traveler"]:
 		var contact := Trade.contact(run, actor)
@@ -262,7 +384,7 @@ func _social_trade(body: VBoxContainer) -> void:
 	for k in range(history.size() - 1, maxi(-1, history.size() - 13), -1):
 		var entry: Dictionary = history[k]
 		content.add_child(UI.para("第 %d 日 %s · %s" % [int(entry.get("t", 0)) / 1440 + 1, _trade_clock(int(entry.get("t", 0))), str(entry.get("result", entry.get("text", "")))], 15))
-	var scroll := UI.scroll(content, mini(420, maxi(180, int(get_viewport().get_visible_rect().size.y) - 240)))
+	var scroll := UI.scroll(content, mini(390, maxi(180, int(get_viewport().get_visible_rect().size.y) - 280)))
 	scroll.name = "TradeDetailsScroll"
 	body.add_child(scroll)
 

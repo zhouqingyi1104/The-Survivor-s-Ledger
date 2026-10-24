@@ -1008,7 +1008,11 @@ func _right_top(run: Dictionary) -> void:
 	_live.dial = dial
 	col.add_child(Hud.panel(top, Color(0.05, 0.045, 0.04, 0.72)))
 	# 印章功能按钮
-	col.add_child(Hud.func_row("劫余录", "J", "录", Dialogs.journal))
+	var journal_row := Hud.func_row("劫余录", "J", "录", Dialogs.journal)
+	var journal_subtitle: Label = journal_row.get_child(0).get_child(1)
+	journal_subtitle.name = "NpcPendingSubtitle"
+	_live["npc_pending"] = journal_subtitle
+	col.add_child(journal_row)
 	col.add_child(Hud.func_row("神龛求签", "功德 %d" % int(run.merit), "签", func(): perform("shrine", "上香")))
 	col.add_child(Hud.func_row("存货", "I", "囊", Dialogs.inventory))
 	if Post.in_night(Game.run):
@@ -1153,6 +1157,9 @@ func _update_live() -> void:
 		return
 	if _live.has("neighbor"):
 		(_live.neighbor as Label).text = Neighbor.summary(run)
+	if _live.has("npc_pending"):
+		var count: int = Dialogs.npc_pending_count(run)
+		(_live.npc_pending as Label).text = "邻里待介入 %d · J" % count if count > 0 else "J"
 	if _live.has("crisis_countdown"):
 		var crisis_view := Crisis.view(run)
 		(_live.crisis_countdown as Label).text = Dialogs.crisis_clock_text(crisis_view)
