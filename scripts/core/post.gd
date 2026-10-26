@@ -45,6 +45,14 @@ const RATE := {
 	"overrun_hp": 3.0,
 }
 
+## 每档流速：游戏分钟 / 现实秒。0 = 暂停。
+## 放在 core 而不是界面里：这是节奏数值（一天要花玩家多少真实时间），不是皮肤。
+const SPEEDS := [0.0, 4.0, 10.0, 24.0]
+## 手头有活在干：不管哪档都至少这么快（做一件事只用等一两秒）
+const BUSY_RATE := 40.0
+## 睡着：一路滑到天亮
+const SLEEP_RATE := 150.0
+
 ## 行动：[名称, 分钟, 精力消耗]
 const ACTIONS := {
 	"cook": ["做饭", 60, 6], "garden": ["打理菜畦", 45, 8], "build": ["营造", 90, 10], "repair": ["修缮", 60, 8],
@@ -100,6 +108,32 @@ static func checkpoints(run: Dictionary) -> Array:
 	if not night.is_empty() and not bool(night.get("done", false)):
 		out.append(Defense.round_minute(int(night.round)))
 	return out
+
+
+## 这一刻时间该跑多快（游戏分钟/现实秒）。界面只管问，不自己算。
+static func rate(run: Dictionary, speed: int) -> float:
+	var base: float = float(SPEEDS[clampi(speed, 0, SPEEDS.size() - 1)])
+	if base <= 0.0:
+		return 0.0
+	if bool(run.get("sleeping", false)):
+		return SLEEP_RATE
+	if is_busy(run):
+		return maxf(base, BUSY_RATE)
+	return base
+
+
+## 到下一个"值得停下来"的时刻还有多少分钟：天黑、烧炭、宵禁、尸潮、溃兵、夜战轮次、天亮。
+## 「等一刻」用它跳时——只跳到节点，不会跳过夜战轮次和事件检查点。
+## 手头正在忙、正在睡、或被事件/夜报卡着时返回 0：那种时候不该跳。
+static func minutes_to_next_stop(run: Dictionary) -> int:
+	if run.get("phase", "") != "post" or blocked(run) or is_busy(run) or bool(run.get("sleeping", false)):
+		return 0
+	var now := day_minute(run)
+	var next := DAY
+	for cp in checkpoints(run):
+		if int(cp) > now:
+			next = mini(next, int(cp))
+	return maxi(0, next - now)
 
 
 ## 夜战是否正在进行。

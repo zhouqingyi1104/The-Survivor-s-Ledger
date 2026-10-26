@@ -115,6 +115,14 @@ func run_flow() -> void:
 	await press("就这样吧")
 	check(Game.screen == "post" and int(Game.run.pday) == 1, "尸劫没降临")
 
+	# ---- 等一刻：白天的空档直接推到下一个节点 ----
+	var t0 := int(Game.run.t)
+	var gap := Post.minutes_to_next_stop(Game.run)
+	check(gap > 0, "刚开劫就算不出口子：%d" % gap)
+	await press("等一刻")
+	await handle_event()
+	check(int(Game.run.t) >= t0 + gap, "等一刻没把时间推到节点：%d → %d" % [t0, int(Game.run.t)])
+
 	# ---- 劫中第一日：走到井边打水 ----
 	var home: Node = screen()
 	await handle_event()

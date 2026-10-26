@@ -63,9 +63,24 @@ var pre_silver_start := 0
 ## 誓约对照段每档跑几局。6 局时 2/6 和 3/6 只差一局，噪声有一档，20 局才敢下结论。
 const VOW_SAMPLE := 40
 
+# ---------- 节奏诊断（PACING=1 时才记账、才打印，默认零开销、零输出） ----------
+## 调"一天里玩家到底能做几次决定"用的：行动次数、等工序的分钟、发呆的分钟、睡掉的分钟。
+var pacing := false
+var pac_actions := 0
+var pac_events := 0
+var pac_busy := 0
+var pac_idle := 0
+var pac_sleep := 0
+var pac_days := {}
+## 一天里"空档"出现了几次 —— 一次等一刻能吃掉一段，这就是玩家每天要按几下
+var pac_idle_runs := 0
+var pac_was_idle := false
+
 
 func _init() -> void:
 	Data.ensure()
+	# 设 PACING=1 才做节奏诊断（默认零开销）
+	pacing = OS.get_environment("PACING") != ""
 	var results := []
 	var roles := ["scholar", "escort", "herbalist", "watchman"]
 	verbose = true
@@ -668,6 +683,50 @@ func handle_event(run: Dictionary) -> void:
 	Events.choose(run, pick)
 
 
+## 记一次"玩家真的做了个决定"（开始干活、翻找、读书……）。
+func _pac_action(run: Dictionary) -> void:
+	pac_actions += 1
+	var day := int(run.pday)
+	var d: Dictionary = pac_days.get(day, {"actions": 0, "busy": 0, "idle": 0, "at": []})
+	d.actions = int(d.actions) + 1
+	d.at.append(Post.day_minute(run))
+	pac_days[day] = d
+
+
+## 记一段被动流逝的时间：等工序（busy）还是干等（idle）。
+func _pac_day(run: Dictionary, minutes: int, field: String) -> void:
+	var day := int(run.pday)
+	var d: Dictionary = pac_days.get(day, {"actions": 0, "busy": 0, "idle": 0, "at": []})
+	d[field] = int(d[field]) + minutes
+	pac_days[day] = d
+
+
+## 节奏报表：一天能做几次决定、多少时间在等、多少时间在发呆。
+func pac_report(label: String) -> void:
+	if pac_days.is_empty():
+		print("[节奏] %s：没有数据" % label)
+		return
+	var days := pac_days.keys()
+	days.sort()
+	var acts := []
+	var busy := []
+	var idle := []
+	for d in days:
+		acts.append(int(pac_days[d].actions))
+		busy.append(int(pac_days[d].busy))
+		idle.append(int(pac_days[d].idle))
+	var n := float(maxi(1, days.size()))
+	var sum_act := 0
+	for v in acts:
+		sum_act += int(v)
+	print("[节奏] %s：%d 天，行动共 %d 次（%.1f/天），事件 %d 次（%.2f/天），等工序 %d 分（%.0f/天），干等 %d 分（%.0f/天），睡 %d 分（%.0f/天）" % [
+		label, days.size(), sum_act, sum_act / n, pac_events, pac_events / n, pac_busy, pac_busy / n, pac_idle, pac_idle / n, pac_sleep, pac_sleep / n])
+	print("[节奏] %s 每天行动数   %s" % [label, str(acts)])
+	print("[节奏] %s 每天等工序   %s" % [label, str(busy)])
+	print("[节奏] %s 每天干等     %s" % [label, str(idle)])
+	print("[节奏] %s 空档段数 %d（%.1f 段/天，一段一次等一刻）" % [label, pac_idle_runs, pac_idle_runs / n])
+
+
 ## 玩一整天：从卯时到次日天亮。
 func play_day(run: Dictionary) -> void:
 	for id in run.omens.offer.duplicate():
@@ -680,6 +739,7 @@ func play_day(run: Dictionary) -> void:
 		check_invariants(run)
 		if run.pending_event != "":
 			handle_event(run)
+			pac_events += 1
 			continue
 		if run.plan_due:
 			choose_policy(run)
@@ -734,15 +794,36 @@ func play_day(run: Dictionary) -> void:
 		var started := false
 		if Post.can_act(run, 0) == "":
 			started = choose_action(run)
+		if started:
+			_pac_action(run)
 		if Post.is_busy(run):
-			Post.advance(run, maxi(10, int(run.busy.end) - int(run.t)))
+			var step := maxi(10, int(run.busy.end) - int(run.t))
+			pac_busy += step
+			pac_was_idle = false
+			_pac_day(run, step, "busy")
+			Post.advance(run, step)
 		elif run.sleeping:
+			pac_sleep += 60
+			pac_was_idle = false
 			Post.advance(run, 60)
 		elif not started:
+			pac_idle += 30
+			if not pac_was_idle:
+				pac_idle_runs += 1
+				pac_was_idle = true
+			_pac_day(run, 30, "idle")
 			Post.advance(run, 30)
 
 
 func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionary:
+	pac_actions = 0
+	pac_events = 0
+	pac_busy = 0
+	pac_idle = 0
+	pac_sleep = 0
+	pac_days = {}
+	pac_idle_runs = 0
+	pac_was_idle = false
 	var meta := State.new_meta()
 	var run := State.new_run(role, meta, seed_value, difficulty_id, [], boons_picked, vows_picked)
 	run.companions = mates_picked.duplicate()
@@ -771,6 +852,8 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 	var line := "%-6s seed=%d  %s  第%d日  尸潮守住%d  斩尸%d  功德%d  余银%s  道心+%d  %s" % [
 		State.role(run).name, seed_value, "劫满" if win else "身死", run.pday, run.waves_survived,
 		run.kills, run.merit, Pre.money(silver_left), gain.total, run.death_cause]
+	if pacing:
+		pac_report("%s seed=%d" % [State.role(run).name, seed_value])
 	# 破了几条誓约（0 表示全守住了）
 	var broken := 0
 	for v in Ledger.vow_results(run):

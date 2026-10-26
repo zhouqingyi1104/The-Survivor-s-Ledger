@@ -1564,7 +1564,7 @@ func settings(in_game := false) -> void:
 
 
 func _settings(body: VBoxContainer, in_game: bool) -> void:
-	# 十七行按键加音量，720 高放不下：内容进滚动容器，底部按钮露在外面
+	# 十八行按键加音量，720 高放不下：内容进滚动容器，底部按钮露在外面
 	var content := UI.vbox(8)
 	if in_game and not Game.run.is_empty():
 		var enabled: bool = Director.state(Game.run).enabled
@@ -1574,7 +1574,7 @@ func _settings(body: VBoxContainer, in_game: bool) -> void:
 	content.add_child(UI.heading("画面", 20))
 	var video := VideoCfg.read()
 	# 按钮装在行里、回调 bind 整行：GDScript 的 lambda 不能引用正在初始化的变量，
-	# 循环变量也不能直接捕获（十七行按键会全变成最后一行），一律 bind 快照 + 从行里取按钮
+	# 循环变量也不能直接捕获（十八行按键会全变成最后一行），一律 bind 快照 + 从行里取按钮
 	var fs_row := UI.hbox(8)
 	fs_row.add_child(UI.button("全屏：" + ("开" if bool(video.fullscreen) else "关"),
 		_toggle_video.bind("fullscreen", video, fs_row)))

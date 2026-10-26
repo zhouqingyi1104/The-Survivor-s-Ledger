@@ -17,6 +17,8 @@ export_presets.cfg
 
 # WorkBuddy 的本地工作记忆（不属于游戏源码）
 .workbuddy/
+# 外部规划工具留下的草稿（不属于游戏源码）
+.hermes/
 
 # 每位玩家每轮结束后更新的运行时前世档案（说明在 docs/14-past-lives.md）
 /Memory.md

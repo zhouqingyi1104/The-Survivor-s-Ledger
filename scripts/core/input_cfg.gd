@@ -16,7 +16,7 @@ static var _defaults: Dictionary = {}
 const ORDER := [
 	"move_up", "move_down", "move_left", "move_right",
 	"interact", "confirm", "speed_pause", "speed_1", "speed_2", "speed_3",
-	"sleep", "inventory", "journal", "guard", "rotate", "night_panel", "cancel",
+	"sleep", "wait", "inventory", "journal", "guard", "rotate", "night_panel", "cancel",
 ]
 const LABELS := {
 	"move_up": "走 · 上",
@@ -30,6 +30,7 @@ const LABELS := {
 	"speed_2": "速度 · 二",
 	"speed_3": "速度 · 三",
 	"sleep": "就寝",
+	"wait": "等一刻（跳到下个节点）",
 	"inventory": "行囊",
 	"journal": "劫余录",
 	"guard": "招架",

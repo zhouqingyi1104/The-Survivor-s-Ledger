@@ -32,6 +32,7 @@
 | speed_pause | 空格 | 暂停/继续 | post_screen 速度归零切换 |
 | speed_1 / speed_2 / speed_3 | 1/2/3 | 速度一/二/三 | post_screen 直接调速 |
 | sleep | N | 就寝 | post_screen |
+| wait | Q | 等一刻（跳到下个节点） | post_screen（见 [27](27-pacing.md)） |
 | inventory | I、Tab | 行囊 | post_screen |
 | journal | J | 劫余录 | post_screen（夜战中为挥击） |
 | guard | K | 招架 | post_screen 夜战 |
@@ -67,7 +68,7 @@
 2026-10-25 完成，分三批提交（`ab8a93d` 方案 / `dbd0124` 输入动作化 / `a27544a` 持久化内核 / 设置界面批）。
 
 - **引擎语义探针**（一次性，用完即删）：physical 定义的动作只认 physical 事件、keycode 定义只认 keycode 事件，零互通；echo 事件到不了 `_unhandled_input`；`Input.parse_input_event` 推的事件能驱动动作状态。据此选 physical 定义，并给两个推 keycode-only 的测试补 `physical_keycode`。
-- **17 个动作**全部按清单落进 `project.godot [input]`（移动四向带方向键双绑、inventory 带 I+Tab 双绑），探针核对键位与文档表一致。
+- **17 个动作**（后加「等一刻」共 18 个）全部按清单落进 `project.godot [input]`（移动四向带方向键双绑、inventory 带 I+Tab 双绑），探针核对键位与文档表一致。
 - **持久化内核**：`tests/input_settings.gd`（`--headless --script`）97 项——默认绑定合同、键名显示、改绑生效（Q 按得出 interact、E 让位）、冲突拒绝、绑自己的键不动 cfg、cfg 往返、手改脏数据过滤、恢复默认、画面存取往返与 apply、真实 `user://input.cfg` 的 boot 闭环（验完还原，不残留配置）。
 - **设置界面**：`tests/settings_ui.tscn`（窗口模式）54 项——17 行改键按钮、默认键显示（E、I / Tab）、改键全流程（行里变 Q、InputMap 变、cfg 落盘）、冲突提示「已经给了翻找 / 查看」且绑定不动、Esc 取消、全部恢复默认；画面三项：垂直同步翻转+落盘、分辨率三档循环+落盘、全屏真翻 `WINDOW_MODE_FULLSCREEN` 再翻回；全程不叠层。
 - **截图**：`docs/screenshots/settings.png`（画面+按键前几行）、`settings_keys.png`（滚到底的按键区+音量），逐张目视检查无溢出、无截断。

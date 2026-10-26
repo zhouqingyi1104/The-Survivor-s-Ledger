@@ -10,7 +10,7 @@ const DEFAULTS := {
 	"move_up": [87, 4194320], "move_down": [83, 4194322],
 	"move_left": [65, 4194319], "move_right": [68, 4194321],
 	"interact": [69], "confirm": [32], "speed_pause": [32],
-	"speed_1": [49], "speed_2": [50], "speed_3": [51], "sleep": [78],
+	"speed_1": [49], "speed_2": [50], "speed_3": [51], "sleep": [78], "wait": [81],
 	"inventory": [73, 4194306], "journal": [74], "guard": [75], "rotate": [82],
 	"night_panel": [70], "cancel": [4194305],
 }
@@ -56,21 +56,22 @@ func _initialize() -> void:
 	check(InputCfg._defaults["interact"] == [69], "快照内容不对")
 
 	# 5. 改绑生效（InputMap 真的变了）
-	check(InputCfg.rebind("interact", KEY_Q), "interact 改绑 Q 失败")
-	check(InputCfg.keys_of("interact") == [81], "改绑后 InputMap 没变：%s" % str(InputCfg.keys_of("interact")))
+	# 拿 Z 做改绑靶子：Q 现在是「等一刻」的默认键，不能抢
+	check(InputCfg.rebind("interact", KEY_Z), "interact 改绑 Z 失败")
+	check(InputCfg.keys_of("interact") == [90], "改绑后 InputMap 没变：%s" % str(InputCfg.keys_of("interact")))
 	var ev := InputEventKey.new()
-	ev.physical_keycode = KEY_Q
+	ev.physical_keycode = KEY_Z
 	ev.pressed = true
-	check(ev.is_action_pressed("interact"), "改绑后 Q 按不出 interact")
+	check(ev.is_action_pressed("interact"), "改绑后 Z 按不出 interact")
 	ev.physical_keycode = KEY_E
 	check(not ev.is_action_pressed("interact"), "改绑后 E 还能触发 interact（旧键没让位）")
 
 	# 6. 冲突拒绝：Q 已是 interact 的，sleep 绑 Q 必须失败且 sleep 不动
 	#    （interact 上一步刚让出 E，所以冲突要拿现在有人要的键来测）
-	check(not InputCfg.rebind("sleep", KEY_Q), "冲突键竟然绑成功了")
+	check(not InputCfg.rebind("sleep", KEY_Z), "冲突键竟然绑成功了")
 	check(InputCfg.keys_of("sleep") == [78], "冲突拒绝后 sleep 的键位被改了")
-	check(InputCfg.owner_of(KEY_Q) == "interact", "owner_of 认不出 Q 归 interact")
-	check(InputCfg.owner_of(KEY_Z) == "", "owner_of 把没人的键说成有人要")
+	check(InputCfg.owner_of(KEY_Z) == "interact", "owner_of 认不出 Z 归 interact")
+	check(InputCfg.owner_of(KEY_Y) == "", "owner_of 把没人的键说成有人要")
 
 	# 7. 绑到自己已有的键 = 不用改，不动 cfg
 	InputCfg.rebind("inventory", KEY_H)
@@ -87,14 +88,14 @@ func _initialize() -> void:
 
 	# 9. cfg 往返 + 脏数据过滤（手改 cfg 是权力用户场景）
 	var cfg := ConfigFile.new()
-	cfg.set_value("binding", "interact", [81])
+	cfg.set_value("binding", "interact", [90])
 	cfg.set_value("binding", "sleep", "N")       # 字符串
 	cfg.set_value("binding", "journal", [0])     # 0 不是键
 	cfg.set_value("binding", "rotate", [])       # 空数组
 	cfg.set_value("binding", "no_such_action", [90])  # 不存在的动作
 	cfg.save(InputCfg.cfg_path)
 	var loaded := InputCfg.read()
-	check(loaded.size() == 1 and loaded["interact"] == [81], "脏 cfg 没被过滤干净：%s" % str(loaded))
+	check(loaded.size() == 1 and loaded["interact"] == [90], "脏 cfg 没被过滤干净：%s" % str(loaded))
 
 	# 10. 画面选项往返 + apply 不炸（headless 的 DisplayServer 是哑实现）
 	var opts := {"fullscreen": true, "resolution": 2, "vsync": false}
@@ -129,10 +130,10 @@ func _initialize() -> void:
 	if FileAccess.file_exists("user://input.cfg"):
 		backup = FileAccess.get_file_as_string("user://input.cfg")
 	var real := ConfigFile.new()
-	real.set_value("binding", "interact", [KEY_Q])
+	real.set_value("binding", "interact", [KEY_Z])
 	real.save(InputCfg.cfg_path)
 	InputCfg.boot()
-	check(InputCfg.keys_of("interact") == [81], "真实 cfg 的改绑没被 boot 套上")
+	check(InputCfg.keys_of("interact") == [90], "真实 cfg 的改绑没被 boot 套上")
 	InputCfg.restore()
 	if backup != "":
 		var bf := FileAccess.open("user://input.cfg", FileAccess.WRITE)

@@ -22,14 +22,11 @@ const Crisis = preload("res://scripts/core/crisis.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
 
-## 每档流速：游戏分钟 / 现实秒
-const SPEEDS := [0.0, 4.0, 10.0, 24.0]
+## 流速数值在 core（Post.SPEEDS），界面只负责显示与切换
 const SPEED_LABELS := ["❚❚", "▶", "▶▶", "▶▶▶"]
-const BUSY_RATE := 40.0
 ## 忙什么就放什么动作
 const WORK_ANIMS := {"cook": "Interact", "garden": "Crouch_Idle", "build": "Fixing_Kneeling", "repair": "Fixing_Kneeling",
 	"read": "Sitting_Idle", "craft": "Spell_Simple_Idle", "water": "PickUp_Table"}
-const SLEEP_RATE := 150.0
 ## 打更：戌时一更（19:00）敲一下……寅时五更（3:00）敲五下，先一声更鼓
 const WATCHES := {19: 1, 21: 2, 23: 3, 1: 4, 3: 5}
 ## 忙什么出什么声：[开工时, 忙的时候每隔一会儿, 间隔秒]
@@ -338,14 +335,7 @@ func _update_pose(run: Dictionary) -> void:
 # ---------- 时间 ----------
 
 func _rate(run: Dictionary) -> float:
-	var base: float = SPEEDS[Game.speed]
-	if base <= 0.0:
-		return 0.0
-	if run.sleeping:
-		return SLEEP_RATE
-	if Post.is_busy(run):
-		return maxf(base, BUSY_RATE)
-	return base
+	return Post.rate(run, Game.speed)
 
 
 func _tick_time(delta: float) -> void:
@@ -557,6 +547,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		Game.refresh()
 	elif event.is_action_pressed("sleep"):
 		perform("bed", "就寝")
+	elif event.is_action_pressed("wait"):
+		_wait_turn()
 	elif event.is_action_pressed("inventory"):
 		Dialogs.inventory()
 	elif event.is_action_pressed("journal"):
@@ -1160,10 +1152,15 @@ func _left_bottom(run: Dictionary) -> void:
 			b = Hud.button(SPEED_LABELS[k], _set_speed.bind(k), false, "", 14)
 		b.custom_minimum_size = Vector2(46, 30)
 		sp.add_child(b)
-	var status := Hud.text("", 13, Hud.SUB)
-	sp.add_child(status)
-	_live.speed_status = status
 	v.add_child(sp)
+	# 等一刻与空档提示另起一行：挤在速度按钮右边会撞上底下居中的心腹条
+	var wr := HBoxContainer.new()
+	wr.add_theme_constant_override("separation", 6)
+	wr.add_child(Hud.button("等一刻", _wait_turn, false, "把时间推到下一个节点（天黑/烧炭/尸潮/溃兵/天亮）。快捷键 Q。", 12))
+	var status := Hud.text("", 13, Hud.SUB)
+	wr.add_child(status)
+	_live.speed_status = status
+	v.add_child(wr)
 	h.add_child(v)
 	var p := Hud.panel(h, Hud.BG_SOFT)
 	hud.add_child(p)
@@ -1173,6 +1170,17 @@ func _left_bottom(run: Dictionary) -> void:
 func _set_speed(k: int) -> void:
 	Game.speed = k
 	Game.refresh()
+
+
+## 等一刻：把时间直接推到下一个节点（天黑、烧炭、尸潮、溃兵、天亮、夜战轮次）。
+## 白天常有几百分钟没有该做的事，让玩家干坐着看时间走不是节奏，是罚站。
+func _wait_turn() -> void:
+	var mins := Post.minutes_to_next_stop(Game.run)
+	if mins <= 0:
+		Game.toast.emit("手头有事，等不了。")
+		return
+	Game.speed = 1 if Game.speed == 0 else Game.speed
+	advance(mins)
 
 
 func _center_bottom(run: Dictionary) -> void:
@@ -1244,6 +1252,11 @@ func _update_live() -> void:
 			s = "睡眠加速中"
 		elif Post.is_busy(run):
 			s = "%s中 · 加速" % run.busy.label
+		else:
+			var mins := Post.minutes_to_next_stop(run)
+			if mins > 0:
+				var at := (Post.clock(run) + mins) % 1440
+				s = "空档 → %02d:%02d" % [at / 60, at % 60]
 		(_live.speed_status as Label).text = s
 
 

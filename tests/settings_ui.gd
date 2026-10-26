@@ -53,16 +53,17 @@ func _ready() -> void:
 	# 改键：点「改键」→ 按 Q → 行里变 Q、InputMap 变、cfg 落盘
 	await click(rebind_button("翻找 / 查看"))
 	check(rebind_button("翻找 / 查看").text == "按下新键…", "点了改键按钮没进入等待按键状态")
-	await push_key(KEY_Q)
-	check(keys_label_text("翻找 / 查看") == "Q", "改键后行里没变成 Q：" + keys_label_text("翻找 / 查看"))
-	check(InputCfg.keys_of("interact") == [81], "改键后 InputMap 没变：%s" % str(InputCfg.keys_of("interact")))
+	# 用 Z 做靶子：Q 现在是「等一刻」的默认键
+	await push_key(KEY_Z)
+	check(keys_label_text("翻找 / 查看") == "Z", "改键后行里没变成 Z：" + keys_label_text("翻找 / 查看"))
+	check(InputCfg.keys_of("interact") == [90], "改键后 InputMap 没变：%s" % str(InputCfg.keys_of("interact")))
 	check(rebind_button("翻找 / 查看").text == "改键", "改完键按钮文字没恢复")
 	var saved := InputCfg.read()
-	check(saved.get("interact", []) == [81], "改键没写进 cfg：%s" % str(saved))
+	check(saved.get("interact", []) == [90], "改键没写进 cfg：%s" % str(saved))
 
-	# 冲突：sleep 绑 Q（已被 interact 占了）→ 提示给了谁、绑定不动
+	# 冲突：sleep 绑 Z（已被 interact 占了）→ 提示给了谁、绑定不动
 	await click(rebind_button("就寝"))
-	await push_key(KEY_Q)
+	await push_key(KEY_Z)
 	check(InputCfg.keys_of("sleep") == [78], "冲突键竟然绑上了：%s" % str(InputCfg.keys_of("sleep")))
 	check(toasts.any(func(t): return str(t).contains("已经给了") and str(t).contains("翻找")), "冲突没提示给了谁：%s" % str(toasts))
 	check(rebind_button("就寝").text == "改键", "冲突后按钮文字没恢复")
