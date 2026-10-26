@@ -259,7 +259,9 @@ func _ready() -> void:
 	test_public_director_guard()
 	check((FileAccess.get_file_as_bytes(root_path).hex_encode() if FileAccess.file_exists(root_path) else "") == root_before, "Fixture changed real player's Memory.md")
 	Game.no_save = true
+	# 存档现在会留 .bak/.tmp，一并清掉，别把隔离用的临时文件攒在 user:// 里
 	for path in scratch:
-		if FileAccess.file_exists(path): check(DirAccess.remove_absolute(ProjectSettings.globalize_path(path)) == OK, "Could not clean isolated file")
+		for p in [path, path + ".bak", path + ".tmp"]:
+			if FileAccess.file_exists(p): check(DirAccess.remove_absolute(ProjectSettings.globalize_path(p)) == OK, "Could not clean isolated file")
 	print("Mainline memory/endings: %d checks, %d failures" % [checks, failures])
 	get_tree().quit(1 if failures else 0)

@@ -55,12 +55,25 @@ func build() -> void:
 
 	var meta: Dictionary = Game.meta
 	if Game.has_save():
-		menu.add_child(_item("续写此录", Game.continue_game, true))
+		menu.add_child(_item(_continue_label(), Game.continue_game, true))
 	menu.add_child(_item("新开一卷", _new_game, true))
 	menu.add_child(_item("心法 · 道心 %d" % int(meta.daoxin), func(): Game.go("talents")))
 	menu.add_child(_item("残卷 %d / %d" % [meta.clues.size(), Data.table("clues").size()], _show_clues))
 	menu.add_child(_item("设置", func(): Dialogs.settings(false)))
 	menu.add_child(_item("退出", func(): get_tree().quit()))
+	# 存档出过事（写坏、写不进、退了备份）就在菜单下面说清楚，不静默吞掉
+	if Game.save_notice != "":
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 10)
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		menu.add_child(gap)
+		var warn := Label.new()
+		warn.text = Game.save_notice
+		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		warn.custom_minimum_size = Vector2(320, 0)
+		warn.add_theme_font_size_override("font_size", 14)
+		warn.add_theme_color_override("font_color", Color("#e0a08a"))
+		menu.add_child(warn)
 
 	# ---- 左下角：题名 ----
 	var bottom := UI.full_rect(MarginContainer.new())
@@ -133,6 +146,14 @@ func _process(_delta: float) -> void:
 
 
 # ---------- 小件 ----------
+
+## 「续写此录」在存档有损时把话说在前头，别让玩家点进去才发现退回了一步。
+func _continue_label() -> String:
+	var st: Dictionary = Game.save_status()
+	if st.main: return "续写此录"
+	if st.backup: return "续写此录 · 从备份"
+	return "续写此录 · 读不出"
+
 
 func _ignore_pointer(node: Node) -> void:
 	if node is Control:
@@ -228,8 +249,9 @@ func _build_confirm(body: VBoxContainer) -> void:
 
 func _discard_and_new() -> void:
 	UI.close_modal("confirm_new")
-	Game.continue_game()
-	Game.close_book()
+	# 读不出来就没有"合上"这一步：直接开新卷，坏掉的原文件留着不删
+	if Game.continue_game():
+		Game.close_book()
 	Game.go("roles")
 
 

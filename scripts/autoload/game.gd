@@ -17,6 +17,7 @@ const Mainline = preload("res://scripts/core/mainline.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 const Opening = preload("res://scripts/core/opening.gd")
 const Director = preload("res://scripts/core/director.gd")
+const SaveFile = preload("res://scripts/core/save_file.gd")
 
 const SAVE_PATH := "user://save.json"
 const META_PATH := "user://meta.json"
@@ -35,6 +36,10 @@ var hold_screen := false
 ## 存档位置（测试时会改到别的文件）。
 var save_path := SAVE_PATH
 var meta_path := META_PATH
+## 存档/前世档案出了事要告诉玩家的话（标题界面第一屏显示，不静默吞掉）。
+var save_notice := ""
+## 写盘失败只提示一次，别每次行动都弹。
+var _save_warned := false
 ## 空值为项目根 Memory.md；隔离存档的测试必须显式指定独立路径。
 var memory_path := ""
 var memory_status := "local"
@@ -57,9 +62,17 @@ var pending_opening_setup: Dictionary = {}
 
 func _ready() -> void:
 	Data.ensure()
-	meta = _read_json(meta_path)
-	if meta.is_empty():
-		meta = State.new_meta()
+	var got := SaveFile.read(meta_path)
+	var data: Dictionary = Data.normalize(got.data)
+	meta = data if not data.is_empty() else State.new_meta()
+	# 主档坏了通常是上次写盘中途断掉：已经退回备份就读回来，两份都坏才另起，
+	# 并把读不出的那份另存留底（不直接覆盖），玩家至少还有东西可以发给别人看。
+	if got.note in ["main_bad", "main_missing"]:
+		save_notice = "跨轮回的底稿没能完整读回，已改用上一份备份。"
+		_preserve_broken(meta_path)
+	elif got.note == "none" and FileAccess.file_exists(meta_path):
+		save_notice = "跨轮回的底稿读不出来，已另存留底并重新起账。"
+		_preserve_broken(meta_path)
 
 
 # ---------- 界面切换 ----------
@@ -166,18 +179,35 @@ func pick_difficulty(role_id: String) -> void:
 
 
 func has_save() -> bool:
-	return not no_save and FileAccess.file_exists(save_path)
+	if no_save: return false
+	# 备份也算——主档写坏时玩家仍然能续上，别在标题界面把入口藏掉
+	return FileAccess.file_exists(save_path) or FileAccess.file_exists(save_path + SaveFile.BAK)
 
 
-func continue_game() -> void:
-	var data := _read_json(save_path)
-	if data.is_empty():
+## 主档和备份各自还能不能用：标题界面用它决定「续写此录」后面跟不跟一句实话。
+func save_status() -> Dictionary:
+	return SaveFile.status(save_path)
+
+
+## 续上一卷。返回 false 表示主档和备份都读不出来（此时不静默新开，交给调用方决定）。
+func continue_game() -> bool:
+	var got := SaveFile.read(save_path)
+	if got.data.is_empty():
+		save_notice = "这一卷的主档和备份都读不出来。原文件留在存档目录里，没有删。"
 		toast.emit("存档读不出来。")
-		return
+		return false
+	var data: Dictionary = Data.normalize(got.data)
 	data = Migrate.save(data)
 	run = data.get("run", {})
 	snapshots = data.get("snapshots", {})
+	if got.note != "main_ok":
+		save_notice = ("主存档不在了，已经接着上一份备份往下写（可能退回一步）。" if got.note == "main_missing"
+			else "主存档写坏了，已经接着上一份备份往下写（可能退回一步）。")
+		toast.emit(save_notice)
+	else:
+		save_notice = ""
 	_after()
+	return true
 
 
 ## 翻回昨日。
@@ -291,15 +321,38 @@ func buy_talent(id: String) -> void:
 func save_game() -> void:
 	if run.is_empty() or no_save:
 		return
-	_write_json(save_path, {"run": run, "snapshots": snapshots})
+	var result := SaveFile.write(save_path, {"run": run, "snapshots": snapshots})
+	if not result.ok:
+		_warn_save_failed(result)
 	save_meta()
 
 
 func save_meta() -> void:
 	if no_save:
 		return
-	if _write_json(meta_path, meta) != OK: return
+	var result := SaveFile.write(meta_path, meta)
+	if not result.ok:
+		_warn_save_failed(result)
+		return
 	_sync_life_memory()
+
+
+## 写盘失败（磁盘满、目录没权限）不能只在控制台留一行，玩家得知道这一局可能留不住。
+func _warn_save_failed(result: Dictionary) -> void:
+	push_error("存档写入失败：%s（错误 %d）" % [result.step, int(result.error)])
+	if _save_warned: return
+	_save_warned = true
+	save_notice = "存档写不进磁盘（%s），关掉游戏这一局会丢。" % result.step
+	toast.emit(save_notice)
+
+
+## 读不出的旧档改名留底，免得被下一次写盘直接盖掉。
+func _preserve_broken(path: String) -> void:
+	if not FileAccess.file_exists(path): return
+	var kept := path + ".bad"
+	if FileAccess.file_exists(kept):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(kept))
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(kept))
 
 
 func resolved_memory_path() -> String:
@@ -326,25 +379,10 @@ func read_life_memory() -> Dictionary:
 
 
 func _delete_save() -> void:
-	if FileAccess.file_exists(save_path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+	# 主档、备份、临时档一起删；只删主档的话，旧局会从 .bak 里活过来
+	SaveFile.forget(save_path)
 
 
-func _write_json(path: String, data: Dictionary) -> Error:
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
-		push_error("写不了存档：" + path)
-		return FileAccess.get_open_error()
-	f.store_string(JSON.stringify(data, "\t"))
-	var error := f.get_error()
-	f.close()
-	return error
-
-
+## 只给测试读跨轮回底稿用（真读档走 continue_game，会退备份并告知玩家）。
 func _read_json(path: String) -> Dictionary:
-	if not FileAccess.file_exists(path):
-		return {}
-	var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(parsed) != TYPE_DICTIONARY:
-		return {}
-	return Data.normalize(parsed)
+	return Data.normalize(SaveFile.read(path).data)

@@ -6,6 +6,7 @@ extends Node
 ## 运行：godot --headless --path . res://tests/ui_smoke.tscn
 
 const State = preload("res://scripts/core/state.gd")
+const SaveFile = preload("res://scripts/core/save_file.gd")
 const Post = preload("res://scripts/core/post.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Inv = preload("res://scripts/core/inv.gd")
@@ -433,7 +434,7 @@ func check(cond: bool, msg: String) -> void:
 		push_error("断言失败：" + msg)
 
 
+## 存档现在会留 .bak/.tmp，一并清掉——留着备份会让下一次跑的标题界面以为还有旧卷。
 func _cleanup() -> void:
 	for f in ["user://test_save.json", "user://test_meta.json"]:
-		if FileAccess.file_exists(f):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(f))
+		SaveFile.forget(f)
