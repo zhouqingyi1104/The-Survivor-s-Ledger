@@ -15,6 +15,7 @@ const Post = preload("res://scripts/core/post.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const Figure = preload("res://scripts/world/character.gd")
+const Surroundings = preload("res://scripts/world/home_surroundings.gd")
 
 const GATE_Z := 7.0
 const WINDOW_POS := Vector3(5.6, 1.7, 7.0)
@@ -35,6 +36,7 @@ const SPOTS := {
 const PLOT_POS := [Vector3(2.6, 0, 1.4), Vector3(4.5, 0, 1.4), Vector3(2.6, 0, 3.3), Vector3(4.5, 0, 3.3)]
 
 var sky: Dictionary
+var surroundings: Node3D
 var halls := []
 var gate: Dictionary
 var lanterns := []
@@ -54,6 +56,9 @@ func _ready() -> void:
 	# The overhead camera looks through many metres of fog even at nearby props.
 	# Keep the courtyard legible instead of tinting the entire scene grey.
 	sky.fog_mul = 0.12
+	# C0 四周景物（近邻宅院/街巷、中景屋脊、远景城墙山脊）：视觉隔离根，不进核心合并，
+	# 无碰撞/无导航/无灯光；显式列入 merge_static 的 skip。
+	surroundings = Surroundings.build(self, {})
 	_ground()
 	_buildings()
 	_furniture()
@@ -64,8 +69,8 @@ func _ready() -> void:
 	var garden_root := K.node(self, Vector3.ZERO, Vector3.ZERO, "spot_garden")
 	_garden_body = K.collider(garden_root, Vector3.ONE, Vector3.ZERO, {"spot": "garden"})
 	spot_nodes["garden"] = _dynamic.garden
-	# 静态的方块按材质合并；会动、会重画、要描边的留着
-	K.merge_static(self, [gate.node, _window] + spot_nodes.values() + _dynamic.values())
+	# 静态的方块按材质合并；会动、会重画、要描边的留着；四周景物根整树跳过（层内各自合并）
+	K.merge_static(self, [gate.node, _window, surroundings] + spot_nodes.values() + _dynamic.values())
 
 
 func _ground() -> void:
@@ -105,18 +110,9 @@ func _ground() -> void:
 	sm.roughness = 0.9
 	mi.material_override = sm
 	add_child(mi)
-	# 门外街道（青石）
+	# 门外街道（青石）；街对面人家、后巷邻院、城墙山脊等四周景物统一由 home_surroundings 构建
 	K.box(self, Vector3(60, 0.04, 6), K.mat(Color("#8f8b84"), 0.95), Vector3(0, 0.02, 11))
 	K.box(self, Vector3(60, 0.045, 1.2), K.SNOW, Vector3(0, 0.025, 13.6))
-	# 街对面的人家（剪影）
-	for k in 6:
-		var x := -25.0 + k * 10.0
-		var h := 4.0 + (k % 3) * 0.8
-		K.box(self, Vector3(8, h, 4), K.WALL_SHADE, Vector3(x, h / 2.0, 17))
-		K.box(self, Vector3(8.4, 0.3, 4.4), K.ROOF, Vector3(x, h + 0.15, 17))
-		Arch.ma_tou(self, x - 4.0, 17, 4.0, h, 1.2)
-	for x in [-14.0, 14.0]:
-		Props.plum_tree(self, Vector3(x, 0, 12.5))
 
 
 func _buildings() -> void:

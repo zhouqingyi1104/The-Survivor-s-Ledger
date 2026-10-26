@@ -25,3 +25,7 @@
 # 每位玩家每轮结束后更新的运行时前世档案（说明在 docs/14-past-lives.md）
 /Memory.md
 /Memory.md.tmp
+
+# Python 测试启动器的本地字节码缓存
+__pycache__/
+*.py[cod]

@@ -1,0 +1,25 @@
+{
+  "_comment": "C0 宅院四周景物配置。home_surroundings.gd 独立读取（不走 Data.table）；文件缺失/字段缺失时回退内置默认值。只放可调参数，不放资源路径。",
+  "seed": 20261026,
+  "ground_size": 520.0,
+  "near": {
+    "lantern_bodies": 4,
+    "wood_piles": 2
+  },
+  "middle": {
+    "houses": 14,
+    "trees": 10,
+    "wall_bits": 6
+  },
+  "far": {
+    "wall_radius": 62.0,
+    "wall_h": 9.0,
+    "wall_thick": 1.6,
+    "towers": 16,
+    "tower_h": 12.5,
+    "peaks": 16,
+    "peak_r_in": 95.0,
+    "peak_r_out": 150.0,
+    "height_scale": 0.4
+  }
+}
