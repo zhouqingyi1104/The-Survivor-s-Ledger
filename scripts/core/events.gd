@@ -118,7 +118,11 @@ static func _apply(run: Dictionary, fx: Dictionary) -> String:
 		run.today["merit"] = int(run.today.get("merit", 0)) + int(fx.merit)
 	for k in ["mood", "hp", "energy"]:
 		if fx.has(k):
-			State.add_attr(run, k, fx[k])
+			# 事件扣血也进账本（"意外"），回血仍走 add_attr
+			if k == "hp" and float(fx[k]) < 0.0:
+				State.hurt(run, -float(fx[k]), "event")
+			else:
+				State.add_attr(run, k, fx[k])
 	if fx.has("flag"):
 		run.flags[fx.flag] = true
 	if fx.has("unlock"):

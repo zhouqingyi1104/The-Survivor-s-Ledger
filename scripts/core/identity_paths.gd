@@ -143,7 +143,7 @@ static func act(run: Dictionary, id: String, token: String) -> String:
 	var s := state(run)
 	Inv.take_all(run.home, a.cost)
 	State.add_attr(run, "energy", -int(a.energy))
-	if int(a.hp) > 0: State.add_attr(run, "hp", -int(a.hp))
+	if int(a.hp) > 0: State.hurt(run, float(int(a.hp)), "wound")
 	s.serial = int(s.serial) + 1
 	var work_id := "identity:%s:%d" % [str(Past.state(run).id), int(s.serial)]
 	var end := int(run.t) + int(a.minutes)

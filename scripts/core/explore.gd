@@ -159,7 +159,7 @@ static func _caught(run: Dictionary, p: Dictionary) -> void:
 	Mainline.lost_cargo(run)
 	ex.erase("mainline_cargo")
 	var dmg := 8 + int(p.danger) * 4
-	State.add_attr(run, "hp", -dmg)
+	State.hurt(run, float(dmg), "wound")
 	var chance := 0.2 + 0.05 * int(p.danger)
 	if State.is_role(run, "herbalist"):
 		chance *= 0.5

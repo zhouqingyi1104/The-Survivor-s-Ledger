@@ -85,6 +85,8 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 		"well_used": false, "explore": {}, "report": {},
 		"kills": 0, "waves_survived": 0, "rebirths_left": 3,
 		"death_cause": "", "endless": false, "log": [],
+		## 扣血账本：来源 → 本世累计失血；最后一笔单独记着（生死簿残页的复盘读这两项）
+		"hp_log": {}, "last_hurt": {},
 	}
 	for shop_id in Data.table("shops"):
 		run.shops[shop_id] = Data.table("shops")[shop_id].get("stock", {}).duplicate()
@@ -197,6 +199,26 @@ static func attr_max(run: Dictionary, key: String) -> int:
 
 static func add_attr(run: Dictionary, key: String, delta: float) -> void:
 	run.attrs[key] = clampf(float(run.attrs[key]) + delta, 0.0, float(attr_max(run, key)))
+
+
+## 扣血要记账。死因不能事后按属性猜（饿和冻同时见底时猜不准谁先要了命），
+## 得看谁真的把气血打光：每处扣血都带一个来源标签，累计进 run.hp_log，
+## 最后一笔记在 run.last_hurt，生死簿残页的复盘直接读这本账。
+## 只给扣血用；回血（睡觉）仍走 add_attr，不进账本。
+## 账本记的是**实际掉的血**（超出剩余气血的部分不算），这样构成各项加起来
+## 等于本世真正掉掉的血，而不是被多余伤害灌水的数。
+static func hurt(run: Dictionary, amount: float, tag: String) -> void:
+	if amount <= 0.0:
+		return
+	if not (run.get("hp_log") is Dictionary):
+		run["hp_log"] = {}
+	var before := attr(run, "hp")
+	var cost := minf(float(amount), float(before))
+	if cost <= 0.0:
+		return
+	run.hp_log[tag] = float(run.hp_log.get(tag, 0.0)) + cost
+	run["last_hurt"] = {"tag": tag, "amount": cost, "at": int(run.get("t", 0)), "before": before}
+	add_attr(run, "hp", -float(amount))
 
 
 static func prof_level(run: Dictionary, key: String) -> int:

@@ -24,6 +24,7 @@ const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
 const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
+const DeathReport = preload("res://scripts/core/death_report.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -138,7 +139,8 @@ static func advance(run: Dictionary, minutes: int) -> String:
 		run.t = int(run.t) + step
 		left -= step
 		trade_refresh(run)
-		if State.check_death(run, _death_cause(run)):
+		# 死因交给账本算（谁真的把气血打光），不再事后按属性猜
+		if (State.attr(run, "hp") <= 0 or run.phase == "dead") and State.check_death(run, DeathReport.verdict(run)):
 			return "dead"
 		_check_busy(run)
 		if run.phase != "post":
@@ -189,38 +191,26 @@ static func _tick(run: Dictionary, hours: float) -> void:
 				cap = 100.0
 		run.attrs.warmth = clampf(float(run.attrs.warmth) + gain * hours, 0.0, cap)
 	if State.attr(run, "food") <= 0:
-		State.add_attr(run, "hp", -RATE.starve_hp * hours)
+		State.hurt(run, RATE.starve_hp * hours, "starve")
 		State.add_attr(run, "mood", -1.2 * hours)
 	if State.attr(run, "water") <= 0:
-		State.add_attr(run, "hp", -RATE.thirst_hp * hours)
+		State.hurt(run, RATE.thirst_hp * hours, "thirst")
 	if run.plague:
-		State.add_attr(run, "hp", -RATE.plague_hp * hours)
+		State.hurt(run, RATE.plague_hp * hours, "plague")
 	if State.attr(run, "warmth") < 15:
-		State.add_attr(run, "hp", -RATE.freezing_hp * hours)
+		State.hurt(run, RATE.freezing_hp * hours, "freeze")
 		State.add_attr(run, "mood", -0.8 * hours)
 	elif State.attr(run, "warmth") < 30:
-		State.add_attr(run, "hp", -RATE.cold_hp * hours)
+		State.hurt(run, RATE.cold_hp * hours, "cold")
 		State.add_attr(run, "mood", -0.5 * hours)
 	# 三面都被撞破：院子里的东西挡不住了，一直有人扑上来
 	if in_night(run) and Defense.all_broken(run):
-		State.add_attr(run, "hp", -RATE.overrun_hp * hours)
+		State.hurt(run, RATE.overrun_hp * hours, "overrun")
 		State.add_attr(run, "mood", -1.0 * hours)
 	# 作物：一天之内浇过水才长
 	for plot in run.plots:
 		if plot.crop != "" and int(run.t) - int(plot.watered_t) <= DAY:
 			plot.days = float(plot.days) + hours / 24.0
-
-
-static func _death_cause(run: Dictionary) -> String:
-	if State.attr(run, "water") <= 0:
-		return "渴死在第 %d 日。" % run.pday
-	if State.attr(run, "food") <= 0:
-		return "饿死在第 %d 日。" % run.pday
-	if run.plague:
-		return "尸瘟入骨，死在第 %d 日。" % run.pday
-	if State.attr(run, "warmth") < 30:
-		return "冻死在第 %d 日的夜里。" % run.pday
-	return "力竭而亡。"
 
 
 static func _checkpoint(run: Dictionary, m: int) -> String:
@@ -597,7 +587,7 @@ static func end_fight(run: Dictionary, sum: Dictionary) -> void:
 	run.fight = {}
 	var kills := int(sum.get("kills", 0))
 	if int(sum.get("hp_loss", 0)) > 0:
-		State.add_attr(run, "hp", -float(sum.hp_loss))
+		State.hurt(run, float(sum.hp_loss), "bite")
 	if bool(sum.get("plague", false)) and not run.plague:
 		run.plague = true
 	if kills > 0:
@@ -613,7 +603,7 @@ static func end_fight(run: Dictionary, sum: Dictionary) -> void:
 	if bool(sum.get("plague", false)):
 		text += "，胳膊上多了几道黑紫的抓痕"
 	State.note(run, text + "。")
-	State.check_death(run, "死在院门口。")
+	State.check_death(run, DeathReport.verdict(run))
 
 
 ## 门开着的时候，进院子的那几只开始砸东西。

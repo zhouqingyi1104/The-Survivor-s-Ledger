@@ -2,16 +2,17 @@ extends "res://scripts/ui/screens/screen_base.gd"
 ## 生死簿残页：死后三选。对应原版 RebirthChoice（翻回昨天 / 翻回扉页 / 合上日志）。
 
 const Ledger = preload("res://scripts/core/ledger.gd")
+const DeathReport = preload("res://scripts/core/death_report.gd")
 
 
 func build() -> void:
 	var run: Dictionary = Game.run
 	var center := UI.full_rect(CenterContainer.new())
 	add_child(center)
-	var v := UI.vbox(14)
+	var v := UI.vbox(10)
 	v.custom_minimum_size.x = 1080
 	center.add_child(v)
-	var title := UI.heading("生 死 簿 · 残 页", 54, UI.CINNABAR)
+	var title := UI.heading("生 死 簿 · 残 页", 48, UI.CINNABAR)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(title)
 	var cause := UI.label(run.death_cause, 22)
@@ -20,6 +21,7 @@ func build() -> void:
 	var sub := UI.label("判官的朱笔停在你的名字上。%s · 残页还能翻 %d 次。" % [State.diff_name(run), int(run.rebirths_left)], 18, UI.INK_SOFT)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(sub)
+	v.add_child(_recap(run))
 
 	var gain := Ledger.daoxin_gain(run)
 	var row := UI.hbox(16)
@@ -48,6 +50,40 @@ func build() -> void:
 	v.add_child(choose)
 
 
+## 复盘：谁在什么时候把血打光的，前面几步发生了什么，以及一句能落地的提醒。
+## 数据不够（老存档没有扣血账本）就少铺几行，绝不编。
+func _recap(run: Dictionary) -> Control:
+	var reps: Dictionary = DeathReport.report(run)
+	var rows := []
+	if int(reps.total) > 0:
+		var parts := []
+		for s in reps.shares:
+			parts.append("%s %d" % [s.name, int(s.amount)])
+		rows.append(["死因构成", "本世共失血 %d：%s" % [int(reps.total), " · ".join(parts)]])
+	if str(reps.last) != "":
+		rows.append(["最后一击", str(reps.last)])
+	# 此前：一条一行，最多两条。三条拼成一行会挤得看不出时刻。
+	var steps: Array = reps.steps
+	for i in mini(2, steps.size()):
+		rows.append(["此前" if i == 0 else "", str(steps[i])])
+	for i in reps.hints.size():
+		rows.append(["留意" if i == 0 else "", str(reps.hints[i])])
+	if rows.is_empty():
+		return Control.new()
+	var v := UI.vbox(6)
+	for row in rows:
+		var line := UI.hbox(12)
+		var tag := UI.label(str(row[0]), 15, UI.DAI)
+		tag.custom_minimum_size.x = 76
+		line.add_child(tag)
+		line.add_child(UI.expand(UI.label(str(row[1]), 15, UI.INK_SOFT, true)))
+		v.add_child(line)
+	var p := UI.panel(v)
+	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	p.custom_minimum_size.x = 900
+	return p
+
+
 func _card(title: String, quote: String, body_text: String, btn: String, cb: Callable, disabled := false, tip := "") -> Control:
 	var v := UI.vbox(10)
 	v.add_child(UI.heading(title, 30))
@@ -59,6 +95,6 @@ func _card(title: String, quote: String, body_text: String, btn: String, cb: Cal
 	v.add_child(gap)
 	v.add_child(UI.seal_button(btn, cb, disabled, tip))
 	var p := UI.panel(v)
-	p.custom_minimum_size.y = 300
+	p.custom_minimum_size.y = 270
 	UI.expand(p)
 	return p

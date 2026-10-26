@@ -18,12 +18,13 @@ extends RefCounted
 ##   v18：身份解法（run.identity），旧卷与快照不追授后来封存的前世经验。
 ##   v19：可变开局（run.opening），旧卷保持原行囊，不追发资源、人情或首场风声。
 ##   v20：轮回调查（run.cycle_inquiry），旧本局与快照不追授后来封存的旧案。
+##   v21：扣血账本（run.hp_log / run.last_hurt），旧卷没有记录，死因退回属性猜测。
 
 const Post = preload("res://scripts/core/post.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 
-const VERSION := 20
+const VERSION := 21
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -167,5 +168,9 @@ static func upgrade(run: Dictionary) -> Dictionary:
 		run["opening"] = {"schema": 1, "legacy": true, "choice": "plain", "applied": true, "inherited": [], "effects": {}, "history": []}
 	if v < 20:
 		run["cycle_inquiry"] = {"schema": 1, "legacy": true, "closed": true, "sources": []}
+	if v < 21:
+		# 扣血账本：老卷没有这段记录，也不去补造，死因退回属性猜测
+		run["hp_log"] = {}
+		run["last_hurt"] = {}
 	run.version = VERSION
 	return run

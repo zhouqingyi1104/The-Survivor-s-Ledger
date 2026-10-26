@@ -11,6 +11,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
+const DeathReport = preload("res://scripts/core/death_report.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
 
@@ -415,7 +416,7 @@ static func resolve_round(run: Dictionary, idx: int) -> Dictionary:
 		var hp := _inside_hp(int(rep.enter))
 		if State.has_buff(run, "ward"):
 			hp = int(hp / 2.0)
-		State.add_attr(run, "hp", -hp)
+		State.hurt(run, float(hp), "overrun")
 		rep.hp_loss = hp
 		var chance := 0.10 + 0.015 * int(rep.enter)
 		if State.is_role(run, "herbalist"):
@@ -491,7 +492,7 @@ static func finish_night(run: Dictionary) -> Dictionary:
 		"cracked": false, "broken": worn, "level_up": "",
 	}
 	run.night = {}
-	if not State.check_death(run, "死在第 %d 夜。" % run.pday):
+	if not State.check_death(run, DeathReport.verdict(run)):
 		run.waves_survived += 1
 	return report
 
@@ -590,7 +591,7 @@ static func sortie(run: Dictionary, sid: String) -> Dictionary:
 	var kills := mini(n, maxi(0, int(floor(power / cost))))
 	run.night.sortie[sid] = int(run.night.sortie.get(sid, 0)) + kills
 	var hp := int(ceil(kills * FIELD_HP_PER_KILL)) + FIELD_HP_BASE
-	State.add_attr(run, "hp", -hp)
+	State.hurt(run, float(hp), "sortie")
 	State.add_attr(run, "energy", -8)
 	var chance := 0.06 + 0.02 * kills
 	if State.is_role(run, "herbalist"):
@@ -617,11 +618,11 @@ static func resolve_raid(run: Dictionary) -> Dictionary:
 	var stolen := {}
 	if repelled:
 		run.door.cur = maxi(0, int(run.door.cur) - 20)
-		State.add_attr(run, "hp", -4)
+		State.hurt(run, 4.0, "raid")
 		State.note(run, "溃兵砸了半夜的门，没砸开，骂骂咧咧地走了。")
 	else:
 		run.door.cur = maxi(0, int(run.door.cur) - 15)
-		State.add_attr(run, "hp", -10)
+		State.hurt(run, 10.0, "raid")
 		var ratio := 0.15 if State.has_facility(run, "cellar") else 0.3
 		for id in Inv.GRAINS + Inv.food_ids(run.home):
 			var n := int(floor(Inv.count(run.home, id) * ratio))
