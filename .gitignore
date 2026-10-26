@@ -1,6 +1,8 @@
 # Godot（.import 记着导入设置，要入库）
 .godot/
-export_presets.cfg
+# 导出预设要入库：发布件的参数属于工程，不是本机状态
+# 导出时临时探 res:// 可写性的探针文件
+.write_probe
 /build/
 
 # 本地引擎（太大，不入库；下载地址见 README）

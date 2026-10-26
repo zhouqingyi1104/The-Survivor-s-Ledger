@@ -359,7 +359,39 @@ func resolved_memory_path() -> String:
 	if memory_path != "": return memory_path
 	# Existing scratch-save tests must never write or read the player's root archive.
 	if save_path != SAVE_PATH or meta_path != META_PATH: return ""
-	return "res://Memory.md"
+	return memory_path_for(res_is_readonly())
+
+
+## 前世档案落在哪：只读（打包后 / 只读盘）就落 user://，否则写项目根（开发时看得见）。
+static func memory_path_for(readonly: bool) -> String:
+	return "user://Memory.md" if readonly else "res://Memory.md"
+
+
+## res:// 该不该当档案目录。打包版一律不——它的 res:// 在 pck 里只读；
+## 开发时再探一下磁盘上到底能不能写（项目放在只读盘上时同样该退 user://）。
+## 两道都留着：OS.has_feature("template") 在真导出件里为真，探针在开发态为真，
+## 单靠任何一个都会漏掉另一种情况。
+static func res_is_readonly() -> bool:
+	if OS.has_feature("template"):
+		return true
+	return not res_writable()
+
+
+## res:// 能不能写。结果缓存，一次进程只探一次。
+static var _res_writable := -1
+
+static func res_writable() -> bool:
+	if _res_writable >= 0:
+		return _res_writable == 1
+	var probe := "res://.write_probe"
+	var f := FileAccess.open(probe, FileAccess.WRITE)
+	if f == null:
+		_res_writable = 0
+		return false
+	f.close()
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(probe))
+	_res_writable = 1
+	return true
 
 
 func _sync_life_memory() -> void:
