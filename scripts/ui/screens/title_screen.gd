@@ -59,6 +59,7 @@ func build() -> void:
 	menu.add_child(_item("新开一卷", _new_game, true))
 	menu.add_child(_item("心法 · 道心 %d" % int(meta.daoxin), func(): Game.go("talents")))
 	menu.add_child(_item("残卷 %d / %d" % [meta.clues.size(), Data.table("clues").size()], _show_clues))
+	menu.add_child(_item("导出试玩报告", _export_report))
 	menu.add_child(_item("设置", func(): Dialogs.settings(false)))
 	menu.add_child(_item("退出", func(): get_tree().quit()))
 	# 存档出过事（写坏、写不进、退了备份）就在菜单下面说清楚，不静默吞掉
@@ -253,6 +254,11 @@ func _discard_and_new() -> void:
 	if Game.continue_game():
 		Game.close_book()
 	Game.go("roles")
+
+
+## 试玩报告：把这些事实打包，玩家拿去发过来，我们就能复现那一局。
+func _export_report() -> void:
+	Dialogs.playtest_exported(Game.export_playtest())
 
 
 func _show_clues() -> void:

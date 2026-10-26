@@ -1558,6 +1558,29 @@ func _ready() -> void:
 	add_child(_capture)
 
 
+## 试玩报告导出的结果：路径 + 附了哪些文件 + 怎么发过来。
+## 路径不能只用一个 toast——它长、会消失，玩家还要去文件管理器里找。
+func playtest_exported(result: Dictionary) -> void:
+	UI.open_modal("playtest_report", "试玩报告", _playtest_report.bind(result), true, 700)
+
+
+func _playtest_report(body: VBoxContainer, result: Dictionary) -> void:
+	if not bool(result.get("ok", false)):
+		body.add_child(UI.para("没导出来：%s" % str(result.get("note", "原因不明")), 17, UI.CINNABAR))
+		body.add_child(UI.para("可以先把存档目录里的 save.json 手动发过来：%s" % ProjectSettings.globalize_path("user://"), 15, UI.INK_SOFT))
+		return
+	body.add_child(UI.para("这一局的事实已经打包好了。把整个文件夹压一下发过来就行——里面有种子、死因构成、最后几十条记录和存档本身。", 17))
+	body.add_child(UI.sep())
+	body.add_child(UI.label("文件夹", 15, UI.DAI))
+	var path := UI.para(str(result.get("dir", "")), 16, UI.CINNABAR)
+	body.add_child(path)
+	body.add_child(UI.label("里面的文件", 15, UI.DAI))
+	var files: Array = result.get("files", [])
+	body.add_child(UI.para("、".join(files) if not files.is_empty() else "（只有报告）", 16, UI.INK_SOFT))
+	body.add_child(UI.sep())
+	body.add_child(UI.para("报告末尾留了三个空，想写就写：最烦的三件事、最看不懂的三处、二十天是长了还是短了。不写也不影响上面的数据。", 15, UI.INK_FAINT))
+
+
 ## 设置：画面、按键、音量；在游戏里打开时还能回标题（进度已自动存档）。
 func settings(in_game := false) -> void:
 	UI.open_modal("settings", "设置", _settings.bind(in_game), true, 560)

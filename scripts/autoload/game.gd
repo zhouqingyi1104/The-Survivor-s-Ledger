@@ -18,6 +18,8 @@ const Past = preload("res://scripts/core/past_lives.gd")
 const Opening = preload("res://scripts/core/opening.gd")
 const Director = preload("res://scripts/core/director.gd")
 const SaveFile = preload("res://scripts/core/save_file.gd")
+const PlaytestReport = preload("res://scripts/core/playtest_report.gd")
+const InputCfg = preload("res://scripts/core/input_cfg.gd")
 
 const SAVE_PATH := "user://save.json"
 const META_PATH := "user://meta.json"
@@ -413,6 +415,79 @@ func read_life_memory() -> Dictionary:
 func _delete_save() -> void:
 	# 主档、备份、临时档一起删；只删主档的话，旧局会从 .bak 里活过来
 	SaveFile.forget(save_path)
+
+
+# ---------- 试玩报告 ----------
+
+## 把这一局打包成一册能发出去的取证：报告 + 存档 + 底稿 + 前世档案。
+## 玩家说"有点难"没法下手；有了种子、死因账本和最后几十条记录，就能在本地复现。
+## 返回 {"ok": bool, "dir": String, "files": Array, "note": String}；dir 是绝对路径，界面直接显示。
+func export_playtest() -> Dictionary:
+	var stamp := _stamp_text()
+	var dir := "user://reports/" + stamp
+	var absolute := ProjectSettings.globalize_path(dir)
+	if DirAccess.make_dir_recursive_absolute(absolute) != OK and not DirAccess.dir_exists_absolute(absolute):
+		return {"ok": false, "dir": "", "files": [], "note": "建不了报告目录：" + absolute}
+
+	var files: Array = []
+	var text := PlaytestReport.build(run, meta, _report_ctx())
+	var error := _write_text(dir.path_join("report.md"), text)
+	if error != OK:
+		return {"ok": false, "dir": absolute, "files": [], "note": "报告写不进去（错误 %d）" % error}
+	files.append("report.md")
+	# 存档与底稿原样附上：有它们才能在本地把这一局原样打开
+	for src in [save_path, save_path + SaveFile.BAK, meta_path]:
+		if not FileAccess.file_exists(src): continue
+		var name: String = src.get_file()
+		if _write_text(dir.path_join(name), FileAccess.get_file_as_string(src)) == OK:
+			files.append(name)
+	var memory := resolved_memory_path()
+	if memory != "" and FileAccess.file_exists(memory):
+		if _write_text(dir.path_join("Memory.md"), FileAccess.get_file_as_string(memory)) == OK:
+			files.append("Memory.md")
+	save_notice = ""
+	return {"ok": true, "dir": absolute, "files": files, "note": ""}
+
+
+func _report_ctx() -> Dictionary:
+	var changed := {}
+	var saved := InputCfg.read()
+	for action in saved:
+		var names := []
+		for key in saved[action]:
+			names.append(InputCfg.key_name(int(key)))
+		changed[InputCfg.LABELS.get(action, action)] = "、".join(names)
+	var size := "无"
+	if FileAccess.file_exists(save_path):
+		size = "%.0f KB" % (float(FileAccess.get_file_as_string(save_path).length()) / 1024.0)
+	var director := true
+	if not run.is_empty():
+		director = bool(Director.state(run).enabled)
+	var window := DisplayServer.window_get_size()
+	return {
+		"now": "%s %s" % [State.today_text(), Time.get_time_string_from_system().left(5)],
+		"version": str(ProjectSettings.get_setting("application/config/version", "?")),
+		"engine": str(Engine.get_version_info().get("string", "?")),
+		"os": "%s %s" % [OS.get_name(), OS.get_version()],
+		"resolution": "%d×%d" % [window.x, window.y],
+		"save_bytes": size,
+		"bindings": changed,
+		"director": director,
+	}
+
+
+func _stamp_text() -> String:
+	var d := Time.get_datetime_dict_from_system()
+	return "%04d%02d%02d-%02d%02d%02d" % [int(d.year), int(d.month), int(d.day), int(d.hour), int(d.minute), int(d.second)]
+
+
+func _write_text(path: String, text: String) -> Error:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null: return FileAccess.get_open_error()
+	f.store_string(text)
+	var error := f.get_error()
+	f.close()
+	return error
 
 
 ## 只给测试读跨轮回底稿用（真读档走 continue_game，会退备份并告知玩家）。

@@ -170,8 +170,11 @@ static func hints(run: Dictionary, main_tag: String) -> Array:
 			var coal := Inv.count(home, "charcoal")
 			if not bool(run.get("heated", false)):
 				var tail := ""
-				if wood + coal > 0:
-					tail = "，仓里还剩 %d 根柴、%d 块炭没烧" % [wood, coal]
+				var bits := []
+				if wood > 0: bits.append("%d 根柴" % wood)
+				if coal > 0: bits.append("%d 块炭" % coal)
+				if not bits.is_empty():
+					tail = "，仓里还剩 %s 没烧" % "、".join(bits)
 				elif int(run.get("pday", 0)) > 1:
 					tail = "，仓里连柴和炭都没有了——冷夜前得先去柴铺"
 				out.append("这一夜没生火" + tail + "。")

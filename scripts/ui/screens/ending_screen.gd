@@ -57,8 +57,17 @@ func build() -> void:
 
 	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，再保留身份与难度，重新选择下世筹备；原重走按钮会沿用本世开局。")
 	choose.set_meta("opening_next", true)
-	choose.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	v.add_child(choose)
+	# 这一页正是玩家最想吐槽的时候：顺手把这一局的取证打包，别等合卷把存档删了
+	var tail := UI.hbox(12)
+	tail.alignment = BoxContainer.ALIGNMENT_CENTER
+	tail.add_child(UI.button("导出试玩报告", _export_report, false,
+		"把这一局的种子、死因构成、最后几十条记录和存档打包成一个文件夹，方便发给开发者。"))
+	tail.add_child(choose)
+	v.add_child(tail)
+
+
+func _export_report() -> void:
+	Dialogs.playtest_exported(Game.export_playtest())
 
 
 func _card(title: String, quote: String, body_text: String, btn: String, cb: Callable) -> Control:
