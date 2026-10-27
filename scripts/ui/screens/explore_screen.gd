@@ -123,7 +123,10 @@ func _update_hint() -> void:
 		if s.done and not s.has("mainline") and not s.has("neighbor"):
 			_hint_label.text = "[%s] 查看 · %s（可整理背囊）" % [ek, s.name]
 		else:
-			_hint_label.text = "[%s] 翻找 · %s" % [ek, s.name] if not s.done else "%s · 已经查过了" % s.name
+			var verb := "调查" if s.has("mainline") or s.has("neighbor") else "查看选择"
+			if not s.has("mainline") and not s.has("neighbor"):
+				verb = "特色行动" if Explore.site_options(Game.run, _near).size() > 1 else "翻找"
+			_hint_label.text = "[%s] %s · %s" % [ek, verb, s.name] if not s.done else "%s · 已经查过了" % s.name
 	_hint.reset_size()
 	_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 70)
 
@@ -153,7 +156,62 @@ func search(idx: int) -> void:
 		if not spot.has("mainline") and not spot.has("neighbor"):
 			_open_loot(idx)
 		return
-	var res = Game.act(func(): return Post.search(Game.run, idx))
+	if not spot.has("mainline") and not spot.has("neighbor"):
+		if Explore.site_options(Game.run, idx).size() > 1:
+			_open_site_options(idx)
+		else:
+			_execute_search(idx, "normal")
+		return
+	_execute_search(idx, "")
+
+
+## 先让玩家看清收益与代价。关闭或按 Esc 不会开始搜寻。
+func _open_site_options(idx: int) -> void:
+	var ex: Dictionary = Game.run.get("explore", {})
+	if ex.is_empty() or idx < 0 or idx >= ex.spots.size(): return
+	UI.open_modal("explore_options", "查看 · " + str(ex.spots[idx].name), _site_options_panel.bind(idx), true, 760)
+
+
+func _site_options_panel(body: VBoxContainer, idx: int) -> void:
+	var ex: Dictionary = Game.run.get("explore", {})
+	if ex.is_empty() or idx < 0 or idx >= ex.spots.size():
+		body.add_child(UI.label("已离开此处。", 17))
+		return
+	var p: Dictionary = Data.table("map_points")[ex.point]
+	body.add_child(UI.para(str(p.desc), 16))
+	body.add_child(UI.para("选择如何处理这里；合上或按 Esc 可先离开，不消耗时间。", 16, UI.GOLD))
+	var choices := UI.vbox(8)
+	var options: Array = Explore.site_options(Game.run, idx)
+	for option in options:
+		var id := str(option.get("id", ""))
+		var block := str(option.get("block", ""))
+		var group := UI.vbox(3)
+		var b := UI.button(str(option.get("title", "查看")), _choose_site_option.bind(idx, id), block != "")
+		b.focus_mode = Control.FOCUS_ALL
+		b.set_meta("explore_option", id)
+		group.add_child(b)
+		group.add_child(UI.para(str(option.get("description", "")), 16))
+		if block != "": group.add_child(UI.para(block, 15, UI.CINNABAR))
+		choices.add_child(group)
+	if options.is_empty():
+		choices.add_child(UI.label("眼下没有可进行的行动。", 16))
+	body.add_child(UI.scroll(choices, mini(240, maxi(150, int(get_viewport().get_visible_rect().size.y) - 300))))
+	var cancel := UI.button("先离开", func(): UI.close_modal("explore_options"))
+	cancel.focus_mode = Control.FOCUS_ALL
+	body.add_child(cancel)
+
+
+func _choose_site_option(idx: int, option_id: String) -> void:
+	UI.close_modal("explore_options")
+	_execute_search(idx, option_id)
+
+
+func _execute_search(idx: int, option_id: String) -> void:
+	var field: Dictionary = Game.run.get("explore", {})
+	var offering: bool = option_id == "site" and field.get("point", "") == "city_god"
+	var mood_before := State.attr(Game.run, "mood") if offering else 0
+	var exposure_before := int(field.get("exposure", 0))
+	var res = Game.act(func(): return Post.search(Game.run, idx, option_id))
 	if typeof(res) == TYPE_DICTIONARY and not res.is_empty():
 		if str(res.get("blocked", "")) != "":
 			Game.toast.emit(str(res.blocked))
@@ -164,6 +222,11 @@ func search(idx: int) -> void:
 			return
 		if res.get("story", false):
 			Game.toast.emit("已检视封存药柜，请选择开锁方式。" if Game.run.pending_event == "n_cabinet" else "药账已贴身收好，回宅决定去向。")
+			_near = -99
+			return
+		if offering:
+			# 心情可能受上限及耗时影响；显示真实结算值，不虚报固定收益。
+			Game.toast.emit("留下供物 · 心情 %d → %d（含耗时变化） · 阳气外泄 %d → %d" % [mood_before, State.attr(Game.run, "mood"), exposure_before, int(field.get("exposure", 0))])
 			_near = -99
 			return
 		Sfx.play("cloth" if res.found.is_empty() else "leather", -2.0)
@@ -265,11 +328,15 @@ func build_hud() -> void:
 	v.add_child(UI.label("背囊 %.1f / %d 斤" % [Inv.weight(ex.bag), int(Explore.carry(run))], 16))
 	var ordinary := 0
 	var searched := 0
-	for spot in ex.spots:
+	var site_target := ""
+	for i in ex.spots.size():
+		var spot: Dictionary = ex.spots[i]
 		if spot.has("mainline") or spot.has("neighbor"): continue
 		ordinary += 1
 		if spot.done: searched += 1
+		elif Explore.site_options(run, i).size() > 1: site_target = str(spot.name)
 	v.add_child(UI.label("搜寻 %d / %d 处 · 返程需 %d 分钟" % [searched, ordinary, int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
+	if site_target != "": v.add_child(UI.label("特色行动：" + site_target, 15, UI.GOLD))
 	v.add_child(UI.line("带着：" + (Data.describe_items(ex.bag) if not ex.bag.is_empty() else "空手"), 15, UI.INK_SOFT, 300))
 	v.add_child(UI.line(Neighbor.summary(run), 16, UI.INK_SOFT, 300))
 	if Neighbor.state(run).stage in ["fetch", "carrying"]:
@@ -291,7 +358,7 @@ func build_hud() -> void:
 	row.add_child(UI.label("%d / %d" % [ex.exposure, Explore.EXPOSURE_MAX], 18))
 	e.add_child(row)
 	var risk := Explore.exposure_range(run, str(ex.point))
-	var tip := "被尸群嗅到了！快逃！" if ex.caught else "普通翻找 20 分钟，外泄 +%d～%d；21:00 后完成当前调查及事件即返程（%d 分钟）。" % [risk.x, risk.y, int(Post.ACTIONS.travel[1])]
+	var tip := "被尸群嗅到了！快逃！" if ex.caught else "翻找基础外泄 +%d～%d；具体行动耗时与风险见现场选择。21:00 后返程需 %d 分钟。" % [risk.x, risk.y, int(Post.ACTIONS.travel[1])]
 	e.add_child(UI.label(tip, 15, UI.CINNABAR if ex.caught else UI.INK_SOFT))
 	corner_panel(e, Control.PRESET_CENTER_TOP, 14, 0.9)
 

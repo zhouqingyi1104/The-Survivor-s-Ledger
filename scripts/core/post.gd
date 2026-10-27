@@ -1359,24 +1359,48 @@ static func act_explore(run: Dictionary, pid: String) -> String:
 	return ""
 
 
-static func search(run: Dictionary, idx: int) -> Dictionary:
-	if run.explore.is_empty() or blocked(run) or is_busy(run) or run.sleeping or not run.fight.is_empty():
+static func search(run: Dictionary, idx: int, option_id := "") -> Dictionary:
+	if run.explore.is_empty() or run.explore.get("curfew_due", false) or blocked(run) or is_busy(run) or run.sleeping or not run.fight.is_empty():
 		return {}
+	var prepaid := false
+	var reserved_gain := -1
+	if option_id == "site":
+		if idx < 0 or idx >= run.explore.get("spots", []).size() or run.explore.spots[idx].get("done", false): return {}
+		var selected := {}
+		for option in Explore.site_options(run, idx):
+			if option.id == option_id: selected = option; break
+		if selected.is_empty(): return {"blocked": "这里不能使用地点特色。"}
+		if str(selected.block) != "": return {"blocked": selected.block}
+		var pid := str(run.explore.point)
+		var minutes := int(Explore.SITE_MINUTES.get(pid, ACTIONS.search[1]))
+		# 先预留按出发时状态计算的危险，再推进时间；事件打断时不产生任何成果。
+		if pid != "city_god": reserved_gain = Explore.exposure_gain(run, pid)
+		var started := int(run.t)
+		run["neighbor_searching"] = true
+		var stop := advance(run, minutes)
+		run.erase("neighbor_searching")
+		if int(run.t) - started < minutes or run.get("phase", "") != "post" or run.explore.is_empty() or run.explore.get("curfew_due", false):
+			return {"blocked": "现场行动被%s打断，已耗时%d分钟；未完成，也没有取得物资或效果。" % ["宵禁" if stop == "curfew" else "突发状况", int(run.t) - started]}
+		prepaid = true
 	var story_revision := int(Mainline.state(run).revision)
-	var res := Explore.search(run, idx)
+	var res := Explore.search(run, idx, option_id, reserved_gain)
 	if int(Mainline.state(run).revision) != story_revision:
 		Director.note_choice(run, "尸劫来历 · 实地行动", str(Mainline.state(run).last_result))
 	if str(res.get("blocked", "")) != "": return res
 	if not res.is_empty():
 		State.add_attr(run, "energy", -float(ACTIONS.search[2]))
+		# 特色行动已经推进完时间，受捕后的伤害不会再经过 advance 的死亡检查。
+		if prepaid and res.get("caught", false):
+			State.check_death(run, "搜寻时被尸群追上，没能逃回宅院。")
 		if res.get("mainline", false):
 			# Unlike ordinary searches, work now waits on the live clock. A fatal
 			# immediate capture must settle death before yielding back to the UI.
 			State.check_death(run, "主线调查时被尸群追上，没能逃回宅院。")
 			return res
-		run["neighbor_searching"] = true
-		advance(run, int(ACTIONS.search[1]))
-		run.erase("neighbor_searching")
+		if not prepaid:
+			run["neighbor_searching"] = true
+			advance(run, int(res.get("minutes", ACTIONS.search[1])))
+			run.erase("neighbor_searching")
 		Neighbor.poll(run)
 	return res
 

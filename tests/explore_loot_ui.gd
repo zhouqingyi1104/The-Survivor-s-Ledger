@@ -61,6 +61,16 @@ func interact() -> void:
 	get_viewport().push_input(release)
 	await frames()
 
+func choose_ordinary() -> void:
+	# 只有地点专属目标需要选择，其余点直接进行普通翻找。
+	if not main.has_modal("explore_options"): return
+	var wanted := "normal"
+	for b in main._modals.explore_options.find_children("*", "Button", true, false):
+		if b.get_meta("explore_option", "") == wanted:
+			await click(b)
+			return
+	check(false, "Ordinary search button missing")
+
 func _ready() -> void:
 	Game.no_save = true
 	Game.save_path = "user://explore-loot-ui-%d.json" % OS.get_process_id()
@@ -85,6 +95,7 @@ func _ready() -> void:
 	check(main._screen._near == 0, "Physical spot not reachable")
 	var before := int(Game.run.t)
 	await interact()
+	await choose_ordinary()
 	check(main.has_modal("explore_loot") and Game.run.explore.spots[0].done, "E did not search and open the container")
 	check(int(Game.run.t) == before + 20 and Game.run.explore.bag.is_empty(), "Search time or initial bag wrong")
 	var loot: Dictionary = Game.run.explore.spots[0].loot
@@ -121,6 +132,7 @@ func _ready() -> void:
 	main._screen.player.position = main._screen.world._spots[1].pos
 	await frames()
 	await interact()
+	await choose_ordinary()
 	await frames(20)
 	check(not main.has_modal("explore_loot") and Game.run.explore.is_empty() and Game.screen == "post", "Search at curfew opened loot or failed to return")
 	check(Post.day_minute(Game.run) == 960, "Curfew return did not consume 60 minutes")

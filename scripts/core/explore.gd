@@ -10,6 +10,20 @@ const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 
 const EXPOSURE_MAX := 100
+const SITE_SPOTS := {"rice_ruin": "米仓", "city_god": "供桌", "school": "藏书阁", "pharmacy_ruin": "药柜", "lumber": "木垛", "mortuary": "前厅棺木", "granary": "东仓", "taoist_temple": "丹房"}
+const SITE_BRIEFS := {
+	"rice_ruin": "每次到访可细筛一处粮袋，耗时30分钟，保证找到米2、杂粮1。",
+	"city_god": "每次到访可花20分钟留下一处供物，放弃该处物资，心情最多+3、阳气外泄最多减少10。",
+	"school": "每次到访可花35分钟整理一处书架，保证找到《齐民要术》残本1。",
+	"pharmacy_ruin": "每次到访可花30分钟辨认一处药格，保证找到金创药1、避瘟散1。",
+	"lumber": "每次到访可花35分钟拆取一处木垛，得到木料2、柴3，须考虑负重。",
+	"mortuary": "每次到访可花20分钟，消耗背囊里的镇尸符1，先降低最多20点阳气外泄，再正常翻找一处。",
+	"granary": "每次到访可花20分钟砸开一处粮栅，保证米3、杂粮2，但额外增加25点阳气外泄。",
+	"taoist_temple": "每次到访可花30分钟辨认符阵，之后本次普通翻找的阳气外泄减少8。",
+}
+const SITE_TITLES := {"rice_ruin": "细筛粮袋", "city_god": "留下供物", "school": "整理书架", "pharmacy_ruin": "辨认药格", "lumber": "拆取木料", "mortuary": "消耗符箓护身", "granary": "砸开粮栅", "taoist_temple": "辨认符阵"}
+const SITE_MINUTES := {"rice_ruin": 30, "school": 35, "pharmacy_ruin": 30, "lumber": 35, "taoist_temple": 30}
+const SITE_ITEMS := {"rice_ruin": {"rice": 2, "millet": 1}, "school": {"book_farm": 1}, "pharmacy_ruin": {"salve": 1, "plague_powder": 1}, "lumber": {"wood": 2, "firewood": 3}, "granary": {"rice": 3, "millet": 2}}
 # 只调整既有地点物资的权重；未列出的点位仍使用地点原始物资池。
 const SPOT_PREFERENCES := {
 	"rice_ruin": {"米仓": ["rice", "millet"], "后院粮袋": ["rice", "millet"], "账房": ["salt", "pickles"]},
@@ -68,7 +82,11 @@ static func begin(run: Dictionary, pid: String) -> void:
 	var spots := []
 	var only_investigate := int(run.points.get(pid, {}).get("looted_until", 0)) > int(run.pday) and not Mainline.objective(run, pid).is_empty()
 	if not only_investigate:
-		for s in Rng.shuffled(run, p.spots).slice(0, n):
+		var selected: Array = Rng.shuffled(run, p.spots).slice(0, n)
+		var signature := str(SITE_SPOTS.get(pid, ""))
+		if signature != "" and signature in p.spots and not signature in selected:
+			selected[selected.size() - 1] = signature
+		for s in selected:
 			spots.append({"name": s, "done": false})
 	Neighbor.add_objective(run, pid, spots)
 	Mainline.add_objective(run, pid, spots)
@@ -96,7 +114,8 @@ static func _exposure_multiplier(run: Dictionary) -> float:
 
 static func _exposure_amount(run: Dictionary, pid: String, roll: int) -> int:
 	var p: Dictionary = Data.table("map_points")[pid]
-	return maxi(3, int(round(float(int(p.danger) * 8 + roll) * _exposure_multiplier(run))))
+	var reduction := 8 if run.get("explore", {}).get("point", "") == pid and run.get("explore", {}).get("site_ward", false) else 0
+	return maxi(0, maxi(3, int(round(float(int(p.danger) * 8 + roll) * _exposure_multiplier(run)))) - reduction)
 
 
 ## 预测普通翻找外泄范围，不消耗随机数。
@@ -118,7 +137,33 @@ static func loot_pool(pid: String, spot_name: String) -> Array:
 	return pool
 
 
-static func search(run: Dictionary, idx: int) -> Dictionary:
+static func site_brief(pid: String) -> String:
+	return str(SITE_BRIEFS.get(pid, ""))
+
+
+static func site_options(run: Dictionary, idx: int) -> Array:
+	var ex: Dictionary = run.get("explore", {})
+	if ex.is_empty() or idx < 0 or idx >= ex.get("spots", []).size(): return []
+	var spot: Dictionary = ex.spots[idx]
+	if spot.get("done", false) or spot.has("mainline") or spot.has("neighbor") or ex.get("caught", false) or ex.get("curfew_due", false): return []
+	var pid := str(ex.get("point", ""))
+	var range := exposure_range(run, pid)
+	var normal := {"id": "normal", "title": "翻找", "description": "20分钟，精力-4，阳气外泄增加%d–%d；物资随机留在现场。" % [range.x, range.y], "block": ""}
+	if not SITE_BRIEFS.has(pid) or str(spot.get("name", "")) != str(SITE_SPOTS.get(pid, "")): return [normal]
+	var block := ""
+	if ex.get("site_used", false): block = "本次到访已使用过地点特色。"
+	elif pid == "mortuary" and Inv.count(ex.get("bag", {}), "talisman") < 1: block = "需要背囊里有镇尸符1。"
+	var desc := str(SITE_BRIEFS[pid]) + " 精力-4。"
+	if pid in SITE_ITEMS: desc += " 替代该处随机物资，所得留在现场；被追上或宵禁后无法领取。"
+	elif pid == "mortuary": desc += " 翻找所得随机留在现场。"
+	elif pid == "taoist_temple": desc += " 本次翻找物资随机留在现场，减免从之后的普通翻找生效。"
+	if pid != "city_god":
+		var bonus := 25 if pid == "granary" else 0
+		desc += " 本次阳气外泄增加%d–%d（最高100）。" % [range.x + bonus, range.y + bonus]
+	return [normal, {"id": "site", "title": SITE_TITLES[pid], "description": desc, "block": block}]
+
+
+static func search(run: Dictionary, idx: int, option_id := "", reserved_gain := -1) -> Dictionary:
 	var ex: Dictionary = run.explore
 	if ex.is_empty() or idx < 0 or idx >= ex.spots.size():
 		return {}
@@ -126,30 +171,53 @@ static func search(run: Dictionary, idx: int) -> Dictionary:
 	if spot.done or ex.caught:
 		return {}
 	if spot.has("mainline"):
+		if option_id not in ["", "normal"]: return {"blocked": "任务目标不能使用地点特色。"}
 		var result := Mainline.search_objective(run, spot)
 		if not result.is_empty() and int(ex.exposure) >= EXPOSURE_MAX and str(result.get("blocked", "")) == "":
 			result["caught"] = true
 			_caught(run, Data.table("map_points")[ex.point])
 		return result
 	if spot.has("neighbor"):
+		if option_id not in ["", "normal"]: return {"blocked": "任务目标不能使用地点特色。"}
 		return Neighbor.search_objective(run, spot)
+	if option_id == "": option_id = "normal"
+	var selected := {}
+	for option in site_options(run, idx):
+		if option.id == option_id: selected = option; break
+	if selected.is_empty(): return {"blocked": "无效的搜寻方式。"}
+	if str(selected.block) != "": return {"blocked": selected.block}
 	spot.done = true
 	var pid: String = ex.point
 	var p: Dictionary = Data.table("map_points")[pid]
-	var gain := exposure_gain(run, pid)
+	var special := option_id == "site"
+	if special:
+		ex["site_used"] = true
+		if pid == "city_god":
+			ex.exposure = maxi(0, int(ex.exposure) - 10)
+			State.add_attr(run, "mood", 3)
+			spot["loot"] = {}
+			State.add_xp(run, "search", 2)
+			ex.notes.append("留下供物，心情回暖，阳气外泄减少。")
+			return {"found": {}, "gain": 0, "caught": false, "clue": "", "full": false, "minutes": 20}
+		if pid == "mortuary":
+			Inv.add(ex.bag, "talisman", -1)
+			ex.exposure = maxi(0, int(ex.exposure) - 20)
+	var gain := reserved_gain if reserved_gain >= 0 else exposure_gain(run, pid)
+	if special and pid == "granary": gain += 25
 	ex.exposure = mini(EXPOSURE_MAX, int(ex.exposure) + gain)
 	var found := {}
-	var rolls := 1 + (1 if Rng.chance(run, 0.45) else 0)
-	if pid == "school" and State.is_role(run, "scholar"):
-		rolls += 1
-	var pool := loot_pool(pid, str(spot.name))
-	for k in rolls:
-		var e = Rng.weighted(run, pool)
-		var qty := Rng.i(run, int(e[2]), int(e[3]))
-		found[e[0]] = int(found.get(e[0], 0)) + qty
-	# 废墟里的破门窗、烂桌椅：发现一捆柴，由玩家决定是否带走。
-	if Rng.chance(run, 0.35):
-		found["firewood"] = int(found.get("firewood", 0)) + 1
+	if special and SITE_ITEMS.has(pid):
+		found = SITE_ITEMS[pid].duplicate(true)
+	else:
+		var rolls := 1 + (1 if Rng.chance(run, 0.45) else 0)
+		if pid == "school" and State.is_role(run, "scholar"): rolls += 1
+		var pool := loot_pool(pid, str(spot.name))
+		for k in rolls:
+			var e = Rng.weighted(run, pool)
+			var qty := Rng.i(run, int(e[2]), int(e[3]))
+			found[e[0]] = int(found.get(e[0], 0)) + qty
+		if Rng.chance(run, 0.35): found["firewood"] = int(found.get("firewood", 0)) + 1
+	if special and pid == "taoist_temple": ex["site_ward"] = true
 	spot["loot"] = found.duplicate()
 	var clue := ""
 	if p.has("clue") and not p.clue in run.known_clues:
@@ -163,7 +231,7 @@ static func search(run: Dictionary, idx: int) -> Dictionary:
 	State.add_xp(run, "search", 2)
 	var note := "翻了%s，发现：%s" % [spot.name, Data.describe_items(found) if not found.is_empty() else "一无所获"]
 	ex.notes.append(note)
-	var result := {"found": found, "gain": gain, "caught": false, "clue": clue, "full": false}
+	var result := {"found": found, "gain": gain, "caught": false, "clue": clue, "full": false, "minutes": int(SITE_MINUTES.get(pid, 20)) if special else 20}
 	if int(ex.exposure) >= EXPOSURE_MAX:
 		result.caught = true
 		_caught(run, p)
@@ -174,7 +242,7 @@ static func search(run: Dictionary, idx: int) -> Dictionary:
 ## 老存档没有 loot 时视为空；同一物资多次领取只会转移剩余数量。
 static func take(run: Dictionary, idx: int, item_id: String, amount: int) -> int:
 	var ex: Dictionary = run.get("explore", {})
-	if ex.is_empty() or ex.get("caught", false) or ex.get("curfew_due", false) or idx < 0 or idx >= ex.spots.size() or amount <= 0:
+	if ex.is_empty() or ex.get("caught", false) or ex.get("curfew_due", false) or run.get("pending_event", "") != "" or idx < 0 or idx >= ex.spots.size() or amount <= 0:
 		return 0
 	var spot: Dictionary = ex.spots[idx]
 	if not spot.get("done", false) or spot.has("mainline") or spot.has("neighbor"):
@@ -197,7 +265,7 @@ static func take(run: Dictionary, idx: int, item_id: String, amount: int) -> int
 ## 把背囊中的物资放回已搜索的普通点；以后可以再次领取。
 static func put_back(run: Dictionary, idx: int, item_id: String, amount: int) -> int:
 	var ex: Dictionary = run.get("explore", {})
-	if ex.is_empty() or ex.get("caught", false) or ex.get("curfew_due", false) or idx < 0 or idx >= ex.spots.size() or amount <= 0:
+	if ex.is_empty() or ex.get("caught", false) or ex.get("curfew_due", false) or run.get("pending_event", "") != "" or idx < 0 or idx >= ex.spots.size() or amount <= 0:
 		return 0
 	var spot: Dictionary = ex.spots[idx]
 	if not spot.get("done", false) or spot.has("mainline") or spot.has("neighbor"):

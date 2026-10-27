@@ -1065,7 +1065,7 @@ func explore_pick() -> void:
 
 func _explore_pick(body: VBoxContainer) -> void:
 	var run := _run()
-	body.add_child(UI.para("去程、返程各 60 分钟；普通翻找每处 20 分钟并增加阳气外泄，满 100 会被尸群发现。21:00 后处理完当前事务即强制返程，途中仍需 60 分钟。", 16))
+	body.add_child(UI.para("去程、返程各 60 分钟；翻找会增加阳气外泄，满 100 会被尸群发现。各地特别行动的代价以现场提示为准；21:00 后处理完当前事务即强制返程。", 16))
 	var v := UI.vbox(8)
 	var visible := Explore.visible_points(run)
 	if not "taoist_temple" in visible: visible.append("taoist_temple")
@@ -1084,6 +1084,7 @@ func _explore_pick(body: VBoxContainer) -> void:
 			head.add_child(UI.tag("未到访", UI.DAI))
 		info.add_child(head)
 		info.add_child(UI.para(p.desc, 15))
+		info.add_child(UI.para("现场特色：" + Explore.site_brief(str(pid)), 15, UI.GOLD))
 		var possible := []
 		for entry in p.loot:
 			possible.append(str(Data.item(str(entry[0])).name))
