@@ -368,8 +368,16 @@ func _contract(world: Node3D, run: Dictionary) -> Array:
 		% [cfg.keys(), built != null]))
 	probe.queue_free()
 	probe2.queue_free()
-	world2.queue_free()
+	out.append_array(_extra_contract(world, run))
+	# 重建对照实例由基类在扩展契约结束后回收，当前子类不持有 world2。
+	if is_instance_valid(world2) and world2.get_parent() != null:
+		world2.queue_free()
 	return out
+
+
+## 子类扩展契约（C1 宅院氛围）；基类默认不增加任何检查，C0 行为/计数不变。
+func _extra_contract(world: Node3D, run: Dictionary) -> Array:
+	return []
 
 
 func _check(name: String, ok: bool, detail: String) -> Dictionary:
@@ -490,6 +498,7 @@ func _run_baseline(world, opts: Dictionary, node_total: int, world_nodes: int) -
 		return 4
 
 	var player = PlayerScript.new()
+	_prepare_capture(world)
 	world.add_child(player)
 	player.setup("scholar")
 	player.position = HomeWorld.SPAWN
@@ -536,8 +545,9 @@ func _run_baseline(world, opts: Dictionary, node_total: int, world_nodes: int) -
 	var manifest: Array = []
 	var saved := 0
 	var capture_size := Vector2i.ZERO
-	for shot in SHOTS:
-		world.set_preset(str(shot.preset), 400)
+	var shot_plan := _shot_plan()
+	for shot in shot_plan:
+		_prepare_shot(world, shot)
 		_apply_view(rig, float(shot.yaw), float(shot.pitch), float(shot.dist))
 		for i in settle:
 			await get_tree().process_frame
@@ -556,7 +566,7 @@ func _run_baseline(world, opts: Dictionary, node_total: int, world_nodes: int) -
 		else:
 			print("%s 截图失败：%s（error %d）" % [LOG_PREFIX, path, err])
 			return 2
-		manifest.append({
+		var entry := {
 			"file": "%s.png" % str(shot.file),
 			"ok": ok,
 			"preset": str(shot.preset),
@@ -565,12 +575,16 @@ func _run_baseline(world, opts: Dictionary, node_total: int, world_nodes: int) -
 			"dist": float(shot.dist),
 			"resolution": [capture_size.x, capture_size.y],
 			"fog_mul": float(world.sky.fog_mul),
-		})
+		}
+		var extra_meta := _shot_metadata(world, shot, img)
+		for k in extra_meta:
+			entry[k] = extra_meta[k]
+		manifest.append(entry)
 		print("%s saved %s.png（%s %dx%d）" % [
 			LOG_PREFIX, str(shot.file), str(shot.preset), capture_size.x, capture_size.y])
 
 	var manifest_data := {
-		"kind": "courtyard_c0_shots",
+		"kind": _manifest_kind(),
 		"label": str(opts.get("label", "after")),
 		"seed": FIXED_SEED,
 		"resolution": [capture_size.x, capture_size.y],
@@ -580,14 +594,46 @@ func _run_baseline(world, opts: Dictionary, node_total: int, world_nodes: int) -
 		"cam_bounds": {"pitch": [-80.0, -20.0], "dist": [7.0, 26.0], "fov": 42.0},
 		"shots": manifest,
 		"saved": saved,
-		"total": SHOTS.size(),
+		"total": shot_plan.size(),
 	}
 	var merr := _write_json(shots_dir.path_join("shots_manifest.json"), manifest_data)
 	if merr != OK:
 		print("%s 截图清单写盘失败：error %d" % [LOG_PREFIX, merr])
 		return 8
-	print("%s 截图 %d/%d，清单：shots_manifest.json（ok）" % [LOG_PREFIX, saved, SHOTS.size()])
-	return 0 if saved == SHOTS.size() else 2
+	print("%s 截图 %d/%d，清单：shots_manifest.json（ok）" % [LOG_PREFIX, saved, shot_plan.size()])
+	return 0 if saved == shot_plan.size() else 2
+
+
+# ---------- 子类扩展钩子（C1 宅院氛围；基类默认行为 = 原 C0：16 机位、字段不变） ----------
+
+## 截图机位清单。
+func _shot_plan() -> Array:
+	return SHOTS
+
+
+## 真窗口捕获开始前的一次性准备（子类造 pre / 大雪局面）。
+func _prepare_capture(world: Node3D) -> void:
+	pass
+
+
+## 每个机位的局面 / 预设切换；基类只切天空预设（C0 原行为）。
+func _prepare_shot(world: Node3D, shot: Dictionary) -> void:
+	world.set_preset(str(shot.preset), 400)
+
+
+## 子类往清单条目里追加的实际状态字段；基类不追加任何键。
+## img 为该机位刚截到的 Image（真窗口模式），供子类做真实像素诊断。
+func _shot_metadata(world: Node3D, shot: Dictionary, _img: Image = null) -> Dictionary:
+	return {}
+
+
+## 清单 / 性能 JSON 的 kind 字段。
+func _manifest_kind() -> String:
+	return "courtyard_c0_shots"
+
+
+func _perf_kind() -> String:
+	return "courtyard_c0_perf"
 
 
 func _resize_window(size: Vector2i) -> void:
@@ -645,7 +691,7 @@ func _measure_perf(world, rig, opts: Dictionary, w: int, h: int,
 		print("%s perf trial %d/%d 完成（%d 帧，中位 %.3f ms）" %
 			[LOG_PREFIX, t + 1, trials_n, samples_n, float(trials[t].frame_ms.median)])
 	return {
-		"kind": "courtyard_c0_perf",
+		"kind": _perf_kind(),
 		"label": str(opts.get("label", "after")),
 		"seed": FIXED_SEED,
 		"engine": Engine.get_version_info().get("string", ""),

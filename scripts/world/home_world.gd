@@ -16,6 +16,8 @@ const Home = preload("res://scripts/core/home.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const Figure = preload("res://scripts/world/character.gd")
 const Surroundings = preload("res://scripts/world/home_surroundings.gd")
+# C1 邻宅氛围工厂运行期加载（缺失不影响宅院本体；由 C1 契约守底）。
+const AmbiencePath := "res://scripts/world/home_ambience.gd"
 
 const GATE_Z := 7.0
 const WINDOW_POS := Vector3(5.6, 1.7, 7.0)
@@ -48,6 +50,8 @@ var _night := false
 var _baked := false
 var _garden_body: StaticBody3D
 var _garden_rows := 0
+# C1 邻宅氛围：set_time 缓存阶段/大雪上下文，set_preset 据此投影（不缓存 run 本体）。
+var _amb_ctx := {"phase": "post", "pday": 1, "heavy": false}
 
 
 func _ready() -> void:
@@ -577,12 +581,42 @@ func set_time(run: Dictionary) -> void:
 		SkyKit.blend(sky, "dusk", "night", clampf((h - 19.0) / 1.5, 0.0, 1.0), snow)
 	else:
 		SkyKit.apply(sky, "night", snow)
+	# C1 邻宅氛围必须在 _set_lanterns 同值早退之外无条件接线，
+	# 否则夜晚二次 set_time 时天空变了窗灯不跟着变（假验收）。
+	_apply_ambience_run(run)
 	_set_lanterns(h >= 17.5 or h < 6.5)
 
 
 func set_preset(preset: String, snow := 400) -> void:
 	SkyKit.apply(sky, preset, snow)
 	_set_lanterns(preset in ["dusk", "night", "blood"])
+	_apply_ambience_preset(preset)
+
+
+# ---------- C1 邻宅氛围 ----------
+
+func _amb_node() -> Node3D:
+	if surroundings == null:
+		return null
+	return surroundings.get_node_or_null("ambience")
+
+
+func _apply_ambience_run(run: Dictionary) -> void:
+	var A = load(AmbiencePath)
+	var n := _amb_node()
+	if A == null or n == null:
+		return
+	var st: Dictionary = A.state_for_run(run)
+	_amb_ctx = {"phase": str(run.get("phase", "post")), "pday": int(run.get("pday", 1)),
+		"heavy": bool(st.get("snow_heavy", false))}
+	A.apply(n, st)
+
+
+func _apply_ambience_preset(preset: String) -> void:
+	var A = load(AmbiencePath)
+	var n := _amb_node()
+	if A != null and n != null:
+		A.apply(n, A.state_for_preset(preset, _amb_ctx))
 
 
 func _set_lanterns(lit: bool) -> void:

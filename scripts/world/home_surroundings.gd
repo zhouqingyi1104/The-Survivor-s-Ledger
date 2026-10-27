@@ -18,6 +18,8 @@ const K = preload("res://scripts/world/kit.gd")
 const Arch = preload("res://scripts/world/arch.gd")
 
 const CONFIG_PATH := "res://data/home_surroundings.json"
+# C1 氛围工厂运行期加载：模块缺失时只是少一层 ambience，绝不能让背景工厂编译失败。
+const AMBIENCE_PATH := "res://scripts/world/home_ambience.gd"
 
 # 近景宅院：x/z 米，rot_y 让门面朝街/巷，w 面宽、d 进深、h 檐高，style 0-3 决定门窗/附房变化。
 # 正面约定局部 +Z；0=朝南(+Z)，180=朝北(-Z)，90=朝东(+X)，-90=朝西(-X)。
@@ -151,6 +153,11 @@ static func build(parent: Node3D, layout: Dictionary = {}, merge_layers: bool = 
 		K.merge_static(near, [])
 		K.merge_static(middle, [])
 		K.merge_static(far, [])
+	# C1 生活/灾后氛围（窗灯/炊烟/晾晒/雪痕/旧损/积雪）在三层合并后构造为独立子树，
+	# 不进核心合并、不碰 C0 三层；模块缺失时静默跳过（仅 C1 契约会失败）。
+	var Amb = load(AMBIENCE_PATH)
+	if Amb != null:
+		Amb.build(root, NEAR_HOUSES, merge_layers)
 	return root
 
 
