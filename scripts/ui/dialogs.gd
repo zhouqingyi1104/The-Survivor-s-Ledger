@@ -29,6 +29,11 @@ const VideoCfg = preload("res://scripts/core/video_cfg.gd")
 const Brief = preload("res://scripts/core/brief.gd")
 const Manual = preload("res://scripts/core/manual.gd")
 const Agenda = preload("res://scripts/core/agenda.gd")
+const INVENTORY_PAPER = preload("res://assets/ui/inventory/paper.png")
+const INVENTORY_ART := {
+	"rice": preload("res://assets/ui/inventory/rice.png"),
+	"nails": preload("res://assets/ui/inventory/nails.png"),
+}
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -779,47 +784,110 @@ func _neighbor_depart(target: String) -> void:
 
 # ---------- 吃喝用药 ----------
 
+var _inventory_filter := "全部"
+
 func inventory() -> void:
+	_inventory_filter = "全部"
 	UI.open_modal("inventory", "家中存货", _inventory, true, 900)
 
 
 func _inventory(body: VBoxContainer) -> void:
 	var run := _run()
-	var v := UI.vbox(8)
+	var ledger := UI.vbox(12)
+	ledger.add_child(_inventory_label("物资簿  ·  家中收藏", 16, Color("#765044")))
+	var categories: Array[String] = ["全部"]
+	var all_ids: Array = []
 	for cat in CAT_ORDER:
 		var ids := Inv.ids_in_cat(run.home, cat)
-		if ids.is_empty():
-			continue
-		v.add_child(UI.label(cat, 19, UI.CINNABAR))
-		var g := UI.grid(4, 10, 8)
-		for id in ids:
-			g.add_child(_item_card(run, id))
-		v.add_child(g)
-	body.add_child(UI.scroll(v, 470))
+		if not ids.is_empty():
+			categories.append(cat)
+			all_ids.append_array(ids)
+	if not _inventory_filter in categories:
+		_inventory_filter = "全部"
+	var tabs := HFlowContainer.new()
+	tabs.add_theme_constant_override("h_separation", 6)
+	for cat in categories:
+		var tab := UI.button(cat, func():
+			_inventory_filter = cat
+			UI.clear(body)
+			_inventory(body))
+		var chosen: bool = cat == _inventory_filter
+		tab.add_theme_stylebox_override("normal", UI._box(Color("#8d4035") if chosen else Color("#e6d8bf"), Color("#9a7962"), 1, 0, 12, 5))
+		tab.add_theme_stylebox_override("hover", UI._box(Color("#a25446"), Color("#843e33"), 1, 0, 12, 5))
+		tab.add_theme_color_override("font_color", Color("#f2e6cd") if chosen else Color("#44352d"))
+		tab.add_theme_color_override("font_hover_color", Color("#fff0d6"))
+		tab.button_pressed = chosen
+		tabs.add_child(tab)
+	ledger.add_child(tabs)
+	var grid := UI.grid(4, 9, 9)
+	var visible_ids: Array = all_ids if _inventory_filter == "全部" else Inv.ids_in_cat(run.home, _inventory_filter)
+	for id in visible_ids:
+		grid.add_child(_item_card(run, id))
+	ledger.add_child(grid)
+	if all_ids.is_empty():
+		ledger.add_child(_inventory_label("家中暂无存货。", 17, Color("#675b4d")))
+	var paper := PanelContainer.new()
+	var paper_style := StyleBoxTexture.new()
+	paper_style.texture = INVENTORY_PAPER
+	paper_style.content_margin_left = 14
+	paper_style.content_margin_right = 14
+	paper_style.content_margin_top = 12
+	paper_style.content_margin_bottom = 12
+	paper.add_theme_stylebox_override("panel", paper_style)
+	paper.add_child(ledger)
+	body.add_child(UI.scroll(paper, mini(470, maxi(180, int(get_viewport().get_visible_rect().size.y) - 230))))
 
 
-## 一件物品的卡片：在图下面写名字、数量、能做什么。
+## 在深色弹窗主题下也保持纸上的墨色，不继承夜色主题的浅色文字与阴影。
+func _inventory_label(text: String, size: int, ink: Color, wrap := false) -> Label:
+	var label := UI.label(text, size, ink, wrap)
+	label.add_theme_color_override("font_color", ink)
+	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
+	return label
+
+
+## 物资格仍保留名称、数量、效果和原来的直接使用按钮。
 func _item_card(run: Dictionary, id: String) -> Control:
 	var it := Data.item(id)
 	var n := Inv.count(run.home, id)
-	var v := UI.vbox(3)
+	var v := UI.vbox(4)
 	UI.expand(v)
-	var top := UI.hbox(6)
-	top.add_child(UI.icon(id, 46))
-	var name_col := UI.vbox(0)
-	name_col.add_child(UI.label(it.name, 17))
-	name_col.add_child(UI.label("×%d" % n, 15, UI.INK_SOFT if n > 0 else UI.INK_FAINT))
-	top.add_child(name_col)
-	v.add_child(top)
+	var image_row := CenterContainer.new()
+	image_row.custom_minimum_size.y = 72
+	if INVENTORY_ART.has(id):
+		var illustration := TextureRect.new()
+		illustration.texture = INVENTORY_ART[id]
+		illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		illustration.custom_minimum_size = Vector2(72, 72)
+		illustration.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		image_row.add_child(illustration)
+	else:
+		image_row.add_child(UI.icon(id, 72))
+	v.add_child(image_row)
+	var title := UI.hbox(4)
+	title.add_child(_inventory_label(it.name, 17, Color("#302921")))
+	title.add_child(UI.spacer())
+	title.add_child(_inventory_label("×%d" % n, 15, Color("#765b49")))
+	v.add_child(title)
 	var fx: Dictionary = it.get("eat", it.get("use", {}))
-	v.add_child(UI.label(fx_text(fx) if not fx.is_empty() else it.cat, 13, UI.INK_SOFT))
+	v.add_child(_inventory_label("%s · %s" % [it.cat, fx_text(fx)] if not fx.is_empty() else it.cat, 13, Color("#675b4d"), true))
 	if not fx.is_empty():
 		var verb := "喝" if id == "water" else ("吃" if it.has("eat") else "用")
-		v.add_child(UI.button(verb, func(): _use(id)))
-	var card := UI.panel(v, UI.PAPER)
+		var action := UI.button(verb, func(): _use(id))
+		action.add_theme_stylebox_override("normal", UI._box(Color("#e3d1b6"), Color("#9a7962"), 1, 1, 8, 3))
+		action.add_theme_stylebox_override("hover", UI._box(Color("#f0e2cc"), Color("#98483a"), 1, 1, 8, 3))
+		action.add_theme_stylebox_override("pressed", UI._box(Color("#d3b99c"), Color("#843e33"), 1, 1, 8, 3))
+		action.add_theme_color_override("font_color", Color("#44352d"))
+		action.add_theme_color_override("font_hover_color", Color("#8d4035"))
+		action.add_theme_color_override("font_pressed_color", Color("#44352d"))
+		v.add_child(action)
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UI._box(Color(0.94, 0.90, 0.82, 0.68), Color("#ab9b80"), 1, 0, 9, 8))
+	card.add_child(v)
 	card.tooltip_text = it.desc
 	card.mouse_filter = Control.MOUSE_FILTER_PASS
-	return UI.fixed_width(card, 196)
+	return UI.fixed_width(card, 190)
 
 
 func _use(id: String) -> void:

@@ -55,6 +55,23 @@ class Modal extends Control:
 		UI.use_dark(false)
 
 
+## 旧木书匣外沿，纸面和内容仍由原控件负责。
+class ModalFrame extends PanelContainer:
+	func _ready() -> void:
+		resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		var grain := Color(0.72, 0.57, 0.37, 0.23)
+		var edge := Color(0.72, 0.57, 0.37, 0.55)
+		draw_rect(Rect2(3, 3, maxf(size.x - 6, 0), maxf(size.y - 6, 0)), edge, false, 1.0)
+		for y in [5.0, size.y - 5.0]:
+			draw_line(Vector2(14, y), Vector2(size.x - 14, y), grain, 1.0)
+		for x in [5.0, size.x - 5.0]:
+			draw_line(Vector2(x, 14), Vector2(x, size.y - 14), grain, 1.0)
+		for corner in [Vector2(7, 7), Vector2(size.x - 7, 7), Vector2(7, size.y - 7), Vector2(size.x - 7, size.y - 7)]:
+			draw_circle(corner, 2.0, Color("#9b7c4d"))
+
+
 ## 远山：几层淡墨山影，压在宣纸底色上。
 class Backdrop extends Control:
 	const UI = preload("res://scripts/ui/ui_kit.gd")
@@ -164,7 +181,16 @@ func open_modal(key: String, title: String, build: Callable, closable := true, w
 	m.body = UI.vbox(8)
 	outer.add_child(m.body)
 	var p := UI.panel(outer, UI.PAPER_LIGHT)
-	center.add_child(p)
+	# 夜色弹窗继续使用深底和浅字；宣纸页使用温润旧纸，避免改变内容的对比度。
+	if not m.dark:
+		p.add_theme_stylebox_override("panel", UI._box(Color("#e9ddc5"), Color("#aa987b"), 1, 0, 14, 12))
+	var frame := ModalFrame.new()
+	var wood := UI._box(Color("#302820"), Color("#191511"), 2, 1, 9, 9)
+	wood.shadow_color = Color(0, 0, 0, 0.5)
+	wood.shadow_size = 8
+	frame.add_theme_stylebox_override("panel", wood)
+	frame.add_child(p)
+	center.add_child(frame)
 	_modal_layer.add_child(m)
 	_modals[key] = m
 	build.call(m.body)
