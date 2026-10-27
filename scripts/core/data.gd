@@ -3,7 +3,7 @@ extends RefCounted
 
 const TABLES := ["items", "shops", "facilities", "roles", "talents", "recipes", "crops",
 	"devices", "map_points", "waves", "weather", "omens", "wishes", "events", "clues",
-	"furniture", "difficulty", "challenge", "companions"]
+	"furniture", "difficulty", "challenge", "companions", "chores"]
 
 static var _tables: Dictionary = {}
 

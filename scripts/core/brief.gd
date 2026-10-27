@@ -94,7 +94,7 @@ static func lines(run: Dictionary) -> Array:
 		out.append({"level": WARN, "text": "没有存水，也没有水缸；渴起来只能去井边。"})
 
 	if out.is_empty():
-		out.append({"level": NOTE, "text": "眼下没有急事，可以把日子往前过。"})
+		out.append({"level": NOTE, "text": "眼下没有急事，去差事单上挑几件做。"})
 	out.sort_custom(func(a, b): return int(a.level) > int(b.level))
 	return out.slice(0, MAX_LINES)
 

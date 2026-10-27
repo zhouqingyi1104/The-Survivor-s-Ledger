@@ -27,6 +27,7 @@ const InputCfg = preload("res://scripts/core/input_cfg.gd")
 const VideoCfg = preload("res://scripts/core/video_cfg.gd")
 const Brief = preload("res://scripts/core/brief.gd")
 const Manual = preload("res://scripts/core/manual.gd")
+const Agenda = preload("res://scripts/core/agenda.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -971,6 +972,91 @@ func _read(body: VBoxContainer) -> void:
 		body.add_child(h)
 
 
+# ---------- 今日差事 ----------
+
+## 差事的类目配色：跟命相关的偏朱砂，往后受用的偏黛青
+const AGENDA_TAGS := {"柴": Color("#a0522d"), "水": Color("#3f6f8f"), "粮": Color("#5d7d4f"), "守": Color("#9b2c2c"),
+	"暖": Color("#c06a2a"), "探": Color("#6b5b95"), "艺": Color("#4a6670"), "神": Color("#7a6a3a"),
+	"人": Color("#8a5a6a"), "材": Color("#6d5c4a"), "工": Color("#2f5f5a")}
+
+
+func agenda() -> void:
+	if _run().is_empty() or str(_run().get("phase", "")) != "post":
+		return
+	Post.ensure_agenda(_run())
+	UI.open_modal("agenda", "今日差事", _agenda, true, 920)
+
+
+func _agenda(body: VBoxContainer) -> void:
+	var run := _run()
+	var s := Agenda.summary(run)
+	body.add_child(UI.para("单子上还有 %s 小时的事；到 22:00 只剩 %s 小时。" % [
+		Agenda.hours_text(int(s.need)), Agenda.hours_text(int(s.left))], 19, UI.INK))
+	if int(s.over) > 0:
+		body.add_child(UI.para("做不完——得放下约 %s 小时的事。先挑要命的，再挑往后受用的；没做的明早就换一批。" % Agenda.hours_text(int(s.over)), 16, UI.CINNABAR))
+	elif int(s.open) > 0:
+		body.add_child(UI.para("剩下的事来得及做完。", 16, UI.JADE))
+	else:
+		body.add_child(UI.para("今天的差事都办完了。", 16, UI.JADE))
+	var list := UI.vbox(8)
+	list.name = "AgendaList"
+	for row in Agenda.rows(run):
+		list.add_child(_agenda_row(run, row))
+	body.add_child(UI.scroll(list, mini(470, maxi(220, int(get_viewport().get_visible_rect().size.y) - 250))))
+
+
+func _agenda_row(run: Dictionary, row: Dictionary) -> Control:
+	var h := UI.hbox(10)
+	h.set_meta("agenda_id", str(row.id))
+	var st := str(row.status)
+	var faded := st in ["done", "late", "spent"]
+	h.add_child(UI.tag(str(row.tag), AGENDA_TAGS.get(str(row.tag), UI.INK_SOFT) if not faded else UI.INK_FAINT))
+	var info := UI.vbox(2)
+	UI.expand(info)
+	var title := "%s　%s" % [row.name, Agenda.span_text(int(row.minutes))]
+	if int(row.energy) > 0:
+		title += " · 精力 %d" % int(row.energy)
+	if str(row.progress) != "":
+		title += "　进度 %s" % row.progress
+	if str(row.deadline) != "":
+		title += "　%s" % row.deadline
+	info.add_child(UI.label(title, 18, UI.INK_FAINT if faded else UI.INK))
+	var gets := str(row.effect)
+	if str(row.cost) != "":
+		gets = ("耗 %s　→　%s" % [row.cost, gets]) if gets != "" else "耗 %s" % row.cost
+	if gets != "":
+		info.add_child(UI.para(gets, 15, UI.INK_FAINT if faded else UI.JADE))
+	info.add_child(UI.para(str(row.why), 15, UI.INK_FAINT if faded else UI.INK_SOFT))
+	h.add_child(info)
+	match st:
+		"done":
+			h.add_child(UI.label("✓ 做过了", 16, UI.JADE))
+		"busy":
+			h.add_child(UI.label("正在做", 16, UI.GOLD))
+		"late":
+			h.add_child(UI.label("过了时辰", 16, UI.INK_FAINT))
+		"spent":
+			h.add_child(UI.label("已经用尽", 16, UI.INK_FAINT))
+		_:
+			var block := str(row.block)
+			if block == "":
+				block = Post.can_act(run, int(row.energy))
+			var idx := int(row.idx)
+			_action(h, "去做", func(): _agenda_go(idx), block)
+	return h
+
+
+## 走到地方再做：交给宅院界面（它知道人站在哪、物件在哪）。
+func _agenda_go(idx: int) -> void:
+	UI.close_modal("agenda")
+	var host: Node = get_tree().current_scene
+	var screen: Node = host.get("_screen") if host != null else null
+	if screen != null and screen.has_method("agenda_do"):
+		screen.agenda_do(idx)
+	elif str(Agenda.item(_run(), idx).get("kind", "")) == "chore":
+		_act(func(): return Post.act_chore(Game.run, idx))
+
+
 # ---------- 外出 ----------
 
 func explore_pick() -> void:
@@ -1380,6 +1466,11 @@ func _dawn_report(body: VBoxContainer) -> void:
 
 func _ack_dawn() -> String:
 	Post.ack_dawn(Game.run)
+	# 一睁眼先知道今天有多少事、只有多少工夫：不弹窗，免得和事件抢注意力
+	if str(Game.run.get("phase", "")) == "post":
+		var s := Agenda.summary(Game.run)
+		Game.toast.emit("今日差事 %d 件、共 %s 小时，醒着只有 %s 小时——按 %s 挑着做。" % [
+			int(s.count), Agenda.hours_text(int(s.need)), Agenda.hours_text(int(s.left)), InputCfg.first_key_name("agenda")])
 	return ""
 
 

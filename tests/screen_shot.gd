@@ -6,6 +6,7 @@ extends Node
 ##   --pick=    仅 challenge：先勾上这几项再拍（逗号分隔，id 见 data/challenge.json）
 ##   --mode=    仅 challenge：endless / daily，拍"选了开局模式"的状态
 ##   --mates=   仅 challenge：带这几个同院的人（逗号分隔，id 见 data/companions.json）
+##   --dialog=  仅 post：拍之前先开一个弹窗（agenda 今日差事 / journal 劫余录）
 ##   --out=     输出目录（默认 user://shots）
 
 const Data = preload("res://scripts/core/data.gd")
@@ -23,6 +24,7 @@ func _ready() -> void:
 	var mode := ""
 	## 同院的人
 	var mates := ""
+	var dialog := ""
 	var out := "user://shots"
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--screen="):
@@ -35,6 +37,8 @@ func _ready() -> void:
 			mode = a.trim_prefix("--mode=")
 		elif a.begins_with("--mates="):
 			mates = a.trim_prefix("--mates=")
+		elif a.begins_with("--dialog="):
+			dialog = a.trim_prefix("--dialog=")
 		elif a.begins_with("--out="):
 			out = a.trim_prefix("--out=")
 	# 主界面是场景不是 autoload，得自己实例化挂上，Game.go() 才有地方放界面
@@ -96,6 +100,8 @@ func _ready() -> void:
 				csc._mates.append(mid)
 			UI.clear(csc)
 			csc.build()
+	if which == "post" and dialog != "" and Dialogs.has_method(dialog):
+		Dialogs.call(dialog)
 	# 相机是插值跟上去的（_focus 每帧 lerp），等不够帧就会拍到"还在飞"的机位。
 	# 之前按 12 帧拍，量出来的相机位置和算出来的差一大截，白折腾了三轮角度。
 	for k in 60:
@@ -105,6 +111,8 @@ func _ready() -> void:
 	var img := get_viewport().get_texture().get_image()
 	DirAccess.make_dir_recursive_absolute(out)
 	var name := which if goto == "" else "%s_%s" % [which, goto]
+	if dialog != "":
+		name += "_" + dialog
 	img.save_png(out.path_join("%s.png" % name))
 	print("saved ", name)
 	# 设置弹窗比一屏高：滚到底再拍一张按键区（前一张只拍得到画面三项和前几行）

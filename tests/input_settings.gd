@@ -11,7 +11,7 @@ const DEFAULTS := {
 	"move_left": [65, 4194319], "move_right": [68, 4194321],
 	"interact": [69], "confirm": [32], "speed_pause": [32],
 	"speed_1": [49], "speed_2": [50], "speed_3": [51], "sleep": [78], "wait": [81],
-	"inventory": [73, 4194306], "journal": [74], "guard": [75], "rotate": [82],
+	"inventory": [73, 4194306], "journal": [74], "agenda": [84], "guard": [75], "rotate": [82],
 	"night_panel": [70], "cancel": [4194305],
 }
 

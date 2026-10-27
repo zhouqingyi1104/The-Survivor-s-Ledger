@@ -22,6 +22,7 @@ const Crisis = preload("res://scripts/core/crisis.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
 const Brief = preload("res://scripts/core/brief.gd")
+const Agenda = preload("res://scripts/core/agenda.gd")
 
 ## 流速数值在 core（Post.SPEEDS），界面只负责显示与切换
 const SPEED_LABELS := ["❚❚", "▶", "▶▶", "▶▶▶"]
@@ -505,6 +506,8 @@ func _hotkey_text(action: String) -> String:
 func refresh_key_hints() -> void:
 	for action in _key_hints:
 		(_key_hints[action] as Label).text = _hotkey_text(action)
+	if _live.get("agenda_button") is Button:
+		(_live.agenda_button as Button).text = "差事 · %s" % _hotkey_text("agenda")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -558,6 +561,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_swing()
 		else:
 			Dialogs.journal()
+	elif event.is_action_pressed("agenda"):
+		Dialogs.agenda()
 	elif event.is_action_pressed("guard"):
 		if not Game.run.get("fight", {}).is_empty():
 			_guard()
@@ -742,6 +747,29 @@ func _face(id: String) -> void:
 	player.figure.face(to, 1.0)
 
 
+## 差事单上的一行：走到地方再做（跟点物件一个规矩）。既有行动转给各自的物件菜单或弹窗。
+func agenda_do(idx: int) -> void:
+	var it := Agenda.item(Game.run, idx)
+	if it.is_empty():
+		return
+	if str(it.kind) == "chore":
+		do_at(str(Agenda.spec(it).get("spot", "bench")), _act(func(): return Post.act_chore(Game.run, idx)))
+		return
+	match str(Agenda.spec(it).get("action", it.id)):
+		"water":
+			perform("well", "打水")
+		"cook":
+			do_at("stove", Dialogs.cook)
+		"garden":
+			perform("garden", "浇水")
+		"repair", "craft":
+			do_at("bench", Dialogs.build)
+		"read":
+			do_at("desk", Dialogs.read)
+		"explore":
+			perform("gate", "出门搜寻")
+
+
 ## 按文字找到物件上的一个动作直接做（快捷键、常用行为、测试用）。
 func perform(id: String, prefix: String) -> void:
 	for a in actions_for(id):
@@ -832,6 +860,7 @@ func build_hud() -> void:
 	var run: Dictionary = Game.run
 	if run.phase != "post":
 		return
+	Post.ensure_agenda(run)
 	_live = {}
 	_left_top(run)
 	_right_top(run)
@@ -1136,6 +1165,17 @@ func _left_bottom(run: Dictionary) -> void:
 	h.add_child(Hud.seal("囊", Dialogs.inventory, "存货（I）", 58))
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
+	# 今日差事的账：还有多少事、天色还剩多久。常驻在这里，玩家一抬眼就知道"还有的忙"
+	var ag := HBoxContainer.new()
+	ag.add_theme_constant_override("separation", 6)
+	var ag_btn := Hud.button("差事 · %s" % _hotkey_text("agenda"), Dialogs.agenda, false, "今天能做的事：各花多久、换来什么。做不完，得挑。", 13)
+	ag_btn.name = "AgendaButton"
+	ag.add_child(ag_btn)
+	var ag_status := Hud.text("", 13, Hud.GOLD)
+	ag.add_child(ag_status)
+	_live["agenda_status"] = ag_status
+	_live["agenda_button"] = ag_btn
+	v.add_child(ag)
 	var q := HBoxContainer.new()
 	q.add_theme_constant_override("separation", 6)
 	var busy := Post.can_act(run, 0) != ""
@@ -1175,7 +1215,7 @@ func _first_run_hint() -> void:
 		return
 	Game.meta["seen_manual"] = true
 	Game.save_meta()
-	Game.toast.emit("按 %s 看今日要务；标题界面有「玩法说明」。" % _hotkey_text("journal"))
+	Game.toast.emit("按 %s 挑今日差事、%s 看今日要务；标题界面有「玩法说明」。" % [_hotkey_text("agenda"), _hotkey_text("journal")])
 
 
 func _set_speed(k: int) -> void:
@@ -1255,6 +1295,12 @@ func _update_live() -> void:
 			var fsz := Home.size_of(Game.placing, Game.placing_rot)
 			pl.text = "摆放 %s（%.1f×%.1f）· 左键放下 · R 转向 · Esc 取消" % [
 				fd.get("name", ""), fsz.x, fsz.y]
+	if _live.has("agenda_status"):
+		var sm := Agenda.summary(run)
+		var line := "待办 %s 小时 · 到 22:00 余 %s 小时" % [Agenda.hours_text(int(sm.need)), Agenda.hours_text(int(sm.left))]
+		if int(sm.over) > 0:
+			line += "（得放下 %s）" % Agenda.hours_text(int(sm.over))
+		(_live.agenda_status as Label).text = line
 	if _live.has("speed_status"):
 		var s := ""
 		if Game.speed == 0:

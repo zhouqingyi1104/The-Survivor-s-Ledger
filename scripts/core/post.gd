@@ -25,6 +25,7 @@ const Mainline = preload("res://scripts/core/mainline.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
 const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
 const DeathReport = preload("res://scripts/core/death_report.gd")
+const Agenda = preload("res://scripts/core/agenda.gd")
 
 const DAY := 1440
 const DAWN := 360           # 6:00，一天的开始
@@ -211,6 +212,10 @@ static func _tick(run: Dictionary, hours: float) -> void:
 	var cold := cold_of(run)
 	if is_night(run) and cold > 0 and not run.heated:
 		var loss := cold / 10.0 * (0.5 if State.has_facility(run, "cellar") else 1.0)
+		if State.has_buff(run, "padded"):
+			loss *= Agenda.PADDED_COLD
+		if sleeping and State.flag(run, "kang"):
+			loss *= Agenda.KANG_COLD
 		State.add_attr(run, "warmth", -loss * hours)
 	elif boiler:
 		run.attrs.warmth = clampf(float(run.attrs.warmth) + RATE.boiler_up * hours, 0.0, 100.0)
@@ -708,6 +713,81 @@ static func begin_day(run: Dictionary) -> void:
 	for line in Defense.forecast(run):
 		State.note(run, line)
 	trade_refresh(run)
+	Agenda.build(run, agenda_offers(run))
+
+
+# ---------- 今日差事 ----------
+
+## 今天做得成的既有行动（折进差事单）：只看料和条件，不看此刻忙不忙。
+static func agenda_offers(run: Dictionary) -> Array:
+	var out := []
+	if Crisis.well_block(run) == "" and not bool(run.get("well_used", false)):
+		out.append("water")
+	for rid in Data.table("recipes"):
+		if recipe_block(run, rid) == "":
+			out.append("cook")
+			break
+	for plot in run.plots:
+		if plot.crop != "":
+			out.append("garden")
+			break
+	if Inv.count(run.home, "wood") > 0 or Inv.count(run.home, "firewood") >= 2:
+		for sid in Defense.SURFACES:
+			var part := Defense.part_of(run, sid)
+			if int(part.cur) < int(part.max):
+				out.append("repair")
+				break
+	# 能去的地方有两处以上，一天就够跑两趟
+	var open_points := 0
+	for pid in Explore.visible_points(run):
+		if Explore.point_block(run, pid) == "":
+			open_points += 1
+	if open_points >= 1:
+		out.append("explore")
+	if open_points >= 2:
+		out.append("explore2")
+	for cid in Data.table("devices").crafts:
+		var c: Dictionary = Data.table("devices").crafts[cid]
+		if c.has("identity") and Identity.craft_block(run, cid) != "":
+			continue
+		if c.has("flag") and not State.flag(run, c.flag):
+			continue
+		if Inv.has_all(run.home, c["in"]):
+			out.append("craft")
+			break
+	for book in Inv.ids_in_cat(run.home, "书"):
+		if not book in run.read:
+			out.append("read")
+			break
+	return out
+
+
+## 老存档、或者刚读档进来：今天的单子还没排就现排。
+static func ensure_agenda(run: Dictionary) -> void:
+	if run.get("phase", "") != "post" or int(run.get("pday", 0)) <= 0:
+		return
+	if int(Agenda.state(run).day) != int(run.pday):
+		Agenda.build(run, agenda_offers(run))
+
+
+## 做单子上的一件差事（既有行动走各自的函数，这里只管 chore）。
+static func act_chore(run: Dictionary, idx: int) -> String:
+	var it := Agenda.item(run, idx)
+	if it.is_empty() or str(it.kind) != "chore":
+		return "没有这件差事。"
+	var c := Agenda.chore(str(it.id))
+	var err := can_act(run, int(c.energy))
+	if err != "":
+		return err
+	err = Agenda.block(run, idx)
+	if err != "":
+		return err + "。"
+	Inv.take_all(run.home, Agenda.inputs(run, str(it.id)))
+	State.add_attr(run, "energy", -float(c.energy))
+	run.busy = {"kind": "chore", "label": str(c.name), "start": int(run.t), "end": int(run.t) + int(c.minutes),
+		"data": {"idx": idx, "id": str(it.id), "day": int(run.pday)}}
+	State.note(run, "动手%s。" % c.name)
+	return ""
 
 
 ## 纸鹤交易在本地结算；到期事实也会使尚未展示的 AI 规划失效。
@@ -846,6 +926,8 @@ static func _check_busy(run: Dictionary) -> void:
 ## 做完了，见成果。
 static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 	match kind:
+		"chore":
+			Agenda.complete(run, data)
 		"cycle_inquiry":
 			var result := Cycle.complete(run, data)
 			if result != "": Director.note_choice(run, "轮回调查 · 工作完成", result)
