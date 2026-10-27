@@ -50,9 +50,13 @@ func _room() -> void:
 	floor_body.position.y = -0.1
 	floor_body.add_child(cs)
 	add_child(floor_body)
-	K.box(self, Vector3(16, 0.06, 12), K.mat(Color("#4a3a2c")), Vector3(0, 0.03, 0))
+	var ground := Color("#4a3a2c")
+	if point in ["city_god", "mortuary", "taoist_temple"]: ground = Color("#565650")
+	elif point == "lumber": ground = Color("#514638")
+	elif point == "pharmacy_ruin": ground = Color("#4c4035")
+	K.box(self, Vector3(16, 0.06, 12), K.mat(ground), Vector3(0, 0.03, 0))
 	for k in 16:
-		K.box(self, Vector3(0.03, 0.065, 12), K.mat(Color("#2e241b")), Vector3(-7.5 + k, 0.035, 0))
+		K.box(self, Vector3(0.03, 0.065, 12), K.mat(ground.darkened(0.4)), Vector3(-7.5 + k, 0.035, 0))
 	var dirty := K.mat(K.WALL.darkened(0.35))
 	var h := 3.4
 	# 后墙有个破洞，侧墙、前墙（门在正中）
@@ -80,9 +84,22 @@ func _room() -> void:
 	for k in 3:
 		K.sphere(self, 1.1, K.mat(K.SNOW), Vector3(-3.0 + k * 3.0, -0.6, -5.4), Vector3(1.4, 0.7, 0.8))
 	K.light(self, Color("#8fa2c8"), 0.8, 14.0, Vector3(0, 6, -5))
+	_exit_marker()
+
+
+## 出口只作可见标识，不改变入口或通路的碰撞。
+func _exit_marker() -> void:
+	for sx in [-1, 1]:
+		K.box(self, Vector3(0.14, 2.25, 0.14), K.WOOD_LIGHT, Vector3(sx * 1.3, 1.125, 5.85))
+	K.box(self, Vector3(2.75, 0.16, 0.16), K.WOOD_LIGHT, Vector3(0, 2.2, 5.85))
+	K.text3d(self, "出口 · 回宅", Vector3(0, 2.55, 5.75), 52, Color("#e6d5ac"), true, 0.008)
+	# 一条低矮的石槛可从房间另一侧辨认方向，角色仍能走过。
+	K.box(self, Vector3(2.0, 0.025, 0.45), K.mat(Color("#c2b18e")), Vector3(0, 0.045, 5.0))
 
 
 func _dress(pid: String) -> void:
+	# 墙边场景布置均为无碰撞装饰；保留六个搜寻点和南侧出口的行走空间。
+	_site_detail(pid)
 	match pid:
 		"mortuary":
 			for k in 4:
@@ -133,6 +150,60 @@ func _dress(pid: String) -> void:
 		_:
 			K.box(self, Vector3(3.0, 1.0, 0.8), K.WOOD, Vector3(-5.0, 0.5, 4.6))
 			Props.rice_sacks(self, Vector3(5.5, 0, 4.5), 3)
+
+
+func _site_detail(pid: String) -> void:
+	match pid:
+		"rice_ruin", "granary":
+			# 米行的量米台和官仓的分仓木栏。
+			for sx in [-1, 1]:
+				for k in 3:
+					K.box(self, Vector3(0.28, 1.4, 0.28), K.WOOD, Vector3(sx * 7.5, 0.7, -3.9 + k * 2.0))
+				K.box(self, Vector3(0.12, 0.12, 4.5), K.WOOD_LIGHT, Vector3(sx * 7.5, 1.15, -1.9))
+			if pid == "granary":
+				K.text3d(self, "官仓", Vector3(0, 2.7, -5.65), 64, Color("#c9b48d"), true, 0.008)
+			else:
+				for k in 3:
+					K.cyl(self, 0.28, 0.24, 0.38, K.WOOD_LIGHT, Vector3(-7.1, 0.19, -4.9 + k * 0.7))
+		"school":
+			# 残存的讲堂黑板与两侧散落的课册。
+			K.box(self, Vector3(3.3, 1.15, 0.12), K.WOOD, Vector3(0, 2.15, -5.7))
+			K.text3d(self, "温故知新", Vector3(0, 2.25, -5.55), 52, Color("#d6c7a6"), true, 0.008)
+			for sx in [-1, 1]:
+				for k in 4:
+					K.box(self, Vector3(0.38, 0.06, 0.28), K.mat(Color("#a99a7b")), Vector3(sx * (7.0 + 0.12 * (k % 2)), 0.09 + 0.06 * k, -3.8 + k * 1.4), Vector3(0, k * 18, 0))
+		"pharmacy_ruin":
+			# 药铺侧墙药格与晾药架，轮廓不同于普通粮仓。
+			for sx in [-1, 1]:
+				K.box(self, Vector3(2.3, 1.65, 0.16), K.WOOD, Vector3(sx * 4.4, 2.0, -5.7))
+				for row in 3:
+					for col in 5:
+						K.box(self, Vector3(0.36, 0.38, 0.04), K.WOOD_LIGHT, Vector3(sx * 4.4 - 0.8 + col * 0.4, 1.45 + row * 0.48, -5.58))
+			K.text3d(self, "回春堂", Vector3(0, 2.9, -5.65), 60, Color("#d2c39c"), true, 0.008)
+			for sx in [-1, 1]:
+				for k in 4:
+					K.box(self, Vector3(0.18, 0.12, 0.9), K.WOOD_LIGHT, Vector3(sx * 7.7, 1.3 + k * 0.42, -3.7))
+				for k in 3:
+					K.cyl(self, 0.16, 0.14, 0.36, K.mat(Color("#766e59")), Vector3(sx * 7.0, 0.2, -4.8 + k * 0.5))
+		"lumber":
+			# 木场两侧锯木架和沿墙堆放的长木。
+			K.box(self, Vector3(3.4, 0.14, 0.14), K.WOOD_LIGHT, Vector3(0, 2.2, -5.68))
+			for sx in [-1, 1]:
+				K.box(self, Vector3(0.16, 2.4, 0.16), K.WOOD, Vector3(sx * 1.6, 1.2, -5.68))
+			K.text3d(self, "木料场", Vector3(0, 2.65, -5.55), 58, Color("#cbb897"), true, 0.008)
+			for sx in [-1, 1]:
+				for k in 4:
+					K.cyl(self, 0.18, 0.18, 3.6, K.WOOD_LIGHT, Vector3(sx * 7.2, 0.2 + k * 0.31, -3.6 + (k % 2) * 0.12), Vector3(90, 0, 0))
+		"mortuary":
+			# 墙侧停灵的白幡，和庙宇红柱形成清楚区别。
+			for sx in [-1, 1]:
+				for k in 3:
+					K.box(self, Vector3(0.04, 1.6, 0.55), K.mat(Color("#c9c5b8")), Vector3(sx * 7.7, 2.1, -4.5 + k * 2.0))
+		"city_god", "taoist_temple":
+			for sx in [-1, 1]:
+				K.box(self, Vector3(0.22, 2.8, 0.22), K.LACQUER, Vector3(sx * 7.5, 1.4, -2.2))
+				K.box(self, Vector3(0.08, 1.2, 0.45), K.mat(Color("#a98a50") if pid == "taoist_temple" else Color("#9d4a35")), Vector3(sx * 7.36, 2.05, -2.2))
+			K.text3d(self, "青云观" if pid == "taoist_temple" else "城隍庙", Vector3(0, 3.1, -5.6), 58, Color("#d2b477"), true, 0.008)
 
 
 func _coffin(pos: Vector3, rot_y: float, open: bool) -> Node3D:
@@ -200,10 +271,16 @@ func sync(run: Dictionary) -> void:
 		var marker := str(ex.spots[k].get("mainline", ""))
 		var work: Dictionary = run.get("mainline", {}).get("work", {})
 		var working: bool = marker != "" and str(work.get("action", "")) == "search_" + marker and not ex.caught
-		_spots[k].glow.visible = not done or working
-		var status := "（调查中）" if working else ("（已封阵）" if marker == "ritual" and ex.spots[k].done else ("（已调查）" if marker != "" and ex.spots[k].done else ("（已翻过）" if ex.spots[k].done else "")))
+		var loot = ex.spots[k].get("loot", {})
+		var has_loot := false
+		if loot is Dictionary:
+			for amount in loot.values():
+				if int(amount) > 0: has_loot = true; break
+		var available: bool = ex.spots[k].done and has_loot and not ex.caught
+		_spots[k].glow.visible = not done or working or available
+		var status := "（调查中）" if working else ("（已封阵）" if marker == "ritual" and ex.spots[k].done else ("（已调查）" if marker != "" and ex.spots[k].done else ("（仍有物资）" if available else ("（已翻过）" if ex.spots[k].done else ""))))
 		_spots[k].label.text = _spots[k].name + status
-		_spots[k].label.modulate = Color("#9a948a") if done and not working else Color("#ffe3a0")
+		_spots[k].label.modulate = Color("#9a948a") if done and not working and not available else Color("#ffe3a0")
 	if ex.caught and _hunter == null:
 		_hunter = Figure.new()
 		add_child(_hunter)

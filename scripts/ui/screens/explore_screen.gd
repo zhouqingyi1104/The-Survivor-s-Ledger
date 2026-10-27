@@ -68,6 +68,10 @@ func _process(delta: float) -> void:
 	if world == null or Game.run.explore.is_empty():
 		return
 	var blocked := modal_open()
+	if Game.run.explore.get("curfew_due", false) and not Game.run.explore.get("caught", false) and not blocked and not _fleeing and not Post.is_busy(Game.run) and not Post.blocked(Game.run):
+		Game.toast.emit("天快黑透了，得赶紧回家！")
+		finish()
+		return
 	# 废墟里时间照走（正常速度），到酉时（21:00）必须回家
 	if not blocked and not _fleeing and not Post.blocked(Game.run) and Game.speed > 0:
 		_acc += 4.0 * delta
@@ -116,7 +120,10 @@ func _update_hint() -> void:
 		_hint_label.text = "[%s] 回家（背着 %.1f 斤）" % [ek, Inv.weight(ex.bag)]
 	elif _near >= 0 and _near < ex.spots.size():
 		var s: Dictionary = ex.spots[_near]
-		_hint_label.text = "[%s] 翻找 · %s" % [ek, s.name] if not s.done else "%s · 已经翻过了" % s.name
+		if s.done and not s.has("mainline") and not s.has("neighbor"):
+			_hint_label.text = "[%s] 查看 · %s（可整理背囊）" % [ek, s.name]
+		else:
+			_hint_label.text = "[%s] 翻找 · %s" % [ek, s.name] if not s.done else "%s · 已经查过了" % s.name
 	_hint.reset_size()
 	_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 70)
 
@@ -139,10 +146,18 @@ func search(idx: int) -> void:
 	if Post.is_busy(Game.run):
 		Game.toast.emit("先完成眼前的工作，不能同时翻找另一处。")
 		return
-	if ex.is_empty() or ex.caught or idx >= ex.spots.size() or ex.spots[idx].done:
+	if ex.is_empty() or ex.caught or idx < 0 or idx >= ex.spots.size():
+		return
+	var spot: Dictionary = ex.spots[idx]
+	if spot.done:
+		if not spot.has("mainline") and not spot.has("neighbor"):
+			_open_loot(idx)
 		return
 	var res = Game.act(func(): return Post.search(Game.run, idx))
 	if typeof(res) == TYPE_DICTIONARY and not res.is_empty():
+		if str(res.get("blocked", "")) != "":
+			Game.toast.emit(str(res.blocked))
+			return
 		if res.get("mainline", false):
 			Game.toast.emit(str(res.get("text", "已开始调查，完成后再返程。")))
 			_near = -99
@@ -152,13 +167,76 @@ func search(idx: int) -> void:
 			_near = -99
 			return
 		Sfx.play("cloth" if res.found.is_empty() else "leather", -2.0)
-		var text := "翻到：" + Data.describe_items(res.found) if not res.found.is_empty() else "一无所获"
-		if res.full:
-			text += "（背不下了）"
+		var text := "发现：" + Data.describe_items(res.found) if not res.found.is_empty() else "一无所获"
 		Game.toast.emit(text)
 		if res.clue != "":
 			Game.toast.emit("得残卷一页！")
+		# 翻找本身会推进时间，可能已经触发事件、死亡或宵禁。
+		var current: Dictionary = Game.run.get("explore", {})
+		if not is_inside_tree() or Game.screen != "explore" or Game.run.get("phase", "") != "post" or current.is_empty():
+			return
+		if not current.get("caught", false) and not current.get("curfew_due", false) and not Post.blocked(Game.run) and not modal_open():
+			_open_loot(idx)
 	_near = -99
+
+
+## 搜过的普通容器始终可以重开；遗留物只在这次探索中保留。
+func _open_loot(idx: int) -> void:
+	var ex: Dictionary = Game.run.get("explore", {})
+	if not is_inside_tree() or Game.screen != "explore" or ex.is_empty() or ex.get("caught", false) or ex.get("curfew_due", false) or Post.is_busy(Game.run) or Post.blocked(Game.run) or idx < 0 or idx >= ex.spots.size(): return
+	var spot: Dictionary = ex.spots[idx]
+	if not spot.done or spot.has("mainline") or spot.has("neighbor"): return
+	UI.open_modal("explore_loot", "搜寻 · " + str(spot.name), _loot_panel.bind(idx), true, 760)
+
+
+func _loot_panel(body: VBoxContainer, idx: int) -> void:
+	var ex: Dictionary = Game.run.get("explore", {})
+	if ex.is_empty() or ex.get("caught", false) or idx < 0 or idx >= ex.spots.size():
+		body.add_child(UI.label("已离开此处，无法取物。", 17))
+		return
+	var spot: Dictionary = ex.spots[idx]
+	var loot: Dictionary = spot.get("loot", {})
+	var bag: Dictionary = ex.get("bag", {})
+	var left := maxf(0.0, Explore.carry(Game.run) - Inv.weight(bag))
+	body.add_child(UI.label("背囊 %.1f / %.1f 斤 · 还能装 %.1f 斤" % [Inv.weight(bag), Explore.carry(Game.run), left], 19, UI.GOLD))
+	body.add_child(UI.para("取物不消耗时间。未拿走的物资会留在此处，本次返家后无法带回；可将背囊物资放回这里，腾出位置。", 15))
+	var contents := UI.vbox(6)
+	contents.add_child(UI.heading("此处物资", 20, UI.GOLD))
+	if loot.is_empty():
+		contents.add_child(UI.label("这里已经空了。", 16, UI.INK_SOFT))
+	for raw_id in loot.keys():
+		var id := str(raw_id)
+		var item: Dictionary = Data.item(id)
+		var row := UI.hbox(8)
+		row.add_child(UI.label("%s ×%d · 每件 %.1f 斤" % [item.name, Inv.count(loot, id), float(item.get("weight", 0))], 17))
+		row.add_child(UI.spacer())
+		row.add_child(UI.button("取 1", func(): _take_loot(idx, id, 1)))
+		row.add_child(UI.button("尽量取", func(): _take_loot(idx, id, Inv.count(loot, id))))
+		contents.add_child(row)
+	contents.add_child(UI.sep())
+	contents.add_child(UI.heading("背囊 · 放回此处", 20, UI.GOLD))
+	if bag.is_empty():
+		contents.add_child(UI.label("背囊是空的。", 16, UI.INK_SOFT))
+	for raw_id in bag.keys():
+		var id := str(raw_id)
+		var item: Dictionary = Data.item(id)
+		var row := UI.hbox(8)
+		row.add_child(UI.label("%s ×%d · 每件 %.1f 斤" % [item.name, Inv.count(bag, id), float(item.get("weight", 0))], 17))
+		row.add_child(UI.spacer())
+		row.add_child(UI.button("放回 1", func(): _put_back(idx, id, 1)))
+		row.add_child(UI.button("全部放回", func(): _put_back(idx, id, Inv.count(bag, id))))
+		contents.add_child(row)
+	body.add_child(UI.scroll(contents, mini(400, maxi(180, int(get_viewport().get_visible_rect().size.y) - 320))))
+
+
+func _take_loot(idx: int, id: String, amount: int) -> void:
+	var n := int(Game.act(func(): return Explore.take(Game.run, idx, id, amount)))
+	Game.toast.emit("取走 %s ×%d" % [Data.item(id).name, n] if n > 0 else "背囊空间不足，或此处已没有这件物资。")
+
+
+func _put_back(idx: int, id: String, amount: int) -> void:
+	var n := int(Game.act(func(): return Explore.put_back(Game.run, idx, id, amount)))
+	Game.toast.emit("放回 %s ×%d" % [Data.item(id).name, n] if n > 0 else "此时无法放回物资。")
 
 
 func finish() -> void:
@@ -185,6 +263,13 @@ func build_hud() -> void:
 	v.add_child(UI.stat_row("气血", State.attr(run, "hp"), State.attr_max(run, "hp"), UI.CINNABAR, 44))
 	v.add_child(UI.stat_row("精力", State.attr(run, "energy"), 100, UI.INK_SOFT, 44))
 	v.add_child(UI.label("背囊 %.1f / %d 斤" % [Inv.weight(ex.bag), int(Explore.carry(run))], 16))
+	var ordinary := 0
+	var searched := 0
+	for spot in ex.spots:
+		if spot.has("mainline") or spot.has("neighbor"): continue
+		ordinary += 1
+		if spot.done: searched += 1
+	v.add_child(UI.label("搜寻 %d / %d 处 · 返程需 %d 分钟" % [searched, ordinary, int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
 	v.add_child(UI.line("带着：" + (Data.describe_items(ex.bag) if not ex.bag.is_empty() else "空手"), 15, UI.INK_SOFT, 300))
 	v.add_child(UI.line(Neighbor.summary(run), 16, UI.INK_SOFT, 300))
 	if Neighbor.state(run).stage in ["fetch", "carrying"]:
@@ -205,7 +290,8 @@ func build_hud() -> void:
 	row.add_child(UI.bar(int(ex.exposure), Explore.EXPOSURE_MAX, UI.CINNABAR, 360, 20))
 	row.add_child(UI.label("%d / %d" % [ex.exposure, Explore.EXPOSURE_MAX], 18))
 	e.add_child(row)
-	var tip := "被尸群嗅到了！快逃！" if ex.caught else "每翻一处要二十分钟、外泄一分阳气；酉时（21:00）前必须回家。"
+	var risk := Explore.exposure_range(run, str(ex.point))
+	var tip := "被尸群嗅到了！快逃！" if ex.caught else "普通翻找 20 分钟，外泄 +%d～%d；21:00 后完成当前调查及事件即返程（%d 分钟）。" % [risk.x, risk.y, int(Post.ACTIONS.travel[1])]
 	e.add_child(UI.label(tip, 15, UI.CINNABAR if ex.caught else UI.INK_SOFT))
 	corner_panel(e, Control.PRESET_CENTER_TOP, 14, 0.9)
 
@@ -219,7 +305,7 @@ func build_hud() -> void:
 	top.add_child(UI.button("劫余录", Dialogs.journal))
 	corner_panel(top, Control.PRESET_TOP_RIGHT)
 	corner_panel(UI.log_lines(ex.notes, 4, 15, 560), Control.PRESET_BOTTOM_LEFT, 14, 0.8)
-	var help := UI.label("WASD 走动 · E 翻找 / 回家 · 右键拖动转视角", 15, Color(UI.PAPER_LIGHT, 0.95))
+	var help := UI.label("WASD 走动 · %s 翻找 / 查看 / 回家 · 右键拖动转视角" % InputCfg.first_key_name("interact"), 15, Color(UI.PAPER_LIGHT, 0.95))
 	help.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	help.add_theme_constant_override("outline_size", 4)
 	hud.add_child(help)

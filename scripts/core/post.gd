@@ -269,6 +269,8 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 			_heat(run)
 		CURFEW_AT:
 			if not run.explore.is_empty():
+				# 翻找和调查会跨时推进；需要记住宵禁，等待药柜选择或现场工作结束后返程。
+				run.explore["curfew_due"] = true
 				return "curfew"
 			# 今夜有尸潮：先让玩家定守夜方针，再放时间走
 			if not Defense.wave_for_run(run, int(run.pday)).is_empty() and int(run.wave_day) != int(run.pday) and str(run.get("night_policy", "")) == "":
@@ -1381,12 +1383,12 @@ static func search(run: Dictionary, idx: int) -> Dictionary:
 
 ## 回家：也要赶一个时辰的路。
 static func finish_explore(run: Dictionary) -> Dictionary:
-	if run.explore.is_empty():
+	if run.get("phase", "") != "post" or run.explore.is_empty():
 		return {}
 	if is_busy(run):
 		return {} # Finish or actually interrupt field work before starting return travel.
-	if run.pending_event == "n_cabinet":
-		return {} # Resolve the opened cabinet before leaving its scene.
+	if run.pending_event != "":
+		return {} # Resolve the pending event, including the opened cabinet, before leaving.
 	var field_state: Dictionary = run.explore.duplicate(true)
 	var summary := Explore.finish(run)
 	if run.phase == "post":

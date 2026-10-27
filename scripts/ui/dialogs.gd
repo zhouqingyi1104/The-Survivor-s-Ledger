@@ -1065,7 +1065,7 @@ func explore_pick() -> void:
 
 func _explore_pick(body: VBoxContainer) -> void:
 	var run := _run()
-	body.add_child(UI.para("来回各要一个时辰的路，酉时（21:00）前必须回家。每翻一处，阳气就外泄一分，满了会被尸群嗅到。", 16))
+	body.add_child(UI.para("去程、返程各 60 分钟；普通翻找每处 20 分钟并增加阳气外泄，满 100 会被尸群发现。21:00 后处理完当前事务即强制返程，途中仍需 60 分钟。", 16))
 	var v := UI.vbox(8)
 	var visible := Explore.visible_points(run)
 	if not "taoist_temple" in visible: visible.append("taoist_temple")
@@ -1084,6 +1084,10 @@ func _explore_pick(body: VBoxContainer) -> void:
 			head.add_child(UI.tag("未到访", UI.DAI))
 		info.add_child(head)
 		info.add_child(UI.para(p.desc, 15))
+		var possible := []
+		for entry in p.loot:
+			possible.append(str(Data.item(str(entry[0])).name))
+		info.add_child(UI.para("可能找到：" + "、".join(possible) + "；实际收获随机。", 15, UI.INK_SOFT))
 		var main_objective := Mainline.objective(run, pid)
 		if not main_objective.is_empty():
 			info.add_child(UI.para("本世调查：" + str(main_objective.name) + " · " + str(main_objective.get("hint", "")), 15, UI.GOLD))

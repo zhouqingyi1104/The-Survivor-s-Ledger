@@ -475,7 +475,9 @@ func _explore(run: Dictionary) -> bool:
 	for idx in run.explore.spots.size():
 		if run.explore.is_empty() or run.explore.caught or int(run.explore.exposure) > 65 or Post.blocked(run):
 			break
-		Post.search(run, idx)
+		var result := Post.search(run, idx)
+		for id in result.get("found", {}):
+			Explore.take(run, idx, str(id), int(result.found[id]))
 		if run.pending_event != "":
 			return true
 	if not run.explore.is_empty():
