@@ -26,6 +26,7 @@ const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
 const VideoCfg = preload("res://scripts/core/video_cfg.gd")
 const Brief = preload("res://scripts/core/brief.gd")
+const Manual = preload("res://scripts/core/manual.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -1572,6 +1573,21 @@ func _ready() -> void:
 	_capture = preload("res://scripts/ui/key_capture.gd").new()
 	_capture.captured.connect(_on_key_captured)
 	add_child(_capture)
+
+
+## 玩法说明：规则讲清楚，但不给"该买什么"这种建议（那是策略，因人而异）。
+func manual() -> void:
+	UI.open_modal("manual", "玩法说明", _manual, true, 760)
+
+
+func _manual(body: VBoxContainer) -> void:
+	var content := UI.vbox(10)
+	for section in Manual.sections():
+		content.add_child(UI.heading(str(section.title), 20, UI.CINNABAR))
+		for row in section.rows:
+			content.add_child(UI.para(Manual.render_row(row), 16))
+		content.add_child(UI.sep())
+	body.add_child(UI.scroll(content, 520))
 
 
 ## 存档备份：把这一局导出成 .jyz，或从 .jyz 导入一局。

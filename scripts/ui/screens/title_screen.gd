@@ -59,6 +59,7 @@ func build() -> void:
 	menu.add_child(_item("新开一卷", _new_game, true))
 	menu.add_child(_item("心法 · 道心 %d" % int(meta.daoxin), func(): Game.go("talents")))
 	menu.add_child(_item("残卷 %d / %d" % [meta.clues.size(), Data.table("clues").size()], _show_clues))
+	menu.add_child(_item("玩法说明", func(): Dialogs.manual()))
 	menu.add_child(_item("存档备份", func(): Dialogs.save_pack()))
 	menu.add_child(_item("导出试玩报告", _export_report))
 	menu.add_child(_item("设置", func(): Dialogs.settings(false)))

@@ -469,6 +469,7 @@ func after_build() -> void:
 	var run: Dictionary = Game.run
 	if run.phase != "post" or _show != null:
 		return
+	_first_run_hint()
 	if run.wave_due:
 		_start_wave.call_deferred()
 	elif run.pending_event != "" and not UI.has_modal("event"):
@@ -1166,6 +1167,15 @@ func _left_bottom(run: Dictionary) -> void:
 	var p := Hud.panel(h, Hud.BG_SOFT)
 	hud.add_child(p)
 	Hud.pin(p, Control.PRESET_BOTTOM_LEFT, 14)
+
+
+## 第一次进劫中时提一句"该看哪儿"：只发提示条、不弹窗，免得和事件/夜报抢注意力。
+func _first_run_hint() -> void:
+	if Game.no_save or bool(Game.meta.get("seen_manual", false)):
+		return
+	Game.meta["seen_manual"] = true
+	Game.save_meta()
+	Game.toast.emit("按 %s 看今日要务；标题界面有「玩法说明」。" % _hotkey_text("journal"))
 
 
 func _set_speed(k: int) -> void:
