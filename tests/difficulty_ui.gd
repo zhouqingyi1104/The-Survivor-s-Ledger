@@ -40,6 +40,7 @@ func _ready() -> void:
 	var mild := card("mild")
 	var doom := card("doom")
 	check(mild != null and doom != null, "难度卡没都挂上 difficulty_pick（点不动的回归）")
+	check_card_widths("normal")
 	# 鼠标路由自检：先把话说清楚，别让 headless 下的空结果冒充成界面坏了
 	await hover(mild)
 	if not check(get_viewport().gui_get_hovered_control() != null,
@@ -51,6 +52,10 @@ func _ready() -> void:
 	check(screen._picked == "mild", "点暖冬卡没选中：_picked=%s" % screen._picked)
 	check(text_of("就这个").contains("暖冬"), "底部确认按钮没跟着选中项变：" + text_of("就这个"))
 	check(card_id(tag_owner()) == "mild", "「已选中」标记没移到暖冬卡上")
+	check_card_widths("mild")
+	await click(card("harsh"))
+	check(screen._picked == "harsh", "点荒年卡没选中")
+	check_card_widths("harsh")
 	# 再点「永夜」：换选中项，且界面不能叠层。
 	# 卡要按 id 重新找——选中后整屏重画，旧的卡节点已经释放了。
 	var labels: int = screen.find_children("*", "Label", true, false).size()
@@ -59,6 +64,7 @@ func _ready() -> void:
 	check(screen.find_children("*", "Label", true, false).size() == labels, "每点一次界面就叠一层")
 	check(text_of("就这个").contains("永夜"), "底部确认按钮没跟着选中项变：" + text_of("就这个"))
 	check(card_id(tag_owner()) == "doom", "「已选中」标记没移到永夜卡上")
+	check_card_widths("doom")
 	# 「就这个」把选中的难度带给下一屏
 	await click(text_button("就这个"))
 	check(Game.screen == "challenge" and Game.pending_difficulty == "doom", "难度没带进立愿界面")
@@ -67,6 +73,20 @@ func _ready() -> void:
 
 
 # ---------- 工具 ----------
+
+func check_card_widths(selected: String) -> void:
+	var chosen := card(selected)
+	if not check(chosen != null, "找不到选中的难度卡：" + selected): return
+	var others := []
+	for id in ["mild", "normal", "harsh", "doom"]:
+		if id == selected: continue
+		var other := card(id)
+		if not check(other != null, "找不到难度卡：" + id): continue
+		check(chosen.size.x > other.size.x, "%s 选中时没有比 %s 宽（%.1f / %.1f）" % [selected, id, chosen.size.x, other.size.x])
+		others.append(other.size.x)
+	if others.size() == 3:
+		check(absf(others[0] - others[1]) <= 1.0 and absf(others[1] - others[2]) <= 1.0, "未选中的卡片宽度不一致：%s" % str(others))
+
 
 func card(id: String) -> Control:
 	for n in main.find_children("*", "Control", true, false):

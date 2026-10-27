@@ -63,6 +63,9 @@ func _card(d: Dictionary) -> Control:
 	if id == _picked:
 		v.add_child(UI.tag("已选中", UI.CINNABAR))
 	var p := UI.panel(v, Color("#f2e3c2") if id == _picked else UI.PANEL)
+	# 卡片占满整行，并让选中项始终比其他选项更宽；不能依赖文字的最小宽度。
+	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	p.size_flags_stretch_ratio = 1.4 if id == _picked else 1.0
 	# 整张卡收点击：内容一律不吃鼠标（Label 默认就 IGNORE，但 gap、各种容器默认
 	# STOP，会把点击吃掉），卡片自己接 gui_input。以前这段写在屏幕根的 _gui_input
 	# 里按坐标找卡：卡嵌套在 Margin→VBox→HBox 里，根的 get_children() 只有一个
