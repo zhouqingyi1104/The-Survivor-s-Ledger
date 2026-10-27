@@ -9,6 +9,7 @@ const Figure = preload("res://scripts/world/character.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Explore = preload("res://scripts/core/explore.gd")
 const Expedition = preload("res://scripts/core/expedition.gd")
+const SiteJourney = preload("res://scripts/core/site_journey.gd")
 
 const ENTRY := Vector3(0, 0, 5.2)
 const SPOT_RADIUS := 1.7
@@ -23,26 +24,47 @@ var _hunter: Node3D
 # behind the gate, so the locked area cannot be reached by walking around it.
 const CELL := 6.0
 const FOOTPRINTS := {
-	"rice_ruin": [Vector2i(0,0), Vector2i(0,-1), Vector2i(-1,-1), Vector2i(-1,-2), Vector2i(-2,-1)],
-	"city_god": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(0,-1), Vector2i(-2,0)],
-	"school": [Vector2i(0,0), Vector2i(0,-1), Vector2i(-1,-1), Vector2i(1,-1), Vector2i(0,-2)],
-	"pharmacy_ruin": [Vector2i(0,0), Vector2i(-1,0), Vector2i(-1,-1), Vector2i(-2,-1)],
-	"lumber": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(1,-1), Vector2i(2,-1)],
-	"mortuary": [Vector2i(0,0), Vector2i(0,-1), Vector2i(1,-1), Vector2i(2,-1), Vector2i(1,-2)],
-	"granary": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(-1,-1), Vector2i(-2,-1)],
-	"taoist_temple": [Vector2i(0,0), Vector2i(0,-1), Vector2i(0,-2), Vector2i(1,-2), Vector2i(2,-2)],
+	"rice_ruin": [Vector2i(0,0), Vector2i(0,-1), Vector2i(-1,-1), Vector2i(-1,-2), Vector2i(1,0), Vector2i(1,-1), Vector2i(1,-2), Vector2i(0,-2), Vector2i(-2,-1)],
+	"city_god": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(0,-1), Vector2i(1,-1), Vector2i(1,-2), Vector2i(0,-2), Vector2i(-1,-2), Vector2i(-2,0)],
+	"school": [Vector2i(0,0), Vector2i(0,-1), Vector2i(-1,-1), Vector2i(1,-1), Vector2i(-1,0), Vector2i(1,0), Vector2i(-2,-1), Vector2i(2,-1), Vector2i(0,-2)],
+	"pharmacy_ruin": [Vector2i(0,0), Vector2i(-1,0), Vector2i(-1,-1), Vector2i(1,0), Vector2i(1,-1), Vector2i(0,-1), Vector2i(-1,-2), Vector2i(0,-2), Vector2i(-2,-1)],
+	"lumber": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(1,-1), Vector2i(-1,-1), Vector2i(-2,-1), Vector2i(-2,0), Vector2i(0,-1), Vector2i(2,-1)],
+	"mortuary": [Vector2i(0,0), Vector2i(0,-1), Vector2i(1,-1), Vector2i(2,-1), Vector2i(-1,0), Vector2i(-1,-1), Vector2i(2,0), Vector2i(3,0), Vector2i(-2,0), Vector2i(-2,-1), Vector2i(1,-2)],
+	"granary": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(-1,-1), Vector2i(0,-1), Vector2i(1,-1), Vector2i(1,-2), Vector2i(0,-2), Vector2i(2,0), Vector2i(2,-1), Vector2i(-2,-1)],
+	"taoist_temple": [Vector2i(0,0), Vector2i(0,-1), Vector2i(0,-2), Vector2i(1,-2), Vector2i(-1,0), Vector2i(-1,-1), Vector2i(-2,-1), Vector2i(-2,-2), Vector2i(-2,0), Vector2i(-3,0), Vector2i(2,-2)],
 }
 const ZONE_NAMES := {
-	"rice_ruin": ["破店门", "量米堂", "账房走廊", "后院", "后粮仓"],
-	"city_god": ["庙门", "香客院", "偏殿庭", "城隍正殿", "封存供库"],
-	"school": ["县学门", "讲堂", "西斋", "东斋", "藏书阁"],
-	"pharmacy_ruin": ["回春堂", "看诊堂", "炮制小巷", "封药间"],
-	"lumber": ["场门", "堆料场", "运木道", "锯棚", "旧木库"],
-	"mortuary": ["义庄门", "停灵堂", "守庄人房", "偏房", "封棺室"],
-	"granary": ["官仓门", "西仓道", "运粮道", "仓吏房", "封粮仓"],
-	"taoist_temple": ["山门", "石阶", "道观前庭", "偏殿", "丹房"],
+	"rice_ruin": ["破店门", "量米堂", "账房走廊", "后院", "临街铺面", "粮车道", "伙计房", "筛粮间", "后粮仓"],
+	"city_god": ["庙门", "香客院", "偏殿庭", "城隍正殿", "香亭", "侧廊", "祭台", "庙祝居", "封存供库"],
+	"school": ["县学门", "讲堂", "西斋", "东斋", "门房", "前廊", "教习房", "学舍", "藏书阁"],
+	"pharmacy_ruin": ["回春堂", "看诊堂", "炮制小巷", "等候室", "晾药房", "后堂", "药碾房", "掌柜房", "封药间"],
+	"lumber": ["场门", "堆料场", "运木道", "锯棚", "工棚", "铁匠角", "卸料坪", "木工坊", "旧木库"],
+	"mortuary": ["义庄门", "停灵堂", "守庄人房", "偏房", "前庭", "供案间", "停棺处", "守夜舍", "送葬径", "白幡院", "封棺室"],
+	"granary": ["官仓门", "西仓道", "运粮道", "仓吏房", "粮车坪", "军粮间", "储粮架", "装卸道", "粮车棚", "巡仓径", "封粮仓"],
+	"taoist_temple": ["山门", "石阶", "道观前庭", "偏殿", "外院", "经阁", "灵田", "静室", "松风径", "望山台", "丹房"],
 }
+
+# Map narrative actions to rooms that match their descriptions where space permits.
+const JOURNEY_ROOMS := {
+	"rice_ruin": [1,2,3], "city_god": [1,6,2], "school": [1,2,3],
+	"pharmacy_ruin": [1,6,5,7,2], "lumber": [4,2,3,5,1],
+	"mortuary": [1,9,5,2,6,3,7,4], "granary": [4,2,8,3,7,1,5,9],
+	"taoist_temple": [0,2,5,6,3,7,9,8],
+}
+
 var feature_positions: Dictionary = {}
+# Ids are the authoritative SiteJourney stage ids, never display text.
+var journey_positions: Dictionary = {}
+var _journey_nodes: Dictionary = {}
+var _journey_enabled := false
+# These are optional shortcuts; each has another route to both sides.
+const JOURNEY_OBSTACLES := {
+	"rice_ruin": {"stage":"s1", "from":Vector2i(0,-1), "to":Vector2i(-1,-1), "label":"堵路粮袋"},
+	"school": {"stage":"s1", "from":Vector2i(0,-1), "to":Vector2i(-1,-1), "label":"倾倒书架"},
+	"lumber": {"stage":"s1", "from":Vector2i(1,0), "to":Vector2i(1,-1), "label":"倾斜木架"},
+	"granary": {"stage":"s4", "from":Vector2i(0,-1), "to":Vector2i(0,-2), "label":"堵门杂物"},
+}
+var journey_obstacles: Dictionary = {}
 var gate_center := Vector3.ZERO
 # Direction points from the public area towards the locked room.
 var gate_normal := Vector3.ZERO
@@ -110,8 +132,36 @@ func _choose_positions(spots: Array) -> void:
 		assert(choice != Vector3.INF, "No distinct search position for " + point)
 		_spot_positions.append(choice)
 		used.append(choice)
+	_choose_journey_positions(cells, used)
 
-
+func _choose_journey_positions(cells: Array, used: Array) -> void:
+	var stages: Array = SiteJourney.profile(point).get("stages", [])
+	var occupied_cells: Array = []
+	var public_cells := cells.slice(0, cells.size() - 1)
+	for stage_index in stages.size():
+		var stage: Dictionary = stages[stage_index]
+		var choices: Array = JOURNEY_ROOMS.get(point, [])
+		var preferred: Vector2i = public_cells[choices[stage_index]] if stage_index < choices.size() else Vector2i(999,999)
+		var best := Vector3.INF
+		var best_cell := Vector2i.ZERO
+		var best_score := -1.0
+		for cell in public_cells:
+			var center := _cell_center(cell)
+			for offset in [Vector3.ZERO,Vector3(-1.9,0,-1.9),Vector3(1.9,0,-1.9),Vector3(-1.9,0,1.9),Vector3(1.9,0,1.9),Vector3(0,0,-1.9),Vector3(0,0,1.9),Vector3(-1.9,0,0),Vector3(1.9,0,0)]:
+				var candidate: Vector3 = center + offset
+				var min_d := 999.0
+				for p in used: min_d = minf(min_d, _flat_distance(candidate, p))
+				if min_d < 2.9: continue
+				# Visit a fresh room before placing a second station in one room.
+				var score := min_d + (1000.0 if not cell in occupied_cells else 0.0) + (200.0 if cell == preferred else 0.0)
+				if score > best_score:
+					best_score = score
+					best = candidate
+					best_cell = cell
+		assert(best != Vector3.INF, "No distinct journey station for " + point + ": " + str(stage.id))
+		journey_positions[str(stage.id)] = best
+		used.append(best)
+		occupied_cells.append(best_cell)
 
 func setup(pid: String, spots: Array) -> void:
 	point = pid
@@ -143,6 +193,8 @@ func _room() -> void:
 	floor_body.add_child(cs)
 	add_child(floor_body)
 	_expedition_layout()
+	_make_journey_obstacle()
+	_journey_props()
 	# Local rubble belongs to each traversable part of the site, not the void.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(point)
@@ -209,6 +261,16 @@ func _expedition_layout() -> void:
 			"taoist_temple":
 				K.box(self, Vector3(1.8,0.75,0.6),K.LACQUER,center + Vector3(0,0.38,-2.55))
 				for j in 3: K.cyl(self, 0.07,0.1,0.3,K.GOLD,center + Vector3(-0.5+j*0.5,0.92,-2.5))
+		# Partial partitions create actual doorways and distinct connected rooms.
+		for dir in [Vector2i(1,0), Vector2i(0,-1)]:
+			var neighbor: Vector2i = cell + dir
+			if not neighbor in cells or cell == cells.back() or neighbor == cells.back(): continue
+			var seam := center + Vector3(dir.x * CELL * 0.5,0,dir.y * CELL * 0.5)
+			var height := 0.9 if outdoor else 1.45
+			for side in [-1,1]:
+				var size := Vector3(0.20,height,1.35) if dir.x != 0 else Vector3(1.35,height,0.20)
+				var at := seam + (Vector3(0,height/2.0,side*2.325) if dir.x != 0 else Vector3(side*2.325,height/2.0,0))
+				K.solid(self,size,K.WOOD if outdoor else K.WALL_SHADE,at)
 		for dir in dirs:
 			if cell + dir in cells: continue
 			var wall_center := center + Vector3(dir.x * CELL * 0.5, 0, dir.y * CELL * 0.5)
@@ -242,6 +304,63 @@ func _expedition_layout() -> void:
 			K.box(self, Vector3(0.22,0.26,0.03), K.PAPER, at + Vector3(0,0.42,0.13))
 		K.text3d(self, label, at + Vector3(0,1.35,0), 50, Color("#e7cd8a"), true, 0.005)
 		K.light(self, Color("#d6b879"), 0.5, 2.5, at + Vector3(0,1,0))
+
+
+func _make_journey_obstacle() -> void:
+	if not JOURNEY_OBSTACLES.has(point): return
+	var spec: Dictionary = JOURNEY_OBSTACLES[point]
+	var a: Vector3 = _cell_center(spec.from)
+	var b: Vector3 = _cell_center(spec.to)
+	var center := (a + b) * 0.5
+	var normal := (b - a).normalized()
+	var across_x := absf(normal.x) > 0.5
+	# The object fills the doorway, not the parallel bypass route.
+	var size := Vector3(0.38,1.3,3.3) if across_x else Vector3(3.3,1.3,0.38)
+	var body := K.collider(self,size,center + Vector3(0,0.65,0))
+	var visual := K.node(self,center)
+	if point == "rice_ruin":
+		for j in 5:
+			for row in 2:
+				var offset := Vector3(0,0.3+row*0.6,-1.2+j*0.6) if across_x else Vector3(-1.2+j*0.6,0.3+row*0.6,0)
+				K.cyl(visual,0.24,0.3,0.58,K.RICE_SACK,offset)
+	else:
+		K.box(visual,size,K.WOOD_LIGHT if point == "lumber" else K.WOOD,Vector3(0,0.65,0))
+		for i in 3:
+			if across_x:
+				K.box(visual,Vector3(0.42,0.12,3.25),K.WOOD_LIGHT,Vector3(0,0.35+i*0.4,0))
+			else:
+				K.box(visual,Vector3(3.25,0.12,0.42),K.WOOD_LIGHT,Vector3(0,0.35+i*0.4,0))
+	K.text3d(visual,str(spec.label),Vector3(0,1.55,0),48,Color("#d4c5a8"),true,0.005)
+	journey_obstacles[str(spec.stage)] = {"body":body,"visual":visual,"center":center,"normal":normal}
+
+
+# Stations are physical landmarks with site-specific materials, not UI-only rows.
+func _journey_props() -> void:
+	for stage in SiteJourney.profile(point).get("stages", []):
+		var id := str(stage.id)
+		var at: Vector3 = journey_positions[id]
+		var n := K.node(self, at)
+		var mat = K.STONE if point in ["city_god", "mortuary", "taoist_temple"] else K.WOOD_LIGHT
+		if point == "lumber":
+			K.cyl(n,0.20,0.20,0.85,mat,Vector3(0,0.16,0),Vector3(0,0,90))
+		elif point in ["rice_ruin", "granary"]:
+			K.cyl(n,0.18,0.26,0.55,K.RICE_SACK,Vector3(0,0.28,0))
+		elif point == "pharmacy_ruin":
+			K.cyl(n,0.15,0.2,0.4,K.mat(Color("#766e59")),Vector3(0,0.2,0))
+		elif point == "school":
+			K.box(n,Vector3(0.7,0.09,0.45),K.PAPER,Vector3(0,0.15,0))
+		else:
+			K.box(n,Vector3(0.55,0.35,0.4),mat,Vector3(0,0.18,0))
+		var ring := TorusMesh.new()
+		ring.inner_radius = 0.52
+		ring.outer_radius = 0.58
+		var mi := MeshInstance3D.new()
+		mi.mesh = ring
+		mi.material_override = K.mat(Color("#7db3a0"),0.6,1.3)
+		mi.position.y = 0.06
+		n.add_child(mi)
+		var label := K.text3d(n,str(stage.title),Vector3(0,1.1,0),48,Color("#c3e0ce"),true,0.005)
+		_journey_nodes[id] = {"node":n,"label":label,"title":str(stage.title)}
 
 
 ## 出口只作可见标识，不改变入口或通路的碰撞。
@@ -315,6 +434,15 @@ func sync(run: Dictionary) -> void:
 	if ex.is_empty():
 		return
 	_unlocked = bool(Expedition.state(run).get("unlocked", false))
+	_journey_enabled = not bool(ex.get("only_investigate", false))
+	var journey: Dictionary = SiteJourney.state(run)
+	for id in journey_obstacles:
+		var cleared := str(journey.get("completed", {}).get(id, "")) == "careful"
+		journey_obstacles[id].visual.visible = not cleared
+		journey_obstacles[id].body.set_collision_layer_value(1, not cleared)
+	for id in _journey_nodes:
+		_journey_nodes[id].node.visible = _journey_enabled
+		_journey_nodes[id].label.text = str(_journey_nodes[id].title) + (" · 已查" if journey.get("completed", {}).has(id) else "")
 	if is_instance_valid(_gate_mesh): _gate_mesh.visible = not _unlocked
 	if is_instance_valid(_gate_body):
 		_gate_body.set_collision_layer_value(1, not _unlocked)
@@ -381,6 +509,19 @@ func nearest_feature(pos: Vector3) -> String:
 		var d := _flat_distance(pos, target)
 		if d < best_d and _visible_from(pos, target):
 			best = key
+			best_d = d
+	return best
+
+
+func nearest_journey(pos: Vector3) -> String:
+	if not _journey_enabled: return ""
+	var best := ""
+	var best_d := 1.1
+	for id in journey_positions:
+		var target: Vector3 = journey_positions[id]
+		var d := _flat_distance(pos,target)
+		if d < best_d and _visible_from(pos,target):
+			best = str(id)
 			best_d = d
 	return best
 

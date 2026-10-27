@@ -14,6 +14,7 @@ const Ledger = preload("res://scripts/core/ledger.gd")
 const Events = preload("res://scripts/core/events.gd")
 const Explore = preload("res://scripts/core/explore.gd")
 const Expedition = preload("res://scripts/core/expedition.gd")
+const SiteJourney = preload("res://scripts/core/site_journey.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
@@ -1437,6 +1438,37 @@ static func expedition_inspect(run: Dictionary, idx: int) -> Dictionary:
 	if err != "": return {"blocked": err, "text": err}
 	s.clues[idx] = true
 	return {"text": str(profile.clues[idx].text)}
+
+
+## 现场行动被事件、宵禁或死亡打断时不提交任何成果。
+static func site_journey_action(run: Dictionary, stage_id: String, choice_id: String) -> Dictionary:
+	var err := _expedition_available(run)
+	if err != "": return {"blocked": err, "text": err}
+	var ex: Dictionary = run.explore
+	if ex.get("only_investigate", false): return {"blocked": "此行仅调查任务，现场资源尚未恢复。"}
+	var selected := SiteJourney.choice(str(ex.point), stage_id, choice_id)
+	if selected.is_empty(): return {"blocked": "没有这个现场行动。"}
+	var s := SiteJourney.state(run)
+	if s.completed.has(stage_id): return {"blocked": "这处已处理过。"}
+	err = _expedition_spend(run, int(selected.minutes))
+	if err != "": return {"blocked": err, "text": err}
+	var result := SiteJourney.settle(run, stage_id, selected)
+	if int(ex.exposure) >= Explore.EXPOSURE_MAX:
+		Explore._caught(run, Data.table("map_points")[ex.point])
+		State.check_death(run, "现场行动惊动尸群，没能逃回宅院。")
+		result["caught"] = true
+		result.text += " 尸群已经追来！"
+	return result
+
+
+static func site_journey_take(run: Dictionary, stage_id: String, item: String, amount: int) -> int:
+	if blocked(run) or is_busy(run): return 0
+	return SiteJourney.transfer(run, stage_id, item, amount, true)
+
+
+static func site_journey_put_back(run: Dictionary, stage_id: String, item: String, amount: int) -> int:
+	if blocked(run) or is_busy(run): return 0
+	return SiteJourney.transfer(run, stage_id, item, amount, false)
 
 
 static func expedition_answer(run: Dictionary, choice_id: String) -> Dictionary:

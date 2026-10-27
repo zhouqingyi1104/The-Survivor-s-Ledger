@@ -7,6 +7,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const State = preload("res://scripts/core/state.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Explore = preload("res://scripts/core/explore.gd")
+const SiteJourney = preload("res://scripts/core/site_journey.gd")
 const Events = preload("res://scripts/core/events.gd")
 const Ledger = preload("res://scripts/core/ledger.gd")
 const Defense = preload("res://scripts/core/defense.gd")
@@ -1066,6 +1067,8 @@ func explore_pick() -> void:
 func _explore_pick(body: VBoxContainer) -> void:
 	var run := _run()
 	body.add_child(UI.para("去程、返程各 60 分钟；翻找会增加阳气外泄，满 100 会被尸群发现。各地特别行动的代价以现场提示为准；21:00 后处理完当前事务即强制返程。", 16))
+	var available := maxi(0, Post.CURFEW_AT - Post.day_minute(run) - int(Post.ACTIONS.travel[1]))
+	body.add_child(UI.para("预计完整探索含行走、机关和翻找，不含往返；实际随路线与事件变化。现在出发，抵达后距21:00约 %d 分钟；返程另需60分钟。" % available, 15, UI.GOLD))
 	var v := UI.vbox(8)
 	var visible := Explore.visible_points(run)
 	if not "taoist_temple" in visible: visible.append("taoist_temple")
@@ -1085,12 +1088,17 @@ func _explore_pick(body: VBoxContainer) -> void:
 		info.add_child(head)
 		info.add_child(UI.para(p.desc, 15))
 		var investigation_only := int(run.points.get(pid, {}).get("looted_until", 0)) > int(run.pday) and not Mainline.objective(run, pid).is_empty()
+		if not investigation_only:
+			var journey: Dictionary = SiteJourney.profile(str(pid))
+			var grades := {"easy": "简单", "medium": "中等", "hard": "困难"}
+			info.add_child(UI.para("%s · 完整现场约%s（游戏时间）" % [grades.get(str(journey.get("grade", "")), "探索"), str(journey.get("estimated", ""))], 15, UI.GOLD))
 		var site_tip := "当前仅开放本世调查，普通物资尚未恢复。" if investigation_only else "现场特色：" + Explore.site_brief(str(pid)) + " 先查找两处线索，解开机关进入后区。"
 		info.add_child(UI.para(site_tip, 15, UI.GOLD))
-		var possible := []
-		for entry in p.loot:
-			possible.append(str(Data.item(str(entry[0])).name))
-		info.add_child(UI.para("可能找到：" + "、".join(possible) + "；实际收获随机。", 15, UI.INK_SOFT))
+		if not investigation_only:
+			var possible := []
+			for entry in p.loot:
+				possible.append(str(Data.item(str(entry[0])).name))
+			info.add_child(UI.para("可能找到：" + "、".join(possible) + "；实际收获随机。", 15, UI.INK_SOFT))
 		var main_objective := Mainline.objective(run, pid)
 		if not main_objective.is_empty():
 			info.add_child(UI.para("本世调查：" + str(main_objective.name) + " · " + str(main_objective.get("hint", "")), 15, UI.GOLD))

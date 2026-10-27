@@ -116,6 +116,7 @@ static func _exposure_multiplier(run: Dictionary) -> float:
 static func _exposure_amount(run: Dictionary, pid: String, roll: int) -> int:
 	var p: Dictionary = Data.table("map_points")[pid]
 	var reduction := 8 if run.get("explore", {}).get("point", "") == pid and run.get("explore", {}).get("site_ward", false) else 0
+	if run.get("explore", {}).get("point", "") == pid and run.get("explore", {}).get("journey_quiet", false): reduction += 16
 	return maxi(0, maxi(3, int(round(float(int(p.danger) * 8 + roll) * _exposure_multiplier(run)))) - reduction)
 
 
@@ -289,6 +290,7 @@ static func _caught(run: Dictionary, p: Dictionary) -> void:
 	# 受捕时现场尚未装包的物资无法带走，避免自动撤离前再领取。
 	for spot in ex.spots:
 		spot.erase("loot")
+	if ex.get("journey", null) is Dictionary: ex.journey["caches"] = {}
 	if str(run.get("busy", {}).get("kind", "")) == "mainline": run.busy = {}
 	Mainline.lost_cargo(run)
 	ex.erase("mainline_cargo")
@@ -329,7 +331,8 @@ static func finish(run: Dictionary) -> Dictionary:
 			searched += 1
 	var ordinary: int = ex.spots.filter(func(s): return not s.has("mainline") and not s.has("neighbor")).size()
 	var all_done: bool = searched == ordinary
-	if searched > 0:
+	var journey_done: bool = ex.get("journey", {}).get("completed", {}).size() > 0
+	if searched > 0 or journey_done:
 		run.points[pid].looted_until = run.pday + (int(p.restock) if all_done else int(ceil(p.restock / 2.0)))
 	Inv.add_all(run.home, ex.bag)
 	var summary := {"point": p.name, "bag": ex.bag.duplicate(), "caught": ex.caught}

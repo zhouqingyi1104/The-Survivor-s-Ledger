@@ -41,7 +41,7 @@ func find_path(start: Vector2i, target: int) -> Array:
 			break
 		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var n: Vector2i = p + d
-			if absi(n.x) > 36 or n.y < -36 or n.y > 14 or previous.has(n) or not clear_at(n):
+			if absi(n.x) > 60 or n.y < -48 or n.y > 18 or previous.has(n) or not clear_at(n):
 				continue
 			previous[n] = p
 			pending.append(n)

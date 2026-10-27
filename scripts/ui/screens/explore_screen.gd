@@ -13,6 +13,7 @@ const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
 const Expedition = preload("res://scripts/core/expedition.gd")
+const SiteJourney = preload("res://scripts/core/site_journey.gd")
 
 ## 这个界面上弹的窗用夜色（main.gd 看这个）
 var dark_ui := true
@@ -22,12 +23,14 @@ var _hint: PanelContainer
 var _hint_label: Label
 var _near := -1
 var _near_feature := ""
+var _near_journey := ""
 var _fleeing := false
 var _acc := 0.0
 var _clock: Label
 var _return_button: Button
 var _work_label: Label
 var _work_hint := false
+var _budget_label: Label
 
 
 func build_world() -> void:
@@ -93,6 +96,8 @@ func _process(delta: float) -> void:
 				Game.refresh()
 	if _clock != null:
 		_clock.text = "%s  %s" % [Post.shichen(Game.run), Post.clock_text(Game.run)]
+	if is_instance_valid(_budget_label):
+		_budget_label.text = "距21:00还有 %d 分钟 · 返程 %d 分钟" % [maxi(0, Post.CURFEW_AT - Post.day_minute(Game.run)), int(Post.ACTIONS.travel[1])]
 	if is_instance_valid(_return_button): _return_button.disabled = Post.is_busy(Game.run)
 	if is_instance_valid(_work_label):
 		_work_label.visible = Post.is_busy(Game.run)
@@ -101,10 +106,12 @@ func _process(delta: float) -> void:
 	rig.input_enabled = not blocked
 	player.cam_yaw = rig.yaw
 	var feature: String = "" if blocked else world.nearest_feature(player.global_position)
-	var near: int = -1 if blocked or feature != "" else world.nearest(player.global_position)
-	if near != _near or feature != _near_feature or Post.is_busy(Game.run) or _work_hint:
+	var journey: String = "" if blocked or feature != "" else world.nearest_journey(player.global_position)
+	var near: int = -1 if blocked or feature != "" or journey != "" else world.nearest(player.global_position)
+	if near != _near or feature != _near_feature or journey != _near_journey or Post.is_busy(Game.run) or _work_hint:
 		_near = near
 		_near_feature = feature
+		_near_journey = journey
 		_update_hint()
 		_work_hint = Post.is_busy(Game.run)
 
@@ -117,7 +124,7 @@ func _update_hint() -> void:
 		_hint.reset_size()
 		_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 70)
 		return
-	_hint.visible = _near != -1 or _near_feature != ""
+	_hint.visible = _near != -1 or _near_feature != "" or _near_journey != ""
 	# 键位提示读 InputMap：玩家改过 interact 就显示新键，不写死 [E]
 	var ek := InputCfg.first_key_name("interact")
 	if _near_feature != "":
@@ -130,6 +137,10 @@ func _update_hint() -> void:
 			var found: Array = progress.get("clues", [])
 			var known := idx >= 0 and idx < found.size() and bool(found[idx])
 			_hint_label.text = "[%s] %s" % [ek, "回看线索" if known else "查探线索 · 耗时 %d 分钟" % int(profile.get("inspect_minutes", 0))]
+	elif _near_journey != "":
+		var stage := _journey_stage(_near_journey)
+		var done: bool = SiteJourney.state(Game.run).get("completed", {}).has(_near_journey)
+		_hint_label.text = "[%s] %s · %s" % [ek, "回看现场" if done else "查看现场行动", str(stage.get("title", "探索"))]
 	elif _near == -2:
 		_hint_label.text = "[%s] 回家（背着 %.1f 斤）" % [ek, Inv.weight(ex.bag)]
 	elif _near >= 0 and _near < ex.spots.size():
@@ -153,6 +164,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact") or event.is_action_pressed("confirm"):
 		if _near_feature != "":
 			_interact_feature(_near_feature)
+		elif _near_journey != "":
+			_open_journey(_near_journey)
 		elif _near == -2:
 			finish()
 		elif _near >= 0:
@@ -234,6 +247,93 @@ func _answer_expedition(id: String) -> void:
 	if message == "": message = str(res.get("text", ""))
 	if message != "": Game.toast.emit(message)
 	_near_feature = ""
+
+
+func _journey_stage(id: String) -> Dictionary:
+	var ex: Dictionary = Game.run.get("explore", {})
+	for stage in SiteJourney.profile(str(ex.get("point", ""))).get("stages", []):
+		if str(stage.get("id", "")) == id: return stage
+	return {}
+
+
+func _open_journey(id: String) -> void:
+	if _feature_blocked() or Game.run.explore.get("only_investigate", false): return
+	var stage := _journey_stage(id)
+	if stage.is_empty(): return
+	UI.open_modal("site_journey", str(stage.title), _journey_panel.bind(id), true, 760)
+
+
+func _journey_panel(body: VBoxContainer, id: String) -> void:
+	var ex: Dictionary = Game.run.get("explore", {})
+	var stage := _journey_stage(id)
+	if ex.is_empty() or stage.is_empty():
+		body.add_child(UI.label("已离开此处。", 17))
+		return
+	var s: Dictionary = SiteJourney.state(Game.run)
+	var completed: Dictionary = s.get("completed", {})
+	var contents := UI.vbox(6)
+	contents.add_child(UI.para(str(stage.text), 17))
+	if not completed.has(id):
+		contents.add_child(UI.para("距21:00还有 %d 分钟；返程另需 %d 分钟。时间不足或途中遇事可能中断行动。" % [maxi(0, Post.CURFEW_AT - Post.day_minute(Game.run)), int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
+		contents.add_child(UI.para("本次到访此处只能选择一种处理方式，完成后不可改选；取消不消耗时间。", 15, UI.GOLD))
+		for choice in stage.get("choices", []):
+			var button := UI.button(str(choice.text), _choose_journey.bind(id, str(choice.id)))
+			button.set_meta("journey_choice", str(choice.id))
+			contents.add_child(button)
+			contents.add_child(UI.para(str(choice.description), 15))
+	else:
+		contents.add_child(UI.para("此处已完成，本次到访不能改选处理方式。", 15, UI.INK_SOFT))
+		for choice in stage.get("choices", []):
+			if str(choice.id) == str(completed[id]):
+				contents.add_child(UI.para("已处理：" + str(choice.text), 17, UI.GOLD))
+				break
+		var caches: Dictionary = s.get("caches", {})
+		if caches.has(id):
+			var cache: Dictionary = caches[id]
+			var bag: Dictionary = ex.get("bag", {})
+			contents.add_child(UI.label("背囊 %.1f / %.1f 斤" % [Inv.weight(bag), Explore.carry(Game.run)], 17, UI.GOLD))
+			contents.add_child(UI.para("现场物资本次回家后不能带回；可在此取物或放回背囊物资。", 15))
+			contents.add_child(UI.heading("此处物资", 18, UI.GOLD))
+			if cache.is_empty(): contents.add_child(UI.label("这里已经空了。", 15))
+			for raw_id in cache.keys():
+				var item := str(raw_id)
+				var row := UI.hbox(8)
+				row.add_child(UI.label("%s ×%d · 每件 %.1f 斤" % [Data.item(item).name, Inv.count(cache, item), float(Data.item(item).get("weight", 0))], 16))
+				row.add_child(UI.spacer())
+				var take := UI.button("取 1", _journey_transfer.bind(id, item, true))
+				take.set_meta("journey_take", item)
+				row.add_child(take)
+				contents.add_child(row)
+			contents.add_child(UI.heading("背囊 · 放回此处", 18, UI.GOLD))
+			if bag.is_empty(): contents.add_child(UI.label("背囊是空的。", 15))
+			for raw_id in bag.keys():
+				var item := str(raw_id)
+				var row := UI.hbox(8)
+				row.add_child(UI.label("%s ×%d" % [Data.item(item).name, Inv.count(bag, item)], 16))
+				row.add_child(UI.spacer())
+				var put := UI.button("放回 1", _journey_transfer.bind(id, item, false))
+				put.set_meta("journey_put", item)
+				row.add_child(put)
+				contents.add_child(row)
+		else:
+			contents.add_child(UI.para("这次处理没有留存现场物资。", 15))
+	body.add_child(UI.scroll(contents, mini(380, maxi(160, int(get_viewport().get_visible_rect().size.y) - 300))))
+	body.add_child(UI.button("先离开", func(): UI.close_modal("site_journey")))
+
+
+func _choose_journey(id: String, choice: String) -> void:
+	UI.close_modal("site_journey")
+	if _feature_blocked(): return
+	var result: Dictionary = Game.act(func(): return Post.site_journey_action(Game.run, id, choice))
+	var message := str(result.get("blocked", result.get("text", "")))
+	if message != "": Game.toast.emit(message)
+	if not is_inside_tree() or Game.screen != "explore" or _feature_blocked(): return
+	_open_journey(id)
+
+
+func _journey_transfer(id: String, item: String, take: bool) -> void:
+	var amount: int = Game.act(func(): return Post.site_journey_take(Game.run, id, item, 1) if take else Post.site_journey_put_back(Game.run, id, item, 1))
+	Game.toast.emit(("取走" if take else "放回") + " %s ×%d" % [Data.item(item).name, amount] if amount > 0 else "当前无法转移这件物资。")
 
 
 ## 翻一处（测试也走这里）。
@@ -416,6 +516,16 @@ func build_hud() -> void:
 	var v := UI.vbox(4)
 	v.add_child(UI.heading(p.name, 26))
 	v.add_child(UI.line(p.desc, 15, UI.INK_SOFT, 300))
+	if not ex.get("only_investigate", false):
+		var journey_profile: Dictionary = SiteJourney.profile(str(ex.point))
+		var grades := {"easy": "简单", "medium": "中等", "hard": "困难"}
+		var done: Dictionary = SiteJourney.state(run).get("completed", {})
+		v.add_child(UI.label("%s路线 · 完整现场约%s（游戏时间）" % [grades.get(str(journey_profile.get("grade", "")), "探索"), str(journey_profile.get("estimated", ""))], 15, UI.GOLD))
+		v.add_child(UI.label("含走动、机关与翻找；不含返程", 14, UI.INK_SOFT))
+		v.add_child(UI.label("耗时为参考，随选择与走动变化", 14, UI.INK_SOFT))
+		v.add_child(UI.label("现场行动 %d / %d 处" % [done.size(), journey_profile.get("stages", []).size()], 15, UI.INK_SOFT))
+	_budget_label = UI.label("距21:00还有 %d 分钟 · 返程 %d 分钟" % [maxi(0, Post.CURFEW_AT - Post.day_minute(run)), int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT)
+	v.add_child(_budget_label)
 	var profile: Dictionary = Expedition.profile(str(ex.point))
 	var progress: Dictionary = Expedition.state(run)
 	var found: Array = progress.get("clues", [])
