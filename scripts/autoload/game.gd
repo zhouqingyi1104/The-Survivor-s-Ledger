@@ -18,6 +18,7 @@ const Past = preload("res://scripts/core/past_lives.gd")
 const Opening = preload("res://scripts/core/opening.gd")
 const Director = preload("res://scripts/core/director.gd")
 const SaveFile = preload("res://scripts/core/save_file.gd")
+const SavePack = preload("res://scripts/core/save_pack.gd")
 const PlaytestReport = preload("res://scripts/core/playtest_report.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
 
@@ -337,6 +338,89 @@ func save_meta() -> void:
 		_warn_save_failed(result)
 		return
 	_sync_life_memory()
+
+
+# ---------- 存档备份与搬运（.jyz） ----------
+
+## 把当前这一局导出成一个 .jyz 文件到玩家指定的位置。返回 {"ok": bool, "note": String}。
+func export_save_to(path: String) -> Dictionary:
+	if run.is_empty():
+		return {"ok": false, "note": "现在没有可以导出的局。"}
+	# 先把内存里的状态落盘，导出的文件和存档目录里的那份必须一致
+	save_game()
+	var stamp := "%04d%02d%02d-%02d%02d" % [
+		int(Time.get_datetime_dict_from_system().year), int(Time.get_datetime_dict_from_system().month),
+		int(Time.get_datetime_dict_from_system().day), int(Time.get_datetime_dict_from_system().hour),
+		int(Time.get_datetime_dict_from_system().minute)]
+	var envelope := SavePack.pack({"run": run, "snapshots": snapshots},
+		str(ProjectSettings.get_setting("application/config/version", "?")), stamp)
+	var result := SaveFile.write_text(path, SavePack.to_text(envelope))
+	if not bool(result.ok):
+		return {"ok": false, "note": "文件写不进去（%s，错误 %d）。" % [str(result.step), int(result.error)]}
+	return {"ok": true, "note": ""}
+
+
+## 默认的文件名，界面拿去填在保存框里。
+func suggested_save_name() -> String:
+	var role_name: String = str(State.role(run).get("name", "一局")) if not run.is_empty() else "一局"
+	var stamp := "%04d%02d%02d-%02d%02d" % [
+		int(Time.get_datetime_dict_from_system().year), int(Time.get_datetime_dict_from_system().month),
+		int(Time.get_datetime_dict_from_system().day), int(Time.get_datetime_dict_from_system().hour),
+		int(Time.get_datetime_dict_from_system().minute)]
+	return SavePack.suggest_name(run, role_name, stamp)
+
+
+## 从 .jyz 导入并直接接管那一局。
+## **顶掉之前先把手上这一卷另存一份**到 user://backups/——导入不该让玩家丢掉正在玩的局，
+## 有了这一步就不必再弹一个"确定要覆盖吗"，玩家事后想回去还能导回来。
+## 返回 {"ok": bool, "note": String, "info": Dictionary}。
+func import_save_from(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {"ok": false, "note": "找不到这个文件。", "info": {}}
+	var parsed := SavePack.parse(FileAccess.get_file_as_string(path))
+	if not bool(parsed.ok):
+		return {"ok": false, "note": str(parsed.note), "info": {}}
+	var backup := _backup_before_import()
+	var data: Dictionary = parsed.data
+	run = data.get("run", {})
+	snapshots = data.get("snapshots", {})
+	save_notice = ""
+	save_game()
+	var info: Dictionary = parsed.info
+	info["backup"] = backup
+	return {"ok": true, "note": "", "info": info}
+
+
+## 导入前的自动留档：内存里有局就按存档格式导，只有盘上有文件就整份复制。
+func _backup_before_import() -> String:
+	if no_save: return ""
+	var dir := "user://backups"
+	var stamp := _stamp_text()
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
+	if not run.is_empty():
+		var target := dir.path_join("导入前-%s.jyz" % stamp)
+		var env := SavePack.pack({"run": run, "snapshots": snapshots},
+			str(ProjectSettings.get_setting("application/config/version", "?")), stamp)
+		if bool(SaveFile.write_text(target, SavePack.to_text(env)).ok):
+			return ProjectSettings.globalize_path(target)
+		return ""
+	if FileAccess.file_exists(save_path):
+		var target := dir.path_join("导入前-%s.json" % stamp)
+		if bool(SaveFile.write_text(target, FileAccess.get_file_as_string(save_path)).ok):
+			return ProjectSettings.globalize_path(target)
+	return ""
+
+
+## 导入完成以后该落在哪一页：进行中就回到宅院，死了就回残页，了结就回结局。
+func screen_for_run() -> String:
+	match str(run.get("phase", "")):
+		"post":
+			return "post"
+		"dead":
+			return "dead"
+		"ending":
+			return "ending"
+	return "title"
 
 
 ## 写盘失败（磁盘满、目录没权限）不能只在控制台留一行，玩家得知道这一局可能留不住。

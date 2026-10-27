@@ -28,6 +28,8 @@ const VideoCfg = preload("res://scripts/core/video_cfg.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
+## 当前弹窗里可以被回写的控件（弹窗内容是按需重建的，重建时重新登记）
+var _live := {}
 
 ## 家具的功用，摆出来能做什么（写给人看的）
 const FN_TEXT := {
@@ -1556,6 +1558,84 @@ func _ready() -> void:
 	_capture = preload("res://scripts/ui/key_capture.gd").new()
 	_capture.captured.connect(_on_key_captured)
 	add_child(_capture)
+
+
+## 存档备份：把这一局导出成 .jyz，或从 .jyz 导入一局。
+## 导入前会自动把手上这一卷另存到 user://backups/，所以这里不再加一层"确定要覆盖吗"。
+func save_pack() -> void:
+	UI.open_modal("save_pack", "存档备份", _save_pack, true, 640)
+
+
+func _save_pack(body: VBoxContainer) -> void:
+	var has_run := not Game.run.is_empty()
+	body.add_child(UI.para("导出的文件能拷到别处、发给别人，或者在新开一卷之前给自己留个存档点。带的是这一局本身（含「翻回昨日」的快照），不含道心与残卷。", 16))
+	body.add_child(UI.sep())
+	var row := UI.hbox(10)
+	row.add_child(UI.button("导出这一局", _pick_save_path, not has_run,
+		"现在没有进行中的局。" if not has_run else "选个位置存成 .jyz。"))
+	row.add_child(UI.button("导入一局", _pick_load_path, false,
+		"选一份 .jyz 打开。导入前会把现在这一卷另存到存档目录的 backups/ 里，不会凭空丢掉。"))
+	body.add_child(row)
+	var status := UI.para("", 15, UI.INK_SOFT)
+	_live["save_pack_status"] = status
+	body.add_child(status)
+
+
+func _pick_save_path() -> void:
+	var fd := FileDialog.new()
+	fd.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	fd.access = FileDialog.ACCESS_FILESYSTEM
+	fd.title = "导出存档"
+	fd.add_filter("*.jyz", "劫余录存档")
+	fd.current_file = Game.suggested_save_name()
+	fd.file_selected.connect(_do_export_save.bind(fd))
+	fd.canceled.connect(fd.queue_free)
+	add_child(fd)
+	fd.popup_centered(Vector2i(760, 520))
+
+
+func _pick_load_path() -> void:
+	var fd := FileDialog.new()
+	fd.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	fd.access = FileDialog.ACCESS_FILESYSTEM
+	fd.title = "导入存档"
+	fd.add_filter("*.jyz,*.json", "劫余录存档")
+	fd.file_selected.connect(_do_import_save.bind(fd))
+	fd.canceled.connect(fd.queue_free)
+	add_child(fd)
+	fd.popup_centered(Vector2i(760, 520))
+
+
+func _do_export_save(path: String, fd: FileDialog) -> void:
+	fd.queue_free()
+	var result := Game.export_save_to(path)
+	_set_pack_status("已导出：%s" % path if bool(result.ok) else str(result.note), bool(result.ok))
+
+
+func _do_import_save(path: String, fd: FileDialog) -> void:
+	fd.queue_free()
+	var result := Game.import_save_from(path)
+	if not bool(result.ok):
+		_set_pack_status(str(result.note), false)
+		return
+	var info: Dictionary = result.info
+	var line := "已导入：第 %d 日%s" % [int(Game.run.get("pday", 0)),
+		"（存档来自更新的结构，已自动升级）" if bool(info.get("upgraded", false)) else ""]
+	var backup := str(info.get("backup", ""))
+	if backup != "":
+		line += "\n原来那一卷留在这里：%s" % backup
+	_set_pack_status(line, true)
+	UI.close_modal("save_pack")
+	Game.go(Game.screen_for_run())
+
+
+func _set_pack_status(text: String, ok: bool) -> void:
+	var label = _live.get("save_pack_status")
+	if label == null or not is_instance_valid(label):
+		Game.toast.emit(text)
+		return
+	(label as Label).text = text
+	(label as Label).add_theme_color_override("font_color", UI.INK if ok else UI.CINNABAR)
 
 
 ## 试玩报告导出的结果：路径 + 附了哪些文件 + 怎么发过来。

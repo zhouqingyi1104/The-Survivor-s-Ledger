@@ -36,6 +36,14 @@ func screen() -> Node:
 
 
 func run_flow() -> void:
+	# 存档备份弹窗：没有进行中的局时「导出这一局」应当是灰的（别让玩家点了个空）
+	await press("存档备份")
+	check(UI_has("导出这一局") and UI_has("导入一局"), "存档备份弹窗没给出两个入口")
+	# 标题界面这时还没有存档：导出应当是灰的，导入可以点
+	var export_buttons: Array = _buttons("导出这一局")
+	check(not export_buttons.is_empty() and bool(export_buttons[0].disabled), "空档时导出按钮没变灰")
+	check(not _buttons("导入一局").is_empty(), "空档时导入按钮不见了")
+	await press("合上")
 	await press("新开一卷")
 	check(Game.screen == "roles", "没进选身份界面")
 	await press("就是他了")
