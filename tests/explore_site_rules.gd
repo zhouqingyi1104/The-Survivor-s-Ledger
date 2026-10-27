@@ -24,6 +24,7 @@ func fixture(pid: String) -> Dictionary:
 	run.t = 6 * 1440 + 120
 	run.flags["temple_open"] = true
 	check(Post.act_explore(run, pid) == "", "departure " + pid)
+	run.explore["expedition"] = {"clues": [true, true], "unlocked": true, "attempts": 1}
 	return run
 
 func site_index(run: Dictionary) -> int:

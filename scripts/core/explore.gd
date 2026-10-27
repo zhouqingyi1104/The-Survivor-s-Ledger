@@ -8,6 +8,7 @@ const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const Expedition = preload("res://scripts/core/expedition.gd")
 
 const EXPOSURE_MAX := 100
 const SITE_SPOTS := {"rice_ruin": "米仓", "city_god": "供桌", "school": "藏书阁", "pharmacy_ruin": "药柜", "lumber": "木垛", "mortuary": "前厅棺木", "granary": "东仓", "taoist_temple": "丹房"}
@@ -170,6 +171,8 @@ static func search(run: Dictionary, idx: int, option_id := "", reserved_gain := 
 	var spot: Dictionary = ex.spots[idx]
 	if spot.done or ex.caught:
 		return {}
+	if Expedition.target_locked(run, idx):
+		return {"blocked": "道路被机关封住；先查找两处线索，再解开机关。"}
 	if spot.has("mainline"):
 		if option_id not in ["", "normal"]: return {"blocked": "任务目标不能使用地点特色。"}
 		var result := Mainline.search_objective(run, spot)

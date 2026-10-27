@@ -13,6 +13,7 @@ const Defense = preload("res://scripts/core/defense.gd")
 const Ledger = preload("res://scripts/core/ledger.gd")
 const Events = preload("res://scripts/core/events.gd")
 const Explore = preload("res://scripts/core/explore.gd")
+const Expedition = preload("res://scripts/core/expedition.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
@@ -1362,6 +1363,8 @@ static func act_explore(run: Dictionary, pid: String) -> String:
 static func search(run: Dictionary, idx: int, option_id := "") -> Dictionary:
 	if run.explore.is_empty() or run.explore.get("curfew_due", false) or blocked(run) or is_busy(run) or run.sleeping or not run.fight.is_empty():
 		return {}
+	if Expedition.target_locked(run, idx):
+		return {"blocked": "道路被机关封住；先查找两处线索，再解开机关。"}
 	var prepaid := false
 	var reserved_gain := -1
 	if option_id == "site":
@@ -1403,6 +1406,69 @@ static func search(run: Dictionary, idx: int, option_id := "") -> Dictionary:
 			run.erase("neighbor_searching")
 		Neighbor.poll(run)
 	return res
+
+
+## 机关行动先耗时，只有完整完成且仍在现场才结算结果。
+static func _expedition_spend(run: Dictionary, minutes: int) -> String:
+	var started := int(run.t)
+	run["neighbor_searching"] = true
+	var stop := advance(run, minutes)
+	run.erase("neighbor_searching")
+	if int(run.t) - started < minutes or run.get("phase", "") != "post" or run.get("explore", {}).is_empty() or run.explore.get("curfew_due", false) or run.explore.get("caught", false):
+		return "行动被%s打断，已耗时%d分钟；未完成，没有取得成果。" % ["宵禁" if stop == "curfew" else "突发状况", int(run.t) - started]
+	return ""
+
+
+static func _expedition_available(run: Dictionary) -> String:
+	var ex: Dictionary = run.get("explore", {})
+	if ex.is_empty() or Expedition.profile(str(ex.get("point", ""))).is_empty(): return "这里没有可调查的机关。"
+	if ex.get("curfew_due", false) or ex.get("caught", false) or blocked(run) or is_busy(run) or run.get("sleeping", false) or not run.get("fight", {}).is_empty(): return "现在无法调查机关。"
+	return ""
+
+
+static func expedition_inspect(run: Dictionary, idx: int) -> Dictionary:
+	var err := _expedition_available(run)
+	if err != "": return {"blocked": err, "text": err}
+	var profile := Expedition.profile(str(run.explore.point))
+	if idx < 0 or idx >= profile.clues.size(): return {"blocked": "没有这条线索。", "text": "没有这条线索。"}
+	var s := Expedition.state(run)
+	if bool(s.clues[idx]): return {"text": str(profile.clues[idx].text)}
+	err = _expedition_spend(run, int(profile.inspect_minutes))
+	if err != "": return {"blocked": err, "text": err}
+	s.clues[idx] = true
+	return {"text": str(profile.clues[idx].text)}
+
+
+static func expedition_answer(run: Dictionary, choice_id: String) -> Dictionary:
+	var err := _expedition_available(run)
+	if err != "": return {"blocked": err, "text": err, "unlocked": false}
+	var pid := str(run.explore.point)
+	var profile := Expedition.profile(pid)
+	var s := Expedition.state(run)
+	if bool(s.unlocked): return {"text": "机关已经打开。", "unlocked": true}
+	if not bool(s.clues[0]) or not bool(s.clues[1]): return {"blocked": "先在现场找到两条线索。", "text": "先在现场找到两条线索。", "unlocked": false}
+	var valid := false
+	for choice in profile.choices:
+		if str(choice.id) == choice_id: valid = true; break
+	if not valid: return {"blocked": "无效的机关选择。", "text": "无效的机关选择。", "unlocked": false}
+	err = _expedition_spend(run, int(profile.answer_minutes))
+	if err != "": return {"blocked": err, "text": err, "unlocked": false}
+	s.attempts = int(s.attempts) + 1
+	if Expedition.correct(pid, choice_id):
+		s.unlocked = true
+		run.explore.notes.append("解开%s，通道打开。" % profile.title)
+		return {"text": "机关松开，通道打开了。", "unlocked": true}
+	var ex: Dictionary = run.explore
+	var exposure_before := int(ex.exposure)
+	ex.exposure = mini(Explore.EXPOSURE_MAX, int(ex.exposure) + int(profile.wrong_exposure))
+	var exposure_added := int(ex.exposure) - exposure_before
+	var caught := int(ex.exposure) >= Explore.EXPOSURE_MAX
+	if caught:
+		Explore._caught(run, Data.table("map_points")[pid])
+		State.check_death(run, "解机关惊动尸群，没能逃回宅院。")
+	var text := "机关没有打开，发出的声响让阳气外泄增加%d；%s" % [exposure_added, "尸群已经追来！" if caught else "可以再试。"]
+	ex.notes.append(text)
+	return {"text": text, "unlocked": false, "caught": caught}
 
 
 ## 回家：也要赶一个时辰的路。

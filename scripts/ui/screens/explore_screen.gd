@@ -12,6 +12,7 @@ const K = preload("res://scripts/world/kit.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
+const Expedition = preload("res://scripts/core/expedition.gd")
 
 ## 这个界面上弹的窗用夜色（main.gd 看这个）
 var dark_ui := true
@@ -20,6 +21,7 @@ var rig: Node3D
 var _hint: PanelContainer
 var _hint_label: Label
 var _near := -1
+var _near_feature := ""
 var _fleeing := false
 var _acc := 0.0
 var _clock: Label
@@ -98,9 +100,11 @@ func _process(delta: float) -> void:
 	player.enabled = not blocked
 	rig.input_enabled = not blocked
 	player.cam_yaw = rig.yaw
-	var near: int = -1 if blocked else world.nearest(player.global_position)
-	if near != _near or Post.is_busy(Game.run) or _work_hint:
+	var feature: String = "" if blocked else world.nearest_feature(player.global_position)
+	var near: int = -1 if blocked or feature != "" else world.nearest(player.global_position)
+	if near != _near or feature != _near_feature or Post.is_busy(Game.run) or _work_hint:
 		_near = near
+		_near_feature = feature
 		_update_hint()
 		_work_hint = Post.is_busy(Game.run)
 
@@ -113,10 +117,20 @@ func _update_hint() -> void:
 		_hint.reset_size()
 		_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 70)
 		return
-	_hint.visible = _near != -1
+	_hint.visible = _near != -1 or _near_feature != ""
 	# 键位提示读 InputMap：玩家改过 interact 就显示新键，不写死 [E]
 	var ek := InputCfg.first_key_name("interact")
-	if _near == -2:
+	if _near_feature != "":
+		var profile: Dictionary = Expedition.profile(str(ex.point))
+		var progress: Dictionary = Expedition.state(Game.run)
+		if _near_feature == "gate":
+			_hint_label.text = "[%s] %s" % [ek, "查看通路" if progress.get("unlocked", false) else "查看机关 · 答题耗时 %d 分钟" % int(profile.get("answer_minutes", 0))]
+		else:
+			var idx := int(_near_feature.trim_prefix("clue_"))
+			var found: Array = progress.get("clues", [])
+			var known := idx >= 0 and idx < found.size() and bool(found[idx])
+			_hint_label.text = "[%s] %s" % [ek, "回看线索" if known else "查探线索 · 耗时 %d 分钟" % int(profile.get("inspect_minutes", 0))]
+	elif _near == -2:
 		_hint_label.text = "[%s] 回家（背着 %.1f 斤）" % [ek, Inv.weight(ex.bag)]
 	elif _near >= 0 and _near < ex.spots.size():
 		var s: Dictionary = ex.spots[_near]
@@ -137,10 +151,89 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	# 翻找 = interact（E）或 confirm（空格），走输入动作，改键不用动这里
 	if event.is_action_pressed("interact") or event.is_action_pressed("confirm"):
-		if _near == -2:
+		if _near_feature != "":
+			_interact_feature(_near_feature)
+		elif _near == -2:
 			finish()
 		elif _near >= 0:
 			search(_near)
+
+
+func _feature_blocked() -> bool:
+	var ex: Dictionary = Game.run.get("explore", {})
+	return ex.is_empty() or ex.get("caught", false) or ex.get("curfew_due", false) or Post.is_busy(Game.run) or Post.blocked(Game.run) or modal_open()
+
+
+func _interact_feature(feature: String) -> void:
+	if _feature_blocked(): return
+	if feature == "gate":
+		_open_expedition("gate")
+		return
+	if not feature in ["clue_0", "clue_1"]: return
+	var idx := int(feature.trim_prefix("clue_"))
+	var progress: Dictionary = Expedition.state(Game.run)
+	var found: Array = progress.get("clues", [])
+	if idx >= found.size() or not bool(found[idx]):
+		var res: Dictionary = Game.act(func(): return Post.expedition_inspect(Game.run, idx))
+		if str(res.get("blocked", "")) != "":
+			Game.toast.emit(str(res.blocked))
+			return
+		if str(res.get("text", "")) != "": Game.toast.emit(str(res.text))
+		if _feature_blocked() or not is_inside_tree() or Game.screen != "explore": return
+	_open_expedition("clue", idx)
+
+
+func _open_expedition(mode: String, idx := -1) -> void:
+	if _feature_blocked(): return
+	var ex: Dictionary = Game.run.get("explore", {})
+	var profile: Dictionary = Expedition.profile(str(ex.point))
+	UI.open_modal("expedition", str(profile.get("title", "探索")), _expedition_panel.bind(mode, idx), true, 760)
+
+
+func _expedition_panel(body: VBoxContainer, mode: String, idx: int) -> void:
+	var ex: Dictionary = Game.run.get("explore", {})
+	if ex.is_empty():
+		body.add_child(UI.label("已离开此处。", 17))
+		return
+	var profile: Dictionary = Expedition.profile(str(ex.point))
+	var progress: Dictionary = Expedition.state(Game.run)
+	var clues: Array = profile.get("clues", [])
+	var found: Array = progress.get("clues", [])
+	var contents := UI.vbox(7)
+	for i in clues.size():
+		if mode == "clue" and i != idx: continue
+		if i < found.size() and bool(found[i]):
+			contents.add_child(UI.heading(str(clues[i].get("title", "线索")), 19, UI.GOLD))
+			contents.add_child(UI.para(str(clues[i].get("text", "")), 16))
+		elif mode != "clue":
+			contents.add_child(UI.para("线索 %d：尚未查探。" % (i + 1), 16, UI.INK_SOFT))
+	if mode == "gate":
+		contents.add_child(UI.para("线索和通路仅保留本次外出，回家后重置。", 15, UI.INK_SOFT))
+		if ex.get("only_investigate", false):
+			contents.add_child(UI.para("此地物资尚未恢复，本趟是剧情调查；机关后没有普通搜寻物资。主线与邻人目标不受机关影响。", 16, UI.GOLD))
+		if progress.get("unlocked", false):
+			contents.add_child(UI.para("通路已打开。", 17, UI.GOLD))
+		else:
+			contents.add_child(UI.heading(str(profile.get("question", "")), 19, UI.GOLD))
+			contents.add_child(UI.para("每次尝试耗时 %d 分钟；选错阳气外泄最多增加 %d。" % [int(profile.get("answer_minutes", 0)), int(profile.get("wrong_exposure", 0))], 16))
+			var ready := found.size() >= 2 and bool(found[0]) and bool(found[1])
+			if not ready: contents.add_child(UI.para("先在现场找到两条线索。", 16, UI.CINNABAR))
+			for choice in profile.get("choices", []):
+				var b := UI.button(str(choice.get("text", "")), _answer_expedition.bind(str(choice.get("id", ""))), not ready)
+				b.set_meta("expedition_choice", str(choice.get("id", "")))
+				contents.add_child(b)
+	body.add_child(UI.scroll(contents, mini(370, maxi(160, int(get_viewport().get_visible_rect().size.y) - 300))))
+	body.add_child(UI.button("先离开", func(): UI.close_modal("expedition")))
+
+
+func _answer_expedition(id: String) -> void:
+	UI.close_modal("expedition")
+	if _feature_blocked(): return
+	var res: Dictionary = Game.act(func(): return Post.expedition_answer(Game.run, id))
+	var message := str(res.get("blocked", ""))
+	if message == "": message = str(res.get("text", ""))
+	if message != "": Game.toast.emit(message)
+	_near_feature = ""
 
 
 ## 翻一处（测试也走这里）。
@@ -323,6 +416,16 @@ func build_hud() -> void:
 	var v := UI.vbox(4)
 	v.add_child(UI.heading(p.name, 26))
 	v.add_child(UI.line(p.desc, 15, UI.INK_SOFT, 300))
+	var profile: Dictionary = Expedition.profile(str(ex.point))
+	var progress: Dictionary = Expedition.state(run)
+	var found: Array = progress.get("clues", [])
+	var clue_count := 0
+	for known in found:
+		if bool(known): clue_count += 1
+	v.add_child(UI.line("探索 · %s：线索 %d/%d · %s" % [str(profile.get("title", "现场")), clue_count, profile.get("clues", []).size(), "通路已开" if progress.get("unlocked", false) else "通路待解"], 15, UI.GOLD, 300))
+	var journal := UI.button("查看已发现线索", func(): _open_expedition("journal"))
+	journal.set_meta("expedition_journal", true)
+	v.add_child(journal)
 	v.add_child(UI.stat_row("气血", State.attr(run, "hp"), State.attr_max(run, "hp"), UI.CINNABAR, 44))
 	v.add_child(UI.stat_row("精力", State.attr(run, "energy"), 100, UI.INK_SOFT, 44))
 	v.add_child(UI.label("背囊 %.1f / %d 斤" % [Inv.weight(ex.bag), int(Explore.carry(run))], 16))
@@ -335,7 +438,11 @@ func build_hud() -> void:
 		ordinary += 1
 		if spot.done: searched += 1
 		elif Explore.site_options(run, i).size() > 1: site_target = str(spot.name)
-	v.add_child(UI.label("搜寻 %d / %d 处 · 返程需 %d 分钟" % [searched, ordinary, int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
+	if ex.get("only_investigate", false):
+		v.add_child(UI.line("剧情调查专访 · 此地暂无普通物资，任务目标仍可调查。", 15, UI.GOLD, 300))
+		v.add_child(UI.label("返程需 %d 分钟" % int(Post.ACTIONS.travel[1]), 15, UI.INK_SOFT))
+	else:
+		v.add_child(UI.label("搜寻 %d / %d 处 · 返程需 %d 分钟" % [searched, ordinary, int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
 	if site_target != "": v.add_child(UI.label("特色行动：" + site_target, 15, UI.GOLD))
 	v.add_child(UI.line("带着：" + (Data.describe_items(ex.bag) if not ex.bag.is_empty() else "空手"), 15, UI.INK_SOFT, 300))
 	v.add_child(UI.line(Neighbor.summary(run), 16, UI.INK_SOFT, 300))

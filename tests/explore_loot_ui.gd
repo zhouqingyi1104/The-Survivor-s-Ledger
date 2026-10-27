@@ -88,6 +88,8 @@ func _ready() -> void:
 	Neighbor.state(Game.run).stage = "closed"
 	Director.state(Game.run).enabled = false
 	check(Post.act_explore(Game.run, "rice_ruin") == "", "Cannot enter ruins")
+	# 本套件验证解锁后的容器取放；机关流程由 expedition_ui 覆盖。
+	Game.run.explore["expedition"] = {"clues": [true, true], "unlocked": true, "attempts": 1}
 	Game.go("explore")
 	await frames(10)
 	main._screen.player.position = main._screen.world._spots[0].pos

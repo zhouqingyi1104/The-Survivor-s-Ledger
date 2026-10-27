@@ -8,22 +8,9 @@ const SkyKit = preload("res://scripts/world/sky.gd")
 const Figure = preload("res://scripts/world/character.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Explore = preload("res://scripts/core/explore.gd")
+const Expedition = preload("res://scripts/core/expedition.gd")
 
 const ENTRY := Vector3(0, 0, 5.2)
-# 熟练搜寻的四处物资、邻人药账和主线专点可同时存在，六处必须各自可达。
-const SPOT_POS := [Vector3(-5.0, 0, -3.6), Vector3(0.0, 0, -4.4), Vector3(5.0, 0, -3.6), Vector3(-5.6, 0, 1.6), Vector3(5.6, 0, 1.6), Vector3(0.0, 0, 1.6)]
-# 按地点分配各目标的空间序列：前后、两翼和中轴不再统一排成 3×2。
-# 第五、六项保留给邻人及主线专点；最近交互始终使用实际位置。
-const SITE_SPOT_POS := {
-	"rice_ruin": [Vector3(-5, 0, -4), Vector3(3, 0, -4), Vector3(-3, 0, -1), Vector3(5, 0, 0), Vector3(-5, 0, 2.7), Vector3(0, 0, 1.6)],
-	"city_god": [Vector3(0, 0, -4.4), Vector3(-5, 0, -3), Vector3(5, 0, -3), Vector3(-5, 0, 2.1), Vector3(5, 0, 2.1), Vector3(0, 0, 1.6)],
-	"school": [Vector3(-5, 0, -4), Vector3(4, 0, -4), Vector3(0, 0, -2.7), Vector3(-5, 0, 2.4), Vector3(5, 0, 2.4), Vector3(0, 0, 1.6)],
-	"pharmacy_ruin": [Vector3(-5, 0, -4), Vector3(4.5, 0, -4), Vector3(0, 0, -2.6), Vector3(-5.5, 0, 2.4), Vector3(5.4, 0, 2.3), Vector3(0, 0, 1.6)],
-	"lumber": [Vector3(-5.5, 0, -3.8), Vector3(1.0, 0, -4.4), Vector3(5.2, 0, -2.7), Vector3(-4.0, 0, 0.2), Vector3(5.0, 0, 2.8), Vector3(0, 0, 1.6)],
-	"mortuary": [Vector3(-5, 0, -3.6), Vector3(5, 0, -3.6), Vector3(0, 0, -4.4), Vector3(-5.5, 0, 1.8), Vector3(5.5, 0, 1.8), Vector3(0, 0, 1.6)],
-	"granary": [Vector3(-5, 0, -4), Vector3(5, 0, -4), Vector3(-4.5, 0, -0.3), Vector3(5, 0, 0.1), Vector3(-4.8, 0, 2.7), Vector3(0, 0, 1.6)],
-	"taoist_temple": [Vector3(-5, 0, -3.8), Vector3(5, 0, -3.8), Vector3(0, 0, -4.4), Vector3(-5.5, 0, 2.1), Vector3(5.5, 0, 2.1), Vector3(0, 0, 1.6)],
-}
 const SPOT_RADIUS := 1.7
 
 var sky: Dictionary
@@ -32,14 +19,106 @@ var player_ref: Node3D
 var _spots := []
 var _wanderers := []
 var _hunter: Node3D
+# Each site is a different connected footprint. The last cell is a dead-end
+# behind the gate, so the locked area cannot be reached by walking around it.
+const CELL := 6.0
+const FOOTPRINTS := {
+	"rice_ruin": [Vector2i(0,0), Vector2i(0,-1), Vector2i(-1,-1), Vector2i(-1,-2), Vector2i(-2,-1)],
+	"city_god": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(0,-1), Vector2i(-2,0)],
+	"school": [Vector2i(0,0), Vector2i(0,-1), Vector2i(-1,-1), Vector2i(1,-1), Vector2i(0,-2)],
+	"pharmacy_ruin": [Vector2i(0,0), Vector2i(-1,0), Vector2i(-1,-1), Vector2i(-2,-1)],
+	"lumber": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(1,-1), Vector2i(2,-1)],
+	"mortuary": [Vector2i(0,0), Vector2i(0,-1), Vector2i(1,-1), Vector2i(2,-1), Vector2i(1,-2)],
+	"granary": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(-1,-1), Vector2i(-2,-1)],
+	"taoist_temple": [Vector2i(0,0), Vector2i(0,-1), Vector2i(0,-2), Vector2i(1,-2), Vector2i(2,-2)],
+}
+const ZONE_NAMES := {
+	"rice_ruin": ["破店门", "量米堂", "账房走廊", "后院", "后粮仓"],
+	"city_god": ["庙门", "香客院", "偏殿庭", "城隍正殿", "封存供库"],
+	"school": ["县学门", "讲堂", "西斋", "东斋", "藏书阁"],
+	"pharmacy_ruin": ["回春堂", "看诊堂", "炮制小巷", "封药间"],
+	"lumber": ["场门", "堆料场", "运木道", "锯棚", "旧木库"],
+	"mortuary": ["义庄门", "停灵堂", "守庄人房", "偏房", "封棺室"],
+	"granary": ["官仓门", "西仓道", "运粮道", "仓吏房", "封粮仓"],
+	"taoist_temple": ["山门", "石阶", "道观前庭", "偏殿", "丹房"],
+}
+var feature_positions: Dictionary = {}
+var gate_center := Vector3.ZERO
+# Direction points from the public area towards the locked room.
+var gate_normal := Vector3.ZERO
+var locked_spot_index := -1
+var _spot_positions: Array = []
+var _gate_body: StaticBody3D
+var _gate_mesh: Node3D
+var _unlocked := false
+
+func _cell_center(c: Vector2i) -> Vector3:
+	return Vector3(c.x * CELL, 0, 3.0 + c.y * CELL)
+
+func _flat_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x - b.x, a.z - b.z).length()
+
+func _choose_positions(spots: Array) -> void:
+	var cells: Array = FOOTPRINTS.get(point, FOOTPRINTS.rice_ruin)
+	var locked: Vector2i = cells.back()
+	var parent := Vector2i.ZERO
+	for cell in cells.slice(0, cells.size() - 1):
+		if absi(cell.x - locked.x) + absi(cell.y - locked.y) == 1:
+			parent = cell
+			break
+	gate_normal = (_cell_center(locked) - _cell_center(parent)).normalized()
+	gate_center = (_cell_center(locked) + _cell_center(parent)) * 0.5
+	feature_positions = {"gate": gate_center - gate_normal * 1.1}
+	var candidates: Array = []
+	for cell in cells.slice(0, cells.size() - 1):
+		var center := _cell_center(cell)
+		for offset in [Vector3(-1.8,0,-1.8), Vector3(1.8,0,-1.8), Vector3(-1.8,0,1.8), Vector3(1.8,0,1.8)]:
+			var p: Vector3 = center + offset
+			if _flat_distance(p, ENTRY) >= 3.3 and _flat_distance(p, feature_positions.gate) >= 3.4:
+				candidates.append(p)
+	var used: Array = [ENTRY, feature_positions.gate]
+	for key in ["clue_0", "clue_1"]:
+		var choice := Vector3.INF
+		var score := -1.0
+		for candidate in candidates:
+			var ok := true
+			for existing in used:
+				if _flat_distance(candidate, existing) < 3.4: ok = false
+			# The second clue is deliberately elsewhere in the site.
+			var value := 0.0 if key == "clue_0" else _flat_distance(candidate, used.back())
+			if ok and value > score:
+				choice = candidate
+				score = value
+		assert(choice != Vector3.INF, "No distinct clue position for " + point)
+		feature_positions[key] = choice
+		used.append(choice)
+	for i in spots.size():
+		var spot: Dictionary = spots[i]
+		var is_signature := str(spot.get("name", "")) == str(Explore.SITE_SPOTS.get(point, "")) and not spot.has("mainline") and not spot.has("neighbor")
+		if is_signature:
+			locked_spot_index = i
+			_spot_positions.append(_cell_center(locked))
+			continue
+		var choice := Vector3.INF
+		for candidate in candidates:
+			var ok := true
+			for existing in used:
+				if _flat_distance(candidate, existing) < 3.0: ok = false
+			if ok:
+				choice = candidate
+				break
+		assert(choice != Vector3.INF, "No distinct search position for " + point)
+		_spot_positions.append(choice)
+		used.append(choice)
+
 
 
 func setup(pid: String, spots: Array) -> void:
 	point = pid
 	sky = SkyKit.make(self, 12.0)
 	SkyKit.apply(sky, "ruin", 160)
+	_choose_positions(spots)
 	_room()
-	_dress(pid)
 	for k in spots.size():
 		_spot_prop(k, spots[k].name)
 	var p: Dictionary = Data.table("map_points")[pid]
@@ -63,132 +142,106 @@ func _room() -> void:
 	floor_body.position.y = -0.1
 	floor_body.add_child(cs)
 	add_child(floor_body)
-	_site_shell()
-	_site_layout()
-	# 碎砖、积雪
+	_expedition_layout()
+	# Local rubble belongs to each traversable part of the site, not the void.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(point)
-	for k in 26:
-		var p := Vector3(rng.randf_range(-7.4, 7.4), 0.08, rng.randf_range(-5.5, 5.5))
-		if p.distance_to(ENTRY) < 2.0:
-			continue
-		K.box(self, Vector3(rng.randf_range(0.2, 0.5), rng.randf_range(0.1, 0.3), rng.randf_range(0.2, 0.5)), K.STONE_DARK, p, Vector3(0, rng.randf_range(0, 90), rng.randf_range(-15, 15)))
-	for k in 3:
-		K.sphere(self, 1.1, K.mat(K.SNOW), Vector3(-3.0 + k * 3.0, -0.6, -5.4), Vector3(1.4, 0.7, 0.8))
+	for cell in FOOTPRINTS.get(point, FOOTPRINTS.rice_ruin):
+		var center := _cell_center(cell)
+		for j in 3:
+			var p := center + Vector3(rng.randf_range(-2.5,2.5), 0.08, rng.randf_range(-2.5,2.5))
+			K.box(self, Vector3(rng.randf_range(0.2,0.5),rng.randf_range(0.1,0.3),rng.randf_range(0.2,0.5)),K.STONE_DARK,p,Vector3(0,rng.randf_range(0,90),rng.randf_range(-15,15)))
 	K.light(self, Color("#8fa2c8"), 0.8, 14.0, Vector3(0, 6, -5))
 	_exit_marker()
 
 
-## 外围始终限制在原来的 16×12 范围内；墙的开合、材质和残存屋架随用途变化。
-## 摄影机在南侧，前墙保持低矮，让玩家和搜寻目标可见。
-func _site_shell() -> void:
+# Construct the actual connected rooms/yards, not just decoration on one shell.
+func _expedition_layout() -> void:
+	var cells: Array = FOOTPRINTS.get(point, FOOTPRINTS.rice_ruin)
+	var names: Array = ZONE_NAMES.get(point, ZONE_NAMES.rice_ruin)
 	var outdoor := point in ["lumber", "granary"]
-	var floor_mat = K.SNOW if point == "lumber" else (K.STONE if point in ["city_god", "mortuary", "taoist_temple", "granary"] else K.WOOD)
-	K.box(self, Vector3(16, 0.06, 12), floor_mat, Vector3(0, 0.03, 0))
-	if point == "lumber":
-		# 木场是积雪的露天场地，运输过的地方露出泥土。
-		K.box(self, Vector3(4.0, 0.02, 11.0), K.EARTH, Vector3(0, 0.07, 0))
-	elif point == "granary":
-		K.box(self, Vector3(3.0, 0.02, 11.0), K.EARTH, Vector3(0, 0.07, 0))
-	var dirty = K.mat(K.WALL)
-	var h := 1.15 if outdoor else 3.4
-	for sx in [-1, 1]:
-		K.solid(self, Vector3(6.5, h, 0.4), dirty, Vector3(sx * 4.75, h / 2.0, -6))
-		# 米行缺一面店墙；讲堂有前廊；庙观为敞开的殿院。
-		var side_h := h
-		if point == "rice_ruin" and sx == 1: side_h = 1.2
-		if point == "school" and sx == -1: side_h = 1.6
-		if point in ["city_god", "taoist_temple"]: side_h = 1.25
-		K.solid(self, Vector3(0.4, side_h, 12.4), dirty, Vector3(sx * 8, side_h / 2.0, 0))
-		K.solid(self, Vector3(7.0, 0.9, 0.4), dirty, Vector3(sx * 4.5, 0.45, 6))
-	# 不让角色从后方穿出，但缺口保留视线，仍可看见游荡者。
-	K.box(self, Vector3(3.0, 0.8, 0.4), dirty, Vector3(0, 0.4, -6))
-	K.collider(self, Vector3(3.0, 3.4, 0.4), Vector3(0, 1.7, -6))
-	if not outdoor:
-		# 屋架不挡镜头，前后各有不同的坍塌轮廓。
-		for sx in [-1, 1]:
-			K.box(self, Vector3(0.25, 3.0, 0.25), K.WOOD, Vector3(sx * 7.5, 1.5, -5.55))
-		K.box(self, Vector3(15.0, 0.3, 0.3), K.WOOD, Vector3(0, 3.0, -5.55))
-		K.box(self, Vector3(5.4, 0.22, 0.3), K.WOOD, Vector3(-4.1, 0.25, 0.3), Vector3(0, -28, 4))
-		for k in 9:
-			K.box(self, Vector3(0.55, 0.07, 0.38), K.ROOF, Vector3(-6.2 + k * 1.55, 0.08, -5.2), Vector3(0, k * 17, 8))
-	else:
-		# 无顶木场和粮仓各留一段棚檐，不以一整间废屋冒充露天场所。
-		for sx in [-1, 1]:
-			K.box(self, Vector3(0.25, 2.8, 0.25), K.WOOD, Vector3(sx * 7.2, 1.4, -5.5))
-		K.box(self, Vector3(14.5, 0.2, 0.25), K.WOOD, Vector3(0, 2.8, -5.5))
-
-
-## 低矮隔断是真实碰撞体，两端留出宽通道；不会遮住角色和交互标记。
-func _divider(size: Vector3, at: Vector3, material = K.WOOD) -> void:
-	K.solid(self, size, material, at)
-
-
-func _site_layout() -> void:
-	match point:
-		"rice_ruin":
-			# 米行：门内柜台与左右分仓，中央通往后场。
-			for sx in [-1, 1]:
-				_divider(Vector3(3.0, 0.8, 0.45), Vector3(sx * 4.3, 0.4, -0.9))
-				K.box(self, Vector3(3.1, 0.08, 0.6), K.WOOD_LIGHT, Vector3(sx * 4.3, 0.82, -0.9))
-		"pharmacy_ruin":
-			# 前堂看诊柜台、后堂炮制区，用断开的柜台形成不同空间。
-			for sx in [-1, 1]:
-				_divider(Vector3(0.25, 1.65, 2.0), Vector3(sx * 2.7, 0.825, -3.0))
-				for row in 3:
-					K.box(self, Vector3(0.28, 0.08, 1.8), K.WOOD_LIGHT, Vector3(sx * 2.7, 0.4 + row * 0.4, -3.0))
-			for sx in [-1, 1]:
-				_divider(Vector3(2.5, 1.0, 0.5), Vector3(sx * 4.0, 0.5, -0.8))
-				K.box(self, Vector3(2.6, 0.08, 0.6), K.WOOD_LIGHT, Vector3(sx * 4.0, 1.04, -0.8))
-			K.box(self, Vector3(0.12, 0.03, 3.5), K.mat(Color("#69483e")), Vector3(1.1, 0.08, 1.8), Vector3(0, 18, 0))
-		"school":
-			# 前廊入讲堂；课桌错落，后部高台为讲席。
-			K.box(self, Vector3(5.4, 0.12, 1.1), K.STONE, Vector3(0, 0.08, -5.1))
-			# 书卷与条案排列成讲堂，斋舍在两侧。
-			for sx in [-1, 1]:
-				K.box(self, Vector3(0.18, 2.1, 1.8), K.WOOD, Vector3(sx * 7.45, 1.05, -2.0))
-				for row in 4:
-					K.box(self, Vector3(0.2, 0.3, 1.6), K.mat(Color("#a69270")), Vector3(sx * 7.3, 0.35 + row * 0.43, -2.0))
-			for sx in [-1, 1]:
-				for z in [-1.0, 3.5]:
-					_divider(Vector3(1.4, 0.65, 0.5), Vector3(sx * 3.4, 0.325, z))
-					K.box(self, Vector3(1.5, 0.08, 0.6), K.WOOD_LIGHT, Vector3(sx * 3.4, 0.69, z))
-		"city_god", "taoist_temple":
-			# 两座庙宇均沿中轴入殿；偏殿低围与地面界线不同。
-			K.box(self, Vector3(2.3, 0.025, 10.2), K.STONE_DARK, Vector3(0, 0.07, -0.1))
-			for sx in [-1, 1]:
-				K.solid(self, Vector3(0.32, 2.7, 0.32), K.LACQUER, Vector3(sx * 2.7, 1.35, -4.75))
-				_divider(Vector3(0.3, 0.75, 2.2), Vector3(sx * 2.6, 0.375, -1.9), K.LACQUER)
-				if point == "taoist_temple":
-					K.box(self, Vector3(2.7, 0.1, 1.6), K.EARTH, Vector3(sx * 6.0, 0.09, -0.9))
-				else:
-					K.box(self, Vector3(2.2, 0.12, 1.5), K.STONE_DARK, Vector3(sx * 6.0, 0.09, -0.9))
-		"mortuary":
-			# 中央停灵通道，左右屏障和白幡围出停棺区。
-			K.box(self, Vector3(2.5, 0.025, 10.0), K.STONE_DARK, Vector3(0, 0.07, -0.1))
-			for sx in [-1, 1]:
-				_coffin(Vector3(sx * 3.7, 0, -1.5), 90.0, sx == -1)
-				_divider(Vector3(0.18, 1.05, 2.0), Vector3(sx * 2.5, 0.525, -1.9))
-				K.box(self, Vector3(0.05, 1.0, 1.7), K.mat(Color("#c7c1b3")), Vector3(sx * 2.5, 1.7, -1.9))
-		"lumber":
-			# 露天木场：堆料两翼夹着雪中拖运道。
-			for sx in [-1, 1]:
-				# 粗木沿边堆放，夹出无遮盖的拖运通道。
-				for row in 3:
-					K.cyl(self, 0.2, 0.2, 4.0, K.WOOD_LIGHT, Vector3(sx * 6.8, 0.22 + row * 0.34, -2.3), Vector3(90, 0, 0))
-				for z in [-1.2, 2.7]:
-					K.box(self, Vector3(2.4, 0.25, 0.25), K.WOOD, Vector3(sx * 4.0, 0.35, z))
-					for xoff in [-0.8, 0.8]:
-						K.box(self, Vector3(0.13, 0.65, 0.13), K.WOOD_LIGHT, Vector3(sx * 4.0 + xoff, 0.325, z))
-		"granary":
-			# 官仓：东西两仓的半高木隔板，中央是粮车经过的土路。
-			for sx in [-1, 1]:
-				K.box(self, Vector3(4.3, 0.05, 5.0), K.WOOD, Vector3(sx * 5.3, 0.08, -2.3))
-				_divider(Vector3(0.25, 1.25, 3.0), Vector3(sx * 2.7, 0.625, -2.0))
-				K.box(self, Vector3(0.12, 0.12, 3.1), K.WOOD_LIGHT, Vector3(sx * 2.7, 1.28, -2.0))
-				for xoff in [-0.8, 0.8]:
-					K.box(self, Vector3(0.12, 1.5, 0.12), K.WOOD_LIGHT, Vector3(sx * 5.8 + xoff, 0.75, -4.8))
-				K.box(self, Vector3(1.8, 0.16, 0.16), K.WOOD, Vector3(sx * 5.8, 1.45, -4.8))
+	var floor_color = K.SNOW if point == "lumber" else (K.EARTH if point == "granary" else (K.STONE if point in ["mortuary", "city_god", "taoist_temple"] else K.WOOD))
+	var dirs := [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
+	for i in cells.size():
+		var cell: Vector2i = cells[i]
+		var center := _cell_center(cell)
+		K.box(self, Vector3(CELL, 0.06, CELL), floor_color, center + Vector3(0,0.03,0))
+		K.text3d(self, str(names[i]), center + Vector3(0,2.1,-2.65), 45, Color("#d4c5a8"), true, 0.005)
+		# Regional motifs sit against the walls; central routes stay traversable.
+		if point == "lumber":
+			for row in 3: K.cyl(self, 0.20, 0.20, 2.2, K.WOOD_LIGHT, center + Vector3(-2.55, 0.2 + row * 0.33, 0), Vector3(90,0,0))
+		elif point == "granary" or point == "rice_ruin":
+			for j in 3: K.cyl(self, 0.18, 0.26, 0.65, K.RICE_SACK, center + Vector3(-2.5 + j * 0.5, 0.33, -2.5))
+		elif point == "pharmacy_ruin":
+			for j in 4: K.box(self, Vector3(0.4,0.4,0.15), K.WOOD_LIGHT, center + Vector3(-2.3 + j * 0.55, 1.5, -2.88))
+		elif point == "school":
+			K.box(self, Vector3(2.1,0.15,0.6), K.WOOD_LIGHT, center + Vector3(0,0.7,-2.6))
+		elif point == "mortuary":
+			K.box(self, Vector3(1.9,0.65,0.7), K.WOOD, center + Vector3(0,0.4,-2.5))
+			K.box(self, Vector3(1.6,1.0,0.05), K.mat(Color("#c9c5b8")), center + Vector3(0,1.9,-2.86))
+		else:
+			for sx in [-1,1]: K.cyl(self, 0.13, 0.16, 2.1, K.LACQUER, center + Vector3(sx * 2.5,1.05,-2.4))
+		# Place recognizable, nonblocking local architecture along each zone's edge.
+		match point:
+			"rice_ruin":
+				K.box(self, Vector3(1.9,0.12,0.7), K.WOOD_LIGHT, center + Vector3(1.5,0.8,-2.5))
+				K.box(self, Vector3(0.12,0.8,0.5), K.WOOD, center + Vector3(0.7,0.4,-2.5))
+			"city_god":
+				K.box(self, Vector3(1.8,0.75,0.6), K.LACQUER, center + Vector3(0,0.38,-2.55))
+				K.cyl(self, 0.22,0.32,0.4, K.GOLD, center + Vector3(0,0.98,-2.5))
+			"school":
+				for j in 3:
+					K.box(self, Vector3(0.45,0.1,0.3), K.PAPER, center + Vector3(-2.35,0.5+j*0.25,-2.5))
+				K.box(self, Vector3(2.2,0.5,0.1), K.WOOD, center + Vector3(0,1.5,-2.85))
+			"pharmacy_ruin":
+				for j in 3:
+					K.cyl(self, 0.18,0.22,0.45,K.mat(Color("#766e59")),center + Vector3(-2.2+j*0.5,0.25,-2.55))
+			"lumber":
+				for j in 2:
+					K.box(self, Vector3(0.12,0.9,0.12),K.WOOD,center + Vector3(1.5+j*0.8,0.45,-2.5))
+				K.box(self, Vector3(1.2,0.12,0.12),K.WOOD_LIGHT,center + Vector3(1.9,0.9,-2.5))
+			"mortuary":
+				K.box(self, Vector3(0.8,0.12,1.8),K.WOOD_LIGHT,center + Vector3(2.4,0.8,-0.8))
+				K.box(self, Vector3(0.6,0.8,1.6),K.WOOD,center + Vector3(2.4,0.4,-0.8))
+			"granary":
+				for j in 3: K.box(self, Vector3(0.12,1.0,0.12),K.WOOD_LIGHT,center + Vector3(1.5+j*0.5,0.5,-2.55))
+				K.box(self, Vector3(1.2,0.1,0.12),K.WOOD,center + Vector3(2.0,0.9,-2.55))
+			"taoist_temple":
+				K.box(self, Vector3(1.8,0.75,0.6),K.LACQUER,center + Vector3(0,0.38,-2.55))
+				for j in 3: K.cyl(self, 0.07,0.1,0.3,K.GOLD,center + Vector3(-0.5+j*0.5,0.92,-2.5))
+		for dir in dirs:
+			if cell + dir in cells: continue
+			var wall_center := center + Vector3(dir.x * CELL * 0.5, 0, dir.y * CELL * 0.5)
+			var height := 1.05 if outdoor or dir.y == 1 else 2.2
+			var size := Vector3(0.22,height,CELL) if dir.x != 0 else Vector3(CELL,height,0.22)
+			K.solid(self, size, K.WOOD if outdoor else K.WALL, wall_center + Vector3(0,height/2.0,0))
+	# A complete gate seals the only edge to the final room.
+	var across_x := absf(gate_normal.x) > 0.5
+	var gate_size := Vector3(0.26, 2.0, CELL) if across_x else Vector3(CELL, 2.0, 0.26)
+	_gate_body = K.collider(self, gate_size, gate_center + Vector3(0,1,0))
+	_gate_mesh = K.node(self, gate_center)
+	K.box(_gate_mesh, gate_size, K.WOOD, Vector3(0,1,0))
+	for j in 5:
+		var p := Vector3(0,0.12 + j * 0.4,0)
+		K.box(_gate_mesh, Vector3(0.32,0.08,CELL) if across_x else Vector3(CELL,0.08,0.32), K.WOOD_LIGHT, p)
+	var profile: Dictionary = Expedition.profile(point)
+	for key in ["clue_0", "clue_1", "gate"]:
+		var at: Vector3 = feature_positions[key]
+		var label := str(profile.get("title", "机关")) if key == "gate" else str(profile.get("clues", [])[0 if key == "clue_0" else 1].get("title", "线索"))
+		# Distinct found objects carry the clues without printing their solutions.
+		if point == "school" or point == "rice_ruin":
+			K.box(self, Vector3(0.65,0.08,0.45), K.PAPER, at + Vector3(0,0.18,0))
+			K.cyl(self, 0.06, 0.06, 0.7, K.WOOD_LIGHT, at + Vector3(0,0.2,0.2), Vector3(0,0,90))
+		elif point == "pharmacy_ruin":
+			K.box(self, Vector3(0.55,0.45,0.28), K.WOOD, at + Vector3(0,0.23,0))
+			K.box(self, Vector3(0.22,0.13,0.04), K.PAPER, at + Vector3(0,0.3,0.16))
+		elif point == "lumber" or point == "granary":
+			K.box(self, Vector3(0.65,0.18,0.3), K.WOOD_LIGHT, at + Vector3(0,0.12,0), Vector3(0,20,0))
+		else:
+			K.box(self, Vector3(0.55,0.65,0.24), K.STONE_DARK, at + Vector3(0,0.33,0))
+			K.box(self, Vector3(0.22,0.26,0.03), K.PAPER, at + Vector3(0,0.42,0.13))
+		K.text3d(self, label, at + Vector3(0,1.35,0), 50, Color("#e7cd8a"), true, 0.005)
+		K.light(self, Color("#d6b879"), 0.5, 2.5, at + Vector3(0,1,0))
 
 
 ## 出口只作可见标识，不改变入口或通路的碰撞。
@@ -199,115 +252,6 @@ func _exit_marker() -> void:
 	K.text3d(self, "出口 · 回宅", Vector3(0, 2.55, 5.75), 52, Color("#e6d5ac"), true, 0.008)
 	# 一条低矮的石槛可从房间另一侧辨认方向，角色仍能走过。
 	K.box(self, Vector3(2.0, 0.025, 0.45), K.mat(Color("#c2b18e")), Vector3(0, 0.045, 5.0))
-
-
-func _dress(pid: String) -> void:
-	# 墙边场景布置均为无碰撞装饰；保留六个搜寻点和南侧出口的行走空间。
-	_site_detail(pid)
-	match pid:
-		"mortuary":
-			for k in 4:
-				_coffin(Vector3(-6.5 + k * 1.3, 0, 4.2), 90.0, k % 2 == 0)
-			for k in 6:
-				K.box(self, Vector3(0.5, 1.6, 0.02), K.mat(Color("#d9d4c4"), 0.9, 0.0, 0.85), Vector3(-6 + k * 2.4, 2.5, -5.7))
-				K.box(self, Vector3(0.12, 0.3, 0.01), K.mat(K.PAPER, 0.8, 0.5), Vector3(-6 + k * 2.4, 1.7, -5.68))
-			sky.env.fog_light_color = Color("#1f2a24")
-		"city_god":
-			K.box(self, Vector3(3.0, 1.0, 1.2), K.LACQUER, Vector3(0, 0.5, -5.1))
-			var statue: Node3D = Figure.new()
-			add_child(statue)
-			statue.setup("villager", Color("#6a2a22"))
-			statue.position = Vector3(0, 1.0, -5.3)
-			statue.scale = Vector3.ONE * 1.6
-			for sx in [-1, 1]:
-				K.cyl(self, 0.18, 0.2, 3.4, K.LACQUER, Vector3(sx * 2.6, 1.7, -4.6))
-		"school":
-			for k in 4:
-				var x: float = [-6.5, -3.5, 3.5, 6.5][k]
-				var shelf := K.node(self, Vector3(x, 0, 4.4), Vector3(0, 0, 70 if k == 1 else 0))
-				K.box(shelf, Vector3(1.6, 2.2, 0.4), K.WOOD, Vector3(0, 1.1, 0))
-				for r in 4:
-					K.box(shelf, Vector3(1.4, 0.3, 0.3), K.mat(Color("#b9a27a")), Vector3(0, 0.3 + r * 0.5, 0.06))
-		"pharmacy_ruin":
-			for x in [-5.5, 5.5]:
-				var cab := K.node(self, Vector3(x, 0, 5.3))
-				K.box(cab, Vector3(2.4, 2.2, 0.5), K.WOOD, Vector3(0, 1.1, 0))
-				for r in 5:
-					for c in 6:
-						K.box(cab, Vector3(0.34, 0.34, 0.04), K.WOOD_LIGHT, Vector3(-1.0 + c * 0.4, 0.25 + r * 0.4, -0.27))
-		"lumber":
-			Props.wood_pile(self, Vector3(-5, 0, 4.3), 10)
-			Props.wood_pile(self, Vector3(5, 0, 4.3), 9)
-		"granary":
-			for x in [-5.0, 5.0]:
-				K.cyl(self, 0.0, 1.6, 1.4, K.RICE_SACK, Vector3(x, 0.7, 4.0), Vector3.ZERO, 10)
-		"taoist_temple":
-			K.box(self, Vector3(3.4, 1.0, 1.0), K.LACQUER, Vector3(0, 0.5, -5.2))
-			for k in 7:
-				var a := deg_to_rad(-60 + k * 20)
-				var p := Vector3(sin(a) * 1.4, 1.1, -5.2 + cos(a) * 0.3 - 0.2)
-				K.cyl(self, 0.06, 0.08, 0.12, K.GOLD, p)
-				K.sphere(self, 0.05, K.mat(Color("#7dffb0"), 0.4, 4.0), p + Vector3(0, 0.1, 0))
-			K.light(self, Color("#7dffb0"), 1.2, 6.0, Vector3(0, 1.6, -4.8))
-			for sx in [-1, 1]:
-				K.cyl(self, 0.18, 0.2, 3.4, K.LACQUER, Vector3(sx * 3.0, 1.7, -4.6))
-		_:
-			K.box(self, Vector3(3.0, 1.0, 0.8), K.WOOD, Vector3(-5.0, 0.5, 4.6))
-			Props.rice_sacks(self, Vector3(5.5, 0, 4.5), 3)
-
-
-func _site_detail(pid: String) -> void:
-	match pid:
-		"rice_ruin", "granary":
-			# 米行的量米台和官仓的分仓木栏。
-			for sx in [-1, 1]:
-				for k in 3:
-					K.box(self, Vector3(0.28, 1.4, 0.28), K.WOOD, Vector3(sx * 7.5, 0.7, -3.9 + k * 2.0))
-				K.box(self, Vector3(0.12, 0.12, 4.5), K.WOOD_LIGHT, Vector3(sx * 7.5, 1.15, -1.9))
-			if pid == "granary":
-				K.text3d(self, "官仓", Vector3(0, 2.7, -5.65), 64, Color("#c9b48d"), true, 0.008)
-			else:
-				for k in 3:
-					K.cyl(self, 0.28, 0.24, 0.38, K.WOOD_LIGHT, Vector3(-7.1, 0.19, -4.9 + k * 0.7))
-		"school":
-			# 残存的讲堂黑板与两侧散落的课册。
-			K.box(self, Vector3(3.3, 1.15, 0.12), K.WOOD, Vector3(0, 2.15, -5.7))
-			K.text3d(self, "温故知新", Vector3(0, 2.25, -5.55), 52, Color("#d6c7a6"), true, 0.008)
-			for sx in [-1, 1]:
-				for k in 4:
-					K.box(self, Vector3(0.38, 0.06, 0.28), K.mat(Color("#a99a7b")), Vector3(sx * (7.0 + 0.12 * (k % 2)), 0.09 + 0.06 * k, -3.8 + k * 1.4), Vector3(0, k * 18, 0))
-		"pharmacy_ruin":
-			# 药铺侧墙药格与晾药架，轮廓不同于普通粮仓。
-			for sx in [-1, 1]:
-				K.box(self, Vector3(2.3, 1.65, 0.16), K.WOOD, Vector3(sx * 4.4, 2.0, -5.7))
-				for row in 3:
-					for col in 5:
-						K.box(self, Vector3(0.36, 0.38, 0.04), K.WOOD_LIGHT, Vector3(sx * 4.4 - 0.8 + col * 0.4, 1.45 + row * 0.48, -5.58))
-			K.text3d(self, "回春堂", Vector3(0, 2.9, -5.65), 60, Color("#d2c39c"), true, 0.008)
-			for sx in [-1, 1]:
-				for k in 4:
-					K.box(self, Vector3(0.18, 0.12, 0.9), K.WOOD_LIGHT, Vector3(sx * 7.7, 1.3 + k * 0.42, -3.7))
-				for k in 3:
-					K.cyl(self, 0.16, 0.14, 0.36, K.mat(Color("#766e59")), Vector3(sx * 7.0, 0.2, -4.8 + k * 0.5))
-		"lumber":
-			# 木场两侧锯木架和沿墙堆放的长木。
-			K.box(self, Vector3(3.4, 0.14, 0.14), K.WOOD_LIGHT, Vector3(0, 2.2, -5.68))
-			for sx in [-1, 1]:
-				K.box(self, Vector3(0.16, 2.4, 0.16), K.WOOD, Vector3(sx * 1.6, 1.2, -5.68))
-			K.text3d(self, "木料场", Vector3(0, 2.65, -5.55), 58, Color("#cbb897"), true, 0.008)
-			for sx in [-1, 1]:
-				for k in 4:
-					K.cyl(self, 0.18, 0.18, 3.6, K.WOOD_LIGHT, Vector3(sx * 7.2, 0.2 + k * 0.31, -3.6 + (k % 2) * 0.12), Vector3(90, 0, 0))
-		"mortuary":
-			# 墙侧停灵的白幡，和庙宇红柱形成清楚区别。
-			for sx in [-1, 1]:
-				for k in 3:
-					K.box(self, Vector3(0.04, 1.6, 0.55), K.mat(Color("#c9c5b8")), Vector3(sx * 7.7, 2.1, -4.5 + k * 2.0))
-		"city_god", "taoist_temple":
-			for sx in [-1, 1]:
-				K.box(self, Vector3(0.22, 2.8, 0.22), K.LACQUER, Vector3(sx * 7.5, 1.4, -2.2))
-				K.box(self, Vector3(0.08, 1.2, 0.45), K.mat(Color("#a98a50") if pid == "taoist_temple" else Color("#9d4a35")), Vector3(sx * 7.36, 2.05, -2.2))
-			K.text3d(self, "青云观" if pid == "taoist_temple" else "城隍庙", Vector3(0, 3.1, -5.6), 58, Color("#d2b477"), true, 0.008)
 
 
 func _coffin(pos: Vector3, rot_y: float, open: bool) -> Node3D:
@@ -323,8 +267,7 @@ func _coffin(pos: Vector3, rot_y: float, open: bool) -> Node3D:
 
 ## 一处可翻的地方：按名字挑道具，脚下一圈金光，头上写名字。
 func _spot_prop(k: int, spot_name: String) -> void:
-	var positions: Array = SITE_SPOT_POS.get(point, SPOT_POS)
-	var pos: Vector3 = positions[k % positions.size()]
+	var pos: Vector3 = _spot_positions[k]
 	var n := K.node(self, pos)
 	if spot_name.contains("棺") or spot_name.contains("停尸"):
 		_coffin(pos, 0.0, false)
@@ -363,7 +306,7 @@ func _spot_prop(k: int, spot_name: String) -> void:
 	ring_mi.position.y = 0.05
 	glow.add_child(ring_mi)
 	K.light(glow, Color("#ffc65a"), 0.9, 3.5, Vector3(0, 1.4, 0))
-	var label := K.text3d(n, spot_name, Vector3(0, 2.3, 0), 64, Color("#ffe3a0"), true, 0.008)
+	var label := K.text3d(n, spot_name, Vector3(0, 1.8, 0), 56, Color("#ffe3a0"), true, 0.005)
 	_spots.append({"pos": pos, "glow": glow, "label": label, "name": spot_name})
 
 
@@ -371,6 +314,10 @@ func sync(run: Dictionary) -> void:
 	var ex: Dictionary = run.get("explore", {})
 	if ex.is_empty():
 		return
+	_unlocked = bool(Expedition.state(run).get("unlocked", false))
+	if is_instance_valid(_gate_mesh): _gate_mesh.visible = not _unlocked
+	if is_instance_valid(_gate_body):
+		_gate_body.set_collision_layer_value(1, not _unlocked)
 	for k in mini(_spots.size(), ex.spots.size()):
 		var done: bool = ex.spots[k].done or ex.caught
 		var marker := str(ex.spots[k].get("mainline", ""))
@@ -385,7 +332,7 @@ func sync(run: Dictionary) -> void:
 		_spots[k].glow.visible = not done or working or available
 		var status := "（调查中）" if working else ("（已封阵）" if marker == "ritual" and ex.spots[k].done else ("（已调查）" if marker != "" and ex.spots[k].done else ("（仍有物资）" if available else ("（已翻过）" if ex.spots[k].done else ""))))
 		var special: bool = not done and not ex.get("site_used", false) and not ex.get("curfew_due", false) and not ex.spots[k].has("mainline") and not ex.spots[k].has("neighbor") and str(ex.spots[k].get("name", "")) == str(Explore.SITE_SPOTS.get(point, ""))
-		var special_text := " · 特色：" + str(Explore.SITE_TITLES.get(point, "")) if special else ""
+		var special_text := " · 特色" if special else ""
 		_spots[k].label.text = _spots[k].name + special_text + status
 		_spots[k].label.modulate = Color("#9a948a") if done and not working and not available else Color("#ffe3a0")
 	if ex.caught and _hunter == null:
@@ -400,16 +347,40 @@ func sync(run: Dictionary) -> void:
 
 
 ## 最近的可翻处下标；在门口返回 -2；都不在返回 -1。
+func _visible_from(pos: Vector3, target: Vector3, allow_target_body := false) -> bool:
+	if not is_inside_tree(): return false
+	var from := Vector3(pos.x, 0.8, pos.z)
+	var to := Vector3(target.x, 0.8, target.z)
+	if from.distance_to(to) < 0.02: return true
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	if is_instance_valid(player_ref) and player_ref is CollisionObject3D:
+		query.exclude = [player_ref.get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if hit.is_empty(): return true
+	# Search props have their own small collider; walls cannot be bypassed by E.
+	return allow_target_body and (hit.position as Vector3).distance_to(to) < 0.9
+
 func nearest(pos: Vector3) -> int:
 	var flat := Vector3(pos.x, 0, pos.z)
-	if flat.distance_to(ENTRY) < 1.6:
-		return -2
+	if flat.distance_to(ENTRY) < 1.6 and _visible_from(flat, ENTRY): return -2
 	var best := -1
 	var best_d := SPOT_RADIUS
 	for k in _spots.size():
+		if k == locked_spot_index and not _unlocked: continue
 		var d := flat.distance_to(_spots[k].pos)
-		if d < best_d:
+		if d < best_d and _visible_from(flat, _spots[k].pos, true):
 			best = k
+			best_d = d
+	return best
+
+func nearest_feature(pos: Vector3) -> String:
+	var best := ""
+	var best_d := 1.35
+	for key in ["clue_0", "clue_1", "gate"]:
+		var target: Vector3 = feature_positions.get(key, Vector3.INF)
+		var d := _flat_distance(pos, target)
+		if d < best_d and _visible_from(pos, target):
+			best = key
 			best_d = d
 	return best
 

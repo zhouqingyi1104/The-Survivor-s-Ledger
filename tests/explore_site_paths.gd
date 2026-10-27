@@ -41,7 +41,7 @@ func find_path(start: Vector2i, target: int) -> Array:
 			break
 		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 			var n: Vector2i = p + d
-			if absi(n.x) > 15 or absi(n.y) > 11 or previous.has(n) or not clear_at(n):
+			if absi(n.x) > 36 or n.y < -36 or n.y > 14 or previous.has(n) or not clear_at(n):
 				continue
 			previous[n] = p
 			pending.append(n)
@@ -85,18 +85,18 @@ func _ready() -> void:
 		var ex := {"point": site, "spots": spots, "caught": false}
 		var run := {"explore": ex, "mainline": {}}
 		world.sync(run)
-		check(world._spots[0].label.text.contains("特色：" + Explore.SITE_TITLES[site]), site + ": missing signature marker")
+		check(world._spots[0].label.text.contains("· 特色"), site + ": missing signature marker")
 		for setting in ["done", "neighbor", "mainline"]:
 			spots[0][setting] = true
 			world.sync(run)
-			check(not world._spots[0].label.text.contains("特色："), site + ": marker on " + setting)
+			check(not world._spots[0].label.text.contains("· 特色"), site + ": marker on " + setting)
 			if setting == "done": spots[0].done = false
 			else: spots[0].erase(setting)
 		spots[0].done = false
 		for setting in ["caught", "site_used", "curfew_due"]:
 			ex[setting] = true
 			world.sync(run)
-			check(not world._spots[0].label.text.contains("特色："), site + ": marker despite " + setting)
+			check(not world._spots[0].label.text.contains("· 特色"), site + ": marker despite " + setting)
 			ex[setting] = false
 		# 捕获时会生成追逐者；测试完标记后单独清理以免影响画面。
 		if world._hunter != null:
@@ -108,6 +108,7 @@ func _ready() -> void:
 		collision.shape = shape
 		body.add_child(collision)
 		world.add_child(body)
+		world.player_ref = body
 		body.position = Vector3(0, Y, 4.0)
 		var camera := Camera3D.new()
 		world.add_child(camera)
@@ -120,6 +121,15 @@ func _ready() -> void:
 		space = world.get_world_3d().direct_space_state
 		var start := Vector2i(0, 8)
 		check(clear_at(start), site + ": start obstructed")
+		# Mainline/neighbor goals and the exit remain available before the gate.
+		for target in [4, 5, -2]:
+			var path := find_path(start, target)
+			check(not path.is_empty(), "%s: no public route to %d while locked" % [site, target])
+			if not path.is_empty(): start = follow(path, site, target)
+		check(find_path(start, 0).is_empty(), site + ": locked signature can be interacted with")
+		ex.expedition.unlocked = true
+		world.sync(run)
+		await get_tree().physics_frame
 		for target in [0, 1, 2, 3, 4, 5, -2]:
 			var path := find_path(start, target)
 			check(not path.is_empty(), "%s: no route to %d" % [site, target])

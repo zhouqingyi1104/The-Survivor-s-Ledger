@@ -26,6 +26,7 @@ func fixture() -> Dictionary:
 func _ready() -> void:
 	var run := fixture()
 	check(Post.act_explore(run, "rice_ruin") == "", "departure failed")
+	run.explore["expedition"] = {"clues": [true, true], "unlocked": true, "attempts": 1}
 	var before := int(run.t)
 	var result := Post.search(run, 0)
 	var spot: Dictionary = run.explore.spots[0]
@@ -55,6 +56,7 @@ func _ready() -> void:
 	check(Explore.take(run, q, item, 1) == 0 and Explore.put_back(run, q, item, 1) == 0, "task loot transferred")
 	var captured := fixture()
 	Post.act_explore(captured, "rice_ruin")
+	captured.explore["expedition"] = {"clues": [true, true], "unlocked": true, "attempts": 1}
 	captured.explore.bag = {"wood": 4}
 	captured.explore.exposure = 99
 	var caught := Post.search(captured, 0)
@@ -80,6 +82,7 @@ func _ready() -> void:
 	check(run.explore.is_empty() and Inv.count(run.home, item) == home_before + 1, "return failed to transfer only bag")
 	var late := fixture()
 	Post.act_explore(late, "rice_ruin")
+	late.explore["expedition"] = {"clues": [true, true], "unlocked": true, "attempts": 1}
 	late.t = 1440 + Post.CURFEW_AT - 10
 	var late_result := Post.search(late, 0)
 	check(int(late.t) == 1440 + Post.CURFEW_AT and late.explore.get("curfew_due", false), "search crossed curfew without persistent return marker")

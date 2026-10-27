@@ -197,10 +197,22 @@ func investigate(kind: String, day: int, save_return := false) -> void:
 		for k in Game.run.explore.spots.size():
 			var pos: Vector3 = main._screen.world._spots[k].pos
 			check(not pos in positions, "Independent objectives or normal loot physically overlapped")
-			check(main._screen.world.nearest(pos) == k, "Physical E proximity cannot reach a retained target")
+			if k == main._screen.world.locked_spot_index:
+				check(main._screen.world.nearest(pos) != k, "Locked signature was interactable before solving")
+			else:
+				check(main._screen.world.nearest(pos) == k, "Physical E proximity cannot reach a retained public target")
 			positions.append(pos)
 			if Game.run.explore.spots[k].get("neighbor", "") == "account": has_neighbor = true
 		check(has_neighbor, "Mainline special target swallowed the existing neighbor account")
+		var locked_index: int = main._screen.world.locked_spot_index
+		check(locked_index >= 0, "Ordinary signature target missing from site")
+		if locked_index >= 0:
+			Game.run.explore.expedition.unlocked = true
+			main._screen.world.sync(Game.run)
+			await get_tree().physics_frame
+			check(main._screen.world.nearest(main._screen.world._spots[locked_index].pos) == locked_index, "Unlocked signature target cannot be reached")
+			Game.run.explore.expedition.unlocked = false
+			main._screen.world.sync(Game.run)
 		Game.run.explore.caught = true
 		main._screen.world.sync(Game.run)
 		for k in Game.run.explore.spots.size():

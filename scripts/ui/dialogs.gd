@@ -1084,7 +1084,9 @@ func _explore_pick(body: VBoxContainer) -> void:
 			head.add_child(UI.tag("未到访", UI.DAI))
 		info.add_child(head)
 		info.add_child(UI.para(p.desc, 15))
-		info.add_child(UI.para("现场特色：" + Explore.site_brief(str(pid)), 15, UI.GOLD))
+		var investigation_only := int(run.points.get(pid, {}).get("looted_until", 0)) > int(run.pday) and not Mainline.objective(run, pid).is_empty()
+		var site_tip := "当前仅开放本世调查，普通物资尚未恢复。" if investigation_only else "现场特色：" + Explore.site_brief(str(pid)) + " 先查找两处线索，解开机关进入后区。"
+		info.add_child(UI.para(site_tip, 15, UI.GOLD))
 		var possible := []
 		for entry in p.loot:
 			possible.append(str(Data.item(str(entry[0])).name))

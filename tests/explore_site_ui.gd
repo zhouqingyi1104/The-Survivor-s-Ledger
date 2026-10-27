@@ -72,6 +72,8 @@ func enter_point(pid: String) -> void:
 	Neighbor.state(Game.run).stage = "closed"
 	Director.state(Game.run).enabled = false
 	check(Post.act_explore(Game.run, pid) == "", "Cannot enter " + pid)
+	# 此套件专测已打开通路后的特色搜寻；机关和真实步行由 expedition_ui 单独覆盖。
+	Game.run.explore["expedition"] = {"clues": [true, true], "unlocked": true, "attempts": 1}
 	Game.go("explore")
 	await frames(10)
 	site_idx = -1
