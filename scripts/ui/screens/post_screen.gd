@@ -21,6 +21,7 @@ const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
+const Brief = preload("res://scripts/core/brief.gd")
 
 ## 流速数值在 core（Post.SPEEDS），界面只负责显示与切换
 const SPEED_LABELS := ["❚❚", "▶", "▶▶", "▶▶▶"]
@@ -1024,7 +1025,7 @@ func _right_top(run: Dictionary) -> void:
 	day.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	texts.add_child(day)
 	var w := State.weather(run)
-	var sub := Hud.text("%s · 生死簿残页 %d" % [w.name, run.rebirths_left], 13, Hud.SUB)
+	var sub := Hud.text("%s · %s · 残页 %d" % [w.name, Brief.countdown(run), run.rebirths_left], 13, Hud.SUB)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	texts.add_child(sub)
 	var tm := Hud.text("", 26, Hud.CYAN, true)

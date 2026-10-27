@@ -25,6 +25,7 @@ const Opening = preload("res://scripts/core/opening.gd")
 const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
 const VideoCfg = preload("res://scripts/core/video_cfg.gd")
+const Brief = preload("res://scripts/core/brief.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -98,8 +99,21 @@ func journal() -> void:
 	UI.open_modal("journal", "劫余录", _journal, true, 900)
 
 
+## 要务的分级配色：要命的说朱砂，要紧的用墨，提醒的更淡
+func _brief_color(level: int) -> Color:
+	return UI.CINNABAR if level >= Brief.ALARM else (UI.INK if level == Brief.WARN else UI.INK_FAINT)
+
+
 func _journal(body: VBoxContainer) -> void:
 	var content := UI.vbox(8)
+	# 最上面先回答"我在干什么"：目标一句 + 今天该注意的几件事
+	content.add_child(UI.para(Brief.goal(_run()), 18, UI.GOLD))
+	var todos := Brief.lines(_run())
+	if not todos.is_empty():
+		content.add_child(UI.label("今日要务", 15, UI.INK_FAINT))
+		for line in todos:
+			content.add_child(UI.para("· " + str(line.text), 16, _brief_color(int(line.level))))
+	content.add_child(UI.sep())
 	var d := Director.state(_run())
 	content.add_child(UI.label("人情往来：" + " · ".join(Director.ACTORS.keys().map(func(id): return "%s %+d" % [Director.ACTORS[id], int(d.relations[id])])), 16))
 	for promise in d.promises:
