@@ -29,6 +29,7 @@ var _backdrop: Control
 class Modal extends Control:
 	const UI = preload("res://scripts/ui/ui_kit.gd")
 	var key := ""
+	var closable := true
 	var build_fn: Callable
 	var body: VBoxContainer
 	## 3D 场景上的弹窗用夜色（和 HUD 一致），2D 页面上的用宣纸
@@ -116,11 +117,30 @@ func _show(target: String) -> void:
 
 # ---------- 弹窗 ----------
 
+func _input(event: InputEvent) -> void:
+	var key_event := event as InputEventKey
+	if key_event == null or not key_event.pressed or (key_event.keycode != KEY_ESCAPE and key_event.physical_keycode != KEY_ESCAPE):
+		return
+	# 改键时的 Esc 先交给捕获器，取消改键而不关闭设置。
+	if is_instance_valid(Dialogs._capture) and Dialogs._capture.active:
+		return
+	if _modal_layer.get_child_count() == 0:
+		return
+	# 始终只处理最上层；强制选择的弹窗也要挡住底层与游戏快捷键。
+	get_viewport().set_input_as_handled()
+	if key_event.echo:
+		return
+	var top := _modal_layer.get_child(_modal_layer.get_child_count() - 1) as Modal
+	if top != null and top.closable:
+		close_modal(top.key)
+
+
 func open_modal(key: String, title: String, build: Callable, closable := true, width := 760.0) -> void:
 	if _modals.has(key):
 		return
 	var m := Modal.new()
 	m.key = key
+	m.closable = closable
 	m.build_fn = build
 	m.dark = _screen != null and _screen.get("dark_ui") == true
 	if m.dark:
