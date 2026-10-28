@@ -25,6 +25,7 @@ const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 
 const Home = preload("res://scripts/core/home.gd")
+const Floors = preload("res://scripts/core/home_floor.gd")
 
 const VERSION := 21
 ## v2 新加的字段
@@ -70,6 +71,21 @@ static func save(data: Dictionary) -> Dictionary:
 
 
 static func upgrade(run: Dictionary) -> Dictionary:
+	if not run.is_empty():
+		for furniture in run.get("furniture", []):
+			if furniture is Dictionary and not furniture.has("floor"):
+				furniture["floor"] = "courtyard"
+		var raw_floor := str(run.get("home_floor", "courtyard"))
+		var safe_floor := Floors.current(run)
+		var active_night: Dictionary = run.get("night", {})
+		var threat: bool = bool(run.get("wave_due", false)) or not run.get("fight", {}).is_empty() or (not active_night.is_empty() and not bool(active_night.get("done", false)))
+		if raw_floor != "courtyard" and (threat or safe_floor != raw_floor):
+			Post._interrupt_room_work(run)
+			Floors.return_to_courtyard(run)
+		else:
+			run["home_floor"] = safe_floor
+		if raw_floor != "courtyard" and bool(run.get("sleeping", false)):
+			run["sleeping"] = false
 	if not run.is_empty() and str(run.get("phase", "")) == "post":
 		Home.ensure_core(run)
 	if run.is_empty() or int(run.get("version", 1)) >= VERSION:

@@ -18,6 +18,7 @@ const SiteJourney = preload("res://scripts/core/site_journey.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Expansion = preload("res://scripts/core/home_expansion.gd")
+const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Companion = preload("res://scripts/core/companion.gd")
@@ -64,6 +65,7 @@ const ACTIONS := {
 	"furnish": ["安放家具", 45, 6],
 	"expansion_clear": ["查勘清理侧院", Expansion.CLEAR_MINUTES, 5],
 	"expansion_build": ["施工侧院", Expansion.BUILD_MINUTES, 8],
+	"attic_build": ["施工阁楼", Floors.ATTIC_MINUTES, 8],
 	"read": ["读书", 120, 4], "craft": ["画符", 60, 6], "rest": ["小憩", 120, 0], "water": ["打水", 15, 2],
 	"travel": ["赶路", 60, 8], "search": ["翻找", 20, 4],
 	"mend": ["夜修", 25, 4], "ward": ["布守具", 20, 6],
@@ -284,6 +286,8 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 				return "plan"
 		WAVE_AT:
 			if not Defense.wave_for_run(run, int(run.pday)).is_empty() and int(run.wave_day) != int(run.pday):
+				_interrupt_room_work(run)
+				Floors.return_to_courtyard(run)
 				run.wave_due = true
 				run.sleeping = false
 				_interrupt_furnish(run)
@@ -292,6 +296,11 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 		RAID_AT:
 			# 尸潮还在街上，溃兵不会这时候来
 			if run.raid_tonight and not in_night(run):
+				_interrupt_room_work(run)
+				Floors.return_to_courtyard(run)
+				if str(run.busy.get("kind", "")) == "attic_build":
+					run.busy = {}
+					State.note(run, "夜袭打断阁楼施工，已备材料仍在。")
 				run.sleeping = false
 				run.raid_report = Defense.resolve_raid(run)
 				run.raid_tonight = false
@@ -617,7 +626,12 @@ static func toggle_gate(run: Dictionary) -> String:
 static func start_fight(run: Dictionary, count: int, armored: bool) -> void:
 	if not run.fight.is_empty():
 		return
+	_interrupt_room_work(run)
+	Floors.return_to_courtyard(run)
 	_interrupt_furnish(run)
+	if str(run.busy.get("kind", "")) == "attic_build":
+		run.busy = {}
+		State.note(run, "夜袭打断阁楼施工，已备材料仍在。")
 	if str(run.busy.get("kind", "")) in ["expansion_clear", "expansion_build"]:
 		run.busy = {}
 		State.note(run, "夜袭打断了侧院施工，已备材料仍在。")
@@ -937,6 +951,9 @@ static func _check_busy(run: Dictionary) -> void:
 ## 做完了，见成果。
 static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 	match kind:
+		"attic_build":
+			if Floors.finish_attic(run):
+				State.note(run, "阁楼施工完成。")
 		"expansion_clear", "expansion_build":
 			var expected := "survey" if kind == "expansion_clear" else "ready"
 			if expected == "ready" and _side_passage_blocked(run):
@@ -969,7 +986,8 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 			State.add_xp(run, "cook", 3 + (3 if first else 0))
 			State.note(run, "%s出锅，得 %d 份。" % [Data.item_name(dish), n])
 		"garden":
-			_tend_garden(run)
+			if Floors.current(run) == str(data.get("floor", "courtyard")):
+				_tend_garden(run, str(data.get("floor", "courtyard")))
 		"build":
 			var d: Dictionary = Data.table("devices").devices[data.device]
 			var dur := int(d.dur) + (1 if State.prof_level(run, "build") >= 2 else 0)
@@ -993,7 +1011,7 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 			State.note(run, "把%s重新做了起来。" % Home.data(id).get("name", "家具"))
 		"furnish":
 			var fid := str(data.id)
-			Home.add(run, fid, float(data.x), float(data.z), int(data.rot))
+			Home.add(run, fid, float(data.x), float(data.z), int(data.rot), str(data.get("floor", "courtyard")))
 			State.add_xp(run, "build", 3)
 			State.note(run, "%s摆好了。" % Home.data(fid).get("name", "家具"))
 		"ward":
@@ -1038,6 +1056,8 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 # ---------- 行动 ----------
 
 static func act_rest(run: Dictionary) -> String:
+	if Floors.current(run) != "courtyard":
+		return "先回院里的床榻歇息。"
 	var err := can_act(run, 0)
 	if err != "":
 		return err
@@ -1048,6 +1068,8 @@ static func act_rest(run: Dictionary) -> String:
 
 ## 就寝：一直睡到天亮。天黑以后，或者累坏了才能睡。
 static func sleep(run: Dictionary) -> String:
+	if Floors.current(run) != "courtyard":
+		return "先回院里的床榻就寝。"
 	var err := can_act(run, 0)
 	if err != "":
 		return err
@@ -1138,9 +1160,27 @@ static func act_cook(run: Dictionary, recipe_id: String) -> String:
 	return ""
 
 
+## 院内菜畦和各层花盆分别可操作；失去家具的孤儿菜槽不归属任何空间。
+static func plot_on_floor(run: Dictionary, plot: Dictionary, floor_id := "") -> bool:
+	var target: String = Floors.current(run) if floor_id == "" else floor_id
+	if not plot.has("pot"):
+		return target == "courtyard"
+	var furniture := Home.find(run, int(plot.get("pot", -1)))
+	return not furniture.is_empty() and str(furniture.get("id", "")) == "planter" and str(furniture.get("floor", "courtyard")) == target
+
+
 ## 种菜不占时间；浇水收成要一阵子。
 static func plant(run: Dictionary, plot_idx: int, crop_id: String) -> String:
+	var err := can_act(run, 0)
+	if err != "":
+		return err
+	if plot_idx < 0 or plot_idx >= run.plots.size() or not run.plots[plot_idx] is Dictionary:
+		return "找不到这块菜地。"
 	var plot: Dictionary = run.plots[plot_idx]
+	if not plot_on_floor(run, plot):
+		return "先进入这块菜地所在空间。"
+	if not Data.table("crops").has(crop_id):
+		return "没有这种作物。"
 	if plot.crop != "":
 		return "这块地已经种上了。"
 	var c: Dictionary = Data.table("crops")[crop_id]
@@ -1168,18 +1208,18 @@ static func act_garden(run: Dictionary) -> String:
 		return err
 	var planted := false
 	for plot in run.plots:
-		if plot.crop != "":
+		if plot_on_floor(run, plot) and plot.crop != "":
 			planted = true
 	if not planted:
 		return "菜畦里什么也没种。"
-	_start(run, "garden")
+	_start(run, "garden", {"floor": Floors.current(run)})
 	return ""
 
 
-static func _tend_garden(run: Dictionary) -> void:
+static func _tend_garden(run: Dictionary, floor_id := "courtyard") -> void:
 	var harvest := {}
 	for plot in run.plots:
-		if not crop_ripe(plot):
+		if not plot_on_floor(run, plot, floor_id) or not crop_ripe(plot):
 			continue
 		var c: Dictionary = Data.table("crops")[plot.crop]
 		var n := Rng.i(run, int(c["yield"][0]), int(c["yield"][1]))
@@ -1196,7 +1236,8 @@ static func _tend_garden(run: Dictionary) -> void:
 	if watered:
 		Inv.add(run.home, "water", -1)
 		for plot in run.plots:
-			plot.watered_t = run.t
+			if plot_on_floor(run, plot, floor_id):
+				plot.watered_t = run.t
 	State.add_xp(run, "farm", 3)
 	var text := "打理完菜畦"
 	if not harvest.is_empty():
@@ -1298,9 +1339,39 @@ static func _interrupt_furnish(run: Dictionary, reason := "夜袭") -> void:
 	State.note(run, "%s打断了家具安放，材料已退回。" % reason)
 
 
+## 夜袭将人送回院层前，不能让室内工作在返回后跨空间完成。
+## 家具安放有付款快照，其余工作沿用原有中断规则，不猜测退款。
+static func _interrupt_room_work(run: Dictionary) -> void:
+	if str(run.get("home_floor", "courtyard")) == "courtyard" or run.get("busy", {}).is_empty():
+		return
+	var kind := str(run.busy.get("kind", ""))
+	var label := str(run.busy.get("label", "工作"))
+	if kind == "furnish":
+		_interrupt_furnish(run)
+		return
+	run.busy = {}
+	State.note(run, "夜袭打断了%s，先返回院里。" % label)
+	# 这些系统另存工作令牌，清 busy 后立即走各自的中断对账。
+	match kind:
+		"identity":
+			var result := Identity.poll(run)
+			if result != "": Director.note_world(run, "身份与旧世 · 工作中断", result)
+		"cycle_inquiry":
+			var result := Cycle.poll(run)
+			if result != "": Director.note_world(run, "轮回调查 · 旧诺与今证", result)
+		"mainline":
+			var result := Mainline.poll(run)
+			if result != "": Director.note_world(run, "尸劫来历 · 调查与出路", result)
+		"crisis":
+			var result := Crisis.poll(run)
+			if result != "": Director.note_choice(run, "风声与危机", result)
+
+
 ## 门洞与其两端通路在旧布局中可能已有家具。
 static func _side_passage_blocked(run: Dictionary) -> bool:
 	for f in run.get("furniture", []):
+		if str(f.get("floor", "courtyard")) != "courtyard":
+			continue
 		if Home.rect_of(str(f.id), float(f.x), float(f.z), int(f.rot)).intersects(Home.SIDE_PASSAGE):
 			return true
 	return false
@@ -1342,6 +1413,54 @@ static func act_expansion(run: Dictionary) -> String:
 	return ""
 
 
+## 空间切换本身不增加设施收益，也不绕开全局时钟。
+static func floor_block(run: Dictionary, id: String) -> String:
+	if not id in ["courtyard", "cellar", "attic"]:
+		return "没有这个空间。"
+	if not Floors.unlocked(run, id):
+		return "这个空间尚未开放。"
+	if Floors.current(run) != "courtyard" and id != "courtyard" and id != Floors.current(run):
+		return "先回院里再前往另一处。"
+	if not run.get("fight", {}).is_empty() or in_night(run):
+		return "夜袭期间不能切换空间。"
+	return can_act(run, 0)
+
+static func change_floor(run: Dictionary, id: String) -> String:
+	var err := floor_block(run, id)
+	if err != "":
+		return err
+	run["home_floor"] = id
+	return ""
+
+## 已备材料与施工进度分开，打断后从头施工但不重复收费。
+static func attic_block(run: Dictionary) -> String:
+	if Floors.attic_stage(run) == "complete":
+		return "阁楼已经建好。"
+	if Floors.current(run) != "courtyard":
+		return "先回院里再施工。"
+	if not run.get("fight", {}).is_empty() or in_night(run):
+		return "夜袭期间不能施工。"
+	var err := can_act(run, 8 if Floors.attic_stage(run) == "ready" else 0)
+	if err != "":
+		return err
+	if Floors.attic_stage(run) == "unprepared" and not Inv.has_all(run.home, Floors.ATTIC_COST):
+		return "备料不足（%s）。" % Data.describe_items(Floors.ATTIC_COST)
+	return ""
+
+static func act_attic(run: Dictionary) -> String:
+	var err := attic_block(run)
+	if err != "":
+		return err
+	if Floors.attic_stage(run) == "unprepared":
+		Inv.take_all(run.home, Floors.ATTIC_COST)
+		run["attic"] = {"stage": "ready"}
+		State.note(run, "阁楼已备好%s，尚未施工。" % Data.describe_items(Floors.ATTIC_COST))
+	else:
+		_start(run, "attic_build")
+		State.note(run, "开始施工阁楼。")
+	return ""
+
+
 ## 添置一件家具：先扣料，再花时间摆进去（摆在哪儿由界面点地面给）。
 static func act_furnish(run: Dictionary, id: String, x: float, z: float, rot: int) -> String:
 	var err := can_act(run, 6)
@@ -1352,7 +1471,7 @@ static func act_furnish(run: Dictionary, id: String, x: float, z: float, rot: in
 		return err
 	var cost: Dictionary = Home.data(id).get("cost", {}).duplicate(true)
 	Inv.take_all(run.home, cost)
-	_start(run, "furnish", {"id": id, "x": x, "z": z, "rot": rot, "paid_cost": cost})
+	_start(run, "furnish", {"id": id, "x": x, "z": z, "rot": rot, "paid_cost": cost, "floor": Floors.current(run)})
 	return ""
 
 

@@ -11,6 +11,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 const Expansion = preload("res://scripts/core/home_expansion.gd")
+const Floors = preload("res://scripts/core/home_floor.gd")
 
 const CORE_IDS := ["bed", "desk", "storage", "stove", "bench"]
 
@@ -21,6 +22,8 @@ const GRID := 0.25
 const INDOOR := [Rect2(-5.8, -7.9, 11.6, 4.2), Rect2(-9.9, -3.3, 3.6, 5.6), Rect2(6.3, -3.3, 3.6, 5.6)]
 const OUTDOOR := [Rect2(-9.9, 2.6, 19.8, 4.1), Rect2(-6.1, -3.3, 12.2, 5.9)]
 ## 不许摆的：大门到正屋的中路、米袋 / 柴垛 / 木料堆（这几堆按存货画，没有碰撞）
+const ROOM_AREA := Rect2(-3.0, -2.5, 6.0, 5.0)
+const ROOM_EXIT := Rect2(-0.8, -2.5, 1.6, 5.0)
 const SIDE_YARD := Rect2(10.0, 2.7, 6.2, 4.0)
 const SIDE_PASSAGE := Rect2(9.2, 3.0, 3.0, 3.0)
 const RESERVED := [Rect2(-1.0, -3.8, 2.0, 10.9), Rect2(-9.7, -0.7, 1.6, 1.2), Rect2(-9.7, -3.6, 1.6, 1.2), Rect2(7.9, 0.6, 1.8, 1.6)]
@@ -67,8 +70,10 @@ static func find(run: Dictionary, uid: int) -> Dictionary:
 static func core(run: Dictionary, id: String) -> Dictionary:
 	if not id in CORE_IDS:
 		return {}
-	var found := list(run, id)
-	return found[0] if not found.is_empty() else {}
+	for f in list(run, id):
+		if str(f.get("floor", "courtyard")) == "courtyard":
+			return f
+	return {}
 
 
 static func is_core(run: Dictionary, f: Dictionary) -> bool:
@@ -135,6 +140,8 @@ static func _inside(r: Rect2, areas: Array) -> bool:
 
 
 static func area_of(r: Rect2, run: Dictionary = {}) -> String:
+	if Floors.current(run) != "courtyard":
+		return "indoor" if _inside(r, [ROOM_AREA]) else ""
 	if _inside(r, INDOOR):
 		return "indoor"
 	var outdoor := OUTDOOR.duplicate()
@@ -161,13 +168,16 @@ static func spot_block(run: Dictionary, id: String, x: float, z: float, rot: int
 		"outdoor":
 			if area != "outdoor":
 				return "%s得摆在院里。" % d.name
-	if Expansion.complete(run) and r.intersects(SIDE_PASSAGE):
+	var floor_id := Floors.current(run)
+	if floor_id != "courtyard" and r.intersects(ROOM_EXIT):
+		return "这儿要留作出入口。"
+	if floor_id == "courtyard" and Expansion.complete(run) and r.intersects(SIDE_PASSAGE):
 		return "这儿要留作侧院通路。"
-	for res in RESERVED:
+	for res in (RESERVED if floor_id == "courtyard" else []):
 		if r.intersects(res):
 			return "这儿要留着走路 / 堆东西。"
 	for f in run.get("furniture", []):
-		if int(f.uid) == ignore_uid:
+		if str(f.get("floor", "courtyard")) != floor_id or int(f.uid) == ignore_uid:
 			continue
 		if r.grow(-0.02).intersects(rect_of(f.id, float(f.x), float(f.z), int(f.rot))):
 			return "和%s挤在一起了。" % data(f.id).name
@@ -199,11 +209,11 @@ static func build_minutes(run: Dictionary, id: String) -> int:
 
 # ---------- 增删挪 ----------
 
-static func add(run: Dictionary, id: String, x: float, z: float, rot: int) -> Dictionary:
+static func add(run: Dictionary, id: String, x: float, z: float, rot: int, floor_id := "") -> Dictionary:
 	if not run.has("furniture"):
 		run.furniture = []
 	run.next_uid = int(run.get("next_uid", 1))
-	var f := {"uid": run.next_uid, "id": id, "x": x, "z": z, "rot": posmod(rot, 360)}
+	var f := {"uid": run.next_uid, "id": id, "x": x, "z": z, "rot": posmod(rot, 360), "floor": Floors.current(run) if floor_id == "" else floor_id}
 	run.next_uid = int(run.next_uid) + 1
 	run.furniture.append(f)
 	if data(id).get("fn", "") == "plant":
@@ -216,6 +226,8 @@ static func move_block(run: Dictionary, uid: int) -> String:
 	var f := find(run, uid)
 	if f.is_empty():
 		return "找不到这件家具。"
+	if str(f.get("floor", "courtyard")) != Floors.current(run):
+		return "先进入家具所在空间。"
 	if not run.get("fight", {}).is_empty():
 		return "夜袭中不能挪动家具，先结束战斗。"
 	if is_core(run, f) and str(f.id) in run.get("broken", []):
@@ -244,6 +256,8 @@ static func remove(run: Dictionary, uid: int) -> String:
 	var f := find(run, uid)
 	if f.is_empty():
 		return "找不到这件家具。"
+	if str(f.get("floor", "courtyard")) != Floors.current(run):
+		return "先进入家具所在空间。"
 	var d := data(f.id)
 	var back := {}
 	for item in d.get("cost", {}):
@@ -268,9 +282,9 @@ static func ensure_layout(run: Dictionary) -> void:
 	run.flags["layout_done"] = true
 	if run.furniture.is_empty():
 		for row in DEFAULT_LAYOUT:
-			add(run, row[0], row[1], row[2], row[3])
+			add(run, row[0], row[1], row[2], row[3], "courtyard")
 	if "water_vat" in run.get("facilities", []) and count(run, "water_vat") == 0:
-		add(run, "water_vat", -5.2, 2.0, 0)
+		add(run, "water_vat", -5.2, 2.0, 0, "courtyard")
 
 
 ## 老卷中的固定工作家具没有数据时补回；已有位置和其他家具均保留。
@@ -283,7 +297,7 @@ static func ensure_core(run: Dictionary) -> void:
 	run["next_uid"] = maxi(int(run.get("next_uid", 1)), max_uid + 1)
 	for row in DEFAULT_LAYOUT:
 		if row[0] in CORE_IDS and core(run, str(row[0])).is_empty():
-			add(run, str(row[0]), float(row[1]), float(row[2]), int(row[3]))
+			add(run, str(row[0]), float(row[1]), float(row[2]), int(row[3]), "courtyard")
 
 
 ## 舒适度：摆设越多，屋里越像个家（每天心神加成的来源）。

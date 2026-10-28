@@ -18,6 +18,7 @@ const Outline = preload("res://scripts/world/outline.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Expansion = preload("res://scripts/core/home_expansion.gd")
+const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
@@ -103,6 +104,7 @@ func build_overlay() -> void:
 
 func sync_world() -> void:
 	if _show == null:
+		_sync_floor()
 		# 回溯或读取旧档会关上侧墙；取消旧路径并把墙外的人送回院内。
 		if world._side_stage == "complete" and not Expansion.complete(Game.run):
 			player.stop()
@@ -114,6 +116,32 @@ func sync_world() -> void:
 				player.velocity = Vector3.ZERO
 		world.sync(Game.run)
 		world.show_fight(Game.run.get("fight", {}))
+
+
+## 同屏读档、回溯或危机强制回院也要同步真实人物与相机。
+func _sync_floor() -> void:
+	var target := Floors.current(Game.run)
+	# 同层读档/回溯也会替换家具布局；回到保留入口，避免人物卡入新加载的家具。
+	var changed_run := not is_same(world._current_run, Game.run)
+	if world._floor == target and not (target != "courtyard" and changed_run):
+		return
+	player.stop()
+	_pending = Callable()
+	_pending_spot = ""
+	_close_menu()
+	Game.placing = ""
+	Game.moving_uid = -1
+	world.set_floor(target)
+	player.global_position = world.floor_spawn(target)
+	player.velocity = Vector3.ZERO
+	rig.snap()
+
+
+func _change_floor(target: String) -> void:
+	var result = Game.act(func(): return Post.change_floor(Game.run, target))
+	if typeof(result) == TYPE_STRING and result == "":
+		_sync_floor()
+		world.sync(Game.run)
 
 
 func _process(delta: float) -> void:
@@ -229,7 +257,8 @@ func _place_at(p: Vector3) -> void:
 			return
 		Game.placing = ""
 		Game.moving_uid = -1
-		var result = Game.act(func(): return Home.move(Game.run, uid, p.x, p.z, rot))
+		var local: Vector3 = world.to_floor_local(p)
+		var result = Game.act(func(): return Home.move(Game.run, uid, local.x, local.z, rot))
 		if typeof(result) == TYPE_STRING and result != "":
 			Game.placing = id
 			Game.moving_uid = uid
@@ -241,7 +270,8 @@ func _place_at(p: Vector3) -> void:
 			Game.toast.emit(block)
 			return
 		Game.placing = ""
-		var res = Game.act(func(): return Post.act_furnish(Game.run, id, Home.snap(p.x), Home.snap(p.z), rot))
+		var local: Vector3 = world.to_floor_local(p)
+		var res = Game.act(func(): return Post.act_furnish(Game.run, id, Home.snap(local.x), Home.snap(local.z), rot))
 		if typeof(res) == TYPE_STRING and res != "":
 			Game.placing = id
 			return
@@ -407,6 +437,8 @@ func advance(mins: int) -> void:
 	var hour_before := Post.clock(run) / 60
 	var crisis_before := str(Crisis.view(run).get("id", ""))
 	var stop := Post.advance(run, mins)
+	# 尸潮/溃兵结算之前先将角色和镜头带回院落。
+	_sync_floor()
 	if run.phase == "post" and str(Crisis.view(run).get("id", "")) != crisis_before:
 		# 首次公开及下一场预兆都需要搭卡片；不能依赖碰巧出现随机事件。
 		Game.refresh()
@@ -651,6 +683,7 @@ func _click(pos: Vector2) -> void:
 		open_menu(hit.spot, pos)
 	elif hit.has("ground") and player.enabled:
 		_pending = Callable()
+		world.prepare_navigation()
 		player.walk_to(hit.ground)
 
 
@@ -658,10 +691,18 @@ func _click(pos: Vector2) -> void:
 func actions_for(id: String) -> Array:
 	var run: Dictionary = Game.run
 	var can := Post.can_act(run)
+	if id == "floor_cellar":
+		return [["进入地窖", func(): _change_floor("cellar"), Post.floor_block(run, "cellar")]]
+	if id == "floor_attic":
+		return [["进入阁楼", func(): _change_floor("attic"), Post.floor_block(run, "attic")]]
+	if id == "floor_exit":
+		return [["返回宅院", func(): _change_floor("courtyard"), Post.floor_block(run, "courtyard")]]
+	if id == "floor_use":
+		return [["打开存货", Dialogs.inventory, ""], ["添置家具…", Dialogs.furnish, can]]
 	if id.begins_with("f_"):
 		var uid := int(id.substr(2))
 		var f := Home.find(run, uid)
-		if f.is_empty():
+		if f.is_empty() or str(f.get("floor", "courtyard")) != Floors.current(run):
 			return []
 		var move_reason := Home.move_block(run, uid)
 		var list := [["挪位…", func(): _start_move(uid), can if can != "" else move_reason]]
@@ -671,6 +712,8 @@ func actions_for(id: String) -> Array:
 		if str(f.id) == "planter":
 			list.push_front(["播种 / 查看菜畦…", Dialogs.garden, ""])
 		return list
+	if Floors.current(run) != "courtyard":
+		return []
 	match id:
 		"stove":
 			if "stove" in run.get("broken", []):
@@ -678,7 +721,7 @@ func actions_for(id: String) -> Array:
 			return [["生火做饭…", Dialogs.cook, can]]
 		"garden":
 			var tend := can
-			if tend == "" and run.plots.all(func(p): return p.crop == ""):
+			if tend == "" and run.plots.all(func(p): return not Post.plot_on_floor(run, p) or p.crop == ""):
 				tend = "还没种东西"
 			return [["浇水 · 收成（45 分钟）", _act(func(): return Post.act_garden(Game.run)), tend], ["播种 / 查看菜畦…", Dialogs.garden, ""]]
 		"well":
@@ -699,6 +742,13 @@ func actions_for(id: String) -> Array:
 			var mend := "" if can_mend else "没有木料（两捆柴也行）"
 			var decor_block := "夜袭中不能装修。" if not run.get("fight", {}).is_empty() else can
 			var out := [["营造守具 · 画符…", Dialogs.build, ""], ["添置家具…", Dialogs.furnish, ""], ["宅院装修…", func(): preload("res://scripts/ui/home_decoration.gd").open(), decor_block], ["东侧院扩建…", func(): preload("res://scripts/ui/home_expansion.gd").open(), ""]]
+			if Floors.unlocked(run, "cellar"):
+				out.append(["进入地窖", func(): _change_floor("cellar"), Post.floor_block(run, "cellar")])
+			if Floors.unlocked(run, "attic"):
+				out.append(["进入阁楼", func(): _change_floor("attic"), Post.floor_block(run, "attic")])
+			else:
+				var attic_action := "阁楼备料（木料 8、铁钉 4）" if Floors.attic_stage(run) == "unprepared" else "阁楼施工（120 分钟、8 精力）"
+				out.append([attic_action, _act(func(): return Post.act_attic(Game.run)), Post.attic_block(run)])
 			if "bench" in run.get("broken", []):
 				out = _fix_menu("bench") + out
 			for row in [["door", "门"], ["window", "窗"], ["wall", "墙"]]:
@@ -736,13 +786,18 @@ func _start_move(uid: int) -> void:
 
 ## 动态家具按当前位置提供交互名称与站位，固定物沿用原场景定义。
 func _spot_info(id: String) -> Dictionary:
+	var floor_info: Dictionary = world.spot_info(id)
+	if not floor_info.is_empty():
+		return floor_info
+	if Floors.current(Game.run) != "courtyard" and not id.begins_with("f_"):
+		return {}
 	if HomeWorld.SPOTS.has(id):
 		return HomeWorld.SPOTS[id]
 	var f := Home.core(Game.run, id) if id in Home.CORE_IDS else Home.find(Game.run, int(id.substr(2))) if id.begins_with("f_") else {}
-	if f.is_empty():
+	if f.is_empty() or str(f.get("floor", "courtyard")) != Floors.current(Game.run):
 		return {}
-	var center := Vector3(float(f.x), 0.0, float(f.z))
-	var stand := Home.stand(f)
+	var center: Vector3 = world.floor_origin() + Vector3(float(f.x), 0.0, float(f.z))
+	var stand: Vector3 = world.floor_origin() + Home.stand(f)
 	return {"name": Home.data(str(f.id)).get("name", "家具"), "stand": stand, "tag": center + Vector3(0, float(Home.data(str(f.id)).get("h", 1.0)) + 0.7, 0)}
 
 
@@ -818,6 +873,7 @@ func do_at(id: String, cb: Callable) -> void:
 		return
 	_pending = cb
 	_pending_spot = id
+	world.prepare_navigation()
 	player.walk_to(stand)
 
 
@@ -847,6 +903,9 @@ func _face(id: String) -> void:
 
 ## 差事单上的一行：走到地方再做（跟点物件一个规矩）。既有行动转给各自的物件菜单或弹窗。
 func agenda_do(idx: int) -> void:
+	if Floors.current(Game.run) != "courtyard":
+		Game.toast.emit("先回宅院再做这项差事。")
+		return
 	var it := Agenda.item(Game.run, idx)
 	if it.is_empty():
 		return
@@ -870,6 +929,9 @@ func agenda_do(idx: int) -> void:
 
 ## 按文字找到物件上的一个动作直接做（快捷键、常用行为、测试用）。
 func perform(id: String, prefix: String) -> void:
+	if Floors.current(Game.run) != "courtyard" and not id.begins_with("floor_") and not id.begins_with("f_"):
+		Game.toast.emit("先回宅院再做这件事。")
+		return
 	for a in actions_for(id):
 		if String(a[0]).begins_with(prefix):
 			if a[2] != "":
@@ -1021,7 +1083,7 @@ func _left_top(run: Dictionary) -> void:
 			planted += 1
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 8)
-	head.add_child(Hud.title("菜畦", 19, Hud.GOLD))
+	head.add_child(Hud.title("全宅菜畦", 19, Hud.GOLD))
 	head.add_child(Hud.tag("%d/%d" % [planted, run.plots.size()], Color("#5d7d4f")))
 	g.add_child(head)
 	var crops: Dictionary = Data.table("crops")
@@ -1254,12 +1316,13 @@ func _quick_actions(run: Dictionary) -> Array:
 			q.append(["吃 " + Data.item_name(best), func(): Dialogs._use(best), true])
 	if run.plague and Inv.count(run.home, "plague_powder") > 0:
 		q.append(["服 避瘟散", func(): Dialogs._use("plague_powder"), true])
-	if Post.water_block(run) == "" and not Post.is_night(run):
-		q.append(["打水", func(): perform("well", "打水"), false])
-	if Post.is_night(run) and not run.sleeping:
-		q.append(["就寝", func(): perform("bed", "就寝"), false])
-	elif State.attr(run, "energy") < 30:
-		q.append(["小憩", func(): perform("bed", "小憩"), false])
+	if Floors.current(run) == "courtyard":
+		if Post.water_block(run) == "" and not Post.is_night(run):
+			q.append(["打水", func(): perform("well", "打水"), false])
+		if Post.is_night(run) and not run.sleeping:
+			q.append(["就寝", func(): perform("bed", "就寝"), false])
+		elif State.attr(run, "energy") < 30:
+			q.append(["小憩", func(): perform("bed", "小憩"), false])
 	return q.slice(0, 4)
 
 

@@ -13,6 +13,7 @@ const Ledger = preload("res://scripts/core/ledger.gd")
 const Defense = preload("res://scripts/core/defense.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Home = preload("res://scripts/core/home.gd")
+const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
@@ -937,6 +938,8 @@ func _garden(body: VBoxContainer) -> void:
 	body.add_child(UI.para("下种随手就行。一天之内浇过水的作物才长；打理一次要四十五分钟、一瓢清水，熟了的顺手收。", 16))
 	for k in run.plots.size():
 		var plot: Dictionary = run.plots[k]
+		if not Post.plot_on_floor(run, plot):
+			continue
 		var h := UI.hbox(10)
 		var plot_name := "第 %d 畦" % (k + 1)
 		if plot.has("pot"):
@@ -1398,7 +1401,9 @@ func _furnish(body: VBoxContainer) -> void:
 	var content := UI.vbox(8)
 	UI.expand(content)
 	scroll.add_child(content)
-	content.add_child(UI.para("挑一件，回到院里点地面放下。R 转方向，Esc 取消。屋里院里的空地都能摆，只是不能堵中路、不能和别的东西挤在一起。", 16))
+	content.add_child(UI.para("挑一件，在当前空间点地面放下。R 转方向，Esc 取消；不能堵通路，也不能和别的东西挤在一起。", 16))
+	if Floors.current(run) != "courtyard":
+		content.add_child(UI.para("家具原有的全宅效果仍会生效；做饭、睡觉等工作请回院内对应工作站。", 14))
 	content.add_child(UI.sep())
 	var items: Dictionary = Data.table("furniture")
 	var keys := items.keys()
@@ -1408,7 +1413,8 @@ func _furnish(body: VBoxContainer) -> void:
 			row = UI.hbox(10)
 			content.add_child(row)
 		row.add_child(_furn_card(run, str(keys[i])))
-	var placed := Home.list(run)
+	var floor_id := Floors.current(run)
+	var placed := Home.list(run).filter(func(f): return str(f.get("floor", "courtyard")) == floor_id)
 	if not placed.is_empty():
 		content.add_child(UI.sep())
 		content.add_child(UI.label("已经摆着的（可挪位，拆掉退一半料）", 18, UI.CINNABAR))

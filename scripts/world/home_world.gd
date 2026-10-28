@@ -14,6 +14,8 @@ const State = preload("res://scripts/core/state.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Expansion = preload("res://scripts/core/home_expansion.gd")
+const Floors = preload("res://scripts/core/home_floor.gd")
+const FloorWorld = preload("res://scripts/world/home_floor.gd")
 const DecorationWorld = preload("res://scripts/world/home_decoration.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const Figure = preload("res://scripts/world/character.gd")
@@ -41,6 +43,7 @@ var gate: Dictionary
 var lanterns := []
 var spot_nodes := {}
 var nav_region: NavigationRegion3D
+var _room_nav := {}
 var _window: Node3D
 var _dynamic: Dictionary = {}
 var _night := false
@@ -52,6 +55,10 @@ var _current_run := {}
 var _side_yard: Node3D
 var _side_stage := ""
 var _side_lantern := {}
+var _floor := "courtyard"
+var _floor_rooms := {}
+var _outside_nodes: Array[Node3D] = []
+var _outside_visibility := {}
 # C1 邻宅氛围：set_time 缓存阶段/大雪上下文，set_preset 据此投影（不缓存 run 本体）。
 var _amb_ctx := {"phase": "post", "pday": 1, "heavy": false}
 
@@ -70,6 +77,9 @@ func _ready() -> void:
 	_buildings()
 	_furniture()
 	_decor()
+	for floor_id in ["cellar", "attic"]:
+		_floor_rooms[floor_id] = FloorWorld.build(self, floor_id)
+		_floor_rooms[floor_id].root.visible = false
 	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration"]:
 		_dynamic[key] = K.node(self, Vector3.ZERO, Vector3.ZERO, key)
 	# 菜畦整块的拾取碰撞（菜苗每次重画，碰撞固定在这里；大小随画出来的畦数变，见 _fit_garden）
@@ -77,7 +87,11 @@ func _ready() -> void:
 	_garden_body = K.collider(garden_root, Vector3.ONE, Vector3.ZERO, {"spot": "garden"})
 	spot_nodes["garden"] = _dynamic.garden
 	# 静态的方块按材质合并；会动、会重画、要描边的留着；四周景物根整树跳过（层内各自合并）
-	K.merge_static(self, [gate.node, _window, surroundings, _side_yard] + spot_nodes.values() + _dynamic.values())
+	K.merge_static(self, [gate.node, _window, surroundings, _side_yard, _floor_rooms.cellar.root, _floor_rooms.attic.root] + spot_nodes.values() + _dynamic.values())
+	# 只收集场景本身的节点，后加的玩家与相机不会被隐藏。
+	for child in get_children():
+		if child is Node3D and child != _floor_rooms.cellar.root and child != _floor_rooms.attic.root and child != _dynamic.furnish:
+			_outside_nodes.append(child)
 
 
 func _ground() -> void:
@@ -195,8 +209,92 @@ func _tag_colliders(n: Node, id: String) -> void:
 		_tag_colliders(c, id)
 
 
+## 楼层切换由界面处理角色与时间；这里仅管理场景、拾取和导航。
+func set_floor(id: String) -> void:
+	var target := id if id in ["cellar", "attic"] else "courtyard"
+	if target == _floor:
+		return
+	var was_outside := _floor == "courtyard"
+	_floor = target
+	if was_outside and _floor != "courtyard":
+		_outside_visibility.clear()
+		for node in _outside_nodes:
+			if is_instance_valid(node):
+				_outside_visibility[node] = node.visible
+				node.visible = false
+	elif not was_outside and _floor == "courtyard":
+		for node in _outside_nodes:
+			if is_instance_valid(node) and _outside_visibility.has(node):
+				node.visible = bool(_outside_visibility[node])
+		_outside_visibility.clear()
+	for floor_id in _floor_rooms:
+		_floor_rooms[floor_id].root.visible = floor_id == _floor
+	spot_nodes.erase("floor_exit")
+	spot_nodes.erase("floor_use")
+	if _floor != "courtyard":
+		spot_nodes["floor_exit"] = _floor_rooms[_floor].floor_exit
+		spot_nodes["floor_use"] = _floor_rooms[_floor].floor_use
+
+
+## 路径查询前提交刚烘焙的楼层网格，避免切层首击使用旧地图。
+func prepare_navigation() -> void:
+	if is_inside_tree():
+		NavigationServer3D.map_force_update(get_world_3d().navigation_map)
+		NavigationServer3D.map_force_update(get_world_3d().navigation_map)
+
+
+func floor_origin() -> Vector3:
+	return FloorWorld.ORIGINS.get(_floor, Vector3.ZERO)
+
+
+func to_floor_local(p: Vector3) -> Vector3:
+	return p - floor_origin()
+
+
+func floor_spawn(id: String) -> Vector3:
+	return SPAWN if id == "courtyard" else FloorWorld.spawn(id)
+
+
+func spot_info(id: String) -> Dictionary:
+	if _floor != "courtyard":
+		return FloorWorld.info(_floor, id)
+	match id:
+		"floor_cellar":
+			return {"name": "地窖盖板", "stand": Vector3(6, 0, -1.35), "tag": Vector3(6, 1.1, -2.4)}
+		"floor_attic":
+			return {"name": "阁楼梯", "stand": Vector3(-1.9, 0, -2.1), "tag": Vector3(-1.9, 1.3, -3.35)}
+	return {}
+
+
+func _spot_on_floor(id: String) -> bool:
+	if id.begins_with("f_"):
+		var f := Home.find(_current_run, int(id.substr(2)))
+		return not f.is_empty() and str(f.get("floor", "courtyard")) == _floor
+	if id in ["floor_exit", "floor_use"]:
+		return _floor != "courtyard"
+	return _floor == "courtyard"
+
+
 ## 导航网格：按院里的静态碰撞烘焙，点哪儿走哪儿。
 func _bake_nav() -> void:
+	nav_region = _new_nav_region("courtyard")
+	for floor_id in ["cellar", "attic"]:
+		_room_nav[floor_id] = _new_nav_region(floor_id)
+	# 首次建场景时碰撞体可能尚未进入物理空间；下一物理帧再烘焙一次。
+	call_deferred("_finish_initial_navigation")
+
+
+func _finish_initial_navigation() -> void:
+	await get_tree().physics_frame
+	if not is_inside_tree():
+		return
+	nav_region.bake_navigation_mesh(false)
+	for region in _room_nav.values():
+		region.bake_navigation_mesh(false)
+	prepare_navigation()
+
+
+func _new_nav_region(floor_id: String) -> NavigationRegion3D:
 	var nm := NavigationMesh.new()
 	nm.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
 	nm.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
@@ -207,11 +305,12 @@ func _bake_nav() -> void:
 	nm.agent_radius = 0.5
 	nm.agent_height = 1.75
 	nm.agent_max_climb = 0.25
-	nm.filter_baking_aabb = _nav_bounds()
-	nav_region = NavigationRegion3D.new()
-	nav_region.navigation_mesh = nm
-	add_child(nav_region)
-	nav_region.bake_navigation_mesh(false)
+	nm.filter_baking_aabb = _nav_bounds_for(floor_id)
+	var region := NavigationRegion3D.new()
+	region.navigation_mesh = nm
+	add_child(region)
+	region.bake_navigation_mesh(false)
+	return region
 
 
 # 扩建只在施工完成后打开侧墙；中间阶段保留封闭的原院。
@@ -246,7 +345,10 @@ func _sync_side_yard(run: Dictionary) -> bool:
 	return true
 
 
-func _nav_bounds() -> AABB:
+func _nav_bounds_for(floor_id: String) -> AABB:
+	if floor_id != "courtyard":
+		var p: Vector3 = FloorWorld.ORIGINS[floor_id]
+		return AABB(p + Vector3(-4.2, -1, -3.7), Vector3(8.4, 6, 7.4))
 	return AABB(Vector3(-10.5, -1, -8.5), Vector3(27.5, 6, 16)) if Expansion.complete(_current_run) else AABB(Vector3(-10.5, -1, -8.5), Vector3(21, 6, 16))
 
 
@@ -276,14 +378,16 @@ func sync(run: Dictionary) -> void:
 		var key := _furniture_nav_key(run)
 		if key != _nav_furniture_key or old_rows != _garden_rows or side_changed:
 			_nav_furniture_key = key
-			nav_region.navigation_mesh.filter_baking_aabb = _nav_bounds()
+			nav_region.navigation_mesh.filter_baking_aabb = _nav_bounds_for("courtyard")
 			nav_region.bake_navigation_mesh(false)
+			for region in _room_nav.values():
+				region.bake_navigation_mesh(false)
 
 
 func _furniture_nav_key(run: Dictionary) -> String:
 	var parts: Array[String] = []
 	for f in run.get("furniture", []):
-		parts.append("%s:%s:%s:%s:%s" % [f.uid, f.id, f.x, f.z, f.rot])
+		parts.append("%s:%s:%s:%s:%s:%s" % [f.uid, f.id, f.x, f.z, f.rot, f.get("floor", "courtyard")])
 	return "|".join(parts)
 
 
@@ -327,7 +431,11 @@ func plot_tag_position(run: Dictionary, index: int) -> Variant:
 		var f := Home.find(run, int(plot.pot))
 		if f.is_empty() or str(f.id) != "planter":
 			return null
-		return Vector3(float(f.x), 0.9, float(f.z))
+		if str(f.get("floor", "courtyard")) != _floor:
+			return null
+		return floor_origin() + Vector3(float(f.x), 0.9, float(f.z))
+	if _floor != "courtyard":
+		return null
 	var ground_index := 0
 	for i in index:
 		if not plots[i].has("pot"):
@@ -345,7 +453,8 @@ func _rebuild_furniture(run: Dictionary) -> void:
 	for f in run.get("furniture", []):
 		var id := str(f.id)
 		var spot := "f_%d" % int(f.uid)
-		var root := K.node(_dynamic.furnish, Vector3(float(f.x), 0.0, float(f.z)), Vector3(0, float(f.rot), 0), spot)
+		var origin: Vector3 = FloorWorld.ORIGINS.get(str(f.get("floor", "courtyard")), Vector3.ZERO)
+		var root := K.node(_dynamic.furnish, origin + Vector3(float(f.x), 0.0, float(f.z)), Vector3(0, float(f.rot), 0), spot)
 		if id in Home.CORE_IDS:
 			_core_mesh(root, id, run)
 		else:
@@ -476,6 +585,8 @@ func _rebuild_devices(run: Dictionary) -> void:
 
 func _rebuild_extras(run: Dictionary) -> void:
 	K.clear(_dynamic.extras)
+	spot_nodes.erase("floor_cellar")
+	spot_nodes.erase("floor_attic")
 	var facs: Array = run.get("facilities", [])
 	if "water_vat" in facs:
 		Props.water_vat(_dynamic.extras, Vector3(-5.2, 0, 2.0))
@@ -487,8 +598,19 @@ func _rebuild_extras(run: Dictionary) -> void:
 		K.box(t, Vector3(1.6, 0.12, 1.6), K.WOOD_LIGHT, Vector3(0, 4.2, 0))
 		K.prism(t, Vector3(2.0, 0.6, 2.0), K.ROOF, Vector3(0, 5.3, 0), Vector3(0, 90, 0))
 	if "cellar" in facs:
-		K.box(_dynamic.extras, Vector3(1.4, 0.08, 1.0), K.WOOD, Vector3(6.0, 0.09, -2.4))
-		K.box(_dynamic.extras, Vector3(0.1, 0.1, 0.5), K.mat(K.GOLD, 0.4), Vector3(6.0, 0.16, -2.4))
+		var hatch := K.node(_dynamic.extras, Vector3(6.0, 0, -2.4))
+		K.box(hatch, Vector3(1.4, 0.08, 1.0), K.WOOD, Vector3(0, 0.09, 0))
+		K.box(hatch, Vector3(0.1, 0.1, 0.5), K.mat(K.GOLD, 0.4), Vector3(0, 0.16, 0))
+		K.text3d(hatch, "地窖", Vector3(0, 1.05, 0), 48, Color("#f2d89c"))
+		K.collider(hatch, Vector3(1.4, 0.35, 1.0), Vector3(0, 0.18, 0), {"spot": "floor_cellar"})
+		_register("floor_cellar", hatch)
+	if Floors.unlocked(run, "attic"):
+		var stairs := K.node(_dynamic.extras, Vector3(-1.9, 0, -3.35))
+		for i in 3:
+			K.box(stairs, Vector3(0.9, 0.12, 0.35), K.WOOD_LIGHT, Vector3(0, 0.08 + i * 0.12, -i * 0.25))
+		K.text3d(stairs, "阁楼", Vector3(0, 1.2, 0), 48, Color("#f2d89c"))
+		K.collider(stairs, Vector3(0.9, 0.65, 1.0), Vector3(0, 0.33, -0.25), {"spot": "floor_attic"})
+		_register("floor_attic", stairs)
 	if "door_bar" in facs:
 		for y in [0.6, 2.2]:
 			K.box(_dynamic.extras, Vector3(2.4, 0.14, 0.06), K.mat(Color("#4a4d52"), 0.4), Vector3(0, y, GATE_Z + 0.12))
@@ -723,14 +845,38 @@ func _set_lanterns(lit: bool) -> void:
 func nearest_spot(pos: Vector3, radius := 1.8) -> String:
 	var best := ""
 	var best_d := radius
+	if _floor != "courtyard":
+		for id in ["floor_exit", "floor_use"]:
+			var info := spot_info(id)
+			var p: Vector3 = info.stand
+			var d := Vector2(pos.x - p.x, pos.z - p.z).length()
+			if d < best_d:
+				best = id
+				best_d = d
+		for f in _current_run.get("furniture", []):
+			if str(f.get("floor", "courtyard")) != _floor:
+				continue
+			var p := floor_origin() + Vector3(float(f.x), 0, float(f.z))
+			var d := Vector2(pos.x - p.x, pos.z - p.z).length()
+			if d < best_d:
+				best = "f_%d" % int(f.uid)
+				best_d = d
+		return best
 	for id in SPOTS:
 		var p: Vector3 = SPOTS[id].stand
 		var d := Vector2(pos.x - p.x, pos.z - p.z).length()
 		if d < best_d:
 			best = id
 			best_d = d
+	for id in ["floor_cellar", "floor_attic"]:
+		if spot_nodes.has(id):
+			var p: Vector3 = spot_info(id).stand
+			var d := Vector2(pos.x - p.x, pos.z - p.z).length()
+			if d < best_d:
+				best = id
+				best_d = d
 	for f in _current_run.get("furniture", []):
-		if not Home.is_core(_current_run, f):
+		if str(f.get("floor", "courtyard")) != "courtyard" or not Home.is_core(_current_run, f):
 			continue
 		var p := Home.stand(f)
 		var d := Vector2(pos.x - p.x, pos.z - p.z).length()
@@ -748,7 +894,10 @@ func pick(cam: Camera3D, screen_pos: Vector2) -> Dictionary:
 	if hit.is_empty():
 		return {}
 	if hit.collider.has_meta("spot"):
-		return {"spot": hit.collider.get_meta("spot")}
+		var id := str(hit.collider.get_meta("spot"))
+		if _spot_on_floor(id):
+			return {"spot": id}
+		return {}
 	var p: Vector3 = hit.position
 	if p.y < 0.3 and _inside_pick_bounds(p):
 		return {"ground": Vector3(p.x, 0, p.z)}
@@ -756,6 +905,8 @@ func pick(cam: Camera3D, screen_pos: Vector2) -> Dictionary:
 
 
 func _inside_pick_bounds(p: Vector3) -> bool:
+	if _floor != "courtyard":
+		return FloorWorld.contains(_floor, p)
 	if absf(p.x) < 10.0 and p.z > -8.0 and p.z < GATE_Z - 0.3:
 		return true
 	return Expansion.complete(_current_run) and p.x >= 10.0 and p.x < 16.3 and p.z > 2.7 and p.z < 6.7
@@ -789,6 +940,8 @@ func _collect_collision_rids(node: Node, out: Array[RID]) -> void:
 ## 保守预留各核心站位及通向中轴的走廊，防止新增家具切断它们。
 ## 这是静态保留区，并非对玩家当前实际路线的寻路证明。
 func _move_route_block(rect: Rect2, run: Dictionary, ignore_uid: int) -> bool:
+	if _floor != "courtyard":
+		return rect.intersects(Rect2(-0.8, -2.5, 1.6, 5.0))
 	for info in SPOTS.values():
 		var p: Vector3 = info.stand
 		var left := minf(0.0, p.x)
@@ -808,8 +961,9 @@ func _move_route_block(rect: Rect2, run: Dictionary, ignore_uid: int) -> bool:
 
 ## 新建和挪位同样检查物理障碍与通路，不能穿过侧墙或堵住工作站。
 func build_spot_block(run: Dictionary, id: String, x: float, z: float, rot: int) -> String:
-	x = Home.snap(x)
-	z = Home.snap(z)
+	var local := to_floor_local(Vector3(x, 0, z))
+	x = Home.snap(local.x)
+	z = Home.snap(local.z)
 	var err := Home.place_block(run, id, x, z, rot)
 	if err != "":
 		return err
@@ -822,7 +976,7 @@ func build_spot_block(run: Dictionary, id: String, x: float, z: float, rot: int)
 	shape.size = Vector3(maxf(0.01, size.x - 0.04), 0.7, maxf(0.01, size.y - 0.04))
 	var q := PhysicsShapeQueryParameters3D.new()
 	q.shape = shape
-	q.transform = Transform3D(Basis.IDENTITY, Vector3(x, 0.45, z))
+	q.transform = Transform3D(Basis.IDENTITY, floor_origin() + Vector3(x, 0.45, z))
 	for hit in get_world_3d().direct_space_state.intersect_shape(q, 64):
 		if hit.collider is StaticBody3D:
 			return "这儿有东西挡着。"
@@ -837,8 +991,11 @@ func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) ->
 	if eligibility != "":
 		return eligibility
 	var f := Home.find(run, uid)
-	x = Home.snap(x)
-	z = Home.snap(z)
+	if str(f.get("floor", "courtyard")) != _floor:
+		return "不能跨层挪动家具。"
+	var local := to_floor_local(Vector3(x, 0, z))
+	x = Home.snap(local.x)
+	z = Home.snap(local.z)
 	var err := Home.spot_block(run, str(f.id), x, z, rot, uid)
 	if err != "":
 		return err
@@ -851,7 +1008,7 @@ func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) ->
 	shape.size = Vector3(maxf(0.01, size.x - 0.04), 0.7, maxf(0.01, size.y - 0.04))
 	var q := PhysicsShapeQueryParameters3D.new()
 	q.shape = shape
-	q.transform = Transform3D(Basis.IDENTITY, Vector3(x, 0.45, z))
+	q.transform = Transform3D(Basis.IDENTITY, floor_origin() + Vector3(x, 0.45, z))
 	var excluded: Array[RID] = []
 	var source: Node = spot_nodes.get("f_%d" % uid)
 	if source != null:
@@ -911,6 +1068,8 @@ func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) ->
 
 ## 人在屋里（踩木地板）吗。
 func indoors(pos: Vector3) -> bool:
+	if _floor != "courtyard":
+		return true
 	for h in halls:
 		var local: Vector3 = (h.node as Node3D).to_local(pos)
 		if absf(local.x) < h.w / 2.0 and absf(local.z) < h.d / 2.0:
