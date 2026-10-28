@@ -5,7 +5,7 @@ extends Node
 ## 开发：godot --headless --path . res://tests/export_smoke.tscn
 ## 打包：劫余录.exe --headless --main-pack <verify.pck> res://tests/export_smoke.tscn
 ##
-## 会写文件：导出环境里真的往 user://Memory.md 写一次（那正是要验的那条），跑完删掉。
+## 只写本次运行的独立探针，不覆盖或删除玩家的 user://Memory.md 与存档。
 
 const State = preload("res://scripts/core/state.gd")
 const Data = preload("res://scripts/core/data.gd")
@@ -39,24 +39,43 @@ func _ready() -> void:
 	check(not Data.table("items").is_empty(), "物品表没进包")
 
 	# 4. 存档写得进去（user:// 在任何环境都可写）
-	var probe := "user://export_smoke_save.json"
-	SaveFile.forget(probe)
+	var probe_id := "%d-%d" % [OS.get_process_id(), Time.get_ticks_usec()]
+	# Fixed numeric ID is used only to exercise collision refusal in this test.
+	var forced_id := OS.get_environment("LEDGER_EXPORT_SMOKE_PROBE_ID")
+	if forced_id.is_valid_int() and forced_id.length() <= 18 and not forced_id.begins_with("-"):
+		probe_id = forced_id
+	var probe := "user://export_smoke_save_%s.json" % probe_id
+	for path in [probe, probe + SaveFile.BAK, probe + SaveFile.TMP]:
+		if _probe_exists(path):
+			check(false, "探针路径已存在，拒绝覆盖：%s" % path)
+			get_tree().quit(1)
+			return
 	var wrote := SaveFile.write(probe, {"run": {"pday": 2}, "snapshots": {}})
 	check(bool(wrote.ok), "打包后存不了档：%s" % str(wrote))
 	var back := SaveFile.read(probe)
 	check(int(back.data.get("run", {}).get("pday", 0)) == 2, "打包后读回来的存档不对")
 	SaveFile.forget(probe)
 
-	# 5. 前世档案真的写得进去（打包环境里这是 res:// 会炸的那一条）
-	if readonly:
-		var meta := State.new_meta()
-		meta.past_lives = {}          # 空账本也要能落一份
-		var err := MemoryFile.sync(meta, resolved)
-		check(err == OK, "打包后写不进前世档案：错误 %d" % err)
-		check(FileAccess.file_exists("user://Memory.md"), "打包后 user://Memory.md 没生成")
-		DirAccess.remove_absolute(ProjectSettings.globalize_path("user://Memory.md"))
+	# 5. 对同一 user:// 目录内的独立文件测试写入，绝不操作玩家档案。
+	var player_memory := "user://Memory.md"
+	var had_memory := FileAccess.file_exists(player_memory)
+	var memory_hash := FileAccess.get_sha256(player_memory) if had_memory else ""
+	var memory_probe := "user://export_smoke_memory_%s.md" % probe_id
+	if _probe_exists(memory_probe) or _probe_exists(memory_probe + ".tmp"):
+		check(false, "档案探针已存在，拒绝覆盖：%s" % memory_probe)
 	else:
-		print("[export_smoke] 开发环境跳过真实的档案写入（不碰项目根的 Memory.md）")
+		var meta := State.new_meta()
+		meta.past_lives = {}
+		var err := MemoryFile.sync(meta, memory_probe)
+		check(err == OK, "写不进独立档案探针：错误 %d" % err)
+		check(FileAccess.file_exists(memory_probe), "独立档案探针没生成")
+		if FileAccess.file_exists(memory_probe):
+			check(DirAccess.remove_absolute(ProjectSettings.globalize_path(memory_probe)) == OK, "清理独立档案探针失败")
+		if FileAccess.file_exists(memory_probe + ".tmp"):
+			check(DirAccess.remove_absolute(ProjectSettings.globalize_path(memory_probe + ".tmp")) == OK, "清理独立档案临时探针失败")
+	check(FileAccess.file_exists(player_memory) == had_memory, "玩家档案存在状态发生变化")
+	if had_memory:
+		check(FileAccess.get_sha256(player_memory) == memory_hash, "玩家档案内容发生变化")
 
 	print("[export_smoke] %d 项检查，失败 %d 处" % [checks, failures])
 	get_tree().quit(0 if failures == 0 else 1)
@@ -67,3 +86,7 @@ func check(ok: bool, msg: String) -> void:
 	if ok: return
 	failures += 1
 	push_error("断言失败：" + msg)
+
+
+func _probe_exists(path: String) -> bool:
+	return FileAccess.file_exists(path) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(path))
