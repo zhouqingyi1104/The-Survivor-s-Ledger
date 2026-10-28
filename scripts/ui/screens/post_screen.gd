@@ -66,6 +66,7 @@ var _ending_fight := false
 var _ghost: MeshInstance3D
 var _ghost_mat: StandardMaterial3D
 var _ghost_key := ""
+var _place_reason := ""
 ## 夜里偶尔一阵风、远处一声铃
 var _night_sfx_in := 6.0
 
@@ -169,16 +170,17 @@ func _update_ghost() -> void:
 		_ghost.material_override = _ghost_mat
 		_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		world.add_child(_ghost)
-	var hit: Dictionary = world.pick(rig.cam, get_viewport().get_mouse_position())
+	var hit: Dictionary = world.pick_move_ground(rig.cam, get_viewport().get_mouse_position(), Game.moving_uid) if Game.moving_uid >= 0 else world.pick(rig.cam, get_viewport().get_mouse_position())
 	if Game.placing_at != null:
 		_ghost_at(Game.placing_at)
 	elif hit.has("ground"):
 		_ghost_at(hit.ground)
-	elif Game.no_save:
+	elif Game.no_save and Game.moving_uid < 0:
 		# 截图 / 演示时没有真实鼠标位置，就摆在人前面
 		_ghost_at(player.global_position + Vector3(0.0, 0.0, 2.4))
 	else:
 		_ghost.visible = false
+		_place_reason = "请指向空地。"
 
 
 func _ghost_at(p: Vector3) -> void:
@@ -193,19 +195,42 @@ func _ghost_at(p: Vector3) -> void:
 	_ghost.visible = true
 	_ghost.global_position = Vector3(gx, 0.45, gz)
 	_ghost.rotation.y = deg_to_rad(float(Game.placing_rot))
-	var block := Home.place_block(Game.run, Game.placing, gx, gz, Game.placing_rot)
+	var block: String = world.move_spot_block(Game.run, Game.moving_uid, gx, gz, Game.placing_rot) if Game.moving_uid >= 0 else Home.place_block(Game.run, Game.placing, gx, gz, Game.placing_rot)
+	if Game.moving_uid >= 0 and block == "":
+		block = Post.can_act(Game.run)
+	_place_reason = block
 	_ghost_mat.albedo_color = Color(0.92, 0.35, 0.28, 0.30) if block != "" else Color(0.42, 0.85, 0.52, 0.30)
 
 
 ## 摆放模式：点地面把选中的家具放下去。
 func _place_at(p: Vector3) -> void:
 	var id := Game.placing
-	Game.placing = ""
-	var res = Game.act(func(): return Post.act_furnish(Game.run, id, p.x, p.z, Game.placing_rot))
-	if typeof(res) == TYPE_STRING and res != "":
-		Game.placing = id       # 放不下：留着继续试
-		Game.toast.emit(res)
-		return
+	var uid := Game.moving_uid
+	var rot := Game.placing_rot
+	if uid >= 0:
+		var block: String = Post.can_act(Game.run)
+		var f := Home.find(Game.run, uid)
+		if block == "" and (f.is_empty() or str(f.id) != id or id in ["bed", "desk", "storage", "stove", "bench"]):
+			block = "这件家具不能挪位。"
+		if block == "":
+			block = world.move_spot_block(Game.run, uid, p.x, p.z, rot)
+		if block != "":
+			Game.toast.emit(block)
+			return
+		Game.placing = ""
+		Game.moving_uid = -1
+		var result = Game.act(func(): return Home.move(Game.run, uid, p.x, p.z, rot))
+		if typeof(result) == TYPE_STRING and result != "":
+			Game.placing = id
+			Game.moving_uid = uid
+			return
+		Game.toast.emit("挪好了%s。" % Home.data(id).get("name", "家具"))
+	else:
+		Game.placing = ""
+		var res = Game.act(func(): return Post.act_furnish(Game.run, id, p.x, p.z, rot))
+		if typeof(res) == TYPE_STRING and res != "":
+			Game.placing = id
+			return
 	Sfx.play("hammer", -6.0)
 
 
@@ -576,6 +601,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("cancel"):
 		if Game.placing != "":
 			Game.placing = ""
+			Game.moving_uid = -1
 			Game.toast.emit("先不摆了。")
 		elif _menu.visible:
 			_close_menu()
@@ -587,7 +613,7 @@ func _click(pos: Vector2) -> void:
 	if modal_open():
 		return
 	if Game.placing != "":
-		var spot: Dictionary = world.pick(rig.cam, pos)
+		var spot: Dictionary = world.pick_move_ground(rig.cam, pos, Game.moving_uid) if Game.moving_uid >= 0 else world.pick(rig.cam, pos)
 		if spot.has("ground"):
 			_place_at(spot.ground)
 		else:
@@ -612,7 +638,10 @@ func actions_for(id: String) -> Array:
 		var uid := int(id.substr(2))
 		if Home.find(run, uid).is_empty():
 			return []
-		return [["拆掉（退一半料）", _act(func(): return Post.act_unfurnish(Game.run, uid)), can]]
+		var list := [["挪位…", func(): _start_move(uid), can], ["拆掉（退一半料）", _act(func(): return Post.act_unfurnish(Game.run, uid)), can]]
+		if str(Home.find(run, uid).id) == "planter":
+			list.push_front(["播种 / 查看菜畦…", Dialogs.garden, ""])
+		return list
 	match id:
 		"stove":
 			if "stove" in run.get("broken", []):
@@ -661,6 +690,40 @@ func actions_for(id: String) -> Array:
 	return []
 
 
+func _start_move(uid: int) -> void:
+	var f := Home.find(Game.run, uid)
+	var block := Post.can_act(Game.run)
+	if f.is_empty() or str(f.id) in ["bed", "desk", "storage", "stove", "bench"]:
+		Game.toast.emit("这件家具不能挪位。")
+		return
+	if block != "":
+		Game.toast.emit(block)
+		return
+	Game.placing = str(f.id)
+	Game.moving_uid = uid
+	Game.placing_rot = int(f.rot)
+	Game.toast.emit("点地面挪动%s（R 转方向，Esc 取消）" % Home.data(str(f.id)).get("name", "家具"))
+
+
+## 动态家具按当前位置提供交互名称与站位，固定物沿用原场景定义。
+func _spot_info(id: String) -> Dictionary:
+	if HomeWorld.SPOTS.has(id):
+		return HomeWorld.SPOTS[id]
+	if not id.begins_with("f_"):
+		return {}
+	var f := Home.find(Game.run, int(id.substr(2)))
+	if f.is_empty():
+		return {}
+	var center := Vector3(float(f.x), 0.0, float(f.z))
+	var to_player := player.global_position - center
+	to_player.y = 0.0
+	if to_player.length() < 0.01:
+		to_player = Vector3(0, 0, 1)
+	var size := Home.size_of(str(f.id), int(f.rot))
+	var stand := center + to_player.normalized() * (maxf(size.x, size.y) * 0.5 + 0.75)
+	return {"name": Home.data(str(f.id)).get("name", "家具"), "stand": stand, "tag": center + Vector3(0, 1.4, 0)}
+
+
 ## 被砸烂的家具只剩一件事：拿材料重做。
 func _fix_menu(id: String) -> Array:
 	var run: Dictionary = Game.run
@@ -686,7 +749,10 @@ func open_menu(id: String, screen_pos: Vector2) -> void:
 	var v: VBoxContainer = _menu.get_child(0)
 	UI.clear(v)
 	v.add_theme_constant_override("separation", 5)
-	v.add_child(Hud.title(HomeWorld.SPOTS[id].name, 20, Hud.GOLD))
+	var info := _spot_info(id)
+	if info.is_empty():
+		return
+	v.add_child(Hud.title(info.name, 20, Hud.GOLD))
 	var first := true
 	for a in actions_for(id):
 		var block: String = a[2]
@@ -719,7 +785,10 @@ func _choose(id: String, cb: Callable) -> void:
 
 ## 走到物件跟前再做（已经在跟前就直接做）。
 func do_at(id: String, cb: Callable) -> void:
-	var stand: Vector3 = HomeWorld.SPOTS[id].stand
+	var info := _spot_info(id)
+	if info.is_empty():
+		return
+	var stand: Vector3 = info.stand
 	var flat := Vector3(player.global_position.x, 0, player.global_position.z)
 	if flat.distance_to(stand) < 0.8:
 		_face(id)
@@ -742,7 +811,10 @@ func _on_arrived() -> void:
 func _face(id: String) -> void:
 	if id == "":
 		return
-	var to: Vector3 = HomeWorld.SPOTS[id].tag - player.global_position
+	var info := _spot_info(id)
+	if info.is_empty():
+		return
+	var to: Vector3 = info.tag - player.global_position
 	to.y = 0
 	player.figure.face(to, 1.0)
 
@@ -827,7 +899,9 @@ func _update_tags() -> void:
 			if plot.crop == "":
 				continue
 			var c: Dictionary = crops[plot.crop]
-			var pos: Vector3 = HomeWorld.PLOT_POS[k] + Vector3(0, 0.9, 0)
+			var pos = world.plot_tag_position(run, k)
+			if pos == null:
+				continue
 			if Post.crop_ripe(plot):
 				_show_tag("plot%d" % k, pos, "✓ %s 可收" % c.name, -1.0)
 			elif Post.plot_dry(run, plot):
@@ -847,8 +921,10 @@ func _update_tags() -> void:
 			_show_tag("gate", HomeWorld.SPOTS.gate.tag, "门 %d/%d" % [run.door.cur, run.door.max], float(run.door.cur) / float(run.door.max), Hud.RED)
 			used["gate"] = true
 		if _hover != "":
-			_show_tag("hover", HomeWorld.SPOTS[_hover].tag + Vector3(0, 0.45, 0), HomeWorld.SPOTS[_hover].name)
-			used["hover"] = true
+			var info := _spot_info(_hover)
+			if not info.is_empty():
+				_show_tag("hover", info.tag + Vector3(0, 0.45, 0), info.name)
+				used["hover"] = true
 	for key in _tags:
 		if not used.has(key):
 			_tags[key].panel.visible = false
@@ -980,6 +1056,8 @@ func _left_top(run: Dictionary) -> void:
 		f.add_child(Hud.text("院门%s" % ("开着" if bool(run.door_open) else "闩着"), 13, Hud.GOLD if bool(run.door_open) else Hud.SUB))
 	# 摆放家具：这一行常驻，进摆放模式后才显示（面板是建界面时搭的，之后改不了内容）
 	var place_line := Hud.text("", 13, Hud.GOLD)
+	place_line.custom_minimum_size.x = 260
+	place_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	place_line.visible = false
 	f.add_child(place_line)
 	_live["place"] = place_line
@@ -1293,8 +1371,8 @@ func _update_live() -> void:
 		if pl.visible:
 			var fd: Dictionary = Home.data(Game.placing)
 			var fsz := Home.size_of(Game.placing, Game.placing_rot)
-			pl.text = "摆放 %s（%.1f×%.1f）· 左键放下 · R 转向 · Esc 取消" % [
-				fd.get("name", ""), fsz.x, fsz.y]
+			pl.text = "%s %s（%.2f×%.2f · %d°）· %s · 左键确认 · R 转向 · Esc 取消" % [
+				"挪动" if Game.moving_uid >= 0 else "摆放", fd.get("name", ""), fsz.x, fsz.y, Game.placing_rot, "可放下" if _place_reason == "" else _place_reason]
 	if _live.has("agenda_status"):
 		var sm := Agenda.summary(run)
 		var line := "待办 %s 小时 · 到 22:00 余 %s 小时" % [Agenda.hours_text(int(sm.need)), Agenda.hours_text(int(sm.left))]

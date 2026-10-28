@@ -938,7 +938,13 @@ func _garden(body: VBoxContainer) -> void:
 	for k in run.plots.size():
 		var plot: Dictionary = run.plots[k]
 		var h := UI.hbox(10)
-		h.add_child(UI.fixed_width(UI.label("第 %d 畦" % (k + 1), 18, UI.INK_SOFT), 80))
+		var plot_name := "第 %d 畦" % (k + 1)
+		if plot.has("pot"):
+			var pot := Home.find(run, int(plot.pot))
+			plot_name = "花盆 #%d" % int(plot.pot)
+			if not pot.is_empty():
+				plot_name += "（%.1f, %.1f）" % [float(pot.x), float(pot.z)]
+		h.add_child(UI.label(plot_name, 18, UI.INK_SOFT))
 		if plot.crop == "":
 			h.add_child(UI.label("空着", 18, UI.INK_FAINT))
 			h.add_child(UI.spacer())
@@ -1397,7 +1403,7 @@ func _furnish(body: VBoxContainer) -> void:
 	var placed := Home.list(run)
 	if not placed.is_empty():
 		body.add_child(UI.sep())
-		body.add_child(UI.label("已经摆着的（拆掉退一半料）", 18, UI.CINNABAR))
+		body.add_child(UI.label("已经摆着的（可挪位，拆掉退一半料）", 18, UI.CINNABAR))
 		for f in placed:
 			var uid := int(f.uid)
 			var h := UI.hbox(10)
@@ -1407,6 +1413,7 @@ func _furnish(body: VBoxContainer) -> void:
 				line += "　·　固定的"
 			h.add_child(UI.expand(UI.label(line, 16)))
 			if not str(f.id) in ["bed", "desk", "storage", "stove", "bench"]:
+				h.add_child(UI.button("挪位", func(): _move_furn(uid)))
 				h.add_child(UI.button("拆掉", func(): _remove_furn(uid)))
 			body.add_child(h)
 
@@ -1450,8 +1457,25 @@ func _furn_card(run: Dictionary, id: String) -> Control:
 func _pick_furnish(id: String) -> void:
 	UI.close_modal("furnish")
 	Game.placing = id
+	Game.moving_uid = -1
 	Game.placing_rot = 0
 	Game.toast.emit("点地面放下%s（R 转方向，Esc 取消）" % Home.data(id).get("name", "家具"))
+
+
+func _move_furn(uid: int) -> void:
+	var f := Home.find(Game.run, uid)
+	var block := Post.can_act(Game.run)
+	if f.is_empty() or str(f.id) in ["bed", "desk", "storage", "stove", "bench"]:
+		Game.toast.emit("这件家具不能挪位。")
+		return
+	if block != "":
+		Game.toast.emit(block)
+		return
+	UI.close_modal("furnish")
+	Game.placing = str(f.id)
+	Game.moving_uid = uid
+	Game.placing_rot = int(f.rot)
+	Game.toast.emit("点地面挪动%s（R 转方向，Esc 取消）" % Home.data(str(f.id)).get("name", "家具"))
 
 
 func _remove_furn(uid: int) -> void:

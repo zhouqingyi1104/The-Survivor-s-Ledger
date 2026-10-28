@@ -50,6 +50,7 @@ var _night := false
 var _baked := false
 var _garden_body: StaticBody3D
 var _garden_rows := 0
+var _nav_furniture_key := ""
 # C1 邻宅氛围：set_time 缓存阶段/大雪上下文，set_preset 据此投影（不缓存 run 本体）。
 var _amb_ctx := {"phase": "post", "pday": 1, "heavy": false}
 
@@ -190,7 +191,7 @@ func _decor() -> void:
 	Props.hanging_produce(self, Vector3(-6.25, 2.6, 2.55))
 	Props.basket(self, Vector3(7.6, 0, 2.4), Color("#d8c9a3"))
 	Props.basket(self, Vector3(7.0, 0, 2.9), Color("#a9c98a"))
-	Props.bookshelf(self, Vector3(5.6, 0, -7.6))
+	# 书架由 run.furniture 绘制，不能在原处再留一座静态副本。
 	for x in [-2.2, 2.2]:
 		Props.scroll_painting(self, Vector3(x, 2.1, -7.84))
 	for x in [-3.0, 3.0]:
@@ -236,6 +237,7 @@ func _bake_nav() -> void:
 # ---------- 按局面重画 ----------
 
 func sync(run: Dictionary) -> void:
+	var old_rows := _garden_rows
 	_rebuild_stock(run)
 	_rebuild_garden(run)
 	_rebuild_devices(run)
@@ -250,6 +252,19 @@ func sync(run: Dictionary) -> void:
 	if not _baked:
 		_baked = true
 		_bake_nav()
+		_nav_furniture_key = _furniture_nav_key(run)
+	else:
+		var key := _furniture_nav_key(run)
+		if key != _nav_furniture_key or old_rows != _garden_rows:
+			_nav_furniture_key = key
+			nav_region.bake_navigation_mesh(false)
+
+
+func _furniture_nav_key(run: Dictionary) -> String:
+	var parts: Array[String] = []
+	for f in run.get("furniture", []):
+		parts.append("%s:%s:%s:%s:%s" % [f.uid, f.id, f.x, f.z, f.rot])
+	return "|".join(parts)
 
 
 func _rebuild_stock(run: Dictionary) -> void:
@@ -264,10 +279,14 @@ func _rebuild_stock(run: Dictionary) -> void:
 
 func _rebuild_garden(run: Dictionary) -> void:
 	K.clear(_dynamic.garden)
-	var plots: Array = run.get("plots", [])
+	var plots: Array = []
+	for plot in run.get("plots", []):
+		if not plot.has("pot"):
+			plots.append(plot)
 	var crops: Dictionary = Data.table("crops")
-	_fit_garden(ceili(maxi(plots.size(), 2) / 2.0))
-	for k in maxi(plots.size(), 2):
+	var visible_count := mini(maxi(plots.size(), 2), PLOT_POS.size())
+	_fit_garden(ceili(visible_count / 2.0))
+	for k in visible_count:
 		if k < plots.size():
 			var plot: Dictionary = plots[k]
 			var growth := 0.0
@@ -276,6 +295,24 @@ func _rebuild_garden(run: Dictionary) -> void:
 			Props.garden_plot(_dynamic.garden, PLOT_POS[k], plot.crop, growth, Post.plot_dry(run, plot))
 		else:
 			Props.garden_plot(_dynamic.garden, PLOT_POS[k], "", 0, true)
+
+
+## 普通菜畦按非花盆索引显示；花盆标签跟随所属家具。
+func plot_tag_position(run: Dictionary, index: int) -> Variant:
+	var plots: Array = run.get("plots", [])
+	if index < 0 or index >= plots.size():
+		return null
+	var plot: Dictionary = plots[index]
+	if plot.has("pot"):
+		var f := Home.find(run, int(plot.pot))
+		if f.is_empty() or str(f.id) != "planter":
+			return null
+		return Vector3(float(f.x), 0.9, float(f.z))
+	var ground_index := 0
+	for i in index:
+		if not plots[i].has("pot"):
+			ground_index += 1
+	return PLOT_POS[ground_index] + Vector3(0, 0.9, 0) if ground_index < PLOT_POS.size() else null
 
 
 ## 玩家自己添置的家具：按 run.furniture 摆，位置和朝向都听数据。
@@ -292,7 +329,19 @@ func _rebuild_furniture(run: Dictionary) -> void:
 		var spot := "f_%d" % int(f.uid)
 		var root := K.node(_dynamic.furnish, Vector3(float(f.x), 0.0, float(f.z)), Vector3(0, float(f.rot), 0), spot)
 		_furn_mesh(root, id)
-		var sz := Home.size_of(id, int(f.rot))
+		if id == "planter":
+			for plot in run.get("plots", []):
+				if int(plot.get("pot", -1)) == int(f.uid) and str(plot.get("crop", "")) != "":
+					var crop := str(plot.crop)
+					var crop_data: Dictionary = Data.table("crops").get(crop, {})
+					if not crop_data.is_empty():
+						var growth := float(plot.days) / float(crop_data.days)
+						var plant := Props.garden_plot(root, Vector3(0, 0.36, 0), crop, growth, Post.plot_dry(run, plot))
+						plant.name = "planter_crop"
+						plant.scale = Vector3(0.7, 0.7, 0.26)
+					break
+		# 碰撞盒位于已经旋转的 root 内，局部尺寸必须使用零度尺寸。
+		var sz := Home.size_of(id, 0)
 		K.collider(root, Vector3(sz.x, 0.9, sz.y), Vector3(0, 0.45, 0), {"spot": spot})
 		_register(spot, root)
 		_furn_spots[spot] = int(f.uid)
@@ -320,8 +369,6 @@ func _furn_mesh(root: Node3D, id: String) -> void:
 		"planter":
 			K.box(root, Vector3(1.4, 0.36, 0.6), K.WOOD, Vector3(0, 0.18, 0))
 			K.box(root, Vector3(1.24, 0.06, 0.46), K.EARTH, Vector3(0, 0.36, 0))
-			for i in 3:
-				K.box(root, Vector3(0.16, 0.22, 0.16), K.GREEN, Vector3(-0.42 + i * 0.42, 0.48, 0))
 		"brazier":
 			K.box(root, Vector3(0.7, 0.26, 0.7), K.STONE_DARK, Vector3(0, 0.13, 0))
 			K.box(root, Vector3(0.5, 0.08, 0.5), K.mat(Color("#3a2a24"), 0.9), Vector3(0, 0.28, 0))
@@ -420,8 +467,6 @@ func _fit_garden(rows: int) -> void:
 	var depth := 1.8 * rows
 	(_garden_body.get_child(0) as CollisionShape3D).shape.size = Vector3(3.6, 1.0, depth)
 	_garden_body.position = Vector3(3.55, 0.5, PLOT_POS[0].z - 0.9 + depth / 2.0)
-	if _baked:
-		nav_region.bake_navigation_mesh(true)
 
 
 var _fight_figs := []
@@ -655,6 +700,77 @@ func pick(cam: Camera3D, screen_pos: Vector2) -> Dictionary:
 	if p.y < 0.3 and absf(p.x) < 10.0 and p.z > -8.0 and p.z < GATE_Z - 0.3:
 		return {"ground": Vector3(p.x, 0, p.z)}
 	return {}
+
+
+## 移动时射线穿过所选家具自身，其他物体仍阻挡；允许原地改朝向。
+func pick_move_ground(cam: Camera3D, screen_pos: Vector2, uid: int) -> Dictionary:
+	var from := cam.project_ray_origin(screen_pos)
+	var q := PhysicsRayQueryParameters3D.create(from, from + cam.project_ray_normal(screen_pos) * 200.0)
+	var root: Node = spot_nodes.get("f_%d" % uid)
+	if root != null:
+		var excluded: Array[RID] = []
+		_collect_collision_rids(root, excluded)
+		q.exclude = excluded
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	if hit.is_empty() or hit.collider.has_meta("spot"):
+		return {}
+	var p: Vector3 = hit.position
+	if p.y < 0.3 and absf(p.x) < 10.0 and p.z > -8.0 and p.z < GATE_Z - 0.3:
+		return {"ground": Vector3(p.x, 0, p.z)}
+	return {}
+
+
+func _collect_collision_rids(node: Node, out: Array[RID]) -> void:
+	if node is CollisionObject3D:
+		out.append((node as CollisionObject3D).get_rid())
+	for child in node.get_children():
+		_collect_collision_rids(child, out)
+
+
+## 保守预留各核心站位及通向中轴的走廊，防止新增家具切断它们。
+## 这是静态保留区，并非对玩家当前实际路线的寻路证明。
+func _move_route_block(rect: Rect2) -> bool:
+	for info in SPOTS.values():
+		var p: Vector3 = info.stand
+		var left := minf(0.0, p.x)
+		var lane := Rect2(left - 0.6, p.z - 0.6, absf(p.x) + 1.2, 1.2)
+		if rect.intersects(lane):
+			return true
+	# 中轴向北延伸至神龛，连接前庭与正屋。
+	return rect.intersects(Rect2(-0.6, -6.6, 1.2, 13.2))
+
+
+## 摆放预览及确认共用。几何/规则以外还检查当前场景静态碰撞。
+func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) -> String:
+	var f := Home.find(run, uid)
+	if f.is_empty():
+		return "找不到这件家具。"
+	x = Home.snap(x)
+	z = Home.snap(z)
+	var err := Home.spot_block(run, str(f.id), x, z, rot, uid)
+	if err != "":
+		return err
+	if _move_route_block(Home.rect_of(str(f.id), x, z, rot)):
+		return "这里要留给工作站和通路。"
+	if not is_inside_tree():
+		return "院子还没准备好。"
+	var size := Home.size_of(str(f.id), rot)
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(maxf(0.01, size.x - 0.04), 0.7, maxf(0.01, size.y - 0.04))
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = shape
+	q.transform = Transform3D(Basis.IDENTITY, Vector3(x, 0.45, z))
+	var excluded: Array[RID] = []
+	var source: Node = spot_nodes.get("f_%d" % uid)
+	if source != null:
+		_collect_collision_rids(source, excluded)
+	q.exclude = excluded
+	for hit in get_world_3d().direct_space_state.intersect_shape(q, 64):
+		if hit.collider is StaticBody3D:
+			return "这儿有东西挡着。"
+		if hit.collider is CharacterBody3D:
+			return "人站在这里，先让开。"
+	return ""
 
 
 ## 人在屋里（踩木地板）吗。

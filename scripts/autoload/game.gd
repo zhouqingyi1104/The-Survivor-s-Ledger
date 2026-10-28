@@ -49,6 +49,8 @@ var memory_status := "local"
 ## 正在摆放的家具（空 = 不在摆放）：界面选好家具后置上，点地面放下。
 var placing := ""
 var placing_rot := 0
+## 挪位中的家具 uid；-1 表示添置。
+var moving_uid := -1
 ## 摆放预览的固定落点（截图和测试用；null 时跟着鼠标）
 var placing_at = null
 ## 选难度界面挂着：刚挑的身份，定了难度就照这个开局
@@ -80,7 +82,13 @@ func _ready() -> void:
 
 # ---------- 界面切换 ----------
 
+func _clear_placement() -> void:
+	placing = ""
+	moving_uid = -1
+
+
 func go(target: String) -> void:
+	_clear_placement()
 	screen = target
 	screen_changed.emit(target)
 
@@ -155,6 +163,7 @@ func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boo
 	var result := Opening.apply(candidate, opening_id, str(Opening.view(candidate).token))
 	if result != "": return result
 	if opening_id != "plain": Director.note_choice(candidate, "今世开局筹备", str(Opening.view(candidate).summary))
+	_clear_placement()
 	run = candidate
 	snapshots = {}
 	last_gain = {}
@@ -201,6 +210,7 @@ func continue_game() -> bool:
 		return false
 	var data: Dictionary = Data.normalize(got.data)
 	data = Migrate.save(data)
+	_clear_placement()
 	run = data.get("run", {})
 	snapshots = data.get("snapshots", {})
 	if got.note != "main_ok":
@@ -219,6 +229,7 @@ func rewind() -> void:
 	if back.is_empty():
 		toast.emit("翻不回去了。")
 		return
+	_clear_placement()
 	run = back
 	save_meta()
 	_after()
