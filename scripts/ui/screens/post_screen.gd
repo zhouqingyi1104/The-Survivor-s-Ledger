@@ -30,13 +30,13 @@ const Agenda = preload("res://scripts/core/agenda.gd")
 const SPEED_LABELS := ["❚❚", "▶", "▶▶", "▶▶▶"]
 ## 忙什么就放什么动作
 const WORK_ANIMS := {"cook": "Interact", "garden": "Crouch_Idle", "build": "Fixing_Kneeling", "repair": "Fixing_Kneeling",
-	"read": "Sitting_Idle", "craft": "Spell_Simple_Idle", "water": "PickUp_Table"}
+	"neighbor_wall": "Fixing_Kneeling", "read": "Sitting_Idle", "craft": "Spell_Simple_Idle", "water": "PickUp_Table"}
 ## 打更：戌时一更（19:00）敲一下……寅时五更（3:00）敲五下，先一声更鼓
 const WATCHES := {19: 1, 21: 2, 23: 3, 1: 4, 3: 5}
 ## 忙什么出什么声：[开工时, 忙的时候每隔一会儿, 间隔秒]
 const WORK_SOUNDS := {
 	"cook": ["pot", "knife", 0.45], "garden": ["dig", "dig", 0.5], "build": ["chop", "hammer", 0.32],
-	"repair": ["creak", "hammer", 0.32], "read": ["book", "book", 1.2], "craft": ["book_place", "cloth", 0.8],
+	"repair": ["creak", "hammer", 0.32], "neighbor_wall": ["creak", "hammer", 0.32], "read": ["book", "book", 1.2], "craft": ["book_place", "cloth", 0.8],
 	"water": ["water_draw", "", 0.0], "rest": ["cloth", "", 0.0], "travel": ["door_open", "", 0.0],
 }
 
@@ -698,7 +698,11 @@ func actions_for(id: String) -> Array:
 	if id == "floor_exit":
 		return [["返回宅院", func(): _change_floor("courtyard"), Post.floor_block(run, "courtyard")]]
 	if id == "floor_use":
+		if Floors.current(run) == "guest_zhou":
+			return []
 		return [["打开存货", Dialogs.inventory, ""], ["添置家具…", Dialogs.furnish, can]]
+	if id == "guest_talk" and Floors.current(run) == "guest_zhou":
+		return [["与老周交谈", func(): preload("res://scripts/ui/neighbor_home.gd").open(), ""]]
 	if id.begins_with("f_"):
 		var uid := int(id.substr(2))
 		var f := Home.find(run, uid)
@@ -715,6 +719,8 @@ func actions_for(id: String) -> Array:
 	if Floors.current(run) != "courtyard":
 		return []
 	match id:
+		"neighbor_home":
+			return [["敲门 · 隔墙交谈", func(): preload("res://scripts/ui/neighbor_home.gd").open(), can]]
 		"stove":
 			if "stove" in run.get("broken", []):
 				return _fix_menu("stove")
@@ -766,6 +772,8 @@ func actions_for(id: String) -> Array:
 				list.append(["关门（闩上就不出去了）" if bool(run.door_open) else "开门（出去打，也会放它们进来）",
 					func(): _toggle_gate(), ""])
 			list.append(["出门搜寻…", Dialogs.explore_pick, out])
+			if Floors.unlocked(run, "guest_zhou"):
+				list.append(["拜访老周家", func(): _change_floor("guest_zhou"), Post.floor_block(run, "guest_zhou")])
 			return list
 	return []
 
@@ -1178,6 +1186,10 @@ func _left_top(run: Dictionary) -> void:
 	quest_row.add_child(Hud.title("邻里事务", 18, Hud.GOLD))
 	quest_row.add_child(Hud.button("查看 / 处理", Dialogs.neighbor))
 	quest.add_child(quest_row)
+	if Floors.current(run) == "courtyard":
+		var west := Hud.button("走到西邻 · 隔墙交谈", func(): do_at("neighbor_home", func(): preload("res://scripts/ui/neighbor_home.gd").open()), false, "人物会走到西侧院墙后交谈。", 13)
+		west.set_meta("neighbor_home_entry", true)
+		quest.add_child(west)
 	var task := Hud.text(Neighbor.summary(run), 14)
 	task.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	task.custom_minimum_size.x = 280
@@ -1307,6 +1319,8 @@ func _right_bottom(run: Dictionary) -> void:
 ## 常用行为：按眼下最缺什么推荐（对应原版 SmartRecommend）。[文字, 回调, 是否不占时间]
 func _quick_actions(run: Dictionary) -> Array:
 	var q := []
+	if Floors.current(run) == "guest_zhou":
+		return q
 	if State.attr(run, "water") < 70 and Inv.count(run.home, "water") > 0:
 		q.append(["喝 清水", func(): Dialogs._use("water"), true])
 	if State.attr(run, "food") < 70:

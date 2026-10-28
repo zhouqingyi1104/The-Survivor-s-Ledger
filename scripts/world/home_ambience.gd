@@ -48,8 +48,8 @@ const TRACES: Array[int] = [0, 1, 5, 7, 9, 11, 12]
 
 const SMOKE_COLOR := Color("#c2c7cd")
 # 灾后少量封门旧损（固定四户，跨四向；不按日数增减、不代表任何 NPC 命运）。
-# 9 号在南排直面门外迎战巷道，玩家出大门即可看到；15/18 号贴东西巷。
-const DAMAGE: Array[int] = [4, 9, 15, 18]
+# 9 号在南排直面门外迎战巷道；15 号已绑定实际邻人老周，不能继续以封门表示。
+const DAMAGE: Array[int] = [4, 9, 18, 22]
 # 大雪时额外积雪（门前雪包 + 檐口厚雪）的住户。
 const SNOW_HEAVY: Array[int] = [0, 2, 9, 12, 13, 16, 20]
 const PLANK_COLOR := Color("#745f47")

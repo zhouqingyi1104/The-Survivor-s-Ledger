@@ -15,6 +15,7 @@ const Post = preload("res://scripts/core/post.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Expansion = preload("res://scripts/core/home_expansion.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
+const NeighborHome = preload("res://scripts/core/neighbor_home.gd")
 const FloorWorld = preload("res://scripts/world/home_floor.gd")
 const DecorationWorld = preload("res://scripts/world/home_decoration.gd")
 const Assets = preload("res://scripts/world/assets.gd")
@@ -33,6 +34,7 @@ const SPOTS := {
 	"well":    {"name": "水井",   "stand": Vector3(-3.0, 0, 0.1),  "tag": Vector3(-3.0, 2.6, 1.5)},
 	"garden":  {"name": "菜畦",   "stand": Vector3(3.5, 0, -0.1),  "tag": Vector3(3.5, 1.4, 2.3)},
 	"gate":    {"name": "大门",   "stand": Vector3(0, 0, 5.8),     "tag": Vector3(0, 3.9, 7.0)},
+	"neighbor_home": {"name": "西邻院墙", "stand": Vector3(-8.9, 0, 3.6), "tag": Vector3(-9.65, 2.4, 3.6)},
 }
 const PLOT_POS := [Vector3(2.6, 0, 1.4), Vector3(4.5, 0, 1.4), Vector3(2.6, 0, 3.3), Vector3(4.5, 0, 3.3)]
 
@@ -59,6 +61,10 @@ var _floor := "courtyard"
 var _floor_rooms := {}
 var _outside_nodes: Array[Node3D] = []
 var _outside_visibility := {}
+var _neighbor_visual: Node3D
+var _neighbor_visual_key := ""
+var _neighbor_stand_key := ""
+var _neighbor_stand := Vector3(-8.9, 0, 3.6)
 # C1 邻宅氛围：set_time 缓存阶段/大雪上下文，set_preset 据此投影（不缓存 run 本体）。
 var _amb_ctx := {"phase": "post", "pday": 1, "heavy": false}
 
@@ -75,9 +81,11 @@ func _ready() -> void:
 	_ground()
 	_side_yard = K.node(self, Vector3.ZERO, Vector3.ZERO, "side_yard")
 	_buildings()
+	_neighbor_wall()
+	_neighbor_visual = K.node(self, Vector3.ZERO, Vector3.ZERO, "neighbor_home_visual")
 	_furniture()
 	_decor()
-	for floor_id in ["cellar", "attic"]:
+	for floor_id in ["cellar", "attic", "guest_zhou"]:
 		_floor_rooms[floor_id] = FloorWorld.build(self, floor_id)
 		_floor_rooms[floor_id].root.visible = false
 	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration"]:
@@ -87,10 +95,10 @@ func _ready() -> void:
 	_garden_body = K.collider(garden_root, Vector3.ONE, Vector3.ZERO, {"spot": "garden"})
 	spot_nodes["garden"] = _dynamic.garden
 	# 静态的方块按材质合并；会动、会重画、要描边的留着；四周景物根整树跳过（层内各自合并）
-	K.merge_static(self, [gate.node, _window, surroundings, _side_yard, _floor_rooms.cellar.root, _floor_rooms.attic.root] + spot_nodes.values() + _dynamic.values())
+	K.merge_static(self, [gate.node, _window, surroundings, _side_yard, _neighbor_visual, _floor_rooms.cellar.root, _floor_rooms.attic.root, _floor_rooms.guest_zhou.root] + spot_nodes.values() + _dynamic.values())
 	# 只收集场景本身的节点，后加的玩家与相机不会被隐藏。
 	for child in get_children():
-		if child is Node3D and child != _floor_rooms.cellar.root and child != _floor_rooms.attic.root and child != _dynamic.furnish:
+		if child is Node3D and child != _floor_rooms.cellar.root and child != _floor_rooms.attic.root and child != _floor_rooms.guest_zhou.root and child != _dynamic.furnish:
 			_outside_nodes.append(child)
 
 
@@ -152,6 +160,19 @@ func _buildings() -> void:
 		lanterns.append(Arch.lantern(self, Vector3(x, 3.0, -2.9)))
 
 
+## 只开放西邻隔墙交谈口；巷道和背景建筑仍不参与导航或拾取。
+func _neighbor_wall() -> void:
+	var root := _spot_root("neighbor_home")
+	# 悬挂在院墙内侧的传话窗，留在独立节点内以支持悬停描边。
+	K.box(root, Vector3(0.14, 1.15, 1.25), K.WOOD, Vector3(-9.93, 1.48, 3.6))
+	K.box(root, Vector3(0.16, 0.85, 0.96), K.PAPER, Vector3(-9.84, 1.48, 3.6))
+	for z in [3.28, 3.60, 3.92]:
+		K.box(root, Vector3(0.19, 0.9, 0.06), K.WOOD_LIGHT, Vector3(-9.75, 1.48, z))
+	K.box(root, Vector3(0.2, 0.06, 1.0), K.WOOD_LIGHT, Vector3(-9.75, 1.48, 3.6))
+	K.collider(root, Vector3(0.5, 1.3, 1.4), Vector3(-9.68, 1.48, 3.6))
+	_register("neighbor_home", root)
+
+
 func _furniture() -> void:
 	# 正屋中堂：条案供着牌位香烛，后面一扇屏风，两边太师椅，头顶一盏宫灯
 	var shrine := _spot_root("shrine")
@@ -211,7 +232,7 @@ func _tag_colliders(n: Node, id: String) -> void:
 
 ## 楼层切换由界面处理角色与时间；这里仅管理场景、拾取和导航。
 func set_floor(id: String) -> void:
-	var target := id if id in ["cellar", "attic"] else "courtyard"
+	var target := id if id in ["cellar", "attic", "guest_zhou"] else "courtyard"
 	if target == _floor:
 		return
 	var was_outside := _floor == "courtyard"
@@ -231,9 +252,13 @@ func set_floor(id: String) -> void:
 		_floor_rooms[floor_id].root.visible = floor_id == _floor
 	spot_nodes.erase("floor_exit")
 	spot_nodes.erase("floor_use")
+	spot_nodes.erase("guest_talk")
 	if _floor != "courtyard":
 		spot_nodes["floor_exit"] = _floor_rooms[_floor].floor_exit
-		spot_nodes["floor_use"] = _floor_rooms[_floor].floor_use
+		if _floor == "guest_zhou":
+			spot_nodes["guest_talk"] = _floor_rooms[_floor].guest_talk
+		else:
+			spot_nodes["floor_use"] = _floor_rooms[_floor].floor_use
 
 
 ## 路径查询前提交刚烘焙的楼层网格，避免切层首击使用旧地图。
@@ -259,6 +284,12 @@ func spot_info(id: String) -> Dictionary:
 	if _floor != "courtyard":
 		return FloorWorld.info(_floor, id)
 	match id:
+		"neighbor_home":
+			var info: Dictionary = SPOTS.neighbor_home.duplicate()
+			if bool(NeighborHome.view(_current_run).get("knocked", false)):
+				info.name = "老周家的院墙"
+			info.stand = _neighbor_stand_for_layout()
+			return info
 		"floor_cellar":
 			return {"name": "地窖盖板", "stand": Vector3(6, 0, -1.35), "tag": Vector3(6, 1.1, -2.4)}
 		"floor_attic":
@@ -266,11 +297,41 @@ func spot_info(id: String) -> Dictionary:
 	return {}
 
 
+## 旧存档允许家具占据新交谈点；从墙口附近寻找实际可达站位，不挪动旧家具。
+func _neighbor_stand_for_layout() -> Vector3:
+	var fallback: Vector3 = SPOTS.neighbor_home.stand
+	if not is_inside_tree() or not _baked:
+		return fallback
+	var key := _furniture_nav_key(_current_run) + ":%d:%s" % [_garden_rows, _side_stage]
+	if key == _neighbor_stand_key:
+		return _neighbor_stand
+	prepare_navigation()
+	var map := get_world_3d().navigation_map
+	var candidates: Array[Vector3] = [fallback]
+	for x in [-8.6, -8.1, -7.6, -7.1]:
+		for z in [3.6, 2.8, 4.4, 2.0, 5.2]:
+			candidates.append(Vector3(x, 0, z))
+	for candidate in candidates:
+		var closest := NavigationServer3D.map_get_closest_point(map, candidate)
+		if Vector2(closest.x - candidate.x, closest.z - candidate.z).length() > 0.25:
+			continue
+		var path := NavigationServer3D.map_get_path(map, SPAWN, candidate, true)
+		if path.size() > 1 and Vector2(path[0].x - SPAWN.x, path[0].z - SPAWN.z).length() < 0.5 and Vector2(path[-1].x - candidate.x, path[-1].z - candidate.z).length() < 0.25:
+			_neighbor_stand = candidate
+			_neighbor_stand_key = key
+			return candidate
+	return fallback
+
+
 func _spot_on_floor(id: String) -> bool:
 	if id.begins_with("f_"):
 		var f := Home.find(_current_run, int(id.substr(2)))
 		return not f.is_empty() and str(f.get("floor", "courtyard")) == _floor
-	if id in ["floor_exit", "floor_use"]:
+	if id == "guest_talk":
+		return _floor == "guest_zhou"
+	if id == "floor_use":
+		return _floor in ["cellar", "attic"]
+	if id == "floor_exit":
 		return _floor != "courtyard"
 	return _floor == "courtyard"
 
@@ -278,7 +339,7 @@ func _spot_on_floor(id: String) -> bool:
 ## 导航网格：按院里的静态碰撞烘焙，点哪儿走哪儿。
 func _bake_nav() -> void:
 	nav_region = _new_nav_region("courtyard")
-	for floor_id in ["cellar", "attic"]:
+	for floor_id in ["cellar", "attic", "guest_zhou"]:
 		_room_nav[floor_id] = _new_nav_region(floor_id)
 	# 首次建场景时碰撞体可能尚未进入物理空间；下一物理帧再烘焙一次。
 	call_deferred("_finish_initial_navigation")
@@ -356,6 +417,7 @@ func _nav_bounds_for(floor_id: String) -> AABB:
 
 func sync(run: Dictionary) -> void:
 	_current_run = run
+	_sync_neighbor_visual(run)
 	var side_changed := _sync_side_yard(run)
 	DecorationWorld.sync(_dynamic.decoration, run)
 	var old_rows := _garden_rows
@@ -382,6 +444,30 @@ func sync(run: Dictionary) -> void:
 			nav_region.bake_navigation_mesh(false)
 			for region in _room_nav.values():
 				region.bake_navigation_mesh(false)
+
+
+## 补修木板只在真实施工完成后显示；次日结算才挂出相应的记事牌。
+## 这只是已发生事实的投影，没有碰撞、库存或独立 NPC 状态。
+func _sync_neighbor_visual(run: Dictionary) -> void:
+	var view: Dictionary = NeighborHome.view(run)
+	_floor_rooms.guest_zhou.repaired_wall.visible = bool(view.get("wall_repaired", false))
+	var key := "%s:%s:%s" % [view.get("wall_repaired", false), view.get("settled", false), view.get("choice", "")]
+	if key == _neighbor_visual_key:
+		return
+	_neighbor_visual_key = key
+	K.clear(_neighbor_visual)
+	if bool(view.get("wall_repaired", false)):
+		# 对应西侧近景屋的东向墙面；不为背景屋添加拾取或碰撞。
+		for i in 3:
+			K.box(_neighbor_visual, Vector3(0.12, 0.17, 1.55), K.WOOD_LIGHT, Vector3(-11.96, 2.0 + i * 0.21, 4.5))
+		# 同一处共墙的院内侧补板；默认视角可能被对面房檐遮住，因此两面都投影。
+		for i in 3:
+			K.box(_neighbor_visual, Vector3(0.12, 0.13, 1.0), K.WOOD_LIGHT, Vector3(-9.58, 2.08 + i * 0.18, 4.5))
+	if bool(view.get("settled", false)):
+		var text: String = {"repair": "邻宅 · 修好", "trade": "邻宅 · 换物", "refuse": "邻宅 · 拒绝", "timeout": "邻宅 · 未回应"}.get(str(view.get("choice", "")), "")
+		if text != "":
+			K.box(_neighbor_visual, Vector3(0.12, 0.58, 1.8), K.WOOD, Vector3(-9.75, 2.55, 3.6))
+			K.text3d(_neighbor_visual, text, Vector3(-9.5, 2.55, 3.6), 48, Color("#e6c25c"), true, 0.006)
 
 
 func _furniture_nav_key(run: Dictionary) -> String:
@@ -846,7 +932,7 @@ func nearest_spot(pos: Vector3, radius := 1.8) -> String:
 	var best := ""
 	var best_d := radius
 	if _floor != "courtyard":
-		for id in ["floor_exit", "floor_use"]:
+		for id in (["floor_exit", "guest_talk"] if _floor == "guest_zhou" else ["floor_exit", "floor_use"]):
 			var info := spot_info(id)
 			var p: Vector3 = info.stand
 			var d := Vector2(pos.x - p.x, pos.z - p.z).length()
@@ -863,7 +949,7 @@ func nearest_spot(pos: Vector3, radius := 1.8) -> String:
 				best_d = d
 		return best
 	for id in SPOTS:
-		var p: Vector3 = SPOTS[id].stand
+		var p: Vector3 = spot_info(id).stand if id == "neighbor_home" else SPOTS[id].stand
 		var d := Vector2(pos.x - p.x, pos.z - p.z).length()
 		if d < best_d:
 			best = id
@@ -961,6 +1047,8 @@ func _move_route_block(rect: Rect2, run: Dictionary, ignore_uid: int) -> bool:
 
 ## 新建和挪位同样检查物理障碍与通路，不能穿过侧墙或堵住工作站。
 func build_spot_block(run: Dictionary, id: String, x: float, z: float, rot: int) -> String:
+	if _floor == "guest_zhou":
+		return "做客时不能布置邻家的家具。"
 	var local := to_floor_local(Vector3(x, 0, z))
 	x = Home.snap(local.x)
 	z = Home.snap(local.z)
@@ -987,6 +1075,8 @@ func build_spot_block(run: Dictionary, id: String, x: float, z: float, rot: int)
 
 ## 摆放预览及确认共用。几何/规则以外还检查当前场景静态碰撞。
 func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) -> String:
+	if _floor == "guest_zhou":
+		return "做客时不能布置邻家的家具。"
 	var eligibility := Home.move_block(run, uid)
 	if eligibility != "":
 		return eligibility

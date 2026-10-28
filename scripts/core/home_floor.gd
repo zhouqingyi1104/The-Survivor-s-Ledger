@@ -15,10 +15,15 @@ static func unlocked(run: Dictionary, id: String) -> bool:
 		"courtyard": return true
 		"cellar": return "cellar" in run.get("facilities", [])
 		"attic": return attic_stage(run) == "complete"
+		"guest_zhou":
+			var guest = run.get("neighbor_home", {})
+			return guest is Dictionary and bool(guest.get("knocked", false))
 	return false
 
 static func current(run: Dictionary) -> String:
 	var id := str(run.get("home_floor", "courtyard"))
+	if id == "guest_zhou" and (int(run.get("t", 0)) % 1440 < 120 or int(run.get("t", 0)) % 1440 >= 720):
+		return "courtyard"
 	return id if unlocked(run, id) else "courtyard"
 
 static func return_to_courtyard(run: Dictionary) -> void:

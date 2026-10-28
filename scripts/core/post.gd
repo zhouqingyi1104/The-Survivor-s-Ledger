@@ -20,6 +20,7 @@ const Home = preload("res://scripts/core/home.gd")
 const Expansion = preload("res://scripts/core/home_expansion.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
+const NeighborHome = preload("res://scripts/core/neighbor_home.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Companion = preload("res://scripts/core/companion.gd")
 const Trade = preload("res://scripts/core/social_trade.gd")
@@ -271,6 +272,10 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 			if run.pending_event != "":
 				return "event"
 		DUSK_AT:
+			if str(run.get("home_floor", "courtyard")) == "guest_zhou":
+				_interrupt_room_work(run)
+				Floors.return_to_courtyard(run)
+				State.note(run, "天黑前向老周告辞，回到自家院里。")
 			State.note(run, "天黑了。")
 		HEAT_AT:
 			_heat(run)
@@ -286,6 +291,7 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 				return "plan"
 		WAVE_AT:
 			if not Defense.wave_for_run(run, int(run.pday)).is_empty() and int(run.wave_day) != int(run.pday):
+				NeighborHome.interrupt(run)
 				_interrupt_room_work(run)
 				Floors.return_to_courtyard(run)
 				run.wave_due = true
@@ -296,6 +302,7 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 		RAID_AT:
 			# 尸潮还在街上，溃兵不会这时候来
 			if run.raid_tonight and not in_night(run):
+				NeighborHome.interrupt(run)
 				_interrupt_room_work(run)
 				Floors.return_to_courtyard(run)
 				if str(run.busy.get("kind", "")) == "attic_build":
@@ -357,6 +364,7 @@ static func _heat(run: Dictionary) -> void:
 ## 6:00 天亮：结算功过格，等玩家翻页（ack_dawn）再开新的一天。
 static func _dawn(run: Dictionary) -> void:
 	run.sleeping = false
+	NeighborHome.interrupt(run, "天亮")
 	_interrupt_furnish(run, "天亮")
 	run.busy = {}
 	run.dawn_due = true
@@ -626,6 +634,7 @@ static func toggle_gate(run: Dictionary) -> String:
 static func start_fight(run: Dictionary, count: int, armored: bool) -> void:
 	if not run.fight.is_empty():
 		return
+	NeighborHome.interrupt(run)
 	_interrupt_room_work(run)
 	Floors.return_to_courtyard(run)
 	_interrupt_furnish(run)
@@ -818,6 +827,8 @@ static func act_chore(run: Dictionary, idx: int) -> String:
 ## 纸鹤交易在本地结算；到期事实也会使尚未展示的 AI 规划失效。
 static func trade_refresh(run: Dictionary) -> String:
 	# Settle world clocks before calculating market terms or honoring payments.
+	var home_result := NeighborHome.poll(run)
+	if home_result != "": Director.note_world(run, "西邻往来", home_result)
 	crisis_refresh(run)
 	mainline_refresh(run)
 	var identity_result := Identity.poll(run)
@@ -842,6 +853,7 @@ static func mainline_refresh(run: Dictionary) -> String:
 
 
 static func mainline_action(run: Dictionary, action: String, token: String) -> String:
+	if Floors.current(run) == "guest_zhou": return "先回自家院里再处理。"
 	trade_refresh(run)
 	var result := Mainline.act(run, action, token)
 	if result == "":
@@ -850,6 +862,7 @@ static func mainline_action(run: Dictionary, action: String, token: String) -> S
 
 
 static func identity_action(run: Dictionary, action: String, token: String) -> String:
+	if Floors.current(run) == "guest_zhou": return "先回自家院里再处理。"
 	trade_refresh(run)
 	var result := Identity.act(run, action, token)
 	if result == "":
@@ -858,6 +871,7 @@ static func identity_action(run: Dictionary, action: String, token: String) -> S
 
 
 static func cycle_action(run: Dictionary, case_id: String, action: String, token: String) -> String:
+	if Floors.current(run) == "guest_zhou": return "先回自家院里再处理。"
 	trade_refresh(run)
 	var result := Cycle.act(run, case_id, action, token)
 	if result == "":
@@ -876,6 +890,7 @@ static func identity_intel(run: Dictionary) -> Array:
 
 
 static func npc_action(run: Dictionary, actor: String, action: String, token: String) -> String:
+	if Floors.current(run) == "guest_zhou": return "先回自家院里再处理。"
 	trade_refresh(run)
 	var result := Npcs.act(run, actor, action, token)
 	if result == "":
@@ -891,6 +906,7 @@ static func crisis_refresh(run: Dictionary) -> String:
 
 
 static func crisis_action(run: Dictionary, action: String, token: String) -> String:
+	if Floors.current(run) == "guest_zhou": return "先回自家院里再处理。"
 	crisis_refresh(run)
 	Trade.state(run) # Aid can spend only existing, real favors from this life.
 	var result := Crisis.act(run, action, token)
@@ -900,6 +916,7 @@ static func crisis_action(run: Dictionary, action: String, token: String) -> Str
 
 
 static func trade_action(run: Dictionary, actor: String, action: String, quote_id: String) -> String:
+	if Floors.current(run) == "guest_zhou": return "先回自家院里再处理。"
 	trade_refresh(run)
 	var result := Trade.act(run, actor, action, quote_id)
 	if result == "":
@@ -908,9 +925,11 @@ static func trade_action(run: Dictionary, actor: String, action: String, quote_i
 
 
 ## 返回 "" 表示可以做事，否则是原因。
-static func can_act(run: Dictionary, energy_needed := 5) -> String:
+static func can_act(run: Dictionary, energy_needed := 5, allow_guest := false) -> String:
 	if run.phase != "post":
 		return "现在不能做这个。"
+	if not allow_guest and Floors.current(run) == "guest_zhou":
+		return "先回自家院里再做这件事。"
 	if run.pending_event != "" or run.dawn_due or run.wave_due or run.plan_due or not run.wave_report.is_empty():
 		return "先处理眼前的事。"
 	if not run.explore.is_empty():
@@ -951,6 +970,8 @@ static func _check_busy(run: Dictionary) -> void:
 ## 做完了，见成果。
 static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 	match kind:
+		"neighbor_wall":
+			NeighborHome.complete(run)
 		"attic_build":
 			if Floors.finish_attic(run):
 				State.note(run, "阁楼施工完成。")
@@ -1415,15 +1436,17 @@ static func act_expansion(run: Dictionary) -> String:
 
 ## 空间切换本身不增加设施收益，也不绕开全局时钟。
 static func floor_block(run: Dictionary, id: String) -> String:
-	if not id in ["courtyard", "cellar", "attic"]:
+	if not id in ["courtyard", "cellar", "attic", "guest_zhou"]:
 		return "没有这个空间。"
 	if not Floors.unlocked(run, id):
 		return "这个空间尚未开放。"
+	if id == "guest_zhou" and (int(run.t) % DAY < EVENT_AT or int(run.t) % DAY >= DUSK_AT):
+		return "老周只在白天 08:00–18:00 邀人进屋。"
 	if Floors.current(run) != "courtyard" and id != "courtyard" and id != Floors.current(run):
 		return "先回院里再前往另一处。"
 	if not run.get("fight", {}).is_empty() or in_night(run):
 		return "夜袭期间不能切换空间。"
-	return can_act(run, 0)
+	return can_act(run, 0, true)
 
 static func change_floor(run: Dictionary, id: String) -> String:
 	var err := floor_block(run, id)
@@ -1719,6 +1742,8 @@ static func finish_explore(run: Dictionary) -> Dictionary:
 static func use_item(run: Dictionary, id: String) -> String:
 	if run.phase != "post":
 		return "现在不能用。"
+	if Floors.current(run) == "guest_zhou":
+		return "先回自家院里取用存货。"
 	if Inv.count(run.home, id) <= 0:
 		return "没有了。"
 	var it := Data.item(id)

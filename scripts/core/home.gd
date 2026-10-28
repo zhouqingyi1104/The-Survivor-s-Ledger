@@ -154,6 +154,7 @@ static func area_of(r: Rect2, run: Dictionary = {}) -> String:
 
 ## 能不能摆在这儿（不查造价）。ignore_uid：挪动时不和自己比。
 static func spot_block(run: Dictionary, id: String, x: float, z: float, rot: int, ignore_uid := -1) -> String:
+	if Floors.current(run) == "guest_zhou": return "这是邻人的家，不能摆放自家家具。"
 	var d := data(id)
 	if d.is_empty():
 		return "没有这种家具。"
@@ -210,6 +211,7 @@ static func build_minutes(run: Dictionary, id: String) -> int:
 # ---------- 增删挪 ----------
 
 static func add(run: Dictionary, id: String, x: float, z: float, rot: int, floor_id := "") -> Dictionary:
+	if floor_id == "guest_zhou" or (floor_id == "" and Floors.current(run) == "guest_zhou"): return {}
 	if not run.has("furniture"):
 		run.furniture = []
 	run.next_uid = int(run.get("next_uid", 1))
@@ -223,6 +225,7 @@ static func add(run: Dictionary, id: String, x: float, z: float, rot: int, floor
 
 ## 移动入口、预览和最终写入共用，夜袭目标在整场战斗中保持不变。
 static func move_block(run: Dictionary, uid: int) -> String:
+	if Floors.current(run) == "guest_zhou": return "这是邻人的家，不能挪动自家家具。"
 	var f := find(run, uid)
 	if f.is_empty():
 		return "找不到这件家具。"
@@ -253,6 +256,7 @@ static func move(run: Dictionary, uid: int, x: float, z: float, rot: int) -> Str
 
 ## 拆掉：退一半的料（向下取整）。花盆里的菜、坛里腌着的东西就没了。
 static func remove(run: Dictionary, uid: int) -> String:
+	if Floors.current(run) == "guest_zhou": return "这是邻人的家，不能拆卸自家家具。"
 	var f := find(run, uid)
 	if f.is_empty():
 		return "找不到这件家具。"
@@ -322,9 +326,11 @@ static func job_text(run: Dictionary, f: Dictionary) -> String:
 
 ## 腌菜：n 棵同样的鲜菜 + 1 把盐，两天后得 n 坛咸菜。
 static func pickle(run: Dictionary, uid: int, veg: String, n: int) -> String:
+	if Floors.current(run) == "guest_zhou": return "先回自家院里再加工。"
 	var f := find(run, uid)
 	if f.is_empty() or f.id != "pickle_jar":
 		return "找不到腌菜坛。"
+	if str(f.get("floor", "courtyard")) != Floors.current(run): return "先进入家具所在空间。"
 	if not f.get("job", {}).is_empty():
 		return "坛里还腌着东西。"
 	if not veg in PICKLE_VEG:
@@ -343,9 +349,11 @@ static func pickle(run: Dictionary, uid: int, veg: String, n: int) -> String:
 
 ## 熏肉：鲜肉若干 + 1 捆柴，熏一天成腊肉。
 static func smoke(run: Dictionary, uid: int, meat: String, n: int) -> String:
+	if Floors.current(run) == "guest_zhou": return "先回自家院里再加工。"
 	var f := find(run, uid)
 	if f.is_empty() or f.id != "smoke_rack":
 		return "找不到熏架。"
+	if str(f.get("floor", "courtyard")) != Floors.current(run): return "先进入家具所在空间。"
 	if not f.get("job", {}).is_empty():
 		return "架上还挂着东西。"
 	if meat != "rat":

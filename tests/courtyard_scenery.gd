@@ -347,9 +347,9 @@ func _contract(world: Node3D, run: Dictionary) -> Array:
 		"run_hash %s→%s, rng %s vs expect %s, Game.run empty=%s/%s"
 		% [run_hash, run_hash2, rng_after, rng_expect, game_run_empty, Game.run.is_empty()]))
 
-	# 核心坐标 / 交互点未被改动（sync 后固定 9 个 SPOT + 动态注册的 stove = 10）
+	# 原有核心坐标 / 交互点不变，C6 只新增一个隔墙交谈口。
 	out.append(_check("core_layout_unchanged",
-		absf(world.GATE_Z - 7.0) < 0.001 and world.spot_nodes.size() == 10
+		absf(world.GATE_Z - 7.0) < 0.001 and world.spot_nodes.size() == 11 and world.spot_nodes.has("neighbor_home")
 			and world.nearest_spot(Vector3(0, 0, 5.8)) == "gate"
 			and world.indoors(Vector3(0, 0, -5.7)),
 		"GATE_Z=%s spots=%d gate_spot=%s indoors=%s"

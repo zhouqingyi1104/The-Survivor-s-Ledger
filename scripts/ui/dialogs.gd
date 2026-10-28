@@ -788,6 +788,9 @@ func _neighbor_depart(target: String) -> void:
 var _inventory_filter := "全部"
 
 func inventory() -> void:
+	if Floors.current(_run()) == "guest_zhou":
+		Game.toast.emit("先回宅院再使用家中存货。")
+		return
 	_inventory_filter = "全部"
 	UI.open_modal("inventory", "家中存货", _inventory, true, 900)
 

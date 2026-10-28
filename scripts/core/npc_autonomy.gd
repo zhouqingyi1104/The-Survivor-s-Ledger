@@ -97,7 +97,7 @@ static func _decide(run: Dictionary, actor: String, day: int) -> String:
 	if int(stock.rice) <= 1:
 		focus = "rice"
 		codes = ["low_food"]
-		why = "今日口粮用过后米粮不足，先外出觅粮，自己的生计排在前面。"
+		why = "今日口粮用过后米粮不足，先筹措口粮，自己的生计排在前面。" if actor == "zhou" else "今日口粮用过后米粮不足，先外出觅粮，自己的生计排在前面。"
 	elif int(stock.get(focal, 0)) <= 1:
 		codes = ["low_goods"]
 		why = "擅长货物的周转库存不足，先筹措货源。"
@@ -166,7 +166,7 @@ static func _execute(run: Dictionary, actor: String) -> String:
 				elif plan.focus == "rice":
 					var before := int(stock.rice)
 					_adjust(stock, "rice", amount)
-					result += "外出觅粮，自己的米粮增加 %d；这些物资仍属其本人，后续决定会据此变化。" % (int(stock.rice) - before)
+					result += ("筹措口粮" if actor == "zhou" else "外出觅粮") + "，自己的米粮增加 %d；这些物资仍属其本人，后续决定会据此变化。" % (int(stock.rice) - before)
 				else:
 					_adjust(stock, "rice", -1)
 					var before := int(stock.get(focal, 0))
