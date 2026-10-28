@@ -11,6 +11,7 @@ const Post = preload("res://scripts/core/post.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Home = preload("res://scripts/core/home.gd")
+const Expedition = preload("res://scripts/core/expedition.gd")
 
 var failures := 0
 var main: Control
@@ -164,7 +165,11 @@ func run_flow() -> void:
 	await _frames()
 	check(Game.placing == "armchair", "没进摆放模式")
 	# 摆放预览：绿=放下，红=放不下
-	Game.placing_at = Vector3(-4.5, 0.0, 3.5)
+	# 西前院南侧：(-4.5, 3.5) 会压到石桌（-4.6, 4.4）的碰撞体，也在通往西邻院墙的通路上
+	var free_spot := Vector3(-4.5, 0.0, 5.5)
+	var why: String = screen().world.build_spot_block(Game.run, "armchair", free_spot.x, free_spot.z, 0)
+	check(why == "", "选的空地放不下圈椅：%s" % why)
+	Game.placing_at = free_spot
 	await _frames()
 	check(screen()._ghost != null and screen()._ghost.visible, "摆放预览没显示")
 	var green: Color = screen()._ghost_mat.albedo_color
@@ -174,7 +179,7 @@ func run_flow() -> void:
 	check(red.g < green.g, "放不下的位置没变红")
 	Game.placing_at = null
 	var chairs := Home.count(Game.run, "armchair")
-	screen()._place_at(Vector3(-4.5, 0.0, 3.5))
+	screen()._place_at(free_spot)
 	await _frames()
 	check(Post.is_busy(Game.run) and str(Game.run.busy.kind) == "furnish", "摆放没开工：%s" % str(Game.run.busy))
 	check(Game.placing == "", "放完了还在摆放模式")
@@ -186,9 +191,20 @@ func run_flow() -> void:
 	await _frames()
 	await press("出发")
 	check(Game.screen == "explore", "没进废墟场景")
-	screen().search(0)
+	# 去哪处废墟随种子而定：有的点在机关后面要先找线索，地点特色那处会先弹「查看」让玩家挑做法。
+	# 挑第一处现在就能翻的；弹了「查看」就照玩家那样挑「翻找」
+	var spot_idx := -1
+	for i in Game.run.explore.spots.size():
+		var spot: Dictionary = Game.run.explore.spots[i]
+		if not spot.done and not spot.has("mainline") and not spot.has("neighbor") and not Expedition.target_locked(Game.run, i):
+			spot_idx = i
+			break
+	check(spot_idx >= 0, "废墟里没有一处能直接翻：%s" % str(Game.run.explore.get("point", "")))
+	screen().search(maxi(spot_idx, 0))
 	await _frames()
-	check(Game.run.explore.spots[0].done, "没翻成")
+	if main.has_modal("explore_options"):
+		await press("翻找")
+	check(spot_idx >= 0 and Game.run.explore.spots[spot_idx].done, "没翻成")
 	screen().finish()
 	await _frames()
 	check(Game.screen == "post" and Game.run.explore.is_empty(), "没回家")
@@ -244,13 +260,15 @@ func run_flow() -> void:
 	screen().sync_world()
 	await _frames()
 	check("stove" in Game.run.broken, "灶台被砸了没记下来")
-	check(screen().world._rubbles.has("stove"), "灶台塌了却没摆出塌料")
+	# 核心家具按自己的 uid 当场景点（f_<uid>），塌料也挂在这个键上
+	var stove_spot := "f_%d" % int(Home.core(Game.run, "stove").uid)
+	check(screen().world._rubbles.has(stove_spot), "灶台塌了却没摆出塌料")
 	var menu: Array = screen().actions_for("stove")
 	check(str(menu[0][0]).begins_with("重修"), "灶台菜单里没有重修：%s" % str(menu[0][0]))
 	Game.run.broken.erase("stove")
 	screen().sync_world()
 	await _frames()
-	check(not screen().world._rubbles.has("stove"), "修好了塌料还在")
+	check(not screen().world._rubbles.has(stove_spot), "修好了塌料还在")
 	var sum: Dictionary = NightFight.finish(Game.run.fight)
 	Game.act(func():
 		Post.end_fight(Game.run, sum)
