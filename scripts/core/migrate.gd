@@ -189,8 +189,10 @@ static func upgrade(run: Dictionary) -> Dictionary:
 	if v < 20:
 		run["cycle_inquiry"] = {"schema": 1, "legacy": true, "closed": true, "sources": []}
 	if v < 21:
-		# 扣血账本：老卷没有这段记录，也不去补造，死因退回属性猜测
-		run["hp_log"] = {}
-		run["last_hurt"] = {}
+		# 老卷缺账本才补空；已有记录可能来自错误标成 v20 的新局，必须保留。
+		if not run.get("hp_log") is Dictionary:
+			run["hp_log"] = {}
+		if not run.get("last_hurt") is Dictionary:
+			run["last_hurt"] = {}
 	run.version = VERSION
 	return run

@@ -11,6 +11,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Migrate = preload("res://scripts/core/migrate.gd")
+const SaveFile = preload("res://scripts/core/save_file.gd")
 const DeathReport = preload("res://scripts/core/death_report.gd")
 
 var checks := 0
@@ -252,6 +253,23 @@ func test_migrate() -> void:
 	check(up.run.last_hurt is Dictionary, "老档缺 last_hurt")
 	check(str(up.run.death_cause) == "旧卷写下的死因", "迁移把旧死因改掉了：%s" % str(up.run.death_cause))
 	check(int(up.snapshots["1"].version) == Migrate.VERSION, "快照版本没升级")
+	# 旧版本号的新局可能已经积累了真实账本；升级主档和快照都不能抹掉。
+	var current := _run()
+	check(int(current.version) == Migrate.VERSION, "新局版本与迁移版本不一致")
+	State.hurt(current, 7, "bite")
+	current.version = 20
+	var recorded := Migrate.save({"run": current.duplicate(true), "snapshots": {"1": current.duplicate(true)}})
+	check(int(recorded.run.hp_log.get("bite", 0)) == 7 and recorded.run.last_hurt.tag == "bite", "旧版本主档已有的受伤账本被清空")
+	check(int(recorded.snapshots["1"].hp_log.get("bite", 0)) == 7 and recorded.snapshots["1"].last_hurt.tag == "bite", "旧版本快照已有的受伤账本被清空")
+	var path := "user://death-report-version-%d.json" % OS.get_process_id()
+	var written := SaveFile.write(path, {"run": current, "snapshots": {"1": current.duplicate(true)}})
+	var read := SaveFile.read(path)
+	if bool(written.ok) and read.source == "main":
+		var restored := Migrate.save(read.data)
+		check(int(restored.run.hp_log.get("bite", 0)) == 7 and int(restored.snapshots["1"].hp_log.get("bite", 0)) == 7, "实际存读后真实受伤账本被清空")
+	else:
+		check(false, "隔离存档写入或读取失败")
+	SaveFile.forget(path)
 
 
 # ---------- 七、真跑一次饿死 ----------
