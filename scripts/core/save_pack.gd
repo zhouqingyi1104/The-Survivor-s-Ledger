@@ -50,19 +50,8 @@ static func parse(text: String) -> Dictionary:
 	if fv > FORMAT_VERSION:
 		return _fail("这份存档来自更新的版本（信封 v%d，本作只认到 v%d）。" % [fv, FORMAT_VERSION])
 	var data := _as_dict(envelope.get("data"))
-	if data.is_empty() or not (data.get("run") is Dictionary) or (data.get("run", {}) as Dictionary).is_empty():
-		return _fail("文件是存档，但里面没有一局。")
-	if not _playable_run(data.run):
-		return _fail("存档缺少必要的身份、阶段或局内数据，不能安全导入。")
-	if int(data.run.get("version", 0)) > Migrate.VERSION:
-		return _fail("这份存档来自更新的游戏版本，本版本不能安全导入。")
-	if not data.get("snapshots", {}) is Dictionary:
-		return _fail("存档里的回溯快照损坏，不能安全导入。")
-	for snapshot in data.get("snapshots", {}).values():
-		if not snapshot is Dictionary or not _playable_run(snapshot):
-			return _fail("存档里的回溯快照损坏，不能安全导入。")
-		if int(snapshot.get("version", 0)) > Migrate.VERSION:
-			return _fail("存档的回溯快照来自更新的游戏版本，不能安全导入。")
+	var validation := validate_data(data)
+	if not validation.ok: return _fail(str(validation.note))
 	# 老版本的存档要在导入时补齐字段，走和读档同一条迁移
 	var upgraded := Migrate.save(Data.normalize(data))
 	return {
@@ -76,6 +65,34 @@ static func parse(text: String) -> Dictionary:
 			"upgraded": int(upgraded.get("run", {}).get("version", 0)) != int(envelope.get("run_version", 0)),
 		},
 	}
+
+
+## 续写和导入使用同一套边界；未来版本绝不能被旧版本误认为普通坏档。
+static func validate_data(data: Dictionary) -> Dictionary:
+	var run = data.get("run")
+	if not run is Dictionary or run.is_empty():
+		return {"ok": false, "future": false, "note": "文件是存档，但里面没有一局。"}
+	var version = run.get("version", 0)
+	if not typeof(version) in [TYPE_INT, TYPE_FLOAT] or float(version) != floor(float(version)):
+		return {"ok": false, "future": false, "note": "存档的版本信息损坏。"}
+	if int(version) > Migrate.VERSION:
+		return {"ok": false, "future": true, "note": "这份存档来自更新的游戏版本，本版本不能安全读取。"}
+	if not _playable_run(run):
+		return {"ok": false, "future": false, "note": "存档缺少必要的身份、阶段或局内数据，不能安全读取。"}
+	var snapshots = data.get("snapshots", {})
+	if not snapshots is Dictionary:
+		return {"ok": false, "future": false, "note": "存档里的回溯快照损坏。"}
+	for snapshot in snapshots.values():
+		if not snapshot is Dictionary:
+			return {"ok": false, "future": false, "note": "存档里的回溯快照损坏。"}
+		var sv = snapshot.get("version", 0)
+		if not typeof(sv) in [TYPE_INT, TYPE_FLOAT] or float(sv) != floor(float(sv)):
+			return {"ok": false, "future": false, "note": "回溯快照的版本信息损坏。"}
+		if int(sv) > Migrate.VERSION:
+			return {"ok": false, "future": true, "note": "存档的回溯快照来自更新的游戏版本，本版本不能安全读取。"}
+		if not _playable_run(snapshot):
+			return {"ok": false, "future": false, "note": "存档里的回溯快照损坏。"}
+	return {"ok": true, "future": false, "note": ""}
 
 
 ## 给文件起个能看懂的默认名：劫余录-第3日-落第书生-20261027-1250.jyz

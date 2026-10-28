@@ -153,6 +153,7 @@ func _process(_delta: float) -> void:
 ## 「续写此录」在存档有损时把话说在前头，别让玩家点进去才发现退回了一步。
 func _continue_label() -> String:
 	var st: Dictionary = Game.save_status()
+	if st.future: return "续写此录 · 需要新版"
 	if st.main: return "续写此录"
 	if st.backup: return "续写此录 · 从备份"
 	return "续写此录 · 读不出"
@@ -242,6 +243,12 @@ func _new_game() -> void:
 
 
 func _build_confirm(body: VBoxContainer) -> void:
+	var st: Dictionary = Game.save_status()
+	if st.future or (not st.main and not st.backup):
+		body.add_child(UI.para("这一卷来自更新版本或已损坏，不能安全合卷。请先手动留存并移走存档目录中的 save.json 和 save.json.bak，再回来新开。", 18))
+		body.add_child(UI.para("存档目录：%s" % ProjectSettings.globalize_path("user://"), 15))
+		body.add_child(UI.button("知道了", func(): UI.close_modal("confirm_new")))
+		return
 	body.add_child(UI.para("还有一卷没写完。新开一卷会把它合上（这一轮的道心照常结算）。", 18))
 	var row := UI.hbox()
 	row.add_child(UI.spacer())
@@ -252,9 +259,9 @@ func _build_confirm(body: VBoxContainer) -> void:
 
 func _discard_and_new() -> void:
 	UI.close_modal("confirm_new")
-	# 读不出来就没有"合上"这一步：直接开新卷，坏掉的原文件留着不删
-	if Game.continue_game():
-		Game.close_book()
+	# 读不出的卷不能让后续新局覆盖；结算失败也留在原局。
+	if not Game.continue_game(): return
+	if not Game.close_book(): return
 	Game.go("roles")
 
 

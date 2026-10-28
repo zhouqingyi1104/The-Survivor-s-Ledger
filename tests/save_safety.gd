@@ -185,8 +185,10 @@ func _section_game() -> void:
 	var label := preload("res://scripts/ui/screens/title_screen.gd").new()
 	Game.save_path = _path("label.json")
 	_rm_files(Game.save_path)
-	SaveFile.write(Game.save_path, {"run": {"pday": 1}})
-	SaveFile.write(Game.save_path, {"run": {"pday": 2}})
+	var title_run := State.new_run("scholar", Game.meta, 42)
+	SaveFile.write(Game.save_path, {"run": title_run, "snapshots": {}})
+	title_run.pday = 2
+	SaveFile.write(Game.save_path, {"run": title_run, "snapshots": {}})
 	check(label._continue_label() == "续写此录", "正常存档的标题文案不对：%s" % label._continue_label())
 	_store(Game.save_path, "{")
 	check(label._continue_label() == "续写此录 · 从备份", "只剩备份时文案不对：%s" % label._continue_label())

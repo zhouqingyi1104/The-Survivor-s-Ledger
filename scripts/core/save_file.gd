@@ -24,6 +24,42 @@ static func write(path: String, data: Dictionary) -> Dictionary:
 	return write_text(path, JSON.stringify(data, "\t"))
 
 
+## 从备份恢复时保有有效备份；replace 可注入最终改名故障进行测试。
+static func write_from_backup(path: String, data: Dictionary, replace := Callable()) -> Dictionary:
+	var tmp := path + TMP
+	var text := JSON.stringify(data, "\t")
+	var error := _store(tmp, text)
+	if error != OK:
+		_remove(tmp)
+		return {"ok": false, "step": "write", "error": error}
+	if FileAccess.get_file_as_string(tmp) != text:
+		_remove(tmp)
+		return {"ok": false, "step": "verify", "error": ERR_FILE_CORRUPT}
+	var preserved := ""
+	if FileAccess.file_exists(path):
+		preserved = path + ".bad"
+		var suffix := 1
+		while FileAccess.file_exists(preserved) or DirAccess.dir_exists_absolute(_abs(preserved)):
+			preserved = path + ".bad-%d" % suffix
+			suffix += 1
+		var park_error := DirAccess.rename_absolute(_abs(path), _abs(preserved))
+		if park_error != OK:
+			_remove(tmp)
+			return {"ok": false, "step": "preserve_main", "error": park_error}
+	# 不调用通用 write_text：其失败回滚会移动这次唯一的有效备份。
+	error = replace.call(_abs(tmp), _abs(path)) if replace.is_valid() else DirAccess.rename_absolute(_abs(tmp), _abs(path))
+	if error != OK:
+		_remove(tmp)
+		if preserved != "":
+			# 目标位置若已被其他文件占用，保留坏档在独立路径，绝不覆盖它。
+			if FileAccess.file_exists(path) or DirAccess.dir_exists_absolute(_abs(path)):
+				return {"ok": false, "step": "restore_main: " + preserved, "error": error}
+			var restore_error := DirAccess.rename_absolute(_abs(preserved), _abs(path))
+			if restore_error != OK: return {"ok": false, "step": "restore_main: " + preserved, "error": restore_error}
+		return {"ok": false, "step": "replace", "error": error}
+	return {"ok": true, "step": "done", "error": OK}
+
+
 ## 导入是替换整卷：先暂存旧备份，确保写失败后主档和备档都还能恢复。
 static func write_preserving_backup(path: String, data: Dictionary) -> Dictionary:
 	var backup := path + BAK

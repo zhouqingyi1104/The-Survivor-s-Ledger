@@ -43,6 +43,8 @@ var meta_path := META_PATH
 var save_notice := ""
 ## 写盘失败只提示一次，别每次行动都弹。
 var _save_warned := false
+## 恢复自备档后，首次成功保存前不能让坏主档轮换覆盖唯一的好备档。
+var _recovering_backup := false
 ## 空值为项目根 Memory.md；隔离存档的测试必须显式指定独立路径。
 var memory_path := ""
 var memory_status := "local"
@@ -165,6 +167,7 @@ func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boo
 	if opening_id != "plain": Director.note_choice(candidate, "今世开局筹备", str(Opening.view(candidate).summary))
 	_clear_placement()
 	run = candidate
+	_recovering_backup = false
 	snapshots = {}
 	last_gain = {}
 	pending_opening_setup = {}
@@ -198,23 +201,43 @@ func has_save() -> bool:
 
 ## 主档和备份各自还能不能用：标题界面用它决定「续写此录」后面跟不跟一句实话。
 func save_status() -> Dictionary:
-	return SaveFile.status(save_path)
+	var main := _read_continue_candidate(save_path)
+	var backup := _read_continue_candidate(save_path + SaveFile.BAK)
+	return {"main": main.ok, "backup": backup.ok, "future": main.future or (not main.ok and backup.future)}
+
+
+func _read_continue_candidate(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {"ok": false, "future": false, "data": {}}
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(path)) != OK or not json.data is Dictionary:
+		return {"ok": false, "future": false, "data": {}}
+	var validation := SavePack.validate_data(json.data)
+	return {"ok": validation.ok, "future": validation.future, "data": json.data if validation.ok else {}}
 
 
 ## 续上一卷。返回 false 表示主档和备份都读不出来（此时不静默新开，交给调用方决定）。
 func continue_game() -> bool:
-	var got := SaveFile.read(save_path)
-	if got.data.is_empty():
+	var main := _read_continue_candidate(save_path)
+	var backup := _read_continue_candidate(save_path + SaveFile.BAK)
+	# 更新版本的主档可能包含旧版无法理解的信息；不能自动退回并覆盖它。
+	if main.future or (not main.ok and backup.future):
+		save_notice = "这一卷来自更新的游戏版本，请用更新版本打开；原文件未改动。"
+		toast.emit(save_notice)
+		return false
+	if not main.ok and not backup.ok:
 		save_notice = "这一卷的主档和备份都读不出来。原文件留在存档目录里，没有删。"
 		toast.emit("存档读不出来。")
 		return false
-	var data: Dictionary = Data.normalize(got.data)
+	var from_backup: bool = not main.ok
+	var data: Dictionary = Data.normalize(backup.data if from_backup else main.data)
 	data = Migrate.save(data)
 	_clear_placement()
 	run = data.get("run", {})
 	snapshots = data.get("snapshots", {})
-	if got.note != "main_ok":
-		save_notice = ("主存档不在了，已经接着上一份备份往下写（可能退回一步）。" if got.note == "main_missing"
+	_recovering_backup = from_backup
+	if from_backup:
+		save_notice = ("主存档不在了，已经接着上一份备份往下写（可能退回一步）。" if not FileAccess.file_exists(save_path)
 			else "主存档写坏了，已经接着上一份备份往下写（可能退回一步）。")
 		toast.emit(save_notice)
 	else:
@@ -245,11 +268,29 @@ func _same_life(expected_life: String) -> bool:
 
 
 func end_run(bonus := -1) -> Dictionary:
-	if run.is_empty(): return {"lines": [], "total": 0, "days": 0, "settled": false}
-	last_gain = Ledger.end_run(run, meta, bonus)
-	if last_gain.get("settled", false) and run.phase == "ending":
-		meta.endings = int(meta.endings) + 1
-	save_meta()
+	if run.is_empty(): return {"lines": [], "total": 0, "days": 0, "settled": false, "saved": false}
+	# Settlement mutates both the life and its archive. Work on copies until the
+	# archive is safely on disk, so a failed write can be retried without either
+	# losing the life or rewarding it twice.
+	var candidate_run := run.duplicate(true)
+	var candidate_meta := meta.duplicate(true)
+	var gain := Ledger.end_run(candidate_run, candidate_meta, bonus)
+	if gain.get("settled", false) and candidate_run.phase == "ending":
+		candidate_meta.endings = int(candidate_meta.endings) + 1
+	if not no_save:
+		var result := SaveFile.write(meta_path, candidate_meta)
+		if not bool(result.ok):
+			_warn_save_failed(result)
+			save_notice = "跨轮回底稿保存失败，本局未合卷。请检查磁盘后重试。"
+			toast.emit(save_notice)
+			return {"lines": [], "total": 0, "days": 0, "settled": false, "saved": false}
+	run = candidate_run
+	meta = candidate_meta
+	last_gain = gain
+	last_gain["saved"] = true
+	if save_notice == "跨轮回底稿保存失败，本局未合卷。请检查磁盘后重试。":
+		save_notice = ""
+	if not no_save: _sync_life_memory()
 	return last_gain
 
 
@@ -266,7 +307,7 @@ func restart_from_cover(expected_life := "") -> void:
 	var mates: Array = (run.get("companions", []) as Array).duplicate()
 	var opening_id := str(run.get("opening", {}).get("choice", "plain"))
 	if opening_id == "": opening_id = "plain"
-	end_run(Ledger.ending_bonus(run))
+	if not bool(end_run(Ledger.ending_bonus(run)).get("saved", false)): return
 	var result := new_game(role_id, d, [], [], [], endless, daily, mates, opening_id)
 	if result != "":
 		new_game(role_id, d, [], [], [], endless, daily, mates, "plain")
@@ -279,7 +320,7 @@ func choose_next_opening(expected_life := "") -> void:
 	var role_id := str(run.role)
 	var difficulty_id := str(run.get("difficulty", "normal"))
 	var setup := {"endless": bool(run.get("endless", false)), "daily": Past.daily(run), "mates": (run.get("companions", []) as Array).duplicate()}
-	end_run(Ledger.ending_bonus(run))
+	if not bool(end_run(Ledger.ending_bonus(run)).get("saved", false)): return
 	run = {}
 	snapshots = {}
 	_delete_save()
@@ -289,14 +330,15 @@ func choose_next_opening(expected_life := "") -> void:
 	go("challenge")
 
 
-func close_book(expected_life := "") -> void:
-	if not _same_life(expected_life): return
-	end_run(Ledger.ending_bonus(run))
+func close_book(expected_life := "") -> bool:
+	if not _same_life(expected_life): return false
+	if not bool(end_run(Ledger.ending_bonus(run)).get("saved", false)): return false
 	run = {}
 	snapshots = {}
 	_delete_save()
 	go("title")
 	changed.emit()
+	return true
 
 
 ## 劫满后守宅：转无尽，尸潮继续升级。
@@ -335,9 +377,12 @@ func buy_talent(id: String) -> void:
 func save_game() -> void:
 	if run.is_empty() or no_save:
 		return
-	var result := SaveFile.write(save_path, {"run": run, "snapshots": snapshots})
+	var data := {"run": run, "snapshots": snapshots}
+	var result := SaveFile.write_from_backup(save_path, data) if _recovering_backup else SaveFile.write(save_path, data)
 	if not result.ok:
 		_warn_save_failed(result)
+	else:
+		_recovering_backup = false
 	save_meta()
 
 
@@ -404,6 +449,7 @@ func import_save_from(path: String) -> Dictionary:
 	_clear_placement()
 	run = data.get("run", {})
 	snapshots = data.get("snapshots", {})
+	_recovering_backup = false
 	save_notice = ""
 	var info: Dictionary = parsed.info
 	info["backup"] = str(backup.path)
