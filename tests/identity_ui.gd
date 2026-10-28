@@ -242,7 +242,7 @@ func test_legacy(role: String) -> void:
 	if role == "watchman":
 		await open_identity()
 		var text := labels_in(modal())
-		check(text.contains("第11夜") and text.contains("第17夜") and text.contains("第20夜"), "Unlocked intelligence did not display actual future nights")
+		check(text.contains("第 11 夜") and text.contains("第 17 夜") and text.contains("第 20 夜"), "Unlocked intelligence did not display actual future nights")
 		var scroll: ScrollContainer = modal().find_child("IdentityDetailsScroll", true, false)
 		scroll.ensure_control_visible(modal().find_child("IdentityIntel", true, false))
 		await snapshot("intel")

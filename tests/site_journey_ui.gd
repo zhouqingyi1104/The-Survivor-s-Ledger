@@ -208,8 +208,8 @@ func departure_menu() -> void:
 	await click(exit_button)
 	if not check(main.has_modal("explore_pick"), "Gate did not open departure menu"): return
 	var text := labels(main._modals.explore_pick)
-	check(text.contains("抵达后距21:00约 340 分钟") and text.contains("返程另需60分钟") and text.contains("含行走、机关和翻找") and text.contains("不含往返"), "Departure budget explanation missing")
-	for spec in [["rice_ruin", "简单", "3–5小时"], ["pharmacy_ruin", "中等", "4–8小时"], ["granary", "困难", "8–12小时"]]:
+	check(text.contains("抵达后距 21:00 约 340 分钟") and text.contains("返程另需 60 分钟") and text.contains("含行走、机关和翻找") and text.contains("不含往返"), "Departure budget explanation missing")
+	for spec in [["rice_ruin", "简单", "3–5 小时"], ["pharmacy_ruin", "中等", "4–8 小时"], ["granary", "困难", "8–12 小时"]]:
 		var row: Node = null
 		for b in main._modals.explore_pick.find_children("*", "Button", true, false):
 			if b.get_meta("explore_depart", "") == spec[0]: row = b.get_parent()
@@ -243,7 +243,7 @@ func run_route(pid: String, item: String, count: int, answer: String) -> void:
 	Game.go("explore")
 	await frames(12)
 	var profile := SiteJourney.profile(pid)
-	check(profile.stages.size() == count and hud_text().contains("现场行动 0 / %d" % count) and hud_text().contains("距21:00还有") and hud_text().contains("返程 60 分钟"), pid + " route budget/progress absent")
+	check(profile.stages.size() == count and hud_text().contains("现场行动 0 / %d" % count) and hud_text().contains("距 21:00 还有") and hud_text().contains("返程 60 分钟"), pid + " route budget/progress absent")
 	RenderingServer.force_draw()
 	get_viewport().get_texture().get_image().save_png(OS.get_temp_dir().path_join("ledger-journey-hud-" + pid + ".png"))
 	var start_t := int(Game.run.t)

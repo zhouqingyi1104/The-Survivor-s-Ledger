@@ -234,5 +234,5 @@ static func duration(minutes: float) -> String:
 	var hh := (m % 1440) / 60
 	var mm := m % 60
 	if d > 0:
-		return "%d天%02d:%02d" % [d, hh, mm]
+		return "%d 天 %02d:%02d" % [d, hh, mm]
 	return "%02d:%02d" % [hh, mm]

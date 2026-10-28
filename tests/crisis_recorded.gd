@@ -106,7 +106,7 @@ func test_adversarial_prose_cannot_disclose_or_repair() -> void:
 	check(Director.poll(run).begins_with("world:"), "Pre-warning model event did not open for guard test")
 	var safe := Director.entry(run)
 	check(not JSON.stringify(safe).contains(SPOILER), "Private proposal leaked through visible title/body/choice/result/delivery text")
-	check(safe.title.contains("第1日"), "Guarded letters lost their distinct day in journal and past-life fact identity")
+	check(safe.title.contains("第 1 日"), "Guarded letters lost their distinct day in journal and past-life fact identity")
 	var raw: Dictionary = Director.state(run).active
 	check(raw.text == SPOILER, "Fixture did not preserve an actually malicious source answer")
 	check(safe.choices[0].req == raw.choices[0].req and safe.choices[0].give == raw.choices[0].give, "Prose guard changed validated choice costs or rewards")

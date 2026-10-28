@@ -170,7 +170,7 @@ func snapshot(name: String) -> void:
 func investigate() -> void:
 	await open_cycle()
 	var text := labels_in(modal())
-	check(text.contains("第1世") and text.contains("今世") and text.contains("期限"), "Dossier omitted old-life source or current-life boundary/deadline")
+	check(text.contains("第 1 世") and text.contains("今世") and text.contains("期限"), "Dossier omitted old-life source or current-life boundary/deadline")
 	check(first_case().evidence.is_empty(), "Player dream granted current-life evidence")
 	var old: Callable = button_meta("cycle_action", "inquire", modal()).pressed.get_connections()[0].callable
 	await click(button_meta("cycle_action", "inquire", modal()), true)
@@ -332,7 +332,7 @@ func test_fragment_decline_and_reload() -> void:
 		var trust := int(Trade.contact(Game.run, "ning").trust)
 		await click(button_meta("cycle_action", "decline", modal()), true)
 		check(first_case().stage == "resolved" and Game.run.home == items and int(Trade.contact(Game.run, "ning").trust) == trust - 1, "Decline lacked concrete cost/opportunity consequence or charged twice")
-		check(button_meta("cycle_action", "inquire", modal()) == null and labels_in(modal()).contains("信任-1"), "Closed old case retained an actionable alternative or hid result")
+		check(button_meta("cycle_action", "inquire", modal()) == null and labels_in(modal()).contains("信任 -1"), "Closed old case retained an actionable alternative or hid result")
 
 func _ready() -> void:
 	DisplayServer.window_move_to_foreground()

@@ -138,7 +138,7 @@ func _ready() -> void:
 	var quick := fixture("rice_ruin")
 	quick.explore.exposure = 95
 	var captured := Post.site_journey_action(quick, "s0", "quick")
-	check(captured.get("caught", false) and quick.explore.caught and Journey.state(quick).caches.is_empty() and str(captured.text).contains("增加5"), "quick capture destroys unclaimed cache and reports actual exposure")
+	check(captured.get("caught", false) and quick.explore.caught and Journey.state(quick).caches.is_empty() and str(captured.text).contains("增加 5"), "quick capture destroys unclaimed cache and reports actual exposure")
 	var restock := fixture("rice_ruin")
 	check(not Post.site_journey_action(restock, "s0", "careful").has("blocked"), "visit stage before ordinary searches")
 	Post.finish_explore(restock)

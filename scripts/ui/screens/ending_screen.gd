@@ -57,13 +57,13 @@ func build() -> void:
 	var row := UI.hbox(16)
 	v.add_child(row)
 	if bool(outcome.get("can_continue", false)):
-		row.add_child(_card("留在这里", "“门还在，灶还热，那就接着住。”",
+		row.add_child(_card("留在这里", "「门还在，灶还热，那就接着住。」",
 			"继续　在这座宅院里守下去\n之后　每三夜一波尸潮，越来越凶\n结算　等你合上此录时再算道心", "守 下 去", Game.keep_living.bind(str(run.get("past_lives", {}).get("id", "")))))
 	else:
 		v.add_child(UI.para("这条路线已结案；可以带着记忆重走，或合上这一卷。", 17, UI.DAI))
-	row.add_child(_card("再入轮回", "“这一回，我知道该往哪走。”",
+	row.add_child(_card("再入轮回", "「这一回，我知道该往哪走。」",
 		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷；沿用今世开局\n收获　道心 +%d" % gain.total, "重 走", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
-	row.add_child(_card("合上此录", "“到这里就够了。”",
+	row.add_child(_card("合上此录", "「到这里就够了。」",
 		"结算　这一卷到此为止\n收获　道心 +%d" % gain.total, "合 上", Game.close_book.bind(str(run.get("past_lives", {}).get("id", "")))))
 
 	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，再保留身份与难度，重新选择下世筹备；原重走按钮会沿用今世开局。")

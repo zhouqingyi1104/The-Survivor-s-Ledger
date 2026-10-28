@@ -273,11 +273,11 @@ static func weather(run: Dictionary) -> Dictionary:
 
 static func time_label(run: Dictionary) -> String:
 	if run.phase == "pre":
-		return "备劫第%d日·%s时" % [run.day, HOURS[run.hour % 12]]
+		return "备劫第 %d 日·%s时" % [run.day, HOURS[run.hour % 12]]
 	if int(run.pday) == 0:
 		return "尸劫之夜"
 	var c := (int(run.get("t", 0)) + 360) % 1440
-	return "第%d日·%02d:%02d" % [run.pday, c / 60, c % 60]
+	return "第 %d 日·%02d:%02d" % [run.pday, c / 60, c % 60]
 
 
 static func note(run: Dictionary, text: String) -> void:

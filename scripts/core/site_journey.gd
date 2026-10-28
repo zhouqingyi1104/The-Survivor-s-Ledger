@@ -65,19 +65,19 @@ static func profile(pid: String) -> Dictionary:
 	var grade := "easy" if pid in ["rice_ruin", "city_god", "school"] else ("medium" if pid in ["pharmacy_ruin", "lumber"] else "hard")
 	# 行走时间由真实现场时钟推进；这里只列一次行动本身的游戏内耗时。
 	var minutes := 15 if grade == "easy" else (30 if grade == "medium" else 43)
-	var estimated := "3–5小时" if grade == "easy" else ("4–8小时" if grade == "medium" else "8–12小时")
+	var estimated := "3–5 小时" if grade == "easy" else ("4–8 小时" if grade == "medium" else "8–12 小时")
 	var stages := []
 	for i in CONTENT[pid].size():
 		var row: Array = CONTENT[pid][i]
 		var effect := str(row[4])
 		var obstacle: bool = (pid in ["rice_ruin", "school", "lumber"] and i == 1) or (pid == "granary" and i == 4)
 		var item := Data.describe_items({str(row[3]): 1})
-		var gain := "发现%s，留在现场，可按负重取放" % item if effect == "loot" else ("本趟普通翻找外泄最多减少16，不获得物资" if effect == "quiet" else "当前外泄最多减少20，不获得物资")
+		var gain := "发现%s，留在现场，可按负重取放" % item if effect == "loot" else ("本趟普通翻找外泄最多减少 16，不获得物资" if effect == "quiet" else "当前外泄最多减少 20，不获得物资")
 		var clear_text := "；移除现场障碍" if obstacle else ""
 		var remain_text := "；障碍保留，需绕行" if obstacle else ""
 		stages.append({"id": "s%d" % i, "title": row[0], "text": row[1], "obstacle": obstacle, "choices": [
-			{"id": "careful", "text": row[2], "minutes": minutes, "description": "%d分钟；%s%s。完成后不可改选。" % [minutes, gain, clear_text], "item": row[3], "effect": effect},
-			{"id": "quick", "text": "快速翻取%s" % item, "minutes": minutes - 10, "description": "%d分钟；发现%s留在现场，阳气外泄最多增加12，满值会引来尸群%s。完成后不可改选。" % [minutes - 10, item, remain_text], "item": row[3], "effect": "quick"}]})
+			{"id": "careful", "text": row[2], "minutes": minutes, "description": "%d 分钟；%s%s。完成后不可改选。" % [minutes, gain, clear_text], "item": row[3], "effect": effect},
+			{"id": "quick", "text": "快速翻取%s" % item, "minutes": minutes - 10, "description": "%d 分钟；发现%s留在现场，阳气外泄最多增加 12，满值会引来尸群%s。完成后不可改选。" % [minutes - 10, item, remain_text], "item": row[3], "effect": "quick"}]})
 	return {"grade": grade, "estimated": estimated, "stages": stages}
 
 
@@ -107,11 +107,11 @@ static func settle(run: Dictionary, stage_id: String, c: Dictionary) -> Dictiona
 	var message := ""
 	if effect == "quiet":
 		ex["journey_quiet"] = true
-		message = "已处理现场声响：本趟普通翻找外泄最多减少16。"
+		message = "已处理现场声响：本趟普通翻找外泄最多减少 16。"
 	elif effect == "relief":
 		var before := int(ex.exposure)
 		ex.exposure = maxi(0, before - 20)
-		message = "现场整理完毕：阳气外泄减少%d。" % (before - int(ex.exposure))
+		message = "现场整理完毕：阳气外泄减少 %d。" % (before - int(ex.exposure))
 	else:
 		var items := {str(c.item): 1}
 		s.caches[stage_id] = items
@@ -119,7 +119,7 @@ static func settle(run: Dictionary, stage_id: String, c: Dictionary) -> Dictiona
 		if effect == "quick":
 			var before := int(ex.exposure)
 			ex.exposure = mini(100, int(ex.exposure) + 12)
-			message += " 阳气外泄增加%d。" % (int(ex.exposure) - before)
+			message += " 阳气外泄增加 %d。" % (int(ex.exposure) - before)
 	for stage in profile(str(ex.point)).get("stages", []):
 		if str(stage.id) == stage_id and stage.obstacle:
 			message += " 障碍已清除。" if str(c.id) == "careful" else " 障碍仍在，需绕行。"

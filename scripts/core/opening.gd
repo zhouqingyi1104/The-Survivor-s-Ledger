@@ -104,21 +104,21 @@ static func _definition(id: String, inherited: Array) -> Dictionary:
 static func _source_text(a: Dictionary) -> String:
 	var source: Dictionary = a.get("source", {})
 	if source.is_empty(): return ""
-	return "第%d世 · %s" % [int(source.source_life), str(SOURCE_NAMES.get(source.tag, source.tag))]
+	return "第 %d 世 · %s" % [int(source.source_life), str(SOURCE_NAMES.get(source.tag, source.tag))]
 
 static func _hint(a: Dictionary) -> String:
 	if a.name == ACTIONS.plain.name: return str(a.deed) + "今世选择即固定，不能再领其他筹备。"
-	var money := "银%d文" % int(a.silver)
+	var money := "银 %d 文" % int(a.silver)
 	var spent := "；交出%s" % Data.describe_items(a.spent) if not a.spent.is_empty() else ""
 	var contact := ""
 	if str(a.actor) in NAMES:
-		contact = "%s信任%+d" % [str(NAMES[a.actor]), int(a.trust)]
-		if int(a.favors) > 0: contact += "、人情+%d" % int(a.favors)
-	var warning := "第%d日08:00出现%s风声，仍须核实与处置" % [int(a.warning_day), str(KINDS.get(a.kind, "相应危机"))]
+		contact = "%s信任 %+d" % [str(NAMES[a.actor]), int(a.trust)]
+		if int(a.favors) > 0: contact += "、人情 +%d" % int(a.favors)
+	var warning := "第 %d 日 08:00 出现%s风声，仍须核实与处置" % [int(a.warning_day), str(KINDS.get(a.kind, "相应危机"))]
 	if str(a.kind) == "": warning = "依据确证前世选择首场风声，仍须核实与处置"
 	var source := _source_text(a)
 	var source_hint := "依据%s。" % source if source != "" else ""
-	return "%s；耗%d时辰%s，获得%s。%s%s；%s。%s今世只能选一种，放弃其他筹备。" % [money, int(a.hours), spent, Data.describe_items(a.gained), str(a.deed), contact, warning, source_hint]
+	return "%s；耗 %d 时辰%s，获得%s。%s%s；%s。%s今世只能选一种，放弃其他筹备。" % [money, int(a.hours), spent, Data.describe_items(a.gained), str(a.deed), contact, warning, source_hint]
 
 static func _eligibility(role: String, a: Dictionary, inherited: Array, daily: bool, vows: Array, silver: int, home: Dictionary) -> String:
 	if str(a.role) != "" and a.role != role: return "这个开局筹备只适合%s。" % str(Data.table("roles").get(a.role, {}).get("name", a.role))
@@ -127,7 +127,7 @@ static func _eligibility(role: String, a: Dictionary, inherited: Array, daily: b
 	if "bare" in vows: return "空手誓约只能照常备劫，不能领取开局筹备。"
 	if str(a.legacy) != "" and _source(inherited, str(a.legacy)).is_empty():
 		return "前世没有真正做成这件事；听来的、没做完的都不算。"
-	if silver < int(a.silver): return "银钱不足，需要%d文。" % int(a.silver)
+	if silver < int(a.silver): return "银钱不足，需要 %d 文。" % int(a.silver)
 	if not Inv.has_all(home, a.spent): return "随身物不足，需要%s。" % Data.describe_items(a.spent)
 	return ""
 
@@ -235,7 +235,7 @@ static func view(run: Dictionary) -> Dictionary:
 	if Past.daily(run): source_label = "每日一局不使用前世经验，只能照常备劫。"
 	elif not inherited.is_empty():
 		var labels := []
-		for source in inherited: labels.append("第%d世 %s" % [int(source.source_life), str(SOURCE_NAMES.get(source.tag, source.tag))])
+		for source in inherited: labels.append("第 %d 世 %s" % [int(source.source_life), str(SOURCE_NAMES.get(source.tag, source.tag))])
 		source_label = "出生时固定的经历：" + "；".join(labels) + "。邻人要自己记起来，才知道前世的事。"
 	return {"title": "开局筹备", "summary": summary, "token": _token(run), "options": rows, "history": s.history.duplicate(true), "effects": _effects(run), "source_label": source_label}
 

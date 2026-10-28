@@ -112,7 +112,7 @@ func test_suggest_name() -> void:
 	var run := _run()
 	var name := SavePack.suggest_name(run, "落第书生", "20261027-1245")
 	check(name.ends_with(".jyz"), "默认名没有 .jyz 后缀：%s" % name)
-	check(name.contains("第1日"), "默认名里没有天数：%s" % name)
+	check(name.contains("第 1 日"), "默认名里没有天数：%s" % name)
 	check(name.contains("落第书生"), "默认名里没有身份：%s" % name)
 	check(not name.contains("/") and not name.contains("\\") and not name.contains(":"), "默认名里有非法字符：%s" % name)
 	var weird := SavePack.suggest_name(run, "a/b:c*d?e", "20261027-1245")

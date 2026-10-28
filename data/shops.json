@@ -32,7 +32,7 @@
   },
   "temple": {
     "name": "青云观", "travel": 2, "kind": "goods",
-    "desc": "城外半山的道观。观主说今年冬天'阴气太重'，劝人多备糯米符箓。",
+    "desc": "城外半山的道观。观主说今年冬天「阴气太重」，劝人多备糯米符箓。",
     "stock": {"glutinous": 8, "talisman": 8, "ink_line": 3, "peach_sword": 2, "dog_blood": 4, "book_daoist": 2}
   },
   "bookshop": {

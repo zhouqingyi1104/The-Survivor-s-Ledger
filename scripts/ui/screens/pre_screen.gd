@@ -163,7 +163,7 @@ func _places(run: Dictionary) -> void:
 		h.add_child(b)
 		if id != "home":
 			var status := Pre.status(run, id)
-			h.add_child(UI.label("%d时辰" % Pre.travel_cost(run, id), 14, UI.INK_FAINT))
+			h.add_child(UI.label("%d 时辰" % Pre.travel_cost(run, id), 14, UI.INK_FAINT))
 			h.add_child(UI.tag(status, STATUS_COLORS.get(status, UI.INK_SOFT)))
 		v.add_child(h)
 	var p := corner_panel(v, Control.PRESET_CENTER_LEFT, 14, 0.82)

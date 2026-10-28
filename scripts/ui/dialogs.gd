@@ -409,7 +409,7 @@ func _npc_autonomy(body: VBoxContainer) -> void:
 	else:
 		var pending := str(plan.get("status", "")) == "pending"
 		var left := maxi(0, int(plan.get("due_t", 0)) - int(run.t))
-		content.add_child(UI.para("%s：%s · %s%s" % ["下一行动" if pending else "今日行动", str(view.get("title", view.get("goal", "自主安排"))), _crisis_when(int(plan.get("due_t", 0))), "（还有 %d小时%02d分）" % [left / 60, left % 60] if pending else " · 已执行"], 17, UI.GOLD))
+		content.add_child(UI.para("%s：%s · %s%s" % ["下一行动" if pending else "今日行动", str(view.get("title", view.get("goal", "自主安排"))), _crisis_when(int(plan.get("due_t", 0))), "（还有 %d 小时 %02d 分）" % [left / 60, left % 60] if pending else " · 已执行"], 17, UI.GOLD))
 		var response: String = {"": "尚未介入", "support": "送物支援", "favor": "凭情改托（已预留送货）" if pending else "凭情改托（已送达）", "decline": "由他安排"}.get(str(plan.get("response", "")), "已记录")
 		content.add_child(UI.para("本次回应：" + response, 16))
 		if not pending:
@@ -478,7 +478,7 @@ func crisis_clock_text(view: Dictionary) -> String:
 	if str(view.get("stage", "")) == "resolved": return crisis_status(view)
 	var target := int(view.get("end_t", 0)) if str(view.get("stage", "")) == "impact" else int(view.get("impact_t", 0))
 	var left := maxi(0, target - int(_run().get("t", 0)))
-	var duration := "%d天%02d:%02d" % [left / 1440, (left % 1440) / 60, left % 60] if left >= 1440 else "%02d:%02d" % [left / 60, left % 60]
+	var duration := "%d 天 %02d:%02d" % [left / 1440, (left % 1440) / 60, left % 60] if left >= 1440 else "%02d:%02d" % [left / 60, left % 60]
 	var prefix := "影响结束还有 " if str(view.get("stage", "")) == "impact" else ("预计发生还有 " if str(view.get("confirmed", "")) == "real" else "可能发生还有 ")
 	return prefix + duration
 
@@ -1160,7 +1160,7 @@ func _explore_pick(body: VBoxContainer) -> void:
 	var run := _run()
 	body.add_child(UI.para("去程、返程各 60 分钟；翻找会增加阳气外泄，满 100 会被尸群发现。各地特别行动的代价以现场提示为准；21:00 后处理完当前事务即强制返程。", 16))
 	var available := maxi(0, Post.CURFEW_AT - Post.day_minute(run) - int(Post.ACTIONS.travel[1]))
-	body.add_child(UI.para("预计完整探索含行走、机关和翻找，不含往返；实际随路线与事件变化。现在出发，抵达后距21:00约 %d 分钟；返程另需60分钟。" % available, 15, UI.GOLD))
+	body.add_child(UI.para("预计完整探索含行走、机关和翻找，不含往返；实际随路线与事件变化。现在出发，抵达后距 21:00 约 %d 分钟；返程另需 60 分钟。" % available, 15, UI.GOLD))
 	var v := UI.vbox(8)
 	var visible := Explore.visible_points(run)
 	if not "taoist_temple" in visible: visible.append("taoist_temple")

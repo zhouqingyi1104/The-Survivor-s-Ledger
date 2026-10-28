@@ -276,9 +276,9 @@ static func options(run: Dictionary, actor: String) -> Array:
 		if plan.response == "":
 			for item in req: _adjust(projected, str(item), int(req[item]))
 		var amount := _gather_gain(projected, plan, true)
-		extra["gather"] = "16:00 按库存余量实际增加%s %d（本次最多3）；%s" % [Data.item(str(plan.focus)).name, amount, "自己耗米 1。" if plan.focus != "rice" and amount > 0 else ("不额外耗米。" if amount > 0 else "已无增长余量，这份支援不可用。")]
+		extra["gather"] = "16:00 按库存余量实际增加%s %d（本次最多 3）；%s" % [Data.item(str(plan.focus)).name, amount, "自己耗米 1。" if plan.focus != "rice" and amount > 0 else ("不额外耗米。" if amount > 0 else "已无增长余量，这份支援不可用。")]
 	var rows := [
-		{"id": "support", "text": "送物支援", "hint": "交出%s加入对方周转库存，立即信任 +1、人情 +1（最多3）；%s本次回应锁定。" % [Data.describe_items(req), str(extra.get(mode, "等待下一份安排。"))]},
+		{"id": "support", "text": "送物支援", "hint": "交出%s加入对方周转库存，立即信任 +1、人情 +1（最多 3）；%s本次回应锁定。" % [Data.describe_items(req), str(extra.get(mode, "等待下一份安排。"))]},
 		{"id": "favor", "text": "凭情改托", "hint": "立即消耗人情 1，并从对方库存预留%s 1；16:00 送到你家，原行动取消，新报价照常。本次回应锁定。" % Data.item(FOCAL[actor]).name},
 		{"id": "decline", "text": "由他安排", "hint": "零物资成本，不改变信任、不算失约；关闭本次介入，16:00 照原计划执行。"},
 	]

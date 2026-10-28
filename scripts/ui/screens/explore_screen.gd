@@ -97,7 +97,7 @@ func _process(delta: float) -> void:
 	if _clock != null:
 		_clock.text = "%s  %s" % [Post.shichen(Game.run), Post.clock_text(Game.run)]
 	if is_instance_valid(_budget_label):
-		_budget_label.text = "距21:00还有 %d 分钟 · 返程 %d 分钟" % [maxi(0, Post.CURFEW_AT - Post.day_minute(Game.run)), int(Post.ACTIONS.travel[1])]
+		_budget_label.text = "距 21:00 还有 %d 分钟 · 返程 %d 分钟" % [maxi(0, Post.CURFEW_AT - Post.day_minute(Game.run)), int(Post.ACTIONS.travel[1])]
 	if is_instance_valid(_return_button): _return_button.disabled = Post.is_busy(Game.run)
 	if is_instance_valid(_work_label):
 		_work_label.visible = Post.is_busy(Game.run)
@@ -274,7 +274,7 @@ func _journey_panel(body: VBoxContainer, id: String) -> void:
 	var contents := UI.vbox(6)
 	contents.add_child(UI.para(str(stage.text), 17))
 	if not completed.has(id):
-		contents.add_child(UI.para("距21:00还有 %d 分钟；返程另需 %d 分钟。时间不足或途中遇事可能中断行动。" % [maxi(0, Post.CURFEW_AT - Post.day_minute(Game.run)), int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
+		contents.add_child(UI.para("距 21:00 还有 %d 分钟；返程另需 %d 分钟。时间不足或途中遇事可能中断行动。" % [maxi(0, Post.CURFEW_AT - Post.day_minute(Game.run)), int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
 		contents.add_child(UI.para("本次到访此处只能选择一种处理方式，完成后不可改选；取消不消耗时间。", 15, UI.GOLD))
 		for choice in stage.get("choices", []):
 			var button := UI.button(str(choice.text), _choose_journey.bind(id, str(choice.id)))
@@ -524,7 +524,7 @@ func build_hud() -> void:
 		v.add_child(UI.label("含走动、机关与翻找；不含返程", 14, UI.INK_SOFT))
 		v.add_child(UI.label("耗时为参考，随选择与走动变化", 14, UI.INK_SOFT))
 		v.add_child(UI.label("现场行动 %d / %d 处" % [done.size(), journey_profile.get("stages", []).size()], 15, UI.INK_SOFT))
-	_budget_label = UI.label("距21:00还有 %d 分钟 · 返程 %d 分钟" % [maxi(0, Post.CURFEW_AT - Post.day_minute(run)), int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT)
+	_budget_label = UI.label("距 21:00 还有 %d 分钟 · 返程 %d 分钟" % [maxi(0, Post.CURFEW_AT - Post.day_minute(run)), int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT)
 	v.add_child(_budget_label)
 	var profile: Dictionary = Expedition.profile(str(ex.point))
 	var progress: Dictionary = Expedition.state(run)

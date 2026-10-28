@@ -28,13 +28,13 @@ func build() -> void:
 	v.add_child(row)
 	var can_rewind: bool = int(run.rebirths_left) > 0 and (Game.snapshots.has(str(int(run.pday) - 1)) or Game.snapshots.has(str(run.pday)))
 	var back_day := int(run.pday) - 1 if Game.snapshots.has(str(int(run.pday) - 1)) else int(run.pday)
-	row.add_child(_card("翻回昨日", "“昨天那页写着，门还够结实。”",
+	row.add_child(_card("翻回昨日", "「昨天那页写着，门还够结实。」",
 		"回到　第 %d 日清晨\n保留　你知道的一切（残卷、记忆）\n代价　寿元：气血上限 -10（现为 %d）\n　　　残页 -1" % [back_day, int(run.attrs.hp_max)],
 		"翻回去", Game.rewind, not can_rewind, "残页用尽了" if int(run.rebirths_left) <= 0 else ""))
-	row.add_child(_card("翻回扉页", "“从第一页重新写——这次你知道该写什么。”",
+	row.add_child(_card("翻回扉页", "「从第一页重新写——这次你知道该写什么。」",
 		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷；沿用今世开局\n收获　道心 +%d" % gain.total,
 		"重新来过", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
-	row.add_child(_card("合上此录", "“到这里就够了。”",
+	row.add_child(_card("合上此录", "「到这里就够了。」",
 		"结算　这一卷到此为止\n收获　道心 +%d\n之后　回到标题，可去参悟心法" % gain.total,
 		"合上", Game.close_book.bind(str(run.get("past_lives", {}).get("id", "")))))
 	var detail := []

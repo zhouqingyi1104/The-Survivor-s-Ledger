@@ -99,7 +99,7 @@ static func validate_data(data: Dictionary) -> Dictionary:
 ## 只用文件名安全的字符（身份名里可能有空格以外的符号）。
 static func suggest_name(run: Dictionary, role_name: String, stamp: String) -> String:
 	var day := int(run.get("pday", 0))
-	var part := "备劫" if day <= 0 else "第%d日" % day
+	var part := "备劫" if day <= 0 else "第 %d 日" % day
 	return "%s-%s-%s-%s.%s" % [_safe("劫余录"), part, _safe(role_name), _safe(stamp), EXT]
 
 

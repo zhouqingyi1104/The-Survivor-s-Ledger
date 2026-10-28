@@ -13,14 +13,14 @@ const Expedition = preload("res://scripts/core/expedition.gd")
 const EXPOSURE_MAX := 100
 const SITE_SPOTS := {"rice_ruin": "米仓", "city_god": "供桌", "school": "藏书阁", "pharmacy_ruin": "药柜", "lumber": "木垛", "mortuary": "前厅棺木", "granary": "东仓", "taoist_temple": "丹房"}
 const SITE_BRIEFS := {
-	"rice_ruin": "每次到访可细筛一处粮袋，耗时30分钟，保证找到米2、杂粮1。",
-	"city_god": "每次到访可花20分钟留下一处供物，放弃该处物资，心神最多+3、阳气外泄最多减少10。",
-	"school": "每次到访可花35分钟整理一处书架，保证找到《齐民要术》残本1。",
-	"pharmacy_ruin": "每次到访可花30分钟辨认一处药格，保证找到金创药1、避瘟散1。",
-	"lumber": "每次到访可花35分钟拆取一处木垛，得到木料2、柴3，须考虑负重。",
-	"mortuary": "每次到访可花20分钟，消耗背囊里的镇尸符1，先降低最多20点阳气外泄，再正常翻找一处。",
-	"granary": "每次到访可花20分钟砸开一处粮栅，保证米3、杂粮2，但额外增加25点阳气外泄。",
-	"taoist_temple": "每次到访可花30分钟辨认符阵，之后本次普通翻找的阳气外泄减少8。",
+	"rice_ruin": "每次到访可细筛一处粮袋，耗时 30 分钟，保证找到米 ×2、杂粮 ×1。",
+	"city_god": "每次到访可花 20 分钟留下一处供物，放弃该处物资，心神最多 +3、阳气外泄最多减少 10。",
+	"school": "每次到访可花 35 分钟整理一处书架，保证找到《齐民要术》残本 1。",
+	"pharmacy_ruin": "每次到访可花 30 分钟辨认一处药格，保证找到金创药 ×1、避瘟散 ×1。",
+	"lumber": "每次到访可花 35 分钟拆取一处木垛，得到木料 ×2、柴 ×3，须考虑负重。",
+	"mortuary": "每次到访可花 20 分钟，消耗背囊里的镇尸符 1，先降低最多 20 点阳气外泄，再正常翻找一处。",
+	"granary": "每次到访可花 20 分钟砸开一处粮栅，保证米 ×3、杂粮 ×2，但额外增加 25 点阳气外泄。",
+	"taoist_temple": "每次到访可花 30 分钟辨认符阵，之后本次普通翻找的阳气外泄减少 8。",
 }
 const SITE_TITLES := {"rice_ruin": "细筛粮袋", "city_god": "留下供物", "school": "整理书架", "pharmacy_ruin": "辨认药格", "lumber": "拆取木料", "mortuary": "消耗符箓护身", "granary": "砸开粮栅", "taoist_temple": "辨认符阵"}
 const SITE_MINUTES := {"rice_ruin": 30, "school": 35, "pharmacy_ruin": 30, "lumber": 35, "taoist_temple": 30}
@@ -150,18 +150,18 @@ static func site_options(run: Dictionary, idx: int) -> Array:
 	if spot.get("done", false) or spot.has("mainline") or spot.has("neighbor") or ex.get("caught", false) or ex.get("curfew_due", false): return []
 	var pid := str(ex.get("point", ""))
 	var range := exposure_range(run, pid)
-	var normal := {"id": "normal", "title": "翻找", "description": "20分钟，精力-4，阳气外泄增加%d–%d；物资随机留在现场。" % [range.x, range.y], "block": ""}
+	var normal := {"id": "normal", "title": "翻找", "description": "20 分钟，精力 -4，阳气外泄增加 %d–%d；物资随机留在现场。" % [range.x, range.y], "block": ""}
 	if not SITE_BRIEFS.has(pid) or str(spot.get("name", "")) != str(SITE_SPOTS.get(pid, "")): return [normal]
 	var block := ""
 	if ex.get("site_used", false): block = "本次到访已使用过地点特色。"
-	elif pid == "mortuary" and Inv.count(ex.get("bag", {}), "talisman") < 1: block = "需要背囊里有镇尸符1。"
-	var desc := str(SITE_BRIEFS[pid]) + " 精力-4。"
+	elif pid == "mortuary" and Inv.count(ex.get("bag", {}), "talisman") < 1: block = "需要背囊里有镇尸符 1。"
+	var desc := str(SITE_BRIEFS[pid]) + " 精力 -4。"
 	if pid in SITE_ITEMS: desc += " 替代该处随机物资，所得留在现场；被追上或宵禁后无法领取。"
 	elif pid == "mortuary": desc += " 翻找所得随机留在现场。"
 	elif pid == "taoist_temple": desc += " 本次翻找物资随机留在现场，减免从之后的普通翻找生效。"
 	if pid != "city_god":
 		var bonus := 25 if pid == "granary" else 0
-		desc += " 本次阳气外泄增加%d–%d（最高100）。" % [range.x + bonus, range.y + bonus]
+		desc += " 本次阳气外泄增加 %d–%d（最高 100）。" % [range.x + bonus, range.y + bonus]
 	return [normal, {"id": "site", "title": SITE_TITLES[pid], "description": desc, "block": block}]
 
 

@@ -221,7 +221,7 @@ static func _cycle_text_guard(run: Dictionary) -> bool:
 ## proposal or claim to have investigated/repaired it through unrelated prose.
 static func _rules_text(event: Dictionary) -> Dictionary:
 	var safe: Dictionary = event.duplicate(true)
-	safe.title = "第%d日 · %s的来信" % [int(event.get("day", 0)), ACTORS[event.actor]]
+	safe.title = "第 %d 日 · %s的来信" % [int(event.get("day", 0)), ACTORS[event.actor]]
 	safe.text = "纸鹤捎来几种物资与人情往来的办法。交出、获得和已许下的回礼均写在选项下方，你可以自行决定。"
 	for choice in safe.choices:
 		var req: Dictionary = choice.get("req", {})

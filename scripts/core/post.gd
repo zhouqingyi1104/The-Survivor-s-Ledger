@@ -907,7 +907,7 @@ static func identity_intel(run: Dictionary) -> Array:
 	for day in [11, 17, 20]:
 		var wave := Defense.wave_for_run(run, day)
 		if wave.is_empty(): continue
-		lines.append("第%d夜：%d只，%s。%s" % [day, Defense._count(wave), Defense.mod_names(wave), "已开夜，按整夜锁定安排" if int(run.get("wave_day", 0)) == day else "今世干预变化后会重新核对"])
+		lines.append("第 %d 夜：%d 只，%s。%s" % [day, Defense._count(wave), Defense.mod_names(wave), "已开夜，按整夜锁定安排" if int(run.get("wave_day", 0)) == day else "今世干预变化后会重新核对"])
 	return lines
 
 
@@ -1566,7 +1566,7 @@ static func craft_block(run: Dictionary, craft_id: String) -> String:
 	if c.has("identity"):
 		var identity_block := Identity.craft_block(run, craft_id)
 		if identity_block != "": return identity_block
-		if float(run.get("attrs", {}).get("energy", 0.0)) < int(ACTIONS.craft[2]): return "精力不足，身份配方需要%d。" % int(ACTIONS.craft[2])
+		if float(run.get("attrs", {}).get("energy", 0.0)) < int(ACTIONS.craft[2]): return "精力不足，身份配方需要 %d。" % int(ACTIONS.craft[2])
 	if c.has("flag") and not State.flag(run, c.flag):
 		return "还不会"
 	if not Inv.has_all(run.home, c["in"]):
@@ -1648,7 +1648,7 @@ static func search(run: Dictionary, idx: int, option_id := "") -> Dictionary:
 		var stop := advance(run, minutes)
 		run.erase("neighbor_searching")
 		if int(run.t) - started < minutes or run.get("phase", "") != "post" or run.explore.is_empty() or run.explore.get("curfew_due", false):
-			return {"blocked": "现场行动被%s打断，已耗时%d分钟；未完成，也没有取得物资或效果。" % ["宵禁" if stop == "curfew" else "突发状况", int(run.t) - started]}
+			return {"blocked": "现场行动被%s打断，已耗时 %d 分钟；未完成，也没有取得物资或效果。" % ["宵禁" if stop == "curfew" else "突发状况", int(run.t) - started]}
 		prepaid = true
 	var story_revision := int(Mainline.state(run).revision)
 	var res := Explore.search(run, idx, option_id, reserved_gain)
@@ -1680,7 +1680,7 @@ static func _expedition_spend(run: Dictionary, minutes: int) -> String:
 	var stop := advance(run, minutes)
 	run.erase("neighbor_searching")
 	if int(run.t) - started < minutes or run.get("phase", "") != "post" or run.get("explore", {}).is_empty() or run.explore.get("curfew_due", false) or run.explore.get("caught", false):
-		return "行动被%s打断，已耗时%d分钟；未完成，没有取得成果。" % ["宵禁" if stop == "curfew" else "突发状况", int(run.t) - started]
+		return "行动被%s打断，已耗时 %d 分钟；未完成，没有取得成果。" % ["宵禁" if stop == "curfew" else "突发状况", int(run.t) - started]
 	return ""
 
 
@@ -1762,7 +1762,7 @@ static func expedition_answer(run: Dictionary, choice_id: String) -> Dictionary:
 	if caught:
 		Explore._caught(run, Data.table("map_points")[pid])
 		State.check_death(run, "解机关惊动尸群，没能逃回宅院。")
-	var text := "机关没有打开，发出的声响让阳气外泄增加%d；%s" % [exposure_added, "尸群已经追来！" if caught else "可以再试。"]
+	var text := "机关没有打开，发出的声响让阳气外泄增加 %d；%s" % [exposure_added, "尸群已经追来！" if caught else "可以再试。"]
 	ex.notes.append(text)
 	return {"text": text, "unlocked": false, "caught": caught}
 

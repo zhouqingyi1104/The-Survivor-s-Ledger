@@ -1,13 +1,13 @@
 extends SceneTree
-## 文案检查：玩家看得到的字句里不许出现给开发看的词（规范见 docs/38-copy-style.md 第 2 节）。
+## 文案检查：玩家看得到的字句里不许出现给开发看的词，数字与引号按统一格式写（规范见 docs/38-copy-style.md 第 2 节）。
 ## 扫 scripts/ 下的字符串字面量和 data/*.json 的文字；写给 AI 的记录、试玩报告、存档迁移、开发工具不算玩家界面。
 ## 运行：godot --headless --path . --script res://tests/copy_lint.gd
 
-## 不是玩家界面的文件：前世档案（写给 AI）、试玩报告（写给开发者）、导演校验、存档迁移、截图演示
+## 不是玩家界面的文件：前世档案（写给 AI）、试玩报告（写给开发者）、存档迁移、截图演示。
+## director.gd 不在这里：世情事件的标题、选项和约定提示由它拼出来，玩家看得到。
 const SKIP_FILES := [
 	"res://scripts/core/life_memory_file.gd",
 	"res://scripts/core/playtest_report.gd",
-	"res://scripts/core/director.gd",
 	"res://scripts/core/migrate.gd",
 ]
 const SKIP_DIRS := ["res://scripts/dev"]
@@ -30,6 +30,9 @@ var failures := 0
 var _literal := RegEx.create_from_string("\"((?:[^\"\\\\\\n]|\\\\.)*)\"")
 var _cjk := RegEx.create_from_string("[\\x{4e00}-\\x{9fff}]")
 var _ai := RegEx.create_from_string("(?<![A-Za-z])AI(?![A-Za-z])")
+## 格式（第 3 批）：汉字与数字、%d 之间要空一格；引号只用「」『』
+var _tight := RegEx.create_from_string("[\\x{4e00}-\\x{9fff}](?:\\d|%[-+0-9.]*[dfi])|(?:\\d|%[-+0-9.]*[dfi])[\\x{4e00}-\\x{9fff}]")
+var _quote := RegEx.create_from_string("[\\x{201c}\\x{201d}\\x{2018}\\x{2019}']")
 
 
 func _initialize() -> void:
@@ -39,12 +42,17 @@ func _initialize() -> void:
 	_scan_data(strings)
 	check(strings.size() >= MIN_STRINGS, "只扫到 %d 条字符串，扫描可能坏了" % strings.size())
 	var hits := 0
+	var format_hits := 0
 	for entry in strings:
 		var word := banned_word(str(entry.text))
 		if word != "":
 			hits += 1
 			check(false, "%s 里出现「%s」：%s" % [entry.where, word, str(entry.text).left(80)])
-	print("[copy_lint] 扫了 %d 条玩家可见字符串，禁用词 %d 处" % [strings.size(), hits])
+		var issue := format_issue(str(entry.text))
+		if issue != "":
+			format_hits += 1
+			check(false, "%s %s：%s" % [entry.where, issue, str(entry.text).left(80)])
+	print("[copy_lint] 扫了 %d 条玩家可见字符串，禁用词 %d 处，格式 %d 处" % [strings.size(), hits, format_hits])
 	print("[copy_lint] %d 项检查，失败 %d 处" % [checks, failures])
 	quit(0 if failures == 0 else 1)
 
@@ -55,6 +63,19 @@ func test_matcher() -> void:
 	check(banned_word("也不需要等待 AI；") == "AI", "抓不到独立的 AI")
 	check(banned_word("MAIN 线路") == "", "把 MAIN 里的 AI 误判了")
 	check(banned_word("天黑前把门窗墙补齐。") == "", "正常的字被误判")
+	check(format_issue("第3日08:00") != "", "抓不到汉字紧贴数字")
+	check(format_issue("需要%d文") != "", "抓不到汉字紧贴格式符")
+	check(format_issue("纸条上写着：'能否……'") != "", "抓不到英文单引号")
+	check(format_issue("“到这里就够了。”") != "", "抓不到弯引号")
+	check(format_issue("第 3 日 08:00 前，米 ×4、信任 +1，「到这里就够了。」") == "", "合规的写法被误判")
+
+
+func format_issue(text: String) -> String:
+	if _tight.search(text) != null:
+		return "汉字与数字之间没空格"
+	if _quote.search(text) != null:
+		return "引号不是「」"
+	return ""
 
 
 func banned_word(text: String) -> String:

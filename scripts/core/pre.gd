@@ -324,7 +324,7 @@ static func money(wen: int) -> String:
 	var liang := wen / 1000
 	var qian := (wen % 1000) / 100
 	if liang > 0 and qian > 0:
-		return "%d两%d钱" % [liang, qian]
+		return "%d 两 %d 钱" % [liang, qian]
 	if liang > 0:
-		return "%d两" % liang
-	return "%d钱" % qian if qian > 0 else "%d文" % wen
+		return "%d 两" % liang
+	return "%d 钱" % qian if qian > 0 else "%d 文" % wen

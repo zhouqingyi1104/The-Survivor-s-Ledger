@@ -107,7 +107,7 @@ func _ready() -> void:
 	Expedition.state(caught).clues = [true, true]
 	caught.explore.exposure = 95
 	var caught_res := Post.expedition_answer(caught, "east")
-	check(caught_res.caught and caught.explore.caught and not Expedition.state(caught).unlocked and str(caught_res.text).contains("增加5"), "wrong answer can cause capture and reports actual exposure")
+	check(caught_res.caught and caught.explore.caught and not Expedition.state(caught).unlocked and str(caught_res.text).contains("增加 5"), "wrong answer can cause capture and reports actual exposure")
 	var fatal := fixture("rice_ruin")
 	Expedition.state(fatal).clues = [true, true]
 	fatal.t = 6 * 1440 + 300

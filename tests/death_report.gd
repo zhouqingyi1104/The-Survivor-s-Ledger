@@ -78,7 +78,7 @@ func test_verdict_from_ledger() -> void:
 	State.hurt(starve, 99.0, "starve")
 	var said := DeathReport.verdict(starve)
 	check(said.contains("饿死"), "饿死的判词不对：%s" % said)
-	check(said.contains("第1日"), "判词里没有日子：%s" % said)
+	check(said.contains("第 1 日"), "判词里没有日子：%s" % said)
 
 	# 冻死（酷寒与受冻都算冻死，但构成里分开记）
 	var freeze := _run()
@@ -124,7 +124,7 @@ func test_verdict_from_ledger() -> void:
 func test_guess_fallback() -> void:
 	var bare := _run()
 	var said := DeathReport.verdict(bare)
-	check(said.contains("第1日"), "兜底判词也没有日子（改前是「力竭而亡。」）：%s" % said)
+	check(said.contains("第 1 日"), "兜底判词也没有日子（改前是「力竭而亡。」）：%s" % said)
 	check(not said.contains("力竭而亡"), "还在用旧的力竭而亡：%s" % said)
 
 	var thirsty := _run()
