@@ -10,6 +10,7 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
+const Expansion = preload("res://scripts/core/home_expansion.gd")
 
 const CORE_IDS := ["bed", "desk", "storage", "stove", "bench"]
 
@@ -20,6 +21,8 @@ const GRID := 0.25
 const INDOOR := [Rect2(-5.8, -7.9, 11.6, 4.2), Rect2(-9.9, -3.3, 3.6, 5.6), Rect2(6.3, -3.3, 3.6, 5.6)]
 const OUTDOOR := [Rect2(-9.9, 2.6, 19.8, 4.1), Rect2(-6.1, -3.3, 12.2, 5.9)]
 ## 不许摆的：大门到正屋的中路、米袋 / 柴垛 / 木料堆（这几堆按存货画，没有碰撞）
+const SIDE_YARD := Rect2(10.0, 2.7, 6.2, 4.0)
+const SIDE_PASSAGE := Rect2(9.2, 3.0, 3.0, 3.0)
 const RESERVED := [Rect2(-1.0, -3.8, 2.0, 10.9), Rect2(-9.7, -0.7, 1.6, 1.2), Rect2(-9.7, -3.6, 1.6, 1.2), Rect2(7.9, 0.6, 1.8, 1.6)]
 ## 开局的摆法（v0.4 以前固定在这些位置）
 const DEFAULT_LAYOUT := [
@@ -131,10 +134,13 @@ static func _inside(r: Rect2, areas: Array) -> bool:
 	return true
 
 
-static func area_of(r: Rect2) -> String:
+static func area_of(r: Rect2, run: Dictionary = {}) -> String:
 	if _inside(r, INDOOR):
 		return "indoor"
-	if _inside(r, OUTDOOR):
+	var outdoor := OUTDOOR.duplicate()
+	if Expansion.complete(run):
+		outdoor.append(SIDE_YARD)
+	if _inside(r, outdoor):
 		return "outdoor"
 	return ""
 
@@ -145,7 +151,7 @@ static func spot_block(run: Dictionary, id: String, x: float, z: float, rot: int
 	if d.is_empty():
 		return "没有这种家具。"
 	var r := rect_of(id, x, z, rot)
-	var area := area_of(r)
+	var area := area_of(r, run)
 	if area == "":
 		return "这儿摆不下。"
 	match d.get("where", "any"):
@@ -155,6 +161,8 @@ static func spot_block(run: Dictionary, id: String, x: float, z: float, rot: int
 		"outdoor":
 			if area != "outdoor":
 				return "%s得摆在院里。" % d.name
+	if Expansion.complete(run) and r.intersects(SIDE_PASSAGE):
+		return "这儿要留作侧院通路。"
 	for res in RESERVED:
 		if r.intersects(res):
 			return "这儿要留着走路 / 堆东西。"

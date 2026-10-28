@@ -17,6 +17,7 @@ const WaveShow = preload("res://scripts/world/wave_show.gd")
 const Outline = preload("res://scripts/world/outline.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
+const Expansion = preload("res://scripts/core/home_expansion.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
@@ -102,6 +103,15 @@ func build_overlay() -> void:
 
 func sync_world() -> void:
 	if _show == null:
+		# 回溯或读取旧档会关上侧墙；取消旧路径并把墙外的人送回院内。
+		if world._side_stage == "complete" and not Expansion.complete(Game.run):
+			player.stop()
+			_pending = Callable()
+			_pending_spot = ""
+			var p := player.global_position
+			if p.x > 9.55 and p.z > 2.2 and p.z < 7.3:
+				player.global_position = HomeWorld.SPAWN
+				player.velocity = Vector3.ZERO
 		world.sync(Game.run)
 		world.show_fight(Game.run.get("fight", {}))
 
@@ -195,7 +205,7 @@ func _ghost_at(p: Vector3) -> void:
 	_ghost.visible = true
 	_ghost.global_position = Vector3(gx, 0.45, gz)
 	_ghost.rotation.y = deg_to_rad(float(Game.placing_rot))
-	var block: String = world.move_spot_block(Game.run, Game.moving_uid, gx, gz, Game.placing_rot) if Game.moving_uid >= 0 else Home.place_block(Game.run, Game.placing, gx, gz, Game.placing_rot)
+	var block: String = world.move_spot_block(Game.run, Game.moving_uid, gx, gz, Game.placing_rot) if Game.moving_uid >= 0 else world.build_spot_block(Game.run, Game.placing, gx, gz, Game.placing_rot)
 	if Game.moving_uid >= 0 and block == "":
 		block = Post.can_act(Game.run)
 	_place_reason = block
@@ -226,8 +236,12 @@ func _place_at(p: Vector3) -> void:
 			return
 		Game.toast.emit("挪好了%s。" % Home.data(id).get("name", "家具"))
 	else:
+		var block: String = world.build_spot_block(Game.run, id, p.x, p.z, rot)
+		if block != "":
+			Game.toast.emit(block)
+			return
 		Game.placing = ""
-		var res = Game.act(func(): return Post.act_furnish(Game.run, id, p.x, p.z, rot))
+		var res = Game.act(func(): return Post.act_furnish(Game.run, id, Home.snap(p.x), Home.snap(p.z), rot))
 		if typeof(res) == TYPE_STRING and res != "":
 			Game.placing = id
 			return
@@ -684,7 +698,7 @@ func actions_for(id: String) -> Array:
 			var can_mend := Inv.count(run.home, "wood") > 0 or Inv.count(run.home, "firewood") >= 2
 			var mend := "" if can_mend else "没有木料（两捆柴也行）"
 			var decor_block := "夜袭中不能装修。" if not run.get("fight", {}).is_empty() else can
-			var out := [["营造守具 · 画符…", Dialogs.build, ""], ["添置家具…", Dialogs.furnish, ""], ["宅院装修…", func(): preload("res://scripts/ui/home_decoration.gd").open(), decor_block]]
+			var out := [["营造守具 · 画符…", Dialogs.build, ""], ["添置家具…", Dialogs.furnish, ""], ["宅院装修…", func(): preload("res://scripts/ui/home_decoration.gd").open(), decor_block], ["东侧院扩建…", func(): preload("res://scripts/ui/home_expansion.gd").open(), ""]]
 			if "bench" in run.get("broken", []):
 				out = _fix_menu("bench") + out
 			for row in [["door", "门"], ["window", "窗"], ["wall", "墙"]]:

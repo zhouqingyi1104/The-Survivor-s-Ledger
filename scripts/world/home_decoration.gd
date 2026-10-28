@@ -2,19 +2,21 @@ extends RefCounted
 ## 装修只生成视觉网格；不含碰撞、导航、交互或运行时灯光。
 const K = preload("res://scripts/world/kit.gd")
 const Decoration = preload("res://scripts/core/home_decoration.gd")
+const Expansion = preload("res://scripts/core/home_expansion.gd")
 
 
 static func sync(root: Node3D, run: Dictionary) -> void:
 	var state := []
 	for category in ["wall", "floor", "lamps", "plants"]:
 		state.append(Decoration.selected(run, category))
-	var key := "|".join(state)
+	var expanded := Expansion.complete(run)
+	var key := "|".join(state) + ("|expanded" if expanded else "|original")
 	if root.get_meta("decoration_key", "") == key:
 		return
 	root.set_meta("decoration_key", key)
 	K.clear(root)
 	if state[0] != "original":
-		_wall(root, str(state[0]))
+		_wall(root, str(state[0]), expanded)
 	if state[1] != "original":
 		_floor(root, str(state[1]))
 	if state[2] != "original":
@@ -23,11 +25,15 @@ static func sync(root: Node3D, run: Dictionary) -> void:
 		_plants(root, str(state[3]))
 
 
-static func _wall(root: Node3D, choice: String) -> void:
+static func _wall(root: Node3D, choice: String, expanded: bool) -> void:
 	var color := Color("#b89179") if choice == "warm" else Color("#79878b")
 	# 仅覆盖墙体内侧，门窗、墙帽及原碰撞保持不变。
-	for x in [-10.01, 10.01]:
-		K.box(root, Vector3(0.025, 2.4, 14.8), color, Vector3(x, 1.7, -0.6))
+	K.box(root, Vector3(0.025, 2.4, 14.8), color, Vector3(-10.01, 1.7, -0.6))
+	if expanded:
+		K.box(root, Vector3(0.025, 2.4, 11.0), color, Vector3(10.01, 1.7, -2.5))
+		K.box(root, Vector3(0.025, 2.4, 1.0), color, Vector3(10.01, 1.7, 6.5))
+	else:
+		K.box(root, Vector3(0.025, 2.4, 14.8), color, Vector3(10.01, 1.7, -0.6))
 	K.box(root, Vector3(20.0, 2.8, 0.025), color, Vector3(0, 1.9, -8.01))
 	# 窗口附近只铺上下边，留出格窗。
 	K.box(root, Vector3(8.1, 2.4, 0.025), color, Vector3(-6.05, 1.7, 6.81))

@@ -17,6 +17,7 @@ const Expedition = preload("res://scripts/core/expedition.gd")
 const SiteJourney = preload("res://scripts/core/site_journey.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
+const Expansion = preload("res://scripts/core/home_expansion.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Companion = preload("res://scripts/core/companion.gd")
@@ -61,6 +62,8 @@ const ACTIONS := {
 	"cook": ["做饭", 60, 6], "garden": ["打理菜畦", 45, 8], "build": ["营造", 90, 10], "repair": ["修缮", 60, 8],
 	"fix_furniture": ["重修家具", 90, 8],
 	"furnish": ["安放家具", 45, 6],
+	"expansion_clear": ["查勘清理侧院", Expansion.CLEAR_MINUTES, 5],
+	"expansion_build": ["施工侧院", Expansion.BUILD_MINUTES, 8],
 	"read": ["读书", 120, 4], "craft": ["画符", 60, 6], "rest": ["小憩", 120, 0], "water": ["打水", 15, 2],
 	"travel": ["赶路", 60, 8], "search": ["翻找", 20, 4],
 	"mend": ["夜修", 25, 4], "ward": ["布守具", 20, 6],
@@ -283,6 +286,7 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 			if not Defense.wave_for_run(run, int(run.pday)).is_empty() and int(run.wave_day) != int(run.pday):
 				run.wave_due = true
 				run.sleeping = false
+				_interrupt_furnish(run)
 				run.busy = {}
 				return "wave"
 		RAID_AT:
@@ -344,6 +348,7 @@ static func _heat(run: Dictionary) -> void:
 ## 6:00 天亮：结算功过格，等玩家翻页（ack_dawn）再开新的一天。
 static func _dawn(run: Dictionary) -> void:
 	run.sleeping = false
+	_interrupt_furnish(run, "天亮")
 	run.busy = {}
 	run.dawn_due = true
 	# 同院的人天亮各干一件事（先收口粮），动静放进天亮报告
@@ -612,6 +617,10 @@ static func toggle_gate(run: Dictionary) -> String:
 static func start_fight(run: Dictionary, count: int, armored: bool) -> void:
 	if not run.fight.is_empty():
 		return
+	_interrupt_furnish(run)
+	if str(run.busy.get("kind", "")) in ["expansion_clear", "expansion_build"]:
+		run.busy = {}
+		State.note(run, "夜袭打断了侧院施工，已备材料仍在。")
 	run.fight = NightFight.begin(count, armored, run)
 	State.note(run, "%d 只摸到了街上——门没关。" % int(run.fight.total))
 
@@ -928,6 +937,12 @@ static func _check_busy(run: Dictionary) -> void:
 ## 做完了，见成果。
 static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 	match kind:
+		"expansion_clear", "expansion_build":
+			var expected := "survey" if kind == "expansion_clear" else "ready"
+			if expected == "ready" and _side_passage_blocked(run):
+				State.note(run, "侧院通路被家具挡住，先挪开再施工；已备材料仍在。")
+			elif Expansion.finish(run, expected):
+				State.note(run, "侧院已清理，可以备料。" if expected == "survey" else "东侧小院施工完成。")
 		"chore":
 			Agenda.complete(run, data)
 		"cycle_inquiry":
@@ -1271,6 +1286,62 @@ static func act_fix_furniture(run: Dictionary, id: String) -> String:
 	return ""
 
 
+## 家具尚未落成就被夜袭打断时，只退回本次投入；先清 busy 防重复结算。
+static func _interrupt_furnish(run: Dictionary, reason := "夜袭") -> void:
+	if str(run.busy.get("kind", "")) != "furnish":
+		return
+	var data: Dictionary = run.busy.get("data", {})
+	var cost = data.get("paid_cost", Home.data(str(data.get("id", ""))).get("cost", {}))
+	run.busy = {}
+	if cost is Dictionary:
+		Inv.add_all(run.home, cost)
+	State.note(run, "%s打断了家具安放，材料已退回。" % reason)
+
+
+## 门洞与其两端通路在旧布局中可能已有家具。
+static func _side_passage_blocked(run: Dictionary) -> bool:
+	for f in run.get("furniture", []):
+		if Home.rect_of(str(f.id), float(f.x), float(f.z), int(f.rot)).intersects(Home.SIDE_PASSAGE):
+			return true
+	return false
+
+
+## 侧院每一阶段都经同一个入口：施工中断后保留已备材料，重新投入工时。
+static func expansion_block(run: Dictionary) -> String:
+	var current := Expansion.stage(run)
+	if current == "complete":
+		return "侧院已经建好。"
+	if not run.get("fight", {}).is_empty() or in_night(run):
+		return "夜袭期间不能扩建侧院。"
+	var energy := 5 if current == "survey" else (8 if current == "ready" else 0)
+	var err := can_act(run, energy)
+	if err != "":
+		return err
+	if current == "ready" and _side_passage_blocked(run):
+		return "侧院通路有家具，先挪开再施工。"
+	if current == "cleared" and not Inv.has_all(run.home, Expansion.COST):
+		return "备料不足（%s）。" % Data.describe_items(Expansion.COST)
+	return ""
+
+
+static func act_expansion(run: Dictionary) -> String:
+	var err := expansion_block(run)
+	if err != "":
+		return err
+	match Expansion.stage(run):
+		"survey":
+			_start(run, "expansion_clear")
+			State.note(run, "开始查勘并清理东侧空地。")
+		"cleared":
+			Inv.take_all(run.home, Expansion.COST)
+			run["expansion"] = {"stage": "ready"}
+			State.note(run, "侧院备好了%s，尚未施工。" % Data.describe_items(Expansion.COST))
+		"ready":
+			_start(run, "expansion_build")
+			State.note(run, "开始施工东侧小院。")
+	return ""
+
+
 ## 添置一件家具：先扣料，再花时间摆进去（摆在哪儿由界面点地面给）。
 static func act_furnish(run: Dictionary, id: String, x: float, z: float, rot: int) -> String:
 	var err := can_act(run, 6)
@@ -1279,8 +1350,9 @@ static func act_furnish(run: Dictionary, id: String, x: float, z: float, rot: in
 	err = Home.place_block(run, id, x, z, rot)
 	if err != "":
 		return err
-	Inv.take_all(run.home, Home.data(id).get("cost", {}))
-	_start(run, "furnish", {"id": id, "x": x, "z": z, "rot": rot})
+	var cost: Dictionary = Home.data(id).get("cost", {}).duplicate(true)
+	Inv.take_all(run.home, cost)
+	_start(run, "furnish", {"id": id, "x": x, "z": z, "rot": rot, "paid_cost": cost})
 	return ""
 
 

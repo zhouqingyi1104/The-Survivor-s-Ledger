@@ -13,6 +13,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const State = preload("res://scripts/core/state.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Home = preload("res://scripts/core/home.gd")
+const Expansion = preload("res://scripts/core/home_expansion.gd")
 const DecorationWorld = preload("res://scripts/world/home_decoration.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const Figure = preload("res://scripts/world/character.gd")
@@ -48,6 +49,9 @@ var _garden_body: StaticBody3D
 var _garden_rows := 0
 var _nav_furniture_key := ""
 var _current_run := {}
+var _side_yard: Node3D
+var _side_stage := ""
+var _side_lantern := {}
 # C1 邻宅氛围：set_time 缓存阶段/大雪上下文，set_preset 据此投影（不缓存 run 本体）。
 var _amb_ctx := {"phase": "post", "pday": 1, "heavy": false}
 
@@ -62,6 +66,7 @@ func _ready() -> void:
 	# 无碰撞/无导航/无灯光；显式列入 merge_static 的 skip。
 	surroundings = Surroundings.build(self, {})
 	_ground()
+	_side_yard = K.node(self, Vector3.ZERO, Vector3.ZERO, "side_yard")
 	_buildings()
 	_furniture()
 	_decor()
@@ -72,7 +77,7 @@ func _ready() -> void:
 	_garden_body = K.collider(garden_root, Vector3.ONE, Vector3.ZERO, {"spot": "garden"})
 	spot_nodes["garden"] = _dynamic.garden
 	# 静态的方块按材质合并；会动、会重画、要描边的留着；四周景物根整树跳过（层内各自合并）
-	K.merge_static(self, [gate.node, _window, surroundings] + spot_nodes.values() + _dynamic.values())
+	K.merge_static(self, [gate.node, _window, surroundings, _side_yard] + spot_nodes.values() + _dynamic.values())
 
 
 func _ground() -> void:
@@ -123,7 +128,6 @@ func _buildings() -> void:
 	halls.append(Arch.hall(self, Vector3(8.0, 0, -0.5), -90, 6.0, 3.6, 3.2, ["back"], false))
 	Arch.wall(self, Vector3(-10.2, 0, -8.2), Vector3(10.2, 0, -8.2), 3.4)
 	Arch.wall(self, Vector3(-10.2, 0, -8.2), Vector3(-10.2, 0, 7.0), 3.0)
-	Arch.wall(self, Vector3(10.2, 0, -8.2), Vector3(10.2, 0, 7.0), 3.0)
 	Arch.wall(self, Vector3(-10.2, 0, GATE_Z), Vector3(-1.9, 0, GATE_Z), 3.0)
 	Arch.wall(self, Vector3(1.9, 0, GATE_Z), Vector3(10.2, 0, GATE_Z), 3.0)
 	gate = Arch.gate(self, Vector3(0, 0, GATE_Z))
@@ -203,17 +207,54 @@ func _bake_nav() -> void:
 	nm.agent_radius = 0.5
 	nm.agent_height = 1.75
 	nm.agent_max_climb = 0.25
-	nm.filter_baking_aabb = AABB(Vector3(-10.5, -1, -8.5), Vector3(21, 6, 16))
+	nm.filter_baking_aabb = _nav_bounds()
 	nav_region = NavigationRegion3D.new()
 	nav_region.navigation_mesh = nm
 	add_child(nav_region)
 	nav_region.bake_navigation_mesh(false)
 
 
+# 扩建只在施工完成后打开侧墙；中间阶段保留封闭的原院。
+func _sync_side_yard(run: Dictionary) -> bool:
+	var stage := Expansion.stage(run)
+	if stage == _side_stage:
+		return false
+	_side_stage = stage
+	K.clear(_side_yard)
+	_side_lantern = {}
+	if Expansion.complete(run):
+		Arch.wall(_side_yard, Vector3(10.2, 0, -8.2), Vector3(10.2, 0, 3.0), 3.0)
+		Arch.wall(_side_yard, Vector3(10.2, 0, 6.0), Vector3(10.2, 0, 7.0), 3.0)
+		Arch.wall(_side_yard, Vector3(10.2, 0, 2.5), Vector3(16.5, 0, 2.5), 2.6)
+		Arch.wall(_side_yard, Vector3(16.5, 0, 2.5), Vector3(16.5, 0, 6.9), 2.6)
+		Arch.wall(_side_yard, Vector3(10.2, 0, 6.9), Vector3(16.5, 0, 6.9), 2.6)
+		K.box(_side_yard, Vector3(6.1, 0.06, 4.2), K.STONE_DARK, Vector3(13.3, 0.06, 4.7))
+		_side_lantern = Arch.lantern(_side_yard, Vector3(15.8, 2.2, 3.0))
+		Arch.set_lantern(_side_lantern, _night)
+	else:
+		Arch.wall(_side_yard, Vector3(10.2, 0, -8.2), Vector3(10.2, 0, 7.0), 3.0)
+		# 标记清理与备料的真实进度；均为无碰撞的视觉，不代表工程已经完工。
+		if stage == "survey":
+			for i in range(4):
+				K.box(_side_yard, Vector3(0.55, 0.35, 0.45), K.STONE, Vector3(12.8 + i * 0.55, 0.18, 4.6 + (i % 2) * 0.45), Vector3(0, i * 20, i * 5))
+		elif stage in ["cleared", "ready"]:
+			K.box(_side_yard, Vector3(3.4, 0.025, 2.1), K.EARTH, Vector3(13.5, 0.045, 4.6))
+			if stage == "ready":
+				for i in range(3):
+					K.box(_side_yard, Vector3(1.8, 0.12, 0.22), K.WOOD_LIGHT, Vector3(13.5, 0.15 + i * 0.12, 4.4))
+				K.box(_side_yard, Vector3(0.4, 0.24, 0.4), K.WOOD, Vector3(14.8, 0.15, 4.8))
+	return true
+
+
+func _nav_bounds() -> AABB:
+	return AABB(Vector3(-10.5, -1, -8.5), Vector3(27.5, 6, 16)) if Expansion.complete(_current_run) else AABB(Vector3(-10.5, -1, -8.5), Vector3(21, 6, 16))
+
+
 # ---------- 按局面重画 ----------
 
 func sync(run: Dictionary) -> void:
 	_current_run = run
+	var side_changed := _sync_side_yard(run)
 	DecorationWorld.sync(_dynamic.decoration, run)
 	var old_rows := _garden_rows
 	_rebuild_stock(run)
@@ -233,8 +274,9 @@ func sync(run: Dictionary) -> void:
 		_nav_furniture_key = _furniture_nav_key(run)
 	else:
 		var key := _furniture_nav_key(run)
-		if key != _nav_furniture_key or old_rows != _garden_rows:
+		if key != _nav_furniture_key or old_rows != _garden_rows or side_changed:
 			_nav_furniture_key = key
+			nav_region.navigation_mesh.filter_baking_aabb = _nav_bounds()
 			nav_region.bake_navigation_mesh(false)
 
 
@@ -671,6 +713,8 @@ func _set_lanterns(lit: bool) -> void:
 	_night = lit
 	for lan in lanterns:
 		Arch.set_lantern(lan, lit)
+	if not _side_lantern.is_empty():
+		Arch.set_lantern(_side_lantern, lit)
 
 
 # ---------- 交互与遮挡 ----------
@@ -706,9 +750,15 @@ func pick(cam: Camera3D, screen_pos: Vector2) -> Dictionary:
 	if hit.collider.has_meta("spot"):
 		return {"spot": hit.collider.get_meta("spot")}
 	var p: Vector3 = hit.position
-	if p.y < 0.3 and absf(p.x) < 10.0 and p.z > -8.0 and p.z < GATE_Z - 0.3:
+	if p.y < 0.3 and _inside_pick_bounds(p):
 		return {"ground": Vector3(p.x, 0, p.z)}
 	return {}
+
+
+func _inside_pick_bounds(p: Vector3) -> bool:
+	if absf(p.x) < 10.0 and p.z > -8.0 and p.z < GATE_Z - 0.3:
+		return true
+	return Expansion.complete(_current_run) and p.x >= 10.0 and p.x < 16.3 and p.z > 2.7 and p.z < 6.7
 
 
 ## 移动时射线穿过所选家具自身，其他物体仍阻挡；允许原地改朝向。
@@ -724,7 +774,7 @@ func pick_move_ground(cam: Camera3D, screen_pos: Vector2, uid: int) -> Dictionar
 	if hit.is_empty() or hit.collider.has_meta("spot"):
 		return {}
 	var p: Vector3 = hit.position
-	if p.y < 0.3 and absf(p.x) < 10.0 and p.z > -8.0 and p.z < GATE_Z - 0.3:
+	if p.y < 0.3 and _inside_pick_bounds(p):
 		return {"ground": Vector3(p.x, 0, p.z)}
 	return {}
 
@@ -754,6 +804,31 @@ func _move_route_block(rect: Rect2, run: Dictionary, ignore_uid: int) -> bool:
 			return true
 	# 中轴向北延伸至神龛，连接前庭与正屋。
 	return rect.intersects(Rect2(-0.6, -6.6, 1.2, 13.2))
+
+
+## 新建和挪位同样检查物理障碍与通路，不能穿过侧墙或堵住工作站。
+func build_spot_block(run: Dictionary, id: String, x: float, z: float, rot: int) -> String:
+	x = Home.snap(x)
+	z = Home.snap(z)
+	var err := Home.place_block(run, id, x, z, rot)
+	if err != "":
+		return err
+	if _move_route_block(Home.rect_of(id, x, z, rot), run, -1):
+		return "这里要留给工作站和通路。"
+	if not is_inside_tree():
+		return "院子还没准备好。"
+	var size := Home.size_of(id, rot)
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(maxf(0.01, size.x - 0.04), 0.7, maxf(0.01, size.y - 0.04))
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = shape
+	q.transform = Transform3D(Basis.IDENTITY, Vector3(x, 0.45, z))
+	for hit in get_world_3d().direct_space_state.intersect_shape(q, 64):
+		if hit.collider is StaticBody3D:
+			return "这儿有东西挡着。"
+		if hit.collider is CharacterBody3D:
+			return "人站在这里，先让开。"
+	return ""
 
 
 ## 摆放预览及确认共用。几何/规则以外还检查当前场景静态碰撞。
@@ -805,7 +880,7 @@ func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) ->
 			if Vector2(stand.x - p.x, stand.z - p.z).length() < 2.0:
 				return "家具正面离其他工作站太近。"
 		var stand_rect := Rect2(stand.x - 0.4, stand.z - 0.4, 0.8, 0.8)
-		if Home.area_of(stand_rect) == "":
+		if Home.area_of(stand_rect, run) == "":
 			return "家具正面没有站人的地方。"
 		var stand_shape := BoxShape3D.new()
 		stand_shape.size = Vector3(0.75, 1.5, 0.75)

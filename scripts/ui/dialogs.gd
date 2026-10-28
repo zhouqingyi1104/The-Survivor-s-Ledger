@@ -1390,20 +1390,28 @@ func furnish() -> void:
 
 func _furnish(body: VBoxContainer) -> void:
 	var run := _run()
-	body.add_child(UI.para("挑一件，回到院里点地面放下。R 转方向，Esc 取消。屋里院里的空地都能摆，只是不能堵中路、不能和别的东西挤在一起。", 16))
-	body.add_child(UI.sep())
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size.y = clampf(UI.host.get_viewport_rect().size.y - 180.0, 220.0, 540.0)
+	UI.expand(scroll)
+	body.add_child(scroll)
+	var content := UI.vbox(8)
+	UI.expand(content)
+	scroll.add_child(content)
+	content.add_child(UI.para("挑一件，回到院里点地面放下。R 转方向，Esc 取消。屋里院里的空地都能摆，只是不能堵中路、不能和别的东西挤在一起。", 16))
+	content.add_child(UI.sep())
 	var items: Dictionary = Data.table("furniture")
 	var keys := items.keys()
 	var row: HBoxContainer = null
 	for i in keys.size():
 		if i % 2 == 0:
 			row = UI.hbox(10)
-			body.add_child(row)
+			content.add_child(row)
 		row.add_child(_furn_card(run, str(keys[i])))
 	var placed := Home.list(run)
 	if not placed.is_empty():
-		body.add_child(UI.sep())
-		body.add_child(UI.label("已经摆着的（可挪位，拆掉退一半料）", 18, UI.CINNABAR))
+		content.add_child(UI.sep())
+		content.add_child(UI.label("已经摆着的（可挪位，拆掉退一半料）", 18, UI.CINNABAR))
 		for f in placed:
 			var uid := int(f.uid)
 			var h := UI.hbox(10)
@@ -1415,7 +1423,7 @@ func _furnish(body: VBoxContainer) -> void:
 			h.add_child(UI.button("挪位", func(): _move_furn(uid)))
 			if not Home.is_core(run, f):
 				h.add_child(UI.button("拆掉", func(): _remove_furn(uid)))
-			body.add_child(h)
+			content.add_child(h)
 
 
 func _furn_card(run: Dictionary, id: String) -> Control:
