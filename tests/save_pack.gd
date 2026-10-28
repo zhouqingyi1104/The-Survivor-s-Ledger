@@ -29,7 +29,7 @@ func _initialize() -> void:
 # ---------- 一、往返 ----------
 
 func test_round_trip() -> void:
-	var save := {"run": _run(), "snapshots": {"1": {"run": {"pday": 1}}}}
+	var save := {"run": _run(), "snapshots": {"1": _run()}}
 	var text := SavePack.to_text(SavePack.pack(save, "0.10.0", "2026-10-27-1245"))
 	check(text.contains("\n"), "导出的文本没有缩进（出问题没法用记事本看）")
 	var got := SavePack.parse(text)
@@ -78,7 +78,12 @@ func test_rejects() -> void:
 # ---------- 四、老版本存档在导入时升级 ----------
 
 func test_old_version_upgraded() -> void:
-	var old_run := {"version": 20, "pday": 7, "role": "scholar", "attrs": {"hp": 60, "hp_max": 90}, "seed": 42}
+	var old_run := _run()
+	old_run.version = 20
+	old_run.pday = 7
+	old_run.attrs.hp = 60
+	old_run.attrs.hp_max = 90
+	old_run.seed = 42
 	var text := SavePack.to_text(SavePack.pack({"run": old_run, "snapshots": {}}, "0.9.0", "2026-10-01-0900"))
 	var got := SavePack.parse(text)
 	check(bool(got.ok), "老版本存档被拒了：%s" % str(got.note))
@@ -91,7 +96,10 @@ func test_old_version_upgraded() -> void:
 
 func test_snapshots_travel() -> void:
 	var run := _run()
-	var save := {"run": run, "snapshots": {"1": {"run": {"pday": 1, "hp": 90}}, "2": {"run": {"pday": 2, "hp": 80}}}}
+	var snap1 := run.duplicate(true)
+	var snap2 := run.duplicate(true)
+	snap2.pday = 2
+	var save := {"run": run, "snapshots": {"1": snap1, "2": snap2}}
 	var got := SavePack.parse(SavePack.to_text(SavePack.pack(save, "0.10.0", "x")))
 	var snaps: Dictionary = got.data.get("snapshots", {})
 	check(snaps.size() == 2, "快照没跟着走：%d 份（没有快照就翻不回昨日）" % snaps.size())

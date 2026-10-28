@@ -386,52 +386,81 @@ func suggested_save_name() -> String:
 ## 有了这一步就不必再弹一个"确定要覆盖吗"，玩家事后想回去还能导回来。
 ## 返回 {"ok": bool, "note": String, "info": Dictionary}。
 func import_save_from(path: String) -> Dictionary:
+	if no_save:
+		return {"ok": false, "note": "当前禁止写盘，不能导入存档。", "info": {}}
 	if not FileAccess.file_exists(path):
 		return {"ok": false, "note": "找不到这个文件。", "info": {}}
 	var parsed := SavePack.parse(FileAccess.get_file_as_string(path))
 	if not bool(parsed.ok):
 		return {"ok": false, "note": str(parsed.note), "info": {}}
 	var backup := _backup_before_import()
+	if not bool(backup.ok):
+		return {"ok": false, "note": str(backup.note), "info": {}}
 	var data: Dictionary = parsed.data
+	# 写盘成功之前不接管内存，也不写跨轮回底稿。留档失败和存档失败都必须让界面报错。
+	var written := SaveFile.write_preserving_backup(save_path, data)
+	if not bool(written.ok):
+		return {"ok": false, "note": "导入未完成：存档写入失败（%s，错误 %d）。原来的一卷未接管。" % [str(written.step), int(written.error)], "info": {"backup": str(backup.path)}}
+	_clear_placement()
 	run = data.get("run", {})
 	snapshots = data.get("snapshots", {})
 	save_notice = ""
-	save_game()
 	var info: Dictionary = parsed.info
-	info["backup"] = backup
+	info["backup"] = str(backup.path)
 	return {"ok": true, "note": "", "info": info}
 
 
-## 导入前的自动留档：内存里有局就按存档格式导，只有盘上有文件就整份复制。
-func _backup_before_import() -> String:
-	if no_save: return ""
+## 导入前留下可直接导回的 .jyz；盘上有档但都不可读时，不能覆盖原件。
+func _backup_before_import() -> Dictionary:
+	var previous := {"run": run, "snapshots": snapshots} if not run.is_empty() else {}
+	if previous.is_empty() and not no_save:
+		for source in [save_path, save_path + SaveFile.BAK]:
+			if not FileAccess.file_exists(source): continue
+			var json := JSON.new()
+			if json.parse(FileAccess.get_file_as_string(source)) != OK: continue
+			var candidate = json.data
+			if candidate is Dictionary and _import_backup_candidate(candidate):
+				previous = candidate
+				break
+		if previous.is_empty() and has_save():
+			return {"ok": false, "path": "", "note": "原存档与备份都读不出来，已保留原文件；请先手动留存后再导入。"}
+	if previous.is_empty(): return {"ok": true, "path": "", "note": ""}
+	if no_save: return {"ok": false, "path": "", "note": "当前禁止写盘，不能为原来的一卷留档。"}
 	var dir := "user://backups"
 	var stamp := _stamp_text()
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
-	if not run.is_empty():
-		var target := dir.path_join("导入前-%s.jyz" % stamp)
-		var env := SavePack.pack({"run": run, "snapshots": snapshots},
-			str(ProjectSettings.get_setting("application/config/version", "?")), stamp)
-		if bool(SaveFile.write_text(target, SavePack.to_text(env)).ok):
-			return ProjectSettings.globalize_path(target)
-		return ""
-	if FileAccess.file_exists(save_path):
-		var target := dir.path_join("导入前-%s.json" % stamp)
-		if bool(SaveFile.write_text(target, FileAccess.get_file_as_string(save_path)).ok):
-			return ProjectSettings.globalize_path(target)
-	return ""
+	var error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
+	if error != OK and not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(dir)):
+		return {"ok": false, "path": "", "note": "无法创建导入前备份目录，原来的一卷未改动。"}
+	var target := dir.path_join("导入前-%s.jyz" % stamp)
+	var suffix := 1
+	while FileAccess.file_exists(target) or FileAccess.file_exists(target + SaveFile.BAK):
+		target = dir.path_join("导入前-%s-%d.jyz" % [stamp, suffix])
+		suffix += 1
+	var env := SavePack.pack(previous, str(ProjectSettings.get_setting("application/config/version", "?")), stamp)
+	var contents := SavePack.to_text(env)
+	if not bool(SavePack.parse(contents).ok):
+		return {"ok": false, "path": "", "note": "原来的一卷无法打包成可导回的存档，未进行导入。"}
+	var result := SaveFile.write_text(target, contents)
+	if not bool(result.ok):
+		return {"ok": false, "path": "", "note": "无法写入导入前备份（%s，错误 %d），原来的一卷未改动。" % [str(result.step), int(result.error)]}
+	return {"ok": true, "path": ProjectSettings.globalize_path(target), "note": ""}
+
+
+## 过滤语义损坏的主档，再检查信封确实能通过导入解析；失败时继续尝试备档。
+func _import_backup_candidate(data: Dictionary) -> bool:
+	if not data.get("run") is Dictionary or not data.get("snapshots", {}) is Dictionary: return false
+	var old_run: Dictionary = data.run
+	if str(old_run.get("role", "")) not in Data.table("roles"): return false
+	if str(old_run.get("phase", "")) not in ["pre", "post", "dead", "ending"]: return false
+	for snap in data.get("snapshots", {}).values():
+		if not snap is Dictionary: return false
+	var envelope := SavePack.pack(data, str(ProjectSettings.get_setting("application/config/version", "?")), "backup")
+	return bool(SavePack.parse(SavePack.to_text(envelope)).ok)
 
 
 ## 导入完成以后该落在哪一页：进行中就回到宅院，死了就回残页，了结就回结局。
 func screen_for_run() -> String:
-	match str(run.get("phase", "")):
-		"post":
-			return "post"
-		"dead":
-			return "dead"
-		"ending":
-			return "ending"
-	return "title"
+	return _screen_for_phase()
 
 
 ## 写盘失败（磁盘满、目录没权限）不能只在控制台留一行，玩家得知道这一局可能留不住。

@@ -24,6 +24,29 @@ static func write(path: String, data: Dictionary) -> Dictionary:
 	return write_text(path, JSON.stringify(data, "\t"))
 
 
+## 导入是替换整卷：先暂存旧备份，确保写失败后主档和备档都还能恢复。
+static func write_preserving_backup(path: String, data: Dictionary) -> Dictionary:
+	var backup := path + BAK
+	var parked := backup + ".import"
+	var suffix := 1
+	while FileAccess.file_exists(parked):
+		parked = backup + ".import-%d" % suffix
+		suffix += 1
+	var had_backup := FileAccess.file_exists(backup)
+	if had_backup:
+		var error := DirAccess.rename_absolute(_abs(backup), _abs(parked))
+		if error != OK: return {"ok": false, "step": "protect_backup", "error": error}
+	var result := write(path, data)
+	if had_backup:
+		if bool(result.ok):
+			_remove(parked)
+		else:
+			var restore_error := DirAccess.rename_absolute(_abs(parked), _abs(backup))
+			if restore_error != OK:
+				return {"ok": false, "step": "restore_backup: " + parked, "error": restore_error}
+	return result
+
+
 ## 写一份已经序列化好的文本（读档转存、测试都用这条）。
 static func write_text(path: String, text: String) -> Dictionary:
 	var tmp := path + TMP

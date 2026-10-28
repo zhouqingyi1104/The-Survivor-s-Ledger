@@ -9,6 +9,7 @@ extends RefCounted
 ## 这也符合"存档要能被玩家自己读懂"的一贯做法。
 
 const Migrate = preload("res://scripts/core/migrate.gd")
+const Data = preload("res://scripts/core/data.gd")
 
 const FORMAT := "jieshi-save"
 ## 信封自己的版本，和 run.version（存档结构版本）不是一回事
@@ -51,8 +52,19 @@ static func parse(text: String) -> Dictionary:
 	var data := _as_dict(envelope.get("data"))
 	if data.is_empty() or not (data.get("run") is Dictionary) or (data.get("run", {}) as Dictionary).is_empty():
 		return _fail("文件是存档，但里面没有一局。")
+	if not _playable_run(data.run):
+		return _fail("存档缺少必要的身份、阶段或局内数据，不能安全导入。")
+	if int(data.run.get("version", 0)) > Migrate.VERSION:
+		return _fail("这份存档来自更新的游戏版本，本版本不能安全导入。")
+	if not data.get("snapshots", {}) is Dictionary:
+		return _fail("存档里的回溯快照损坏，不能安全导入。")
+	for snapshot in data.get("snapshots", {}).values():
+		if not snapshot is Dictionary or not _playable_run(snapshot):
+			return _fail("存档里的回溯快照损坏，不能安全导入。")
+		if int(snapshot.get("version", 0)) > Migrate.VERSION:
+			return _fail("存档的回溯快照来自更新的游戏版本，不能安全导入。")
 	# 老版本的存档要在导入时补齐字段，走和读档同一条迁移
-	var upgraded := Migrate.save(data)
+	var upgraded := Migrate.save(Data.normalize(data))
 	return {
 		"ok": true,
 		"note": "",
@@ -84,6 +96,28 @@ static func _safe(text: String) -> String:
 
 static func _as_dict(value) -> Dictionary:
 	return value if value is Dictionary else {}
+
+
+## 只核验旧版本也应有的基本事实和容器，其他新增字段交给 Migrate 补全。
+static func _playable_run(value: Dictionary) -> bool:
+	if str(value.get("phase", "")) not in ["pre", "post", "dead", "ending"]: return false
+	if str(value.get("role", "")) not in Data.table("roles"): return false
+	for key in ["home", "attrs", "flags", "explore"]:
+		if not value.get(key) is Dictionary: return false
+	for key in ["hp", "hp_max", "food", "water", "mood", "energy", "warmth"]:
+		if not value.attrs.has(key) or not typeof(value.attrs[key]) in [TYPE_INT, TYPE_FLOAT]: return false
+	for key in ["seed", "day", "pday", "hour"]:
+		if not value.has(key) or not typeof(value[key]) in [TYPE_INT, TYPE_FLOAT]: return false
+		if float(value[key]) != floor(float(value[key])): return false
+	if value.has("t") and (not typeof(value.t) in [TYPE_INT, TYPE_FLOAT] or float(value.t) != floor(float(value.t))): return false
+	for key in ["plots", "facilities", "log"]:
+		if not value.get(key) is Array: return false
+	for key in ["night", "fight", "busy"]:
+		if value.has(key) and not value[key] is Dictionary: return false
+	for plot in value.plots:
+		if not plot is Dictionary: return false
+	if value.has("furniture") and not value.furniture is Array: return false
+	return true
 
 
 static func _fail(note: String) -> Dictionary:

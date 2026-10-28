@@ -1932,13 +1932,25 @@ func _do_import_save(path: String, fd: FileDialog) -> void:
 		_set_pack_status(str(result.note), false)
 		return
 	var info: Dictionary = result.info
-	var line := "已导入：第 %d 日%s" % [int(Game.run.get("pday", 0)),
-		"（存档来自更新的结构，已自动升级）" if bool(info.get("upgraded", false)) else ""]
+	var line := "已导入：%s%s" % [State.time_label(Game.run),
+		"（旧存档已自动升级）" if bool(info.get("upgraded", false)) else ""]
 	var backup := str(info.get("backup", ""))
 	if backup != "":
 		line += "\n原来那一卷留在这里：%s" % backup
-	_set_pack_status(line, true)
 	UI.close_modal("save_pack")
+	UI.open_modal("save_import_result", "存档已导入", _save_import_result.bind(line), false, 700)
+
+
+func _save_import_result(body: VBoxContainer, message: String) -> void:
+	body.add_child(UI.para(message, 17))
+	var row := UI.hbox()
+	row.add_child(UI.spacer())
+	row.add_child(UI.seal_button("进入这一卷", _finish_save_import))
+	body.add_child(row)
+
+
+func _finish_save_import() -> void:
+	UI.close_modal("save_import_result")
 	Game.go(Game.screen_for_run())
 
 
