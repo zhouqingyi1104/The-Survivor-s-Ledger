@@ -31,6 +31,7 @@ func connection() -> Dictionary:
 	return value
 
 func _process(delta: float) -> void:
+	if Game._rewind_pending(): return
 	_elapsed += delta
 	if _elapsed < 1.0: return
 	_elapsed = 0.0
@@ -81,7 +82,7 @@ func _completed(result: int, code: int, _headers: PackedStringArray, body: Packe
 	var same_run := is_same(Game.run, _sent_run)
 	_sent = {}
 	_sent_run = {}
-	if Game.no_save or Game.run.is_empty() or sent.is_empty(): return
+	if Game.no_save or Game._rewind_pending() or Game.run.is_empty() or sent.is_empty(): return
 	if not same_run:
 		last_status = "discarded"
 		return

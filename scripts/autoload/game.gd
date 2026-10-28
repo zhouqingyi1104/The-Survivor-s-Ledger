@@ -68,7 +68,14 @@ var pending_opening_setup: Dictionary = {}
 
 
 func _ready() -> void:
+	# Demo mode is declared before autoload startup, not after main scene loads.
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--demo=") and arg.trim_prefix("--demo=") != "": no_save = true
 	Data.ensure()
+	# Recover a durable rewind before reading or renaming either constituent file.
+	if _rewind_pending() and not _ensure_rewind_resolved():
+		meta = State.new_meta()
+		return
 	var got := SaveFile.read(meta_path)
 	var data: Dictionary = Data.normalize(got.data)
 	meta = data if not data.is_empty() else State.new_meta()
@@ -76,10 +83,10 @@ func _ready() -> void:
 	# 并把读不出的那份另存留底（不直接覆盖），玩家至少还有东西可以发给别人看。
 	if got.note in ["main_bad", "main_missing"]:
 		save_notice = "跨轮回的底稿没能完整读回，已改用上一份备份。"
-		_preserve_broken(meta_path)
+		if not no_save: _preserve_broken(meta_path)
 	elif got.note == "none" and FileAccess.file_exists(meta_path):
 		save_notice = "跨轮回的底稿读不出来，已另存留底并重新起账。"
-		_preserve_broken(meta_path)
+		if not no_save: _preserve_broken(meta_path)
 
 
 # ---------- 界面切换 ----------
@@ -112,6 +119,9 @@ func _screen_for_phase() -> String:
 
 ## 调核心逻辑。返回非空字符串就当作提示弹出来。
 func act(fn: Callable) -> Variant:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return null
 	var res = fn.call()
 	if typeof(res) == TYPE_STRING and res != "":
 		toast.emit(res)
@@ -120,14 +130,15 @@ func act(fn: Callable) -> Variant:
 	return res
 
 
-func _after() -> void:
+func _after(skip_save := false) -> void:
+	if _rewind_pending(): return
 	if run.is_empty():
 		changed.emit()
 		return
 	# 每天卯时开始时记一页快照，翻生死簿时翻回这里
 	if run.phase == "post" and int(run.pday) > 0 and not snapshots.has(str(run.pday)):
 		Ledger.snapshot(run, snapshots)
-	save_game()
+	if not skip_save: save_game()
 	var target := _screen_for_phase()
 	if target != screen and not hold_screen:
 		go(target)
@@ -150,6 +161,9 @@ func role_unlocked(role_id: String) -> bool:
 
 
 func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = [], endless := false, daily := false, companions: Array = [], opening_id := "plain") -> String:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return "先处理未完成的回溯，再重新开局。"
 	# Validate and apply on a candidate. A stale/invalid selection cannot replace a life.
 	var candidate := State.new_run(role_id, meta, daily_seed() if daily else randi(), difficulty_id, goals, boons, vows)
 	# 守到死：Post.ack_dawn 看 run.endless —— 第 20 日天亮照常开新的一天，不进结局
@@ -165,13 +179,20 @@ func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boo
 	var result := Opening.apply(candidate, opening_id, str(Opening.view(candidate).token))
 	if result != "": return result
 	if opening_id != "plain": Director.note_choice(candidate, "今世开局筹备", str(Opening.view(candidate).summary))
+	# Persist the candidate before replacing the current life.
+	if not no_save:
+		var data := {"run": candidate, "snapshots": {}}
+		var saved := SaveFile.write_from_backup(save_path, data) if _recovering_backup else SaveFile.write(save_path, data)
+		if not bool(saved.ok):
+			return "新一世保存失败，请检查存档目录后重试；旧卷仍在。"
 	_clear_placement()
 	run = candidate
 	_recovering_backup = false
 	snapshots = {}
 	last_gain = {}
 	pending_opening_setup = {}
-	_after()
+	if not no_save: save_meta()
+	_after(true)
 	return ""
 
 
@@ -195,6 +216,7 @@ func pick_difficulty(role_id: String) -> void:
 
 func has_save() -> bool:
 	if no_save: return false
+	if _rewind_pending(): return true
 	# 备份也算——主档写坏时玩家仍然能续上，别在标题界面把入口藏掉
 	return FileAccess.file_exists(save_path) or FileAccess.file_exists(save_path + SaveFile.BAK)
 
@@ -218,6 +240,7 @@ func _read_continue_candidate(path: String) -> Dictionary:
 
 ## 续上一卷。返回 false 表示主档和备份都读不出来（此时不静默新开，交给调用方决定）。
 func continue_game() -> bool:
+	if _rewind_pending() and not _ensure_rewind_resolved(): return false
 	var main := _read_continue_candidate(save_path)
 	var backup := _read_continue_candidate(save_path + SaveFile.BAK)
 	# 更新版本的主档可能包含旧版无法理解的信息；不能自动退回并覆盖它。
@@ -248,14 +271,149 @@ func continue_game() -> bool:
 
 ## 翻回昨日。
 func rewind() -> void:
-	var back := Ledger.rewind(run, snapshots, meta)
+	# A previous attempt must finish before another rewind is considered.
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return
+	if _life_settled():
+		toast.emit("这一世已结算，请先合上旧卷或另选下一世开局。")
+		return
+	var candidate_run := run.duplicate(true)
+	var candidate_snaps := snapshots.duplicate(true)
+	var candidate_meta := meta.duplicate(true)
+	var back := Ledger.rewind(candidate_run, candidate_snaps, candidate_meta)
 	if back.is_empty():
 		toast.emit("翻不回去了。")
 		return
-	_clear_placement()
-	run = back
-	save_meta()
-	_after()
+	if no_save:
+		run = back
+		snapshots = candidate_snaps
+		meta = candidate_meta
+		_after()
+		return
+	var payload := {"data": {"run": back, "snapshots": candidate_snaps}, "meta": candidate_meta,
+		"save_path": ProjectSettings.globalize_path(save_path), "meta_path": ProjectSettings.globalize_path(meta_path),
+		"save_before": _rewind_file_hash(save_path), "save_backup_before": _rewind_file_hash(save_path + SaveFile.BAK),
+		"meta_before": _rewind_file_hash(meta_path), "meta_backup_before": _rewind_file_hash(meta_path + SaveFile.BAK),
+		"recovering_backup": _recovering_backup}
+	var encoded := JSON.stringify(payload, "\t")
+	var journal_path := _rewind_path()
+	if FileAccess.file_exists(journal_path + SaveFile.TMP) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(journal_path + SaveFile.TMP)):
+		_rewind_error("回溯事务的临时文件已存在，请先手动留存。")
+		return
+	var journal := SaveFile.write(journal_path, {"version": 1, "payload": encoded, "sha256": encoded.sha256_text()})
+	if not bool(journal.ok):
+		_rewind_error("无法保存回溯记录（%s），原局未改动。" % str(journal.step))
+		return
+	_ensure_rewind_resolved()
+
+
+func _rewind_path() -> String:
+	return save_path + ".rewind"
+
+
+func _rewind_pending() -> bool:
+	if no_save: return false
+	return FileAccess.file_exists(_rewind_path()) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(_rewind_path()))
+
+
+func _rewind_file_hash(path: String) -> String:
+	if not FileAccess.file_exists(path): return "missing"
+	return FileAccess.get_file_as_string(path).sha256_text()
+
+
+func _rewind_error(reason: String) -> void:
+	save_notice = reason + " 回溯尚未完成，请检查存档目录后重试；原始文件和回溯记录均已保留。"
+	toast.emit(save_notice)
+
+
+# A file may be at its old state, its desired state, or between the two atomic
+# renames (main missing and the previous main present as the backup).
+func _rewind_checkpoint(path: String, before: String, backup_before: String, target: String, recovering := false) -> bool:
+	var main := _rewind_file_hash(path)
+	var backup := _rewind_file_hash(path + SaveFile.BAK)
+	# Initial state, including the case where the candidate happens to match.
+	if main == before and backup == backup_before: return true
+	# General writes park the prior main in .bak; backup recovery retains .bak.
+	var resulting_backup := backup_before if recovering or before == "missing" else before
+	if main == target and backup == resulting_backup: return true
+	# Interruption between parking the prior main and replacing it.
+	if main == "missing" and before != "missing" and backup == resulting_backup: return true
+	return false
+
+
+func _ensure_rewind_resolved() -> bool:
+	if no_save: return false
+	if not _rewind_pending(): return true
+	var path := _rewind_path()
+	if not FileAccess.file_exists(path):
+		_rewind_error("回溯记录不是文件。")
+		return false
+	var parser := JSON.new()
+	if parser.parse(FileAccess.get_file_as_string(path)) != OK or not parser.data is Dictionary:
+		_rewind_error("回溯记录损坏。")
+		return false
+	var wrapper: Dictionary = parser.data
+	if wrapper.get("version") != 1 or not wrapper.get("payload") is String:
+		_rewind_error("回溯记录的格式无法识别。")
+		return false
+	var encoded: String = wrapper.payload
+	if encoded.sha256_text() != str(wrapper.get("sha256", "")) or parser.parse(encoded) != OK or not parser.data is Dictionary:
+		_rewind_error("回溯记录校验失败。")
+		return false
+	var payload: Dictionary = parser.data
+	if str(payload.get("save_path", "")) != ProjectSettings.globalize_path(save_path) or str(payload.get("meta_path", "")) != ProjectSettings.globalize_path(meta_path) or not payload.get("data") is Dictionary or not payload.get("meta") is Dictionary:
+		_rewind_error("回溯记录与当前存档不匹配。")
+		return false
+	var data: Dictionary = payload.data
+	if not bool(SavePack.validate_data(data).ok):
+		_rewind_error("回溯记录中的本局无法读取。")
+		return false
+	for key in ["save_before", "save_backup_before", "meta_before", "meta_backup_before"]:
+		if not payload.get(key) is String:
+			_rewind_error("回溯记录缺少校验信息。")
+			return false
+	var target_save := JSON.stringify(data, "\t").sha256_text()
+	var target_meta := JSON.stringify(payload.meta, "\t").sha256_text()
+	if not _rewind_checkpoint(save_path, payload.save_before, payload.save_backup_before, target_save, bool(payload.get("recovering_backup", false))) or not _rewind_checkpoint(meta_path, payload.meta_before, payload.meta_backup_before, target_meta):
+		_rewind_error("存档或底稿已被其他操作更改。")
+		return false
+	# SaveFile writes to fixed .tmp paths. An existing file (even one with the
+	# expected bytes) has no ownership marker, so never truncate or remove it.
+	# Check both sides before writing either, and let the player move it aside.
+	for item in [[save_path, target_save], [meta_path, target_meta]]:
+		var target_path: String = item[0]
+		if _rewind_file_hash(target_path) == item[1]: continue
+		var temp_path := target_path + SaveFile.TMP
+		if FileAccess.file_exists(temp_path) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(temp_path)):
+			_rewind_error("临时路径 %s 已存在，无法确认归属；请先手动移出留存后重试。" % ProjectSettings.globalize_path(temp_path))
+			return false
+	if _rewind_file_hash(save_path) != target_save:
+		var result := SaveFile.write_from_backup(save_path, data) if bool(payload.get("recovering_backup", false)) else SaveFile.write(save_path, data)
+		if not bool(result.ok):
+			_rewind_error("回溯本局写入失败（%s）。" % str(result.step))
+			return false
+	if _rewind_file_hash(meta_path) != target_meta:
+		var result := SaveFile.write(meta_path, payload.meta)
+		if not bool(result.ok):
+			_rewind_error("回溯底稿写入失败（%s）。" % str(result.step))
+			return false
+	if DirAccess.remove_absolute(ProjectSettings.globalize_path(path)) != OK:
+		_rewind_error("回溯已写入，但无法移除完成记录。")
+		return false
+	# A successful recovery always refreshes the archive, including when a
+	# startup failure is retried from the title with no life loaded.
+	meta = Data.normalize(payload.meta)
+	if not run.is_empty():
+		_clear_placement()
+		run = Data.normalize(data.run)
+		snapshots = Data.normalize(data.snapshots)
+		_recovering_backup = false
+		_sync_life_memory()
+		go(_screen_for_phase())
+		changed.emit()
+	save_notice = ""
+	return true
 
 
 ## 这一轮结束（翻回扉页 / 合上 / 劫满），结算道心。
@@ -267,7 +425,36 @@ func _same_life(expected_life: String) -> bool:
 	return not run.is_empty() and (expected_life == "" or str(Past.state(run).id) == expected_life)
 
 
+func _life_settled() -> bool:
+	if run.is_empty(): return false
+	var life := Past.state(run)
+	var book := Past.book(meta)
+	return bool(life.archived) or life.id in book.sealed_ids or (int(life.generation) > 0 and int(life.generation) <= int(book.count))
+
+
+## Ensure a restart can recover this terminal life before its rewards are sealed.
+func _persist_before_settlement() -> bool:
+	if no_save: return true
+	var data := {"run": run, "snapshots": snapshots}
+	# Avoid needlessly rotating an already-current main and its previous backup.
+	if not _recovering_backup and FileAccess.file_exists(save_path) and FileAccess.get_file_as_string(save_path) == JSON.stringify(data, "\t"):
+		return true
+	var result := SaveFile.write_from_backup(save_path, data) if _recovering_backup else SaveFile.write(save_path, data)
+	if not bool(result.ok):
+		save_notice = ("旧卷已结算，但本局未能保存；请检查存档目录后重试。" if _life_settled()
+			else "本局未能保存，尚未结算；请检查存档目录后重试。")
+		toast.emit(save_notice)
+		return false
+	_recovering_backup = false
+	if save_notice in ["本局未能保存，尚未结算；请检查存档目录后重试。", "旧卷已结算，但本局未能保存；请检查存档目录后重试。"]:
+		save_notice = ""
+	return true
+
+
 func end_run(bonus := -1) -> Dictionary:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return {"lines": [], "total": 0, "days": 0, "settled": false, "saved": false}
 	if run.is_empty(): return {"lines": [], "total": 0, "days": 0, "settled": false, "saved": false}
 	# Settlement mutates both the life and its archive. Work on copies until the
 	# archive is safely on disk, so a failed write can be retried without either
@@ -296,6 +483,9 @@ func end_run(bonus := -1) -> Dictionary:
 
 ## 带着记忆回到三日之前（同一身份重开）。
 func restart_from_cover(expected_life := "") -> void:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return
 	if not _same_life(expected_life): return
 	var role_id: String = run.role
 	var d := str(run.get("difficulty", "normal"))
@@ -307,23 +497,34 @@ func restart_from_cover(expected_life := "") -> void:
 	var mates: Array = (run.get("companions", []) as Array).duplicate()
 	var opening_id := str(run.get("opening", {}).get("choice", "plain"))
 	if opening_id == "": opening_id = "plain"
+	if not _persist_before_settlement(): return
 	if not bool(end_run(Ledger.ending_bonus(run)).get("saved", false)): return
 	var result := new_game(role_id, d, [], [], [], endless, daily, mates, opening_id)
+	if result == "新一世保存失败，请检查存档目录后重试；旧卷仍在。":
+		toast.emit(result)
+		return
 	if result != "":
-		new_game(role_id, d, [], [], [], endless, daily, mates, "plain")
+		var fallback := new_game(role_id, d, [], [], [], endless, daily, mates, "plain")
+		if fallback != "":
+			toast.emit(fallback)
+			return
 		toast.emit("先前开局已不适用，这一世使用普通行囊；可在结局页另选开局。")
 
 
 ## Settle this life once, then explicitly choose how to prepare the next one.
 func choose_next_opening(expected_life := "") -> void:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return
 	if not _same_life(expected_life) or not run.get("phase", "") in ["dead", "ending"]: return
 	var role_id := str(run.role)
 	var difficulty_id := str(run.get("difficulty", "normal"))
 	var setup := {"endless": bool(run.get("endless", false)), "daily": Past.daily(run), "mates": (run.get("companions", []) as Array).duplicate()}
+	if not _persist_before_settlement(): return
 	if not bool(end_run(Ledger.ending_bonus(run)).get("saved", false)): return
+	if not _delete_save(): return
 	run = {}
 	snapshots = {}
-	_delete_save()
 	pending_role = role_id
 	pending_difficulty = difficulty_id
 	pending_opening_setup = setup
@@ -331,11 +532,15 @@ func choose_next_opening(expected_life := "") -> void:
 
 
 func close_book(expected_life := "") -> bool:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return false
 	if not _same_life(expected_life): return false
+	if not _persist_before_settlement(): return false
 	if not bool(end_run(Ledger.ending_bonus(run)).get("saved", false)): return false
+	if not _delete_save(): return false
 	run = {}
 	snapshots = {}
-	_delete_save()
 	go("title")
 	changed.emit()
 	return true
@@ -343,7 +548,13 @@ func close_book(expected_life := "") -> bool:
 
 ## 劫满后守宅：转无尽，尸潮继续升级。
 func keep_living(expected_life := "") -> void:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return
 	if not _same_life(expected_life): return
+	if _life_settled():
+		toast.emit("这一世已结算，请先合上旧卷或另选下一世开局。")
+		return
 	var block := Mainline.continue_block(run)
 	if block != "":
 		toast.emit(block)
@@ -359,6 +570,9 @@ func keep_living(expected_life := "") -> void:
 
 
 func buy_talent(id: String) -> void:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return
 	var t: Dictionary = Data.table("talents")[id]
 	if id in meta.talents:
 		return
@@ -375,6 +589,7 @@ func buy_talent(id: String) -> void:
 # ---------- 存读档 ----------
 
 func save_game() -> void:
+	if _rewind_pending(): return
 	if run.is_empty() or no_save:
 		return
 	var data := {"run": run, "snapshots": snapshots}
@@ -387,6 +602,7 @@ func save_game() -> void:
 
 
 func save_meta() -> void:
+	if _rewind_pending(): return
 	if no_save:
 		return
 	var result := SaveFile.write(meta_path, meta)
@@ -400,6 +616,9 @@ func save_meta() -> void:
 
 ## 把当前这一局导出成一个 .jyz 文件到玩家指定的位置。返回 {"ok": bool, "note": String}。
 func export_save_to(path: String) -> Dictionary:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return {"ok": false, "note": "请先处理未完成的回溯，再导出存档。"}
 	if run.is_empty():
 		return {"ok": false, "note": "现在没有可以导出的局。"}
 	# 先把内存里的状态落盘，导出的文件和存档目录里的那份必须一致
@@ -431,6 +650,9 @@ func suggested_save_name() -> String:
 ## 有了这一步就不必再弹一个"确定要覆盖吗"，玩家事后想回去还能导回来。
 ## 返回 {"ok": bool, "note": String, "info": Dictionary}。
 func import_save_from(path: String) -> Dictionary:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return {"ok": false, "note": "请先处理未完成的回溯，再导入存档。", "info": {}}
 	if no_save:
 		return {"ok": false, "note": "当前禁止写盘，不能导入存档。", "info": {}}
 	if not FileAccess.file_exists(path):
@@ -591,14 +813,22 @@ func _sync_life_memory() -> void:
 
 
 func read_life_memory() -> Dictionary:
+	if _rewind_pending(): return {}
 	if no_save or resolved_memory_path() == "": return {}
 	_sync_life_memory()
 	return MemoryFile.read_context(resolved_memory_path())
 
 
-func _delete_save() -> void:
-	# 主档、备份、临时档一起删；只删主档的话，旧局会从 .bak 里活过来
-	SaveFile.forget(save_path)
+func _delete_save() -> bool:
+	if no_save: return true
+	var result := SaveFile.forget(save_path)
+	if not bool(result.ok):
+		save_notice = "旧卷已结算，但存档清理失败；请检查文件占用和目录权限后重试。"
+		toast.emit(save_notice)
+		return false
+	if save_notice == "旧卷已结算，但存档清理失败；请检查文件占用和目录权限后重试。":
+		save_notice = ""
+	return true
 
 
 # ---------- 试玩报告 ----------
@@ -607,6 +837,9 @@ func _delete_save() -> void:
 ## 玩家说"有点难"没法下手；有了种子、死因账本和最后几十条记录，就能在本地复现。
 ## 返回 {"ok": bool, "dir": String, "files": Array, "note": String}；dir 是绝对路径，界面直接显示。
 func export_playtest() -> Dictionary:
+	if _rewind_pending():
+		_ensure_rewind_resolved()
+		return {"ok": false, "dir": "", "files": [], "note": "请先处理未完成的回溯，再导出试玩报告。"}
 	var created := _create_report_dir(_stamp_text())
 	if not bool(created.ok):
 		return {"ok": false, "dir": "", "files": [], "note": str(created.note)}

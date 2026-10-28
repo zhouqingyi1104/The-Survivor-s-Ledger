@@ -138,11 +138,17 @@ static func status(path: String) -> Dictionary:
 	return out
 
 
-## 彻底抹掉一份存档（主档、备份、临时档一起删）。
-## 少了备份这一条，玩家"合上旧卷"后旧局会从 .bak 里活过来。
-static func forget(path: String) -> void:
-	for p in [path, path + BAK, path + TMP]:
-		_remove(p)
+## 先删临时档与备份，最后删主档；遇到错误立即停止并保留尚未删除的文件。
+## 返回失败供调用方留在当前局并提示重试。多个文件的删除并非原子操作。
+static func forget(path: String) -> Dictionary:
+	for p in [path + TMP, path + BAK, path]:
+		if DirAccess.dir_exists_absolute(_abs(p)):
+			return {"ok": false, "path": p, "error": ERR_FILE_CANT_WRITE}
+		if not FileAccess.file_exists(p): continue
+		var error := DirAccess.remove_absolute(_abs(p))
+		if error != OK:
+			return {"ok": false, "path": p, "error": error}
+	return {"ok": true, "path": "", "error": OK}
 
 
 static func _store(path: String, text: String) -> Error:

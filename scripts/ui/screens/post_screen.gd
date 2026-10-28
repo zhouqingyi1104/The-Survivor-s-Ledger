@@ -145,6 +145,10 @@ func _change_floor(target: String) -> void:
 
 
 func _process(delta: float) -> void:
+	if Game._rewind_pending():
+		if player != null: player.enabled = false
+		if rig != null: rig.input_enabled = false
+		return
 	if world == null or Game.run.is_empty() or Game.run.phase != "post":
 		return
 	var run: Dictionary = Game.run
@@ -590,6 +594,7 @@ func refresh_key_hints() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if Game._rewind_pending(): return
 	if _show != null:
 		return
 	var mb := event as InputEventMouseButton
