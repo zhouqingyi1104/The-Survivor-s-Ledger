@@ -631,7 +631,7 @@ func _report_ctx(report_run: Dictionary, report_snapshots: Dictionary) -> Dictio
 		size = "%.0f KB（当前快照）" % (float(JSON.stringify({"run": report_run, "snapshots": report_snapshots}, "\t").to_utf8_buffer().size()) / 1024.0)
 	elif FileAccess.file_exists(save_path):
 		size = "%.0f KB" % (float(FileAccess.get_file_as_string(save_path).length()) / 1024.0)
-	var director = null
+	var director = "unloaded"
 	if not report_run.is_empty():
 		director = bool(Director.state(report_run.duplicate(true)).enabled)
 	var window := DisplayServer.window_get_size()

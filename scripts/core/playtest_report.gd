@@ -197,7 +197,7 @@ static func _settings_section(ctx: Dictionary) -> Array:
 			changed.append("%s→%s" % [str(action), str(bindings[action])])
 		out.append("改过的键位：%s" % "，".join(changed))
 	var director = ctx.get("director")
-	var director_text := "未知" if director == null else ("未载入本局" if director == "unloaded" else ("已启用（不代表服务已连接）" if bool(director) else "关闭"))
+	var director_text := "未知" if director == null else ("未载入本局" if director is String and director == "unloaded" else ("已启用（不代表服务已连接）" if bool(director) else "关闭"))
 	out.append("动态世情：%s" % director_text)
 	out.append("")
 	out.append(RULE)
