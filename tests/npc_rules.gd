@@ -283,7 +283,7 @@ func test_capacity_early_clock_and_fact_budget() -> void:
 		var current := Npc.view(run, "ning")
 		var rice := int(current.stock.rice)
 		if amount == 20:
-			check(current.effect.contains("库存已满") and current.effect.contains("不再耗米"), "Full-store effect promised wasted work")
+			check(current.effect.contains("存货已满") and current.effect.contains("不再花米"), "Full-store effect promised wasted work")
 		else:
 			check(current.effect.contains("艾草 %d" % (20 - amount)), "Gather effect ignored finite remaining capacity")
 		var before: Dictionary = run.home.duplicate(true)

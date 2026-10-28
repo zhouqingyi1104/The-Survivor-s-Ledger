@@ -52,7 +52,7 @@ static func poll(run: Dictionary) -> String:
 		if str(run.get("pending_event", "")) in ["n_cabinet", "n_delivery"]:
 			run.pending_event = ""
 			run.event_result = "期限已过，邻人已另投医馆。"
-		record(run, "deadline", "期限已过，邻人带父亲另投医馆。未送到的药留作自用，承诺未兑现。")
+		record(run, "deadline", "期限过了，阿宁带父亲另投了医馆。没送到的药留给了自己，答应的事没办成。")
 	if q.resolution == "late" and q.medicine and ready_for_home(run):
 		Inv.add(run.home, "plague_powder", 1)
 		q.medicine = false
@@ -72,7 +72,7 @@ static func poll(run: Dictionary) -> String:
 					else:
 						q.stage = "closed"
 						q.ending = "未曾相逢"
-						record(run, "missed", "未能在求药期限内与邻人相见；本轮求药线结束。")
+						record(run, "missed", "没能在期限内见到阿宁，求药的事就此了结。")
 			"carrying":
 				event = "n_delivery"
 			"aftermath":
@@ -211,7 +211,7 @@ static func search_objective(run: Dictionary, spot: Dictionary) -> Dictionary:
 	spot.done = true
 	if spot.neighbor == "account" and state(run).stage == "investigate":
 		state(run).stage = "report"
-		record(run, "find_account", "取到守庄人药账。回宅决定如何处置，药账独立携带且不会被追赶丢失。")
+		record(run, "find_account", "取到了守庄人的药账，贴身收好，被追也丢不了。回家再决定怎么处置。")
 	var result := {"found": {}, "gain": 0, "caught": false, "clue": "", "full": false, "story": true}
 	return result
 
@@ -220,9 +220,9 @@ static func summary(run: Dictionary) -> String:
 	match q.stage:
 		"waiting": return "邻里动静：第 2 日早间留意墙外求助。"
 		"fetch": return "隔墙求药：去药铺翻封存药柜；第 4 日 18:00 前送回。" + ("已带撬杆。" if q.pry else "可用木料 1 准备撬杆。")
-		"carrying": return "隔墙求药：药已独立收好，回宅决定去向；第 4 日 18:00 截止。"
-		"aftermath": return "隔墙求药：%s，等待后续来信（第 %d 日起）。" % [resolution_text(q), int(q.due) / 1440 + 1]
+		"carrying": return "隔墙求药：药已贴身收好，回家再定给不给；第 4 日 18:00 截止。"
+		"aftermath": return "隔墙求药：%s，等对方来信（第 %d 日起）。" % [resolution_text(q), int(q.due) / 1440 + 1]
 		"lead": return "邻人消息：第 %d 日起留意义庄药账线索。" % (int(q.due) / 1440 + 1)
 		"investigate": return "义庄药账：出门去义庄，翻找守庄人药账。"
-		"report": return "义庄药账：已取得，回宅决定公开或封存。"
+		"report": return "义庄药账：已到手，回家再定交给阿宁还是封存。"
 	return "隔墙求药 · " + str(q.ending)

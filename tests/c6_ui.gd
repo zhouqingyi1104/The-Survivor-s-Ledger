@@ -212,7 +212,7 @@ func _ready() -> void:
 	await key(KEY_ESCAPE)
 	if not await open_neighbor(): get_tree().quit(1); return
 	var text := modal_text()
-	check(text.contains("老周") and text.contains("明日") and text.contains("木料 2") and text.contains("铁钉 1") and text.contains("60 分钟") and text.contains("米 1"), "对话缺少人物、时限或选择成本")
+	check(text.contains("老周") and text.contains("明日") and text.contains("木料 ×2") and text.contains("铁钉 ×1") and text.contains("60 分钟") and text.contains("米 1"), "对话缺少人物、时限或选择成本")
 	check(action_button("repair") != null and action_button("trade") != null and action_button("refuse") != null, "对话缺少三个选项")
 	await shot("request")
 	await key(KEY_ESCAPE)

@@ -98,16 +98,16 @@ static func _body(view: Dictionary) -> String:
 	var plan: Dictionary = view.get("plan", {})
 	if plan.is_empty(): return "我还没有定下下一步打算。"
 	if plan.get("status", "") == "done":
-		return "本次已经执行：%s\n下一次打算会参考如今的库存和往来。" % str(view.get("last_result", ""))
+		return "这回已经办了：%s\n下回怎么打算，看那时的光景。" % str(view.get("last_result", ""))
 	var text: String = "我的打算：%s。\n缘由：%s" % [str(view.get("goal", "自行周转")), str(view.get("reason", ""))]
-	if plan.get("response", "") == "favor": text = "你已经凭情改托，原自主行动取消；将按已经预留的物资交付。"
+	if plan.get("response", "") == "favor": text = "你已经凭情改托，我原来的打算不办了，留给你的东西会送到。"
 	if str(view.get("effect", "")) != "": text += "\n安排：" + str(view.effect)
 	var memory: Dictionary = view.get("memory", {})
 	if not memory.is_empty():
 		text += "\n我记起的前世碎片：" + str(memory.fact)
 	var response := str(plan.get("response", ""))
 	if response == "support": text += "\n你已经送来支援，我会照已经说明的安排做。"
-	elif response == "favor": text += "\n你已经凭情改托，我会按锁定的物资交付。"
+	elif response == "favor": text += "\n你已经凭情改托，说好的东西我会送到。"
 	elif response == "decline": text += "\n你让我自行安排，我会照自己的打算行动。"
 	return text
 

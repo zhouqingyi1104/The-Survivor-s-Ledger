@@ -49,7 +49,7 @@ static func quote(run: Dictionary, actor: String) -> Dictionary:
 			reasons.append("信任不足，加收米 1")
 		if int(person.breaches) > 0:
 			price += int(person.breaches)
-			reasons.append("未化解失约 %d 笔，加收米 %d" % [int(person.breaches), int(person.breaches)])
+			reasons.append("失约 %d 笔没补，多收米 %d" % [int(person.breaches), int(person.breaches)])
 		var market := Crisis.market_effect(run, actor)
 		price += int(market.get("price_add", 0))
 		var npc_market := Npcs.market_effect(run, actor)
@@ -100,9 +100,9 @@ static func _action_block(run: Dictionary, actor: String, action: String, q: Dic
 		"favor":
 			if int(person.favors) < 1: return "对方还没有欠你的人情。"
 		"credit":
-			if not q.get("credit_allowed", true): return "这份报价形成时对方收紧往来，只接受现货或已有的人情；新报价条件可随之后行动改变。"
-			if not debt.is_empty(): return "先清偿已有欠账，不能借新还旧。"
-			if int(person.breaches) > 0: return "失约尚未补救，暂不赊欠。"
+			if not q.get("credit_allowed", true): return "对方这阵子收紧了往来，只收现货或人情。"
+			if not debt.is_empty(): return "先还清旧账，不能借新还旧。"
+			if int(person.breaches) > 0: return "失约还没补上，暂不赊欠。"
 			if int(person.trust) < 2: return "信任达到 2 才愿意赊欠。"
 		"aid":
 			if int(person.favors) >= 3: return "人情已满 3 份，先用掉一份再互助。"
@@ -117,13 +117,13 @@ static func options(run: Dictionary, actor: String) -> Array:
 	var repay_req: Dictionary = s.debt.get("req", {}) if s.debt.get("actor", "") == actor else {}
 	var due := int(run.get("pday", 0)) + 2
 	var rows := [
-		{"id": "cash", "text": "现货交换", "hint": "交出%s，得到%s；信任 +1，耗用今日机会。" % [Data.describe_items(q.req), Data.describe_items(q.give)]},
-		{"id": "favor", "text": "凭情取货", "hint": "消耗人情 1，得到%s；信任不变，耗用今日机会。" % Data.describe_items(q.give)},
-		{"id": "credit", "text": "赊欠取货", "hint": "先得%s；第 %d 日 18:00 前还米 %d；逾期信任 -2、失约 +1。耗用今日机会。" % [Data.describe_items(q.give), due, int(q.req.rice) + 1]},
-		{"id": "aid", "text": "送物互助", "hint": "现在交出%s，立即信任 +1、人情 +1；明日 08:00 收到%s。耗用今日机会。" % [Data.describe_items(OFFERS[actor].aid_req), Data.describe_items(OFFERS[actor].aid_give)]},
-		{"id": "decline", "text": "今日婉拒", "hint": "不扣物资，信任不变；放弃这位联系人今日全部机会，明日可再联系。"},
-		{"id": "repay", "text": "清偿欠账", "hint": "交出%s，清除此笔欠账；按时还款信任 +1，逾期还款不自动化解失约，不耗用今日机会。" % (Data.describe_items(repay_req) if not repay_req.is_empty() else "欠账约定的物资")},
-		{"id": "compensate", "text": "补偿失约", "hint": "交出米 1，未化解失约 -1、信任 +1；累计失约保留，不耗用今日机会。"},
+		{"id": "cash", "text": "现货交换", "hint": "交出%s，换来%s；信任 +1，用掉今天的机会。" % [Data.describe_items(q.req), Data.describe_items(q.give)]},
+		{"id": "favor", "text": "凭情取货", "hint": "用掉 1 份人情，换来%s；信任不变，用掉今天的机会。" % Data.describe_items(q.give)},
+		{"id": "credit", "text": "赊欠取货", "hint": "先拿%s，第 %d 日 18:00 前还米 %d；过期不还，信任 -2、记一次失约。用掉今天的机会。" % [Data.describe_items(q.give), due, int(q.req.rice) + 1]},
+		{"id": "aid", "text": "送物互助", "hint": "现在交出%s，信任 +1、人情 +1；明日 08:00 收到%s。用掉今天的机会。" % [Data.describe_items(OFFERS[actor].aid_req), Data.describe_items(OFFERS[actor].aid_give)]},
+		{"id": "decline", "text": "今日婉拒", "hint": "不花东西，信任不变；今天就不再跟这人往来，明日再说。"},
+		{"id": "repay", "text": "清偿欠账", "hint": "交出%s，还清这笔账；按时还信任 +1，过期还的失约还得另外赔礼。不占今天的机会。" % (Data.describe_items(repay_req) if not repay_req.is_empty() else "欠账约定的物资")},
+		{"id": "compensate", "text": "补偿失约", "hint": "交出米 1 赔礼，补上一次失约，信任 +1；不占今天的机会。"},
 	]
 	for row in rows: row["block"] = _action_block(run, actor, str(row.id), q)
 	return rows
@@ -143,7 +143,7 @@ static func act(run: Dictionary, actor: String, action: String, quote_id: String
 	if not actor in ACTORS: return "没有这位联系人。"
 	var s := state(run)
 	var q: Dictionary = s.quotes.get(actor, {})
-	if q.is_empty() or int(q.day) != int(run.get("pday", 0)) or quote_id != _token(run, actor): return "这份报价已过期，请重新查看。"
+	if q.is_empty() or int(q.day) != int(run.get("pday", 0)) or quote_id != _token(run, actor): return "情况已经变了，请重新看一遍。"
 	var block := _action_block(run, actor, action, q)
 	if block != "": return block
 	var person: Dictionary = s.actors[actor]
@@ -154,17 +154,17 @@ static func act(run: Dictionary, actor: String, action: String, quote_id: String
 			Inv.take_all(run.home, q.req)
 			Inv.add_all(run.home, q.give)
 			_trust(person, 1, "现货成交，信任 +1")
-			result = "交出%s，收到%s；信任 +1。今日机会已用。" % [Data.describe_items(q.req), Data.describe_items(q.give)]
+			result = "交出%s，收到%s；信任 +1。今天的机会用掉了。" % [Data.describe_items(q.req), Data.describe_items(q.give)]
 		"favor":
 			person.favors = int(person.favors) - 1
 			Inv.add_all(run.home, q.give)
-			result = "用去人情 1，收到%s；信任不变。今日机会已用。" % Data.describe_items(q.give)
+			result = "用掉 1 份人情，收到%s；信任不变。今天的机会用掉了。" % Data.describe_items(q.give)
 		"credit":
 			var due := int(run.pday) + 2
 			s.debt = {"id": quote_id + ":debt", "actor": actor, "req": {"rice": int(q.req.rice) + 1}, "give": q.give.duplicate(), "due_day": due, "due_t": (due - 1) * 1440 + 720, "overdue": false}
 			Inv.add_all(run.home, q.give)
 			Past.record_cycle(run, actor, "promise", "pledged", "trade_%d_credit" % int(run.pday))
-			result = "赊得%s，约定第 %d 日 18:00 前交还%s；约定物资固定，逾期信任 -2、失约 +1。今日机会已用。" % [Data.describe_items(q.give), due, Data.describe_items(s.debt.req)]
+			result = "赊来%s，说好第 %d 日 18:00 前还%s；过期不还，信任 -2、记一次失约。今天的机会用掉了。" % [Data.describe_items(q.give), due, Data.describe_items(s.debt.req)]
 		"aid":
 			var req: Dictionary = OFFERS[actor].aid_req
 			var give: Dictionary = OFFERS[actor].aid_give
@@ -173,9 +173,9 @@ static func act(run: Dictionary, actor: String, action: String, quote_id: String
 			s.aid.append({"id": quote_id + ":aid", "actor": actor, "req": req.duplicate(), "give": give.duplicate(), "due_day": due, "due_t": (due - 1) * 1440 + 120})
 			_trust(person, 1, "送物互助，信任 +1、人情 +1")
 			person.favors = mini(3, int(person.favors) + 1)
-			result = "交出%s；第 %d 日 08:00 收到%s；信任 +1、人情 +1。今日机会已用。" % [Data.describe_items(req), due, Data.describe_items(give)]
+			result = "交出%s，第 %d 日 08:00 收到%s；信任 +1、人情 +1。今天的机会用掉了。" % [Data.describe_items(req), due, Data.describe_items(give)]
 		"decline":
-			result = "婉拒了%s今日的往来。不扣物资，信任不变；今日机会关闭，明日可再联系。" % ACTORS[actor]
+			result = "婉拒了%s今天的往来。不花东西，信任不变；明日再说。" % ACTORS[actor]
 			valence = 0
 		"repay":
 			var debt: Dictionary = s.debt
@@ -185,7 +185,7 @@ static func act(run: Dictionary, actor: String, action: String, quote_id: String
 			Inv.take_all(run.home, debt.req)
 			result = "交还%s，欠账已清。" % Data.describe_items(debt.req)
 			if late:
-				result += "逾期失约仍在；另付补偿才可化解。"
+				result += "过期的失约还在，另外赔礼才能补上。"
 				valence = 0
 			else:
 				_trust(person, 1, "按时清偿，信任 +1")
@@ -195,8 +195,8 @@ static func act(run: Dictionary, actor: String, action: String, quote_id: String
 		"compensate":
 			Inv.add(run.home, "rice", -1)
 			person.breaches = int(person.breaches) - 1
-			_trust(person, 1, "付出补偿，信任 +1、未化解失约 -1")
-			result = "交出米 1，化解一笔失约，信任 +1；累计失约 %d 次仍保留。" % int(person.breach_total)
+			_trust(person, 1, "赔礼补上失约，信任 +1")
+			result = "交出米 1 赔礼，补上一次失约，信任 +1。前后一共失约 %d 次，这些都记着。" % int(person.breach_total)
 	if action in ["cash", "favor", "credit", "aid", "decline"]: q.used = true
 	_history(run, actor, action, result)
 	State.note(run, "纸鹤往来 · %s：%s" % [ACTORS[actor], result])
@@ -212,7 +212,7 @@ static func _overdue(run: Dictionary) -> String:
 	person.breaches = mini(3, int(person.breaches) + 1)
 	person.breach_total = mini(100000, int(person.breach_total) + 1)
 	_trust(person, -2, "欠账到期未还，信任 -2、失约 +1")
-	var result := "对%s的%s欠账已过第 %d 日 18:00 期限；没有自动扣库存。信任 -2、失约 +1，清偿后仍需补偿。" % [ACTORS[debt.actor], Data.describe_items(debt.req), int(debt.due_day)]
+	var result := "欠%s的%s过了第 %d 日 18:00 还没还：信任 -2、记一次失约；还清后还得另外赔礼。" % [ACTORS[debt.actor], Data.describe_items(debt.req), int(debt.due_day)]
 	_history(run, str(debt.actor), "overdue", result)
 	State.note(run, "纸鹤往来 · " + result)
 	Past.record(run, str(debt.actor), "trade_overdue_%d" % int(debt.due_day), "你曾未能按期向%s清偿%s。" % [ACTORS[debt.actor], Data.describe_items(debt.req)], -1)
@@ -229,7 +229,7 @@ static func poll(run: Dictionary) -> String:
 			remaining.append(aid)
 			continue
 		Inv.add_all(run.home, aid.give)
-		var result := "%s按约送来%s，互助回礼已兑现。" % [ACTORS[aid.actor], Data.describe_items(aid.give)]
+		var result := "%s按约送来了%s。" % [ACTORS[aid.actor], Data.describe_items(aid.give)]
 		_history(run, str(aid.actor), "aid_delivered", result)
 		State.note(run, "纸鹤往来 · " + result)
 		Past.record(run, str(aid.actor), "trade_delivery_%d" % int(aid.due_day), "你曾收到%s按约送来的%s。" % [ACTORS[aid.actor], Data.describe_items(aid.give)], 1)
@@ -258,7 +258,7 @@ static func observe_neighbor(run: Dictionary, choice: String) -> void:
 	person.favors = mini(3, int(person.favors) + int(effect[1]))
 	person.breaches = mini(3, int(person.breaches) + int(effect[2]))
 	person.breach_total = mini(100000, int(person.breach_total) + int(effect[2]))
-	_history(run, "ning", "neighbor_" + choice, "隔墙求药的实际选择影响往来：信任 %+d、人情 %+d、失约 %+d。" % [int(effect[0]), int(effect[1]), int(effect[2])])
+	_history(run, "ning", "neighbor_" + choice, "隔墙求药那件事影响了往来：信任 %+d、人情 %+d、失约 %+d。" % [int(effect[0]), int(effect[1]), int(effect[2])])
 
 static func context(run: Dictionary) -> Dictionary:
 	var s := state(run)

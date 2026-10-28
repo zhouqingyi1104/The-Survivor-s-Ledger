@@ -58,22 +58,22 @@ static func _block(run: Dictionary, action: String) -> String:
 	if not q.knocked: return "先敲门。"
 	if q.stage != "open" or int(run.t) >= int(q.deadline_t): return "这次邻宅请求已经结束。"
 	if action == "repair":
-		if int(run.t) + MINUTES > int(q.deadline_t): return "距答复期限不足 60 分钟，来不及修墙。"
+		if int(run.t) + MINUTES > int(q.deadline_t): return "离答复的时限不到 60 分钟，来不及修墙了。"
 		if State.attr(run, "energy") < ENERGY: return "需要精力 6。"
 		if not Inv.has_all(run.home, COST): return "需要木料 2、铁钉 1。"
 	elif action == "trade":
 		if Inv.count(run.home, "rice") < 1: return "需要米 1。"
 		var stock: Dictionary = Npcs.state(run).actors.zhou.stock
 		if Inv.count(stock, "wood") < 1: return "老周现有周转木料不足。"
-		if Inv.count(stock, "rice") >= Npcs.STOCK_LIMIT: return "老周的周转米已满，不能收下。"
+		if Inv.count(stock, "rice") >= Npcs.STOCK_LIMIT: return "老周家的米已经够了，不收。"
 	elif action != "refuse": return "没有这个选择。"
 	return ""
 
 static func options(run: Dictionary) -> Array:
 	var rows := [
-		{"id": "repair", "text": "帮老周修墙", "hint": "木料 2、铁钉 1、精力 6，施工 60 分钟；完成后墙补好，次日信任最多 +2（上限 5）。中断退材料。"},
-		{"id": "trade", "text": "用米换木料", "hint": "米 1 换老周周转库存中的木料 1；次日信任最多 +1（上限 5），不修墙。"},
-		{"id": "refuse", "text": "说明难处，拒绝", "hint": "不消耗物资；次日信任最多 -1（下限 -5），不算失约。"},
+		{"id": "repair", "text": "帮老周修墙", "hint": "木料 ×2、铁钉 ×1，60 分钟、精力 6。补好墙，第二天老周的信任最多 +2；被打断会退料。"},
+		{"id": "trade", "text": "用米换木料", "hint": "用米 1 换老周的木料 1，不修墙；第二天信任最多 +1。"},
+		{"id": "refuse", "text": "说明难处，拒绝", "hint": "不花东西，不算失约；第二天信任最多 -1。"},
 	]
 	for row in rows: row["block"] = _block(run, str(row.id))
 	return rows
@@ -102,7 +102,7 @@ static func act(run: Dictionary, action: String) -> String:
 		Inv.add(stock, "wood", -1)
 		Inv.add(run.home, "wood", 1)
 		Npcs._fact(run, "zhou", "neighbor_exchange", "老周用自己的木料 1 换来米 1。", int(run.t), 0, false)
-		_choose(run, action, "你用米 1 换了老周周转库存中的木料 1；墙仍待修。")
+		_choose(run, action, "你用米 1 换了老周的木料 1，墙还没修。")
 	else:
 		_choose(run, action, "你说明自己的难处，没有答应修墙。")
 	return ""
@@ -120,7 +120,7 @@ static func interrupt(run: Dictionary, reason := "夜袭") -> void:
 	Inv.add_all(run.home, paid)
 	var q := _state(run)
 	if q.get("stage", "") == "working": q.stage = "open"
-	State.note(run, reason + "打断了邻墙施工，材料已退回；消耗的精力不退。")
+	State.note(run, reason + "修墙被打断，料退了回来，精力不退。")
 
 ## Called by the shared clock. Neither a new visit nor loading extends the deadline.
 static func poll(run: Dictionary) -> String:
@@ -141,7 +141,7 @@ static func poll(run: Dictionary) -> String:
 	if actual != 0:
 		Trade.influence(run, "zhou", actual, q.result)
 	else:
-		Trade._history(run, "zhou", "neighbor_home", q.result + "（信任已到上下限，本次变化 0）")
+		Trade._history(run, "zhou", "neighbor_home", q.result + "（信任已经到头，这次没变）")
 	q.result += "信任实际变化 %+d。" % actual
 	State.note(run, q.result)
 	return q.result

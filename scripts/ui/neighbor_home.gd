@@ -27,18 +27,18 @@ static func _build(body: VBoxContainer) -> void:
 	opening += "这处墙已修好。" if bool(view.get("wall_repaired", false)) else "墙上有一处破损，想与你商量如何应对。"
 	body.add_child(UI.para(opening, 17))
 	if Floors.current(Game.run) == "guest_zhou":
-		body.add_child(UI.para("修墙、换物与答复请回宅院隔墙处理；离开时请走门口。", 15, UI.INK_SOFT))
+		body.add_child(UI.para("修墙、换东西、答复他，要回自家隔着墙说；走的时候从门口出去。", 15, UI.INK_SOFT))
 	else:
-		body.add_child(UI.para("老周邀请你白天从自家院门前往他家，18:00 前须返家。", 15, UI.INK_SOFT))
+		body.add_child(UI.para("老周请你白天从院门过去坐坐，18:00 前要回家。", 15, UI.INK_SOFT))
 	if int(view.get("deadline_t", 0)) > 0 and str(view.get("choice", "")) == "":
-		body.add_child(UI.para("答复截止：%s；到点未回应也会有后果。" % _when(int(view.deadline_t)), 16, UI.CINNABAR))
+		body.add_child(UI.para("答复期限：%s；到点不回话，他也会记着。" % _when(int(view.deadline_t)), 16, UI.CINNABAR))
 	var result := str(view.get("result", ""))
 	if result != "":
 		body.add_child(UI.para(result, 16, UI.GOLD))
 	if bool(view.get("settled", false)):
-		body.add_child(UI.para("这次往来的后果已记入老周的人情与往来记录。", 15, UI.INK_SOFT))
+		body.add_child(UI.para("这次往来，老周都记在心里了。", 15, UI.INK_SOFT))
 	elif str(view.get("choice", "")) != "":
-		body.add_child(UI.para("后续将在 %s 处理；院内时钟照常推进。" % _when(int(view.get("due_t", 0))), 15, UI.INK_SOFT))
+		body.add_child(UI.para("%s 再看结果；院里的时辰照常走。" % _when(int(view.get("due_t", 0))), 15, UI.INK_SOFT))
 	var options: Array = NeighborHome.options(Game.run) if str(view.get("stage", "")) == "open" and Floors.current(Game.run) == "courtyard" else []
 	for option in options:
 		var reason := str(option.get("block", ""))

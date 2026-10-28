@@ -123,7 +123,7 @@ func _ready() -> void:
 	bottom.t = NH.view(bottom).due_t
 	bottom.pday = 2
 	Post.trade_refresh(bottom)
-	check(Trade.contact(bottom, "zhou").trust == -5 and "变化 +0" in NH.view(bottom).result and Trade.state(bottom).history.any(func(h): return h.action == "neighbor_home" and "变化 0" in h.result), "lower cap records actual zero change")
+	check(Trade.contact(bottom, "zhou").trust == -5 and "变化 +0" in NH.view(bottom).result and Trade.state(bottom).history.any(func(h): return h.action == "neighbor_home" and "这次没变" in h.result), "lower cap records actual zero change")
 	var timeout := fixture()
 	NH.knock(timeout)
 	timeout.t = int(NH.view(timeout).deadline_t) - 1
@@ -242,7 +242,7 @@ func _ready() -> void:
 	zhou_day.pday = 2
 	Npcs.poll(zhou_day)
 	var zhou_plan: Dictionary = zhou_state.actors.zhou.plan
-	check(zhou_plan.status == "pending" and zhou_plan.focus == "rice" and int(zhou_plan.due_t) == 2040 and "筹措口粮" in zhou_plan.reason and not "外出" in zhou_plan.reason, "new low-food plan is location neutral with original due time")
+	check(zhou_plan.status == "pending" and zhou_plan.focus == "rice" and int(zhou_plan.due_t) == 2040 and "想办法弄粮" in zhou_plan.reason and not "出门" in zhou_plan.reason, "new low-food plan is location neutral with original due time")
 	check(int(zhou_state.actors.zhou.stock.rice) == 0, "daily meal stock deduction unchanged")
 	zhou_day.t = 2040
 	Npcs.poll(zhou_day)

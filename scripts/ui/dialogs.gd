@@ -380,7 +380,7 @@ func _trade_npc() -> void:
 
 func _npc_autonomy(body: VBoxContainer) -> void:
 	var run := _run()
-	body.add_child(UI.para("他们每天 08:00 公开打算、16:00 自行执行。你可以提前介入；没有回应也会照常行动。", 16))
+	body.add_child(UI.para("他们每天 08:00 说出打算，16:00 动手。你可以先插手；不理会，他们也照办。", 16))
 	var tabs := UI.hbox(8)
 	for actor in Trade.ACTORS:
 		var tab := UI.button(("● " if actor == _npc_actor else "") + str(Trade.ACTORS[actor]), _npc_pick.bind(actor))
@@ -399,7 +399,7 @@ func _npc_autonomy(body: VBoxContainer) -> void:
 	content.add_child(UI.para("决定原因：" + str(view.get("reason", "尚未公开今日决定。")), 16))
 	var memory: Dictionary = view.get("memory", {})
 	if memory.is_empty():
-		content.add_child(UI.para("前世片段：本人尚未觉醒；前世档案不会直接左右他的决定。", 15, UI.INK_SOFT))
+		content.add_child(UI.para("前世片段：他还没记起前世。", 15, UI.INK_SOFT))
 	else:
 		var reply: String = {"": "尚未回应", "acknowledge": "你承认似曾相识", "compensate": "你用今世行动回应", "dismiss": "你只当作旧梦"}.get(str(memory.get("response", "")), "已回应")
 		content.add_child(UI.para("已觉醒片段：%s\n%s。" % [str(memory.get("fact", "")), reply], 16, UI.GOLD))
@@ -413,9 +413,9 @@ func _npc_autonomy(body: VBoxContainer) -> void:
 		var response: String = {"": "尚未介入", "support": "送物支援", "favor": "凭情改托（已预留送货）" if pending else "凭情改托（已送达）", "decline": "由他安排"}.get(str(plan.get("response", "")), "已记录")
 		content.add_child(UI.para("本次回应：" + response, 16))
 		if not pending:
-			content.add_child(UI.para("下一次决定：%s；将根据届时库存、人情和公开局势重新安排。" % _crisis_when(int(view.get("next_decision_t", 0))), 16))
+			content.add_child(UI.para("下一回：%s；到时看存货、人情和外头的风声再定。" % _crisis_when(int(view.get("next_decision_t", 0))), 16))
 		if not plan.get("reserved", {}).is_empty():
-			content.add_child(UI.para("已约送达：%s；从对方周转物资预留，16:00 到家。" % Data.describe_items(plan.reserved), 16, UI.JADE))
+			content.add_child(UI.para("说好送来：%s；16:00 到家。" % Data.describe_items(plan.reserved), 16, UI.JADE))
 	if str(view.get("effect", "")) != "":
 		content.add_child(UI.para("按此计划的实际后果：" + str(view.effect), 17, UI.JADE))
 	var spoken: Dictionary = NpcDialogue.render(run, _npc_actor)
@@ -424,8 +424,8 @@ func _npc_autonomy(body: VBoxContainer) -> void:
 	speech.name = "NpcDialogueText"
 	content.add_child(UI.panel(speech))
 	var policy: Dictionary = view.get("policy", {})
-	content.add_child(UI.para("新报价政策：%s；%s。\n%s" % ["加收米 %d" % int(policy.get("price_add", 0)) if int(policy.get("price_add", 0)) > 0 else "无额外加价", "允许按信任赊欠" if bool(policy.get("credit_allowed", true)) else "暂停新报价赊欠", str(policy.get("reason", "尚未调整"))], 16))
-	content.add_child(UI.para("已展示的当日报价、已签欠账和回礼继续按原约；今日行动可能改变以后新建的报价和明日决定。", 15, UI.INK_SOFT))
+	content.add_child(UI.para("往后的报价：%s；%s。\n%s" % ["加收米 %d" % int(policy.get("price_add", 0)) if int(policy.get("price_add", 0)) > 0 else "无额外加价", "允许按信任赊欠" if bool(policy.get("credit_allowed", true)) else "暂停新报价赊欠", str(policy.get("reason", "尚未调整"))], 16))
+	content.add_child(UI.para("已经谈好的报价、欠账和回礼照旧；今天怎么做，会影响往后的报价和他明天的打算。", 15, UI.INK_SOFT))
 	if str(view.get("last_result", "")) != "":
 		content.add_child(UI.para("最近结果：" + str(view.last_result), 17, UI.JADE))
 	for option in Npc.options(run, _npc_actor):
@@ -442,7 +442,7 @@ func _npc_autonomy(body: VBoxContainer) -> void:
 	trade_button.set_meta("npc_trade_entry", true)
 	content.add_child(trade_button)
 	content.add_child(UI.sep())
-	content.add_child(UI.label("自主行动记录 · 最近十二条", 19, UI.GOLD))
+	content.add_child(UI.label("他们的打算 · 最近十二条", 19, UI.GOLD))
 	var history: Array = Npc.state(run).get("history", [])
 	var found := false
 	for k in range(history.size() - 1, -1, -1):
@@ -555,7 +555,7 @@ func _trade_pick(actor: String) -> void:
 func _social_trade(body: VBoxContainer) -> void:
 	var run := _run()
 	var ctx := Trade.context(run)
-	body.add_child(UI.para("第 2 日起，每日 08:00–18:00 可在家联系。每人每天一份货；婉拒也会放弃当天机会。", 16))
+	body.add_child(UI.para("第 2 日起，每天 08:00–18:00 可以在家联系。每人每天一份货；婉拒也算用掉当天的机会。", 16))
 	var autonomy := UI.button("邻人与商情 · 查看此人的目标与行动", _trade_npc)
 	autonomy.set_meta("trade_npc_entry", true)
 	body.add_child(autonomy)
@@ -569,9 +569,9 @@ func _social_trade(body: VBoxContainer) -> void:
 	body.add_child(tabs)
 	var content := UI.vbox(10)
 	var who := Trade.contact(run, _trade_actor)
-	content.add_child(UI.label("%s · 信任 %+d · 欠你的人情 %d · 未化解失约 %d（累计 %d）" % [who.name, int(who.trust), int(who.favors), int(who.breaches), int(who.breach_total)], 18, UI.GOLD))
+	content.add_child(UI.label("%s · 信任 %+d · 欠你的人情 %d · 失约未补 %d（前后共 %d）" % [who.name, int(who.trust), int(who.favors), int(who.breaches), int(who.breach_total)], 18, UI.GOLD))
 	content.add_child(UI.para("最近人情变化：" + str(who.get("last_change", "尚无人情往来")), 15))
-	content.add_child(UI.para("信任影响报价与赊欠资格；人情可换当日现货；失约会抬价，清债后仍需补偿才能化解。", 15))
+	content.add_child(UI.para("信任高，报价好、能赊欠；人情能换当天的现货；失约会涨价，还清账后还要赔礼才补得上。", 15))
 	var trade_state := Trade.state(run)
 	var history: Array = trade_state.get("history", [])
 	if str(trade_state.get("last_result", "")) != "":
@@ -603,10 +603,10 @@ func _social_trade(body: VBoxContainer) -> void:
 	content.add_child(debt_heading)
 	var debt: Dictionary = ctx.debt
 	if debt.is_empty():
-		content.add_child(UI.para("没有未清欠账。全局同时只能保留一笔借债。", 16))
+		content.add_child(UI.para("没有欠账。同一时间只能欠一笔。", 16))
 	else:
 		var debt_name: String = Trade.contact(run, str(debt.actor)).name
-		var debt_summary := UI.para("欠 %s：%s\n第 %d 日 18:00 前偿还%s。欠账已定，不随以后的报价改变。" % [debt_name, req_text(run.home, debt.req), int(debt.due_day), "；现已逾期，失约已留痕" if bool(debt.overdue) else ""], 16, UI.CINNABAR if bool(debt.overdue) else UI.INK)
+		var debt_summary := UI.para("欠 %s：%s\n第 %d 日 18:00 前还%s。欠多少已经说定，不跟着报价变。" % [debt_name, req_text(run.home, debt.req), int(debt.due_day), "；现已逾期，失约已留痕" if bool(debt.overdue) else ""], 16, UI.CINNABAR if bool(debt.overdue) else UI.INK)
 		debt_summary.name = "TradeDebtSummary"
 		content.add_child(debt_summary)
 	if ctx.aid.is_empty():
@@ -616,7 +616,7 @@ func _social_trade(body: VBoxContainer) -> void:
 	content.add_child(UI.sep())
 	content.add_child(UI.label("往来记录 · 最近十二条", 19, UI.GOLD))
 	if history.is_empty():
-		content.add_child(UI.para("尚无成交、拒绝或失约。实际选择会记在这里。", 16))
+		content.add_child(UI.para("还没有往来。成交、婉拒、失约都会记在这里。", 16))
 	for k in range(history.size() - 1, maxi(-1, history.size() - 13), -1):
 		var entry: Dictionary = history[k]
 		content.add_child(UI.para("第 %d 日 %s · %s" % [int(entry.get("t", 0)) / 1440 + 1, _trade_clock(int(entry.get("t", 0))), str(entry.get("result", entry.get("text", "")))], 15))
@@ -760,7 +760,7 @@ func _neighbor(body: VBoxContainer) -> void:
 			var can_prepare: bool = Neighbor.ready_for_home(run) and run.pending_event == "" and Inv.count(run.home, "wood") >= 1 and int(run.t) < Neighbor.DEADLINE
 			body.add_child(UI.button("准备随身撬杆 · 木料 1", func(): _act(func(): return Neighbor.prepare_pry(Game.run)), not can_prepare))
 		else:
-			body.add_child(UI.label("随身撬杆已备好；开柜后损坏。", 17))
+			body.add_child(UI.label("撬杆已备好；撬开柜子就坏了。", 17))
 	var target := "pharmacy_ruin" if q.stage == "fetch" else ("mortuary" if q.stage == "investigate" else "")
 	if target != "" and Neighbor.ready_for_home(run):
 		var block := Post.can_act(run, 10)

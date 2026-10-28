@@ -143,7 +143,7 @@ func _ready() -> void:
 		await finish()
 		return
 	var text := labels_in(modal())
-	check(text.contains("信任") and text.contains("欠你的人情") and text.contains("未化解失约"), "Relationship consequences missing from UI")
+	check(text.contains("信任") and text.contains("欠你的人情") and text.contains("失约未补"), "Relationship consequences missing from UI")
 	check(text.contains("交出：") and text.contains("得到：") and text.contains("报价缘由："), "Quote cost, outcome or reason missing")
 	check(text.contains("最近结果：过路客 · 界面测试前置往来"), "Global result on Ning's page did not identify the actual traveler")
 	for actor in Trade.ACTORS:
@@ -175,7 +175,7 @@ func _ready() -> void:
 	await click(action_button("credit"))
 	var debt: Dictionary = Trade.context(Game.run).debt.duplicate(true)
 	if check(not debt.is_empty(), "Actual credit click did not create fixed debt"):
-		check(labels_in(modal()).contains("18:00") and labels_in(modal()).contains("欠账已定"), "Debt deadline or fixed terms missing")
+		check(labels_in(modal()).contains("18:00") and labels_in(modal()).contains("欠多少已经说定"), "Debt deadline or fixed terms missing")
 		var debt_scroll: ScrollContainer = modal().find_child("TradeDetailsScroll", true, false)
 		debt_scroll.ensure_control_visible(modal().find_child("TradeDebtSummary", true, false))
 		await snapshot("ledger-social-trade-debt")

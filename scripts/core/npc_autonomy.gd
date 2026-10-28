@@ -17,7 +17,7 @@ static func _decision_t(day: int) -> int:
 	return (day - 1) * 1440 + 120
 
 static func _normal_policy() -> Dictionary:
-	return {"price_add": 0, "credit_allowed": true, "reason": "自主周转照常，已签的报价、欠账和回礼不变。"}
+	return {"price_add": 0, "credit_allowed": true, "reason": "日子照常过，谈好的报价、欠账和回礼都不变。"}
 
 static func state(run: Dictionary) -> Dictionary:
 	if not run.get("npcs") is Dictionary or run.npcs.is_empty():
@@ -93,29 +93,29 @@ static func _decide(run: Dictionary, actor: String, day: int) -> String:
 	var mode := "gather"
 	var focus := focal
 	var codes := []
-	var why := "周转尚可，先补足下一次往来的货物。"
+	var why := "手头还行，先把下回要换的货备足。"
 	if int(stock.rice) <= 1:
 		focus = "rice"
 		codes = ["low_food"]
-		why = "今日口粮用过后米粮不足，先筹措口粮，自己的生计排在前面。" if actor == "zhou" else "今日口粮用过后米粮不足，先外出觅粮，自己的生计排在前面。"
+		why = "吃过今天的口粮，米就不够了，先想办法弄粮，自家的日子要紧。" if actor == "zhou" else "吃过今天的口粮，米就不够了，先出门找粮，自家的日子要紧。"
 	elif int(stock.get(focal, 0)) <= 1:
 		codes = ["low_goods"]
-		why = "擅长货物的周转库存不足，先筹措货源。"
+		why = "拿手的货不多了，先去张罗。"
 	elif crisis != "":
 		mode = "stockpile"
 		codes = [crisis]
-		why = "公开的危机风声与自己的生计有关，先留物自保；尚未核实的真假不作判断。"
+		why = "外头的风声关系到自家生计，先留些东西自保；是真是假还不好说。"
 	elif int(trade.trust) <= -2 or int(trade.breaches) > 0 or response == "dismiss":
 		mode = "guard"
 		if int(trade.trust) <= -2:
 			codes.append("distrust")
-			details.append("当下信任为 %d，缺少信赖" % int(trade.trust))
+			details.append("眼下对你的信任只有 %d" % int(trade.trust))
 		if int(trade.breaches) > 0:
 			codes.append("breach")
 			details.append("还有 %d 笔失约未化解" % int(trade.breaches))
 		if response == "dismiss":
 			codes.append("memory_dismiss")
-			details.append("本人已觉醒的旧梦被你疏远")
+			details.append("他记起的前世旧梦，被你推开了")
 		why = "；".join(details) + "，因此收紧下一份往来。"
 	elif int(trade.trust) >= 2 or int(trade.favors) > 0 or response in ["acknowledge", "compensate"]:
 		mode = "share"
@@ -124,21 +124,21 @@ static func _decide(run: Dictionary, actor: String, day: int) -> String:
 			details.append("现世信任已达 %d" % int(trade.trust))
 		if int(trade.favors) > 0:
 			codes.append("favor")
-			details.append("现世还欠你人情 %d 份" % int(trade.favors))
+			details.append("这一世还欠你 %d 份人情" % int(trade.favors))
 		if response == "acknowledge":
 			codes.append("memory_acknowledge")
-			details.append("本人已觉醒的旧梦得到你承认")
+			details.append("他记起的前世旧梦，你认了")
 		if response == "compensate":
 			codes.append("memory_compensate")
-			details.append("你已用今世赠粮回应其觉醒的旧梦")
-		why = "；".join(details) + "，因此愿从自己的周转物资里回报。"
+			details.append("你送过粮，回应他记起的旧梦")
+		why = "；".join(details) + "，所以愿意从自家存货里回报你。"
 	else:
 		codes = ["routine"]
 	var req := {"rice": 2} if int(stock.rice) <= 1 else {focal: 1}
 	person.plan = {"id": "npc:%s:%s:%d" % [str(Past.state(run).id), actor, day], "day": day,
 		"due_t": (day - 1) * 1440 + 600, "mode": mode, "focus": focus, "reason_codes": codes,
 		"reason": why, "response": "", "req": req, "reserved": {}, "status": "pending"}
-	return _fact(run, actor, "decide", "%s决定%s：%s 第 %d 日 16:00 执行，之前可以支援、凭情改托或由他安排。" % [ACTORS[actor], MODES[mode], why, day], _decision_t(day), 0, false)
+	return _fact(run, actor, "decide", "%s打算%s：%s 第 %d 日 16:00 动手；在那之前，你可以支援、凭情改托，或由他安排。" % [ACTORS[actor], MODES[mode], why, day], _decision_t(day), 0, false)
 
 static func _gather_gain(stock: Dictionary, plan: Dictionary, supported: bool) -> int:
 	return mini(3 if supported else 2, maxi(0, STOCK_LIMIT - int(stock.get(plan.focus, 0))))
@@ -154,7 +154,7 @@ static func _execute(run: Dictionary, actor: String) -> String:
 	var valence := 0
 	if plan.response == "favor":
 		Inv.add_all(run.home, plan.reserved)
-		result += "将已预留的%s送到你家，凭情改托兑现，原行动让位；下一份新报价照常。" % Data.describe_items(plan.reserved)
+		result += "把留给你的%s送到你家，原来的打算作罢。" % Data.describe_items(plan.reserved)
 		plan.reserved = {}
 		valence = 1
 	else:
@@ -166,26 +166,26 @@ static func _execute(run: Dictionary, actor: String) -> String:
 				elif plan.focus == "rice":
 					var before := int(stock.rice)
 					_adjust(stock, "rice", amount)
-					result += ("筹措口粮" if actor == "zhou" else "外出觅粮") + "，自己的米粮增加 %d；这些物资仍属其本人，后续决定会据此变化。" % (int(stock.rice) - before)
+					result += ("筹措口粮" if actor == "zhou" else "外出觅粮") + "，自家的米多了 %d。" % (int(stock.rice) - before)
 				else:
 					_adjust(stock, "rice", -1)
 					var before := int(stock.get(focal, 0))
 					_adjust(stock, focal, amount)
-					result += "耗米 1 筹措%s，自己的%s增加 %d，后续决定会据此变化。" % [Data.item(focal).name, Data.item(focal).name, int(stock.get(focal, 0)) - before]
+					result += "花米 1 张罗%s，自家的%s多了 %d。" % [Data.item(focal).name, Data.item(focal).name, int(stock.get(focal, 0)) - before]
 			"stockpile":
 				_adjust(stock, focal, -1)
 				policy = {"price_add": 0 if supported else 1, "credit_allowed": true,
-					"reason": "自主备货得到你的支援，新报价不加价。" if supported else "自主备货耗去周转货物，新报价加收米 1。"}
-				result += "耗%s 1 备货自保；%s已展示报价和签约物资不变。" % [Data.item(focal).name, policy.reason]
+					"reason": "有你帮衬着备货，往后的报价不涨。" if supported else "备货花了自家的货，往后的报价多收米 1。"}
+				result += "花%s 1 备货自保；%s谈好的报价和约定照旧。" % [Data.item(focal).name, policy.reason]
 			"guard":
 				policy = {"price_add": 0 if supported else 1, "credit_allowed": supported,
-					"reason": "你的支援缓和了这次收紧，新报价不加价且可按原信任条件赊欠。" if supported else "自主收紧往来，新报价加收米 1 且不开放赊欠。"}
-				result += "执行往来安排；%s已展示报价和旧欠账不变。" % policy.reason
+					"reason": "有你帮衬，他不再收紧：往后的报价不涨，照旧可以赊欠。" if supported else "他收紧了往来：往后的报价多收米 1，也不赊欠。"}
+				result += "照打算办了；%s谈好的报价和欠账照旧。" % policy.reason
 			"share":
 				var amount := mini(2 if supported else 1, int(stock.get(focal, 0)))
 				_adjust(stock, focal, -amount)
 				Inv.add(run.home, focal, amount)
-				result += "从自己的周转物资扣%s %d，送到你家；后续库存与自主决定随之变化。" % [Data.item(focal).name, amount]
+				result += "从自家存货里拿出%s %d，送到你家。" % [Data.item(focal).name, amount]
 				valence = 1
 	person.policy = policy
 	plan.status = "done"
@@ -246,23 +246,23 @@ static func _block(run: Dictionary, actor: String, action: String) -> String:
 	var person: Dictionary = state(run).actors[actor]
 	var plan: Dictionary = person.plan
 	if plan.is_empty(): return "尚未公开新的自主安排。"
-	if int(run.get("t", 0)) < _decision_t(int(plan.day)): return "尚未到这份安排的公开时刻，不能提前介入。"
-	if plan.status != "pending" or int(run.get("t", 0)) >= int(plan.due_t): return "这份安排已到执行时间，不能再介入。"
-	if plan.response != "": return "本次已经作出回应，不能重复改动。"
+	if int(run.get("t", 0)) < _decision_t(int(plan.day)): return "他还没说出打算，没法插手。"
+	if plan.status != "pending" or int(run.get("t", 0)) >= int(plan.due_t): return "他已经动手了，插不上手了。"
+	if plan.response != "": return "这回你已经回过话了。"
 	if not action in ["support", "favor", "decline"]: return "没有这个回应方式。"
 	var trade: Dictionary = _trade_state(run).actors[actor]
 	if action == "support":
-		if int(trade.favors) >= 3: return "对方已欠你人情 3 份，先用掉一份，避免支援浪费。"
+		if int(trade.favors) >= 3: return "对方已经欠你 3 份人情，先用掉一份，再帮也记不上。"
 		for item in plan.req:
-			if int(person.stock.get(item, 0)) + int(plan.req[item]) > STOCK_LIMIT: return "对方周转库存已满，不能再接受这份支援。"
+			if int(person.stock.get(item, 0)) + int(plan.req[item]) > STOCK_LIMIT: return "对方存货已满，收不下了。"
 		if plan.mode == "gather":
 			var projected: Dictionary = person.stock.duplicate(true)
 			for item in plan.req: _adjust(projected, str(item), int(plan.req[item]))
 			if _gather_gain(projected, plan, true) <= 0: return "对方这样东西已经堆满，再送也添不进去。"
 		if not Inv.has_all(run.home, plan.req): return "需要%s。" % Data.describe_items(plan.req)
 	if action == "favor":
-		if int(trade.favors) < 1: return "对方还没有欠你的人情，需要人情 1。"
-		if int(person.stock.get(FOCAL[actor], 0)) < 1: return "对方没有可供改托的擅长货物。"
+		if int(trade.favors) < 1: return "对方还不欠你人情，要 1 份人情。"
+		if int(person.stock.get(FOCAL[actor], 0)) < 1: return "对方手头没有拿手的货可以改送给你。"
 	return ""
 
 static func options(run: Dictionary, actor: String) -> Array:
@@ -270,17 +270,17 @@ static func options(run: Dictionary, actor: String) -> Array:
 	var plan: Dictionary = state(run).actors[actor].plan
 	var req: Dictionary = plan.get("req", {})
 	var mode := str(plan.get("mode", ""))
-	var extra := {"stockpile": "16:00 备货仍耗擅长货物 1，但下一份新报价不加价。", "guard": "16:00 缓和收紧，新报价不加价且恢复原信任条件下的赊欠。", "share": "16:00 从对方库存扣擅长货物 2，送到你家 2；支援已交的 1 也归其库存。"}
+	var extra := {"stockpile": "16:00 照样花拿手的货 1 备货，但往后的报价不涨。", "guard": "16:00 不再收紧，往后的报价不涨，照旧可以赊欠。", "share": "16:00 从自家拿出拿手的货 2，送到你家；你帮衬的那 1 份也留在他家。"}
 	if mode == "gather":
 		var projected: Dictionary = state(run).actors[actor].stock.duplicate(true)
 		if plan.response == "":
 			for item in req: _adjust(projected, str(item), int(req[item]))
 		var amount := _gather_gain(projected, plan, true)
-		extra["gather"] = "16:00 按库存余量实际增加%s %d（本次最多 3）；%s" % [Data.item(str(plan.focus)).name, amount, "自己耗米 1。" if plan.focus != "rice" and amount > 0 else ("不额外耗米。" if amount > 0 else "已无增长余量，这份支援不可用。")]
+		extra["gather"] = "16:00 添%s %d（这回最多 3）；%s" % [Data.item(str(plan.focus)).name, amount, "自己耗米 1。" if plan.focus != "rice" and amount > 0 else ("不额外耗米。" if amount > 0 else "已经堆满，再帮也添不进去。")]
 	var rows := [
-		{"id": "support", "text": "送物支援", "hint": "交出%s加入对方周转库存，立即信任 +1、人情 +1（最多 3）；%s本次回应锁定。" % [Data.describe_items(req), str(extra.get(mode, "等待下一份安排。"))]},
-		{"id": "favor", "text": "凭情改托", "hint": "立即消耗人情 1，并从对方库存预留%s 1；16:00 送到你家，原行动取消，新报价照常。本次回应锁定。" % Data.item(FOCAL[actor]).name},
-		{"id": "decline", "text": "由他安排", "hint": "零物资成本，不改变信任、不算失约；关闭本次介入，16:00 照原计划执行。"},
+		{"id": "support", "text": "送物支援", "hint": "交出%s给对方，信任 +1、人情 +1（最多 3）；%s这回就这么定了。" % [Data.describe_items(req), str(extra.get(mode, "等待下一份安排。"))]},
+		{"id": "favor", "text": "凭情改托", "hint": "用掉 1 份人情，请他留出%s 1；16:00 送到你家，原来的打算作罢。这回就这么定了。" % Data.item(FOCAL[actor]).name},
+		{"id": "decline", "text": "由他安排", "hint": "不花东西，信任不变，不算失约；16:00 他照原来的打算办。"},
 	]
 	for row in rows: row["block"] = _block(run, actor, str(row.id))
 	return rows
@@ -294,7 +294,7 @@ static func _trade_fact(run: Dictionary, actor: String, action: String, result: 
 
 static func act(run: Dictionary, actor: String, action: String, token: String) -> String:
 	if not actor in ACTORS: return "没有这位邻人。"
-	if token != _token(run, actor): return "这份自主安排已过期，请重新查看。"
+	if token != _token(run, actor): return "情况已经变了，请重新看一遍。"
 	var blocked := _block(run, actor, action)
 	if blocked != "": return blocked
 	var person: Dictionary = state(run).actors[actor]
@@ -308,18 +308,18 @@ static func act(run: Dictionary, actor: String, action: String, token: String) -
 			for item in plan.req: _adjust(person.stock, str(item), int(plan.req[item]))
 			trade.trust = clampi(int(trade.trust) + 1, -5, 5)
 			trade.favors = int(trade.favors) + 1
-			trade.last_change = "支援自主安排，信任 +1、人情 +1"
-			result = "你交出%s支援%s，加入其周转库存；信任 +1、人情 +1，16:00 改善已公开的执行结果。" % [Data.describe_items(plan.req), ACTORS[actor]]
+			trade.last_change = "帮衬了他的打算，信任 +1、人情 +1"
+			result = "你交出%s帮衬%s；信任 +1、人情 +1，16:00 他办得会更好些。" % [Data.describe_items(plan.req), ACTORS[actor]]
 			valence = 1
 		"favor":
 			trade.favors = int(trade.favors) - 1
-			trade.last_change = "用于自主安排凭情改托，人情 -1"
+			trade.last_change = "凭情改托，人情 -1"
 			_adjust(person.stock, FOCAL[actor], -1)
 			plan.reserved = {FOCAL[actor]: 1}
-			result = "你用去%s人情 1，已从其周转库存预留%s 1；16:00 按约送到你家，原行动让位。" % [ACTORS[actor], Data.item(FOCAL[actor]).name]
+			result = "你用掉%s的 1 份人情，他留出%s 1，16:00 送到你家，原来的打算作罢。" % [ACTORS[actor], Data.item(FOCAL[actor]).name]
 			valence = 1
 		"decline":
-			result = "你让%s照原计划安排。没有扣物资、没有信任或失约处罚；本次介入关闭，16:00 仍会执行。" % ACTORS[actor]
+			result = "你让%s照原来的打算办。没花东西，信任不变，也不算失约；16:00 他会照办。" % ACTORS[actor]
 	plan.response = action
 	if action != "decline": _trade_fact(run, actor, action, result)
 	_fact(run, actor, action, result, int(run.get("t", 0)), valence)
@@ -333,24 +333,24 @@ static func view(run: Dictionary, actor: String) -> Dictionary:
 	var mode := str(plan.get("mode", ""))
 	return {"actor": actor, "name": ACTORS[actor], "stock": person.stock.duplicate(true),
 		"goal": str(MODES.get(mode, "等待下一次安排")), "title": "%s · %s" % [ACTORS[actor], MODES.get(mode, "周转近况")],
-		"reason": str(plan.get("reason", "第 2 日起每天 08:00 公布新的自主安排。")), "effect": _effect(actor, plan, person.stock), "memory": _memory(run, actor),
+		"reason": str(plan.get("reason", "第 2 日起，每天 08:00 会说出新的打算。")), "effect": _effect(actor, plan, person.stock), "memory": _memory(run, actor),
 		"plan": plan.duplicate(true), "policy": person.policy.duplicate(true), "token": _token(run, actor),
 		"last_result": str(person.last_result), "next_decision_t": _decision_t(int(s.next_day))}
 
 static func _effect(actor: String, plan: Dictionary, stock: Dictionary) -> String:
-	if plan.is_empty(): return "尚未安排；每天 08:00 公布意图，16:00 执行。"
-	if plan.status == "done": return "本次已执行，实际结算见下方记录；下一次决定会参考新库存与往来。"
+	if plan.is_empty(): return "还没打算；每天 08:00 说出打算，16:00 动手。"
+	if plan.status == "done": return "这回已经办了，结果记在下面。"
 	var focal := str(Data.item(FOCAL[actor]).name)
-	if plan.response == "favor": return "16:00 将已预留的%s 1 送到你家，原自主行动取消，后续新报价照常。" % focal
+	if plan.response == "favor": return "16:00 把留给你的%s 1 送到你家，原来的打算作罢。" % focal
 	var supported: bool = plan.response == "support"
 	match str(plan.mode):
 		"gather":
 			var amount := _gather_gain(stock, plan, supported)
-			if amount <= 0: return "16:00 目标库存已满，只整理现有货物，不再耗米或增加物资；没有可承诺的额外筹措收益。"
-			return "16:00 自己觅粮，按库存余量米粮实际增加 %d；这是对方自己的口粮，不会送给你。" % amount if plan.focus == "rice" else "16:00 自己耗米 1，按库存余量筹措%s %d；物资属于对方，改变以后决定。" % [focal, amount]
-		"stockpile": return "16:00 自己耗%s 1 备货；下一份新报价%s，旧报价与承诺不变。" % [focal, "不加价" if supported else "加收米 1"]
-		"guard": return "16:00 下一份新报价%s；旧报价与承诺不变。" % ("不加价，按原信任条件开放赊欠" if supported else "加收米 1，暂停赊欠")
-		"share": return "16:00 从自己库存扣%s %d，送到你家 %d；后续库存与决定随之改变。" % [focal, 2 if supported else 1, 2 if supported else 1]
+			if amount <= 0: return "16:00 存货已满，只理一理现有的货，不再花米。"
+			return "16:00 自己出门找粮，米多 %d；这是他自家的口粮，不会送给你。" % amount if plan.focus == "rice" else "16:00 花米 1 张罗%s %d，留在他自家。" % [focal, amount]
+		"stockpile": return "16:00 花%s 1 备货；往后的报价%s。" % [focal, "不加价" if supported else "加收米 1"]
+		"guard": return "16:00 往后的报价%s。" % ("不涨，照旧可以赊欠" if supported else "加收米 1，暂停赊欠")
+		"share": return "16:00 从自家拿出%s %d，送到你家 %d。" % [focal, 2 if supported else 1, 2 if supported else 1]
 	return ""
 
 static func context(run: Dictionary) -> Dictionary:

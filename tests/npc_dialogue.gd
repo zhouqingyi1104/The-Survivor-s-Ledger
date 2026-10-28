@@ -197,11 +197,11 @@ func test_frozen_phrasing_live_facts() -> void:
 		var after := Dialogue.render(run, "ning")
 		check(after.text != before.text and not after.changed, "Frozen phrasing prevented real response facts from updating " + action)
 		check(Dialogue.state(run).actors.ning == phrasing, "Real response changed frozen AI phrasing " + action)
-		if action == "favor": check(after.text.contains("原自主行动取消") and not after.text.contains("我的打算：筹措周转"), "Favor dialogue still claimed canceled autonomous action")
+		if action == "favor": check(after.text.contains("我原来的打算不办了") and not after.text.contains("我的打算：筹措周转"), "Favor dialogue still claimed canceled autonomous action")
 		at(run, 2, 600)
 		Npc.poll(run)
 		var done := Dialogue.render(run, "ning")
-		check(done.text.contains("本次已经执行") and done.text.contains(Npc.view(run, "ning").last_result), "Finished dialogue omitted actual settlement " + action)
+		check(done.text.contains("这回已经办了") and done.text.contains(Npc.view(run, "ning").last_result), "Finished dialogue omitted actual settlement " + action)
 		check(not done.text.contains("我会") and Dialogue.state(run).actors.ning == phrasing, "Finished dialogue still promised future action or changed phrasing " + action)
 
 func _ready() -> void:

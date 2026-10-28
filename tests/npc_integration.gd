@@ -210,7 +210,7 @@ func test_crisis_and_npc_supply_stack() -> void:
 		check(Crisis.view(run).stage == "impact" and int(Npcs.market_effect(run, actor).price_add) == 1, "Joint crisis or actual NPC self-preservation did not execute")
 		var q := Trade.quote(run, actor)
 		check(int(q.req.rice) == int(Trade.OFFERS[actor].price) + 2, "Crisis and autonomous supply surcharges did not stack exactly")
-		check(q.reason.contains("自主备货") and q.reason.contains("米 1"), "Fresh quote concealed its actual price causes")
+		check(q.reason.contains("备货") and q.reason.contains("米 1"), "Fresh quote concealed its actual price causes")
 		if kind == "herb_shortage": check(not q.give.has("mugwort"), "NPC autonomy bypassed crisis herb supply restriction")
 
 func _ready() -> void:
