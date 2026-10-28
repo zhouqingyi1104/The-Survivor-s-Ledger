@@ -612,7 +612,7 @@ static func toggle_gate(run: Dictionary) -> String:
 static func start_fight(run: Dictionary, count: int, armored: bool) -> void:
 	if not run.fight.is_empty():
 		return
-	run.fight = NightFight.begin(count, armored)
+	run.fight = NightFight.begin(count, armored, run)
 	State.note(run, "%d 只摸到了街上——门没关。" % int(run.fight.total))
 
 
@@ -651,7 +651,8 @@ static func end_fight(run: Dictionary, sum: Dictionary) -> void:
 
 ## 门开着的时候，进院子的那几只开始砸东西。
 static func apply_wreck(run: Dictionary, idx: int) -> String:
-	var t: Array = NightFight.TARGETS[clampi(idx, 0, NightFight.TARGETS.size() - 1)]
+	var targets := NightFight.fight_targets(run)
+	var t: Array = targets[clampi(idx, 0, targets.size() - 1)]
 	var text := ""
 	match str(t[3]):
 		"crop":
@@ -677,15 +678,12 @@ static func apply_wreck(run: Dictionary, idx: int) -> String:
 			if not run.has("broken"):
 				run.broken = []
 			var want := str(t[4]) if t.size() > 4 else ""
-			var order := [want, "bench" if want == "stove" else "stove"]
-			for cand in order:
-				if str(cand) == "" or cand in run.broken:
-					continue
-				run.broken.append(str(cand))
-				text = "%s被砸烂了，得拿木料和铁钉重做。" % Home.data(str(cand)).get("name", "家具")
-				break
-			if text == "":
-				text = "僵尸在屋里翻了一通，能砸的早砸光了。"
+			var target := Home.core(run, want)
+			if not target.is_empty() and (t.size() < 6 or int(target.uid) == int(t[5])) and not want in run.broken:
+				run.broken.append(want)
+				text = "%s被砸烂了，得拿木料和铁钉重做。" % Home.data(want).get("name", "家具")
+			else:
+				text = "这件家具已经砸坏了。"
 	if text != "":
 		State.note(run, text)
 	return text
@@ -1291,8 +1289,11 @@ static func act_unfurnish(run: Dictionary, uid: int) -> String:
 	var err := can_act(run, 4)
 	if err != "":
 		return err
-	if Home.find(run, uid).is_empty():
+	var f := Home.find(run, uid)
+	if f.is_empty():
 		return "找不到这件家具。"
+	if Home.is_core(run, f):
+		return "核心家具不能拆掉。"
 	return Home.remove(run, uid)
 
 

@@ -22,6 +22,14 @@ func _paths(world: Node3D, label: String) -> void:
 		var target: Vector3 = World.SPOTS[id].stand
 		var path := NavigationServer3D.map_get_path(map, World.SPAWN, target, true)
 		check(not path.is_empty() and _flat(path[-1], target) < 0.7, label + " no path to " + id)
+	for id in Home.CORE_IDS:
+		var f := Home.core(world._current_run, id)
+		check(not f.is_empty(), label + " missing core " + id)
+		if f.is_empty():
+			continue
+		var target := Home.stand(f)
+		var path := NavigationServer3D.map_get_path(map, World.SPAWN, target, true)
+		check(not path.is_empty() and _flat(path[-1], target) < 0.7, label + " no path to " + id)
 
 func _go(world: Node3D, player: CharacterBody3D, target: Vector3, label: String) -> void:
 	var map := world.get_world_3d().navigation_map

@@ -210,7 +210,7 @@ func _place_at(p: Vector3) -> void:
 	if uid >= 0:
 		var block: String = Post.can_act(Game.run)
 		var f := Home.find(Game.run, uid)
-		if block == "" and (f.is_empty() or str(f.id) != id or id in ["bed", "desk", "storage", "stove", "bench"]):
+		if block == "" and (f.is_empty() or str(f.id) != id or (Home.is_core(Game.run, f) and id in Game.run.get("broken", []))):
 			block = "这件家具不能挪位。"
 		if block == "":
 			block = world.move_spot_block(Game.run, uid, p.x, p.z, rot)
@@ -255,6 +255,7 @@ func _step_fight(run: Dictionary, delta: float) -> void:
 		return
 	var p := player.global_position
 	var passable := bool(run.door_open) or int(run.door.cur) <= 0
+	NightFight.fight_targets(run) # 已进行中的旧战斗也绑定当前存档位置
 	var evs := NightFight.step(run.fight, delta, p.x, p.z, passable)
 	for e in evs:
 		match str(e[0]):
@@ -274,7 +275,7 @@ func _step_fight(run: Dictionary, delta: float) -> void:
 			"wreck":
 				var idx: int = int(e[1].target)
 				var text: String = Post.apply_wreck(run, idx)
-				var t: Array = NightFight.TARGETS[idx]
+				var t: Array = NightFight.fight_targets(run)[idx]
 				world.show_wreck(idx, Vector3(float(t[1]), 0.0, float(t[2])), str(t[3]))
 				# 存货、柴垛、菜畦按新状态重画（米袋少了、菜畦空了，一眼能看见）
 				world.sync(run)
@@ -351,12 +352,19 @@ func _update_pose(run: Dictionary) -> void:
 		Sfx.play("cloth", -4.0)
 		player.stop()
 		# 人先走到榻前（镜头跟过去），模型再躺到榻上
-		player.global_position = HomeWorld.SPOTS.bed.stand
-		fig.position = player.to_local(Vector3(-3.1, -0.09, -7.25))
-		fig.rotation.y = PI / 2.0
+		var bed := Home.core(run, "bed")
+		if bed.is_empty():
+			return
+		player.global_position = Home.stand(bed)
+		var center := Vector3(float(bed.x), -0.09, float(bed.z))
+		var offset := Vector3(0.9, 0, 0).rotated(Vector3.UP, deg_to_rad(float(bed.rot)))
+		fig.position = player.to_local(center + offset)
+		fig.rotation.y = PI / 2.0 + deg_to_rad(float(bed.rot))
 	else:
 		fig.position = Vector3.ZERO
-		player.global_position = HomeWorld.SPOTS.bed.stand
+		var bed := Home.core(run, "bed")
+		if not bed.is_empty():
+			player.global_position = Home.stand(bed)
 
 
 # ---------- 时间 ----------
@@ -562,7 +570,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact"):
 		var id: String = world.nearest_spot(player.global_position, 2.2)
 		if id != "":
-			open_menu(id, rig.cam.unproject_position(HomeWorld.SPOTS[id].tag))
+			var info := _spot_info(id)
+			if not info.is_empty():
+				open_menu(id, rig.cam.unproject_position(info.tag))
 	elif event.is_action_pressed("speed_pause"):
 		Game.speed = 1 if Game.speed == 0 else 0
 		Game.refresh()
@@ -636,10 +646,14 @@ func actions_for(id: String) -> Array:
 	var can := Post.can_act(run)
 	if id.begins_with("f_"):
 		var uid := int(id.substr(2))
-		if Home.find(run, uid).is_empty():
+		var f := Home.find(run, uid)
+		if f.is_empty():
 			return []
-		var list := [["挪位…", func(): _start_move(uid), can], ["拆掉（退一半料）", _act(func(): return Post.act_unfurnish(Game.run, uid)), can]]
-		if str(Home.find(run, uid).id) == "planter":
+		var list := [["挪位…", func(): _start_move(uid), can]]
+		if Home.is_core(run, f):
+			return actions_for(str(f.id)) + list
+		list.append(["拆掉（退一半料）", _act(func(): return Post.act_unfurnish(Game.run, uid)), can])
+		if str(f.id) == "planter":
 			list.push_front(["播种 / 查看菜畦…", Dialogs.garden, ""])
 		return list
 	match id:
@@ -693,8 +707,11 @@ func actions_for(id: String) -> Array:
 func _start_move(uid: int) -> void:
 	var f := Home.find(Game.run, uid)
 	var block := Post.can_act(Game.run)
-	if f.is_empty() or str(f.id) in ["bed", "desk", "storage", "stove", "bench"]:
+	if f.is_empty():
 		Game.toast.emit("这件家具不能挪位。")
+		return
+	if Home.is_core(Game.run, f) and str(f.id) in Game.run.get("broken", []):
+		Game.toast.emit("先修好这件家具再挪位。")
 		return
 	if block != "":
 		Game.toast.emit(block)
@@ -709,19 +726,12 @@ func _start_move(uid: int) -> void:
 func _spot_info(id: String) -> Dictionary:
 	if HomeWorld.SPOTS.has(id):
 		return HomeWorld.SPOTS[id]
-	if not id.begins_with("f_"):
-		return {}
-	var f := Home.find(Game.run, int(id.substr(2)))
+	var f := Home.core(Game.run, id) if id in Home.CORE_IDS else Home.find(Game.run, int(id.substr(2))) if id.begins_with("f_") else {}
 	if f.is_empty():
 		return {}
 	var center := Vector3(float(f.x), 0.0, float(f.z))
-	var to_player := player.global_position - center
-	to_player.y = 0.0
-	if to_player.length() < 0.01:
-		to_player = Vector3(0, 0, 1)
-	var size := Home.size_of(str(f.id), int(f.rot))
-	var stand := center + to_player.normalized() * (maxf(size.x, size.y) * 0.5 + 0.75)
-	return {"name": Home.data(str(f.id)).get("name", "家具"), "stand": stand, "tag": center + Vector3(0, 1.4, 0)}
+	var stand := Home.stand(f)
+	return {"name": Home.data(str(f.id)).get("name", "家具"), "stand": stand, "tag": center + Vector3(0, float(Home.data(str(f.id)).get("h", 1.0)) + 0.7, 0)}
 
 
 ## 被砸烂的家具只剩一件事：拿材料重做。
@@ -804,6 +814,10 @@ func _on_arrived() -> void:
 		return
 	var cb := _pending
 	_pending = Callable()
+	var info := _spot_info(_pending_spot)
+	if info.is_empty() or Vector2(player.global_position.x - info.stand.x, player.global_position.z - info.stand.z).length() >= 1.0:
+		Game.toast.emit("走不到那里，请调整摆放或清出通路。")
+		return
 	_face(_pending_spot)
 	cb.call()
 

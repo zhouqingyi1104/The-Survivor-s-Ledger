@@ -7,6 +7,8 @@ extends RefCounted
 ##
 ## 这里只有判定，不画东西：位置用世界坐标的 x / z，3D 那边照着摆人。
 
+const Home = preload("res://scripts/core/home.gd")
+
 const SPEED := 3.4
 const Z_SPEED := 1.05
 const Z_REACH := 1.25
@@ -28,18 +30,36 @@ const GATE := Vector2(0.0, 7.2)
 const STREET_Z := 12.6
 const INSIDE_Z := 6.4
 
-## 院子里会被啃的地方：[名字, x, z, 类型, 家具id（只有家具用）]
+## Fixed supplies plus the original workstations at their saved positions.
 const TARGETS := [
 	["菜畦", 3.5, 1.4, "crop", ""],
 	["米袋", -9.0, 1.5, "grain", ""],
 	["柴垛", -8.6, 2.6, "fuel", ""],
-	["灶台", -8.0, -1.6, "furniture", "stove"],
-	["工作台", 8.2, -1.2, "furniture", "bench"],
+	["灶台", -8.9, -1.6, "furniture", "stove"],
+	["工作台", 9.0, -1.2, "furniture", "bench"],
 ]
 
 
+static func targets(run: Dictionary) -> Array:
+	var out := TARGETS.duplicate(true)
+	for i in [3, 4]:
+		var f := Home.core(run, str(out[i][4]))
+		if not f.is_empty():
+			out[i][1] = float(f.x)
+			out[i][2] = float(f.z)
+			out[i].append(int(f.uid))
+	return out
+
+
+static func fight_targets(run: Dictionary) -> Array:
+	var fight: Dictionary = run.get("fight", {})
+	if not fight.has("targets"):
+		fight["targets"] = targets(run)
+	return fight.targets
+
+
 ## 开一场。count 是这一轮院门本该来几只；armored 时铜甲要两刀。
-static func begin(count: int, armored: bool) -> Dictionary:
+static func begin(count: int, armored: bool, run := {}) -> Dictionary:
 	var n := mini(maxi(1, count), MAX_LIVE)
 	var foes := []
 	for i in n:
@@ -54,7 +74,7 @@ static func begin(count: int, armored: bool) -> Dictionary:
 			"chew": 0.0,
 		})
 	return {
-		"t": 0.0, "foes": foes, "total": n, "armored": armored,
+		"t": 0.0, "foes": foes, "total": n, "armored": armored, "targets": targets(run),
 		"kills": 0, "hp_loss": 0, "contacts": 0, "bashes": 0,
 		"wrecked": [], "done": false, "swing": 0.0,
 		"block": 0.0, "block_cd": 0.0, "parries": 0,
@@ -64,6 +84,7 @@ static func begin(count: int, armored: bool) -> Dictionary:
 ## 走一步。door_open：门是不是开着。返回这一帧发生的事（给界面弹提示）。
 static func step(s: Dictionary, dt: float, px: float, pz: float, door_open: bool) -> Array:
 	var events := []
+	var targets_now: Array = s.get("targets", TARGETS)
 	if bool(s.done):
 		return events
 	s.t = float(s.t) + dt
@@ -80,7 +101,7 @@ static func step(s: Dictionary, dt: float, px: float, pz: float, door_open: bool
 		var tx: float = GATE.x
 		var tz: float = GATE.y
 		if bool(f.inside):
-			var t: Array = TARGETS[int(f.target)]
+			var t: Array = targets_now[clampi(int(f.target), 0, targets_now.size() - 1)]
 			tx = float(t[1])
 			tz = float(t[2])
 		elif door_open:
@@ -102,7 +123,7 @@ static func step(s: Dictionary, dt: float, px: float, pz: float, door_open: bool
 		if not bool(f.inside):
 			if door_open:
 				f.inside = true
-				f.target = int(s.foes.find(f)) % TARGETS.size()
+				f.target = int(s.foes.find(f)) % targets_now.size()
 				f.z = INSIDE_Z
 				events.append(["enter", f])
 				continue

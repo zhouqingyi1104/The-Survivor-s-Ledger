@@ -11,6 +11,8 @@ const Inv = preload("res://scripts/core/inv.gd")
 const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 
+const CORE_IDS := ["bed", "desk", "storage", "stove", "bench"]
+
 const DAY := 1440
 ## 摆放吸附的格子（米）
 const GRID := 0.25
@@ -56,6 +58,24 @@ static func find(run: Dictionary, uid: int) -> Dictionary:
 		if int(f.uid) == uid:
 			return f
 	return {}
+
+
+## The first instance is the original workstation; extra same-type furniture stays independent.
+static func core(run: Dictionary, id: String) -> Dictionary:
+	if not id in CORE_IDS:
+		return {}
+	var found := list(run, id)
+	return found[0] if not found.is_empty() else {}
+
+
+static func is_core(run: Dictionary, f: Dictionary) -> bool:
+	return not f.is_empty() and core(run, str(f.id)).get("uid", -1) == f.get("uid", -2)
+
+
+static func stand(f: Dictionary) -> Vector3:
+	var facing := front(int(f.rot))
+	var depth := float(data(str(f.id)).get("size", [1, 1])[1])
+	return Vector3(float(f.x) + facing.x * (depth * 0.5 + 0.8), 0, float(f.z) + facing.y * (depth * 0.5 + 0.8))
 
 
 static func has_fn(run: Dictionary, fn: String) -> bool:
@@ -230,6 +250,19 @@ static func ensure_layout(run: Dictionary) -> void:
 			add(run, row[0], row[1], row[2], row[3])
 	if "water_vat" in run.get("facilities", []) and count(run, "water_vat") == 0:
 		add(run, "water_vat", -5.2, 2.0, 0)
+
+
+## 老卷中的固定工作家具没有数据时补回；已有位置和其他家具均保留。
+static func ensure_core(run: Dictionary) -> void:
+	if not run.get("furniture") is Array:
+		run["furniture"] = []
+	var max_uid := 0
+	for f in run.furniture:
+		max_uid = maxi(max_uid, int(f.get("uid", 0)))
+	run["next_uid"] = maxi(int(run.get("next_uid", 1)), max_uid + 1)
+	for row in DEFAULT_LAYOUT:
+		if row[0] in CORE_IDS and core(run, str(row[0])).is_empty():
+			add(run, str(row[0]), float(row[1]), float(row[2]), int(row[3]))
 
 
 ## 舒适度：摆设越多，屋里越像个家（每天心神加成的来源）。

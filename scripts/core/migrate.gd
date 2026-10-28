@@ -24,6 +24,8 @@ const Post = preload("res://scripts/core/post.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 
+const Home = preload("res://scripts/core/home.gd")
+
 const VERSION := 21
 ## v2 新加的字段
 const ADDED := {
@@ -68,6 +70,8 @@ static func save(data: Dictionary) -> Dictionary:
 
 
 static func upgrade(run: Dictionary) -> Dictionary:
+	if not run.is_empty() and str(run.get("phase", "")) == "post":
+		Home.ensure_core(run)
 	if run.is_empty() or int(run.get("version", 1)) >= VERSION:
 		return run
 	var v := int(run.get("version", 1))

@@ -26,11 +26,6 @@ const SPAWN := Vector3(0, 0, 3.0)
 ## 可交互物：名称、站位（人走到哪儿做事）、头顶标签的位置
 const SPOTS := {
 	"shrine":  {"name": "神龛",   "stand": Vector3(0, 0, -6.0),    "tag": Vector3(0, 2.9, -7.4)},
-	"bed":     {"name": "床榻",   "stand": Vector3(-4.0, 0, -5.4), "tag": Vector3(-4.0, 2.3, -6.9)},
-	"desk":    {"name": "书案",   "stand": Vector3(4.2, 0, -5.7),  "tag": Vector3(4.2, 1.7, -6.9)},
-	"stove":   {"name": "灶台",   "stand": Vector3(-7.4, 0, -1.6), "tag": Vector3(-8.9, 1.7, -1.6)},
-	"storage": {"name": "储物柜", "stand": Vector3(-7.6, 0, 1.9),  "tag": Vector3(-9.3, 2.4, 2.2)},
-	"bench":   {"name": "工作台", "stand": Vector3(7.5, 0, -1.2),  "tag": Vector3(9.0, 1.7, -1.2)},
 	"well":    {"name": "水井",   "stand": Vector3(-3.0, 0, 0.1),  "tag": Vector3(-3.0, 2.6, 1.5)},
 	"garden":  {"name": "菜畦",   "stand": Vector3(3.5, 0, -0.1),  "tag": Vector3(3.5, 1.4, 2.3)},
 	"gate":    {"name": "大门",   "stand": Vector3(0, 0, 5.8),     "tag": Vector3(0, 3.9, 7.0)},
@@ -51,6 +46,7 @@ var _baked := false
 var _garden_body: StaticBody3D
 var _garden_rows := 0
 var _nav_furniture_key := ""
+var _current_run := {}
 # C1 邻宅氛围：set_time 缓存阶段/大雪上下文，set_preset 据此投影（不缓存 run 本体）。
 var _amb_ctx := {"phase": "post", "pday": 1, "heavy": false}
 
@@ -149,28 +145,7 @@ func _furniture() -> void:
 	else:
 		Props.shrine(shrine, Vector3(0, 0, -7.4))
 	_register("shrine", shrine)
-	# 西间：榻
-	var bed := _spot_root("bed")
-	if Assets.prop(bed, "chinese_sofa", Vector3(-4.0, 0, -7.25)) == null:
-		Props.bed(bed, Vector3(-4.0, 0, -6.9))
-	_register("bed", bed)
-	Assets.prop(self, "ceramic_vase_02", Vector3(-5.5, 0, -7.55))
-	# 东间：茶几当书案，配个凳子
-	var desk := _spot_root("desk")
-	if Assets.prop(desk, "chinese_tea_table", Vector3(4.2, 0, -6.9)) != null:
-		Assets.prop(desk, "chinese_stool", Vector3(4.2, 0, -6.15), 180.0)
-		Props.desk_items(desk, Vector3(4.2, 0.5, -6.9))
-	else:
-		Props.desk(desk, Vector3(4.2, 0, -6.9))
-	_register("desk", desk)
 	_register("well", Props.well(_spot_root("well"), Vector3(-3.0, 0, 1.5)))
-	# 灶房：顶天的立柜存货，旁边一口陶罐
-	var storage := _spot_root("storage")
-	if Assets.prop(storage, "chinese_cabinet", Vector3(-9.45, 0, 2.2), 90.0) == null:
-		Props.cabinet(storage, Vector3(-9.3, 0, 2.2), 90)
-	_register("storage", storage)
-	Assets.prop(self, "ceramic_pot", Vector3(-9.2, 0, 3.4), 30.0)
-	_register("bench", Props.workbench(_spot_root("bench"), Vector3(9.0, 0, -1.2), -90))
 
 
 func _decor() -> void:
@@ -237,6 +212,7 @@ func _bake_nav() -> void:
 # ---------- 按局面重画 ----------
 
 func sync(run: Dictionary) -> void:
+	_current_run = run
 	var old_rows := _garden_rows
 	_rebuild_stock(run)
 	_rebuild_garden(run)
@@ -316,7 +292,7 @@ func plot_tag_position(run: Dictionary, index: int) -> Variant:
 
 
 ## 玩家自己添置的家具：按 run.furniture 摆，位置和朝向都听数据。
-## 默认那六件是场景里固定的，这里只画多出来的，免得画两遍。
+## 核心家具和附加家具都由同一份存档数据绘制。
 func _rebuild_furniture(run: Dictionary) -> void:
 	for spot in _furn_spots.keys():
 		spot_nodes.erase(spot)
@@ -324,11 +300,12 @@ func _rebuild_furniture(run: Dictionary) -> void:
 	K.clear(_dynamic.furnish)
 	for f in run.get("furniture", []):
 		var id := str(f.id)
-		if id in STATIC_FURN:
-			continue
 		var spot := "f_%d" % int(f.uid)
 		var root := K.node(_dynamic.furnish, Vector3(float(f.x), 0.0, float(f.z)), Vector3(0, float(f.rot), 0), spot)
-		_furn_mesh(root, id)
+		if id in Home.CORE_IDS:
+			_core_mesh(root, id, run)
+		else:
+			_furn_mesh(root, id)
 		if id == "planter":
 			for plot in run.get("plots", []):
 				if int(plot.get("pot", -1)) == int(f.uid) and str(plot.get("crop", "")) != "":
@@ -345,6 +322,26 @@ func _rebuild_furniture(run: Dictionary) -> void:
 		K.collider(root, Vector3(sz.x, 0.9, sz.y), Vector3(0, 0.45, 0), {"spot": spot})
 		_register(spot, root)
 		_furn_spots[spot] = int(f.uid)
+
+
+func _core_mesh(root: Node3D, id: String, run: Dictionary) -> void:
+	match id:
+		"bed":
+			if Assets.prop(root, "chinese_sofa", Vector3.ZERO) == null:
+				Props.bed(root, Vector3.ZERO)
+		"desk":
+			if Assets.prop(root, "chinese_tea_table", Vector3.ZERO) != null:
+				Assets.prop(root, "chinese_stool", Vector3(0, 0, 0.75), 180.0)
+				Props.desk_items(root, Vector3(0, 0.5, 0))
+			else:
+				Props.desk(root, Vector3.ZERO)
+		"storage":
+			if Assets.prop(root, "chinese_cabinet", Vector3.ZERO) == null:
+				Props.cabinet(root, Vector3.ZERO, 0)
+		"stove":
+			Props.stove(root, Vector3.ZERO, 0, "stove" in run.get("facilities", []))
+		"bench":
+			Props.workbench(root, Vector3.ZERO, 0)
 
 
 ## 各类家具的样子：够看就行，都是基本体拼的。
@@ -436,9 +433,6 @@ func _rebuild_devices(run: Dictionary) -> void:
 func _rebuild_extras(run: Dictionary) -> void:
 	K.clear(_dynamic.extras)
 	var facs: Array = run.get("facilities", [])
-	var stove_root := K.node(_dynamic.extras, Vector3.ZERO, Vector3.ZERO, "spot_stove")
-	Props.stove(stove_root, Vector3(-8.9, 0, -1.6), 90, "stove" in facs)
-	_register("stove", stove_root)
 	if "water_vat" in facs:
 		Props.water_vat(_dynamic.extras, Vector3(-5.2, 0, 2.0))
 	if "watchtower" in facs:
@@ -473,8 +467,6 @@ var _fight_figs := []
 var _debris: Array = []
 var _rubbles: Dictionary = {}   # 砸烂的家具 spot -> 塌料节点
 var _furn_spots: Dictionary = {}  # 玩家添置的家具 spot -> uid
-## 场景里本来就有的六件（床、书案、柜子、灶台、工作台，位置固定），添置的只画多出来的
-const STATIC_FURN := ["bed", "desk", "storage", "stove", "bench"]
 
 ## 院子里的东西被啃了：原地留一堆碎屑。
 ## 存货、柴垛、菜畦靠 sync(run) 重画；家具塌不塌由 run.broken 决定（见 _apply_wrecked）。
@@ -505,18 +497,25 @@ func show_wreck(idx: int, pos: Vector3, kind: String) -> void:
 ## 被砸烂的家具：好的一件藏起来，原处留一堆塌掉的木料——点了还能修。
 ## 灶台和工作台都是每次 sync 重画的，所以每次重画后都要再过一遍。
 func _apply_wrecked(run: Dictionary) -> void:
-	var broken: Array = run.get("broken", [])
-	for pair in [["stove", Vector3(-8.9, 0, -1.6)], ["bench", Vector3(9.0, 0, -1.2)]]:
-		if str(pair[0]) in broken:
-			_wreck_spot(str(pair[0]), pair[1])
-		else:
-			_heal_spot(str(pair[0]))
+	var active := []
+	for id in ["stove", "bench"]:
+		var f := Home.core(run, id)
+		if f.is_empty():
+			continue
+		var spot := "f_%d" % int(f.uid)
+		if id in run.get("broken", []):
+			active.append(spot)
+			_wreck_spot(spot, Vector3(float(f.x), 0, float(f.z)))
+	for spot in _rubbles.keys():
+		if not spot in active:
+			_heal_spot(spot)
 
 
 func _wreck_spot(spot: String, pos: Vector3) -> void:
 	if spot_nodes.has(spot):
 		spot_nodes[spot].visible = false
 	if _rubbles.has(spot):
+		_rubbles[spot].position = pos
 		return
 	var r := K.node(self, pos, Vector3.ZERO, "rubble_" + spot)
 	K.solid(r, Vector3(1.4, 0.26, 1.0), K.WOOD.darkened(0.25), Vector3(0, 0.13, 0))
@@ -684,6 +683,14 @@ func nearest_spot(pos: Vector3, radius := 1.8) -> String:
 		if d < best_d:
 			best = id
 			best_d = d
+	for f in _current_run.get("furniture", []):
+		if not Home.is_core(_current_run, f):
+			continue
+		var p := Home.stand(f)
+		var d := Vector2(pos.x - p.x, pos.z - p.z).length()
+		if d < best_d:
+			best = "f_%d" % int(f.uid)
+			best_d = d
 	return best
 
 
@@ -729,11 +736,18 @@ func _collect_collision_rids(node: Node, out: Array[RID]) -> void:
 
 ## 保守预留各核心站位及通向中轴的走廊，防止新增家具切断它们。
 ## 这是静态保留区，并非对玩家当前实际路线的寻路证明。
-func _move_route_block(rect: Rect2) -> bool:
+func _move_route_block(rect: Rect2, run: Dictionary, ignore_uid: int) -> bool:
 	for info in SPOTS.values():
 		var p: Vector3 = info.stand
 		var left := minf(0.0, p.x)
 		var lane := Rect2(left - 0.6, p.z - 0.6, absf(p.x) + 1.2, 1.2)
+		if rect.intersects(lane):
+			return true
+	for f in run.get("furniture", []):
+		if not Home.is_core(run, f) or int(f.uid) == ignore_uid:
+			continue
+		var p := Home.stand(f)
+		var lane := Rect2(minf(0.0, p.x) - 0.6, p.z - 0.6, absf(p.x) + 1.2, 1.2)
 		if rect.intersects(lane):
 			return true
 	# 中轴向北延伸至神龛，连接前庭与正屋。
@@ -750,7 +764,7 @@ func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) ->
 	var err := Home.spot_block(run, str(f.id), x, z, rot, uid)
 	if err != "":
 		return err
-	if _move_route_block(Home.rect_of(str(f.id), x, z, rot)):
+	if _move_route_block(Home.rect_of(str(f.id), x, z, rot), run, uid):
 		return "这里要留给工作站和通路。"
 	if not is_inside_tree():
 		return "院子还没准备好。"
@@ -770,6 +784,50 @@ func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) ->
 			return "这儿有东西挡着。"
 		if hit.collider is CharacterBody3D:
 			return "人站在这里，先让开。"
+	if Home.is_core(run, f):
+		var proposed := f.duplicate()
+		proposed.x = x
+		proposed.z = z
+		proposed.rot = rot
+		var stand := Home.stand(proposed)
+		# E 选择最近站位；预留足够间距，角色走到站位附近时仍能选中目标。
+		for info in SPOTS.values():
+			var other: Vector3 = info.stand
+			if Vector2(stand.x - other.x, stand.z - other.z).length() < 2.0:
+				return "家具正面离其他工作站太近。"
+		for other in run.get("furniture", []):
+			if int(other.uid) == uid or not Home.is_core(run, other):
+				continue
+			var p := Home.stand(other)
+			if Vector2(stand.x - p.x, stand.z - p.z).length() < 2.0:
+				return "家具正面离其他工作站太近。"
+		var stand_rect := Rect2(stand.x - 0.4, stand.z - 0.4, 0.8, 0.8)
+		if Home.area_of(stand_rect) == "":
+			return "家具正面没有站人的地方。"
+		var stand_shape := BoxShape3D.new()
+		stand_shape.size = Vector3(0.75, 1.5, 0.75)
+		var sq := PhysicsShapeQueryParameters3D.new()
+		sq.shape = stand_shape
+		sq.transform = Transform3D(Basis.IDENTITY, stand + Vector3(0, 0.85, 0))
+		sq.exclude = excluded
+		for hit in get_world_3d().direct_space_state.intersect_shape(sq, 64):
+			if hit.collider is StaticBody3D:
+				return "家具正面被挡住了。"
+		var map := get_world_3d().navigation_map
+		var nearest := NavigationServer3D.map_get_closest_point(map, stand)
+		if Vector2(nearest.x - stand.x, nearest.z - stand.z).length() > 0.5:
+			return "走不到家具正面。"
+		var path := NavigationServer3D.map_get_path(map, SPAWN, stand, true)
+		if path.is_empty() or Vector2(path[-1].x - stand.x, path[-1].z - stand.z).length() > 0.5:
+			return "走不到家具正面。"
+		# 当前导航尚未包含新位置，拒绝路径穿过拟摆放的家具。
+		var footprint := Home.rect_of(str(f.id), x, z, rot).grow(0.35)
+		for i in range(1, path.size()):
+			var n := maxi(1, int(ceil(path[i-1].distance_to(path[i]) / 0.2)))
+			for step in range(n + 1):
+				var sample: Vector3 = path[i-1].lerp(path[i], float(step) / n)
+				if footprint.has_point(Vector2(sample.x, sample.z)):
+					return "家具挡住了走向正面的路。"
 	return ""
 
 

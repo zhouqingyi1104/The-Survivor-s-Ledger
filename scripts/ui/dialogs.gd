@@ -1409,11 +1409,11 @@ func _furnish(body: VBoxContainer) -> void:
 			var h := UI.hbox(10)
 			UI.expand(h)
 			var line := "%s　(%d, %d)" % [Home.data(str(f.id)).get("name", ""), int(f.x), int(f.z)]
-			if str(f.id) in ["bed", "desk", "storage", "stove", "bench"]:
-				line += "　·　固定的"
+			if Home.is_core(run, f):
+				line += "　·　核心家具"
 			h.add_child(UI.expand(UI.label(line, 16)))
-			if not str(f.id) in ["bed", "desk", "storage", "stove", "bench"]:
-				h.add_child(UI.button("挪位", func(): _move_furn(uid)))
+			h.add_child(UI.button("挪位", func(): _move_furn(uid)))
+			if not Home.is_core(run, f):
 				h.add_child(UI.button("拆掉", func(): _remove_furn(uid)))
 			body.add_child(h)
 
@@ -1465,8 +1465,11 @@ func _pick_furnish(id: String) -> void:
 func _move_furn(uid: int) -> void:
 	var f := Home.find(Game.run, uid)
 	var block := Post.can_act(Game.run)
-	if f.is_empty() or str(f.id) in ["bed", "desk", "storage", "stove", "bench"]:
+	if f.is_empty():
 		Game.toast.emit("这件家具不能挪位。")
+		return
+	if Home.is_core(Game.run, f) and str(f.id) in Game.run.get("broken", []):
+		Game.toast.emit("先修好这件家具再挪位。")
 		return
 	if block != "":
 		Game.toast.emit(block)
