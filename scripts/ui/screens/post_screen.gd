@@ -683,7 +683,8 @@ func actions_for(id: String) -> Array:
 		"bench":
 			var can_mend := Inv.count(run.home, "wood") > 0 or Inv.count(run.home, "firewood") >= 2
 			var mend := "" if can_mend else "没有木料（两捆柴也行）"
-			var out := [["营造守具 · 画符…", Dialogs.build, ""], ["添置家具…", Dialogs.furnish, ""]]
+			var decor_block := "夜袭中不能装修。" if not run.get("fight", {}).is_empty() else can
+			var out := [["营造守具 · 画符…", Dialogs.build, ""], ["添置家具…", Dialogs.furnish, ""], ["宅院装修…", func(): preload("res://scripts/ui/home_decoration.gd").open(), decor_block]]
 			if "bench" in run.get("broken", []):
 				out = _fix_menu("bench") + out
 			for row in [["door", "门"], ["window", "窗"], ["wall", "墙"]]:

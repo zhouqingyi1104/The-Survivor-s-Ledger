@@ -13,6 +13,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const State = preload("res://scripts/core/state.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Home = preload("res://scripts/core/home.gd")
+const DecorationWorld = preload("res://scripts/world/home_decoration.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const Figure = preload("res://scripts/world/character.gd")
 const Surroundings = preload("res://scripts/world/home_surroundings.gd")
@@ -64,7 +65,7 @@ func _ready() -> void:
 	_buildings()
 	_furniture()
 	_decor()
-	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish"]:
+	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration"]:
 		_dynamic[key] = K.node(self, Vector3.ZERO, Vector3.ZERO, key)
 	# 菜畦整块的拾取碰撞（菜苗每次重画，碰撞固定在这里；大小随画出来的畦数变，见 _fit_garden）
 	var garden_root := K.node(self, Vector3.ZERO, Vector3.ZERO, "spot_garden")
@@ -213,6 +214,7 @@ func _bake_nav() -> void:
 
 func sync(run: Dictionary) -> void:
 	_current_run = run
+	DecorationWorld.sync(_dynamic.decoration, run)
 	var old_rows := _garden_rows
 	_rebuild_stock(run)
 	_rebuild_garden(run)
