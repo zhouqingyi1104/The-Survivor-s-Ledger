@@ -12,6 +12,8 @@ var _observed := ""
 var _next_start := 0
 var _starts := 0
 var last_status := "local"
+## 测试用：-1 照实判断，0 / 1 强制当成开发版 / 打包版
+var offline_override := -1
 
 func _ready() -> void:
 	_request = HTTPRequest.new()
@@ -20,6 +22,15 @@ func _ready() -> void:
 	_request.body_size_limit = 65536
 	add_child(_request)
 	_request.request_completed.connect(_completed)
+
+## 打包出去的版本不连世情服务：服务是开发机上的工具（Node + 已认证的 ARK CLI），不随包发布。
+## 开发机上玩试玩包也不会把局内状态发出去，试玩测到的就是玩家拿到的离线体验。
+## 判据是 res://project.godot 在不在：导出时它会变成 project.binary。不能用 res:// 写探针——
+## 便携包拿开发版引擎当运行时，res:// 指向包所在的普通文件夹，探针写得进去，会被当成开发工程。
+func offline_build() -> bool:
+	if offline_override >= 0:
+		return offline_override == 1
+	return OS.has_feature("template") or not FileAccess.file_exists("res://project.godot")
 
 func connection() -> Dictionary:
 	var base := OS.get_environment("LOCALAPPDATA")
@@ -39,6 +50,7 @@ func _process(delta: float) -> void:
 	var scene := get_tree().current_scene
 	if scene != null and scene.scene_file_path.begins_with("res://tests/"): return
 	if Game.no_save or Game.run.is_empty() or not Game.screen in ["pre", "post", "explore"]: return
+	if offline_build(): return
 	var d := Core.state(Game.run)
 	if not d.enabled: return
 	# Do not spend a request immediately before a buffered choice invalidates it.

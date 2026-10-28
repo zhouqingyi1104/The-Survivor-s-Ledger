@@ -2000,7 +2000,12 @@ func settings(in_game := false) -> void:
 func _settings(body: VBoxContainer, in_game: bool) -> void:
 	# 十八行按键加音量，720 高放不下：内容进滚动容器，底部按钮露在外面
 	var content := UI.vbox(8)
-	if in_game and not Game.run.is_empty():
+	if in_game and not Game.run.is_empty() and StoryDirector.offline_build():
+		var offline := UI.button("动态世情：本包离线", func(): pass, true)
+		offline.set_meta("director_offline", true)
+		content.add_child(offline)
+		content.add_child(UI.para("这个包不连接世情服务，只用游戏内置的事件；局内状态和前世档案不会发出，也不产生服务费用。", 15))
+	elif in_game and not Game.run.is_empty():
 		var enabled: bool = Director.state(Game.run).enabled
 		content.add_child(UI.button("动态世情：" + ("开启" if enabled else "关闭"), func(): StoryDirector.set_enabled(not enabled)))
 		content.add_child(UI.para("开启表示允许后台准备动态世情；本机服务可用时会发送局内状态和前世档案，可能消耗服务账号额度或产生费用。未连通时使用本地事件；关闭后已许下的约定仍会兑现。", 15))

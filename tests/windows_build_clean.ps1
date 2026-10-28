@@ -57,6 +57,7 @@ foreach ($name in @('劫余录.exe', '劫余录.pck', '读我.txt')) { [IO.File]
     $source = Get-Content -LiteralPath (Join-Path $out '构建来源.txt') -Raw -Encoding UTF8
     Check ($source.Contains($sha)) 'package lacks full commit SHA'
     Check ($source.Contains('本机 Godot')) 'package does not identify external runtime'
+    Check ($source.Contains('.gitignore 排除的素材')) 'package does not say ignored assets are missing'
     $backup = @(Get-ChildItem -LiteralPath (Split-Path $out) -Directory -Filter 'clean.previous-*')
     Check ($backup.Count -eq 1 -and [IO.File]::ReadAllText((Join-Path $backup[0].FullName 'old.txt')) -eq 'KEEP') 'old output not preserved'
     New-Item -ItemType Directory -Path (Join-Path $fixture 'nested') | Out-Null

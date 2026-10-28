@@ -91,6 +91,7 @@ try {
     @"
 试玩包来源提交：$sha
 游戏项目内容仅来自该提交，不包含构建者工作区未提交、未跟踪或忽略的文件。
+也不含 .gitignore 排除的素材（如 cs-studio 铺面模型）：城里这些铺面会退回代码拼的厅堂，和开发机上看到的不同。
 便携运行时使用构建者本机 Godot 引擎，不属于该提交。
 这是便携试玩包，不代表正式发行或玩家验收。
 "@ | Set-Content -LiteralPath (Join-Path $stage '构建来源.txt') -Encoding UTF8

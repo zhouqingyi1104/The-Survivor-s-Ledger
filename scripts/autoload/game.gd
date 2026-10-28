@@ -942,7 +942,9 @@ func _report_ctx(report_run: Dictionary, report_snapshots: Dictionary) -> Dictio
 	elif FileAccess.file_exists(save_path):
 		size = "%.0f KB" % (float(FileAccess.get_file_as_string(save_path).length()) / 1024.0)
 	var director = "unloaded"
-	if not report_run.is_empty():
+	if StoryDirector.offline_build():
+		director = "offline"
+	elif not report_run.is_empty():
 		director = bool(Director.state(report_run.duplicate(true)).enabled)
 	var window := DisplayServer.window_get_size()
 	return {

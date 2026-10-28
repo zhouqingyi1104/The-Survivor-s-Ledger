@@ -63,12 +63,14 @@ class FakeGodot {
 	Check ([IO.File]::ReadAllText((Join-Path $out '劫余录.exe')) -eq 'PORTABLE_RUNTIME') 'portable runtime incorrect'
 	Check ([IO.File]::ReadAllText((Join-Path $out '劫余录.pck')) -eq 'NEW_PCK') 'portable pck incorrect'
 	$portableReadme = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $out '读我.txt')
-	Check ($portableReadme.Contains('「开启」不代表已连接')) 'readme confuses enabled with connected'
-	Check ($portableReadme.Contains('本包不包含所需的本地服务')) 'readme omits service availability'
-	Check ($portableReadme.Contains('局内状态与前世档案（如有）')) 'readme omits transmitted data'
-	Check ($portableReadme.Contains('可能消耗服务账号额度或产生费用')) 'readme omits possible account usage'
-	Check ($portableReadme.Contains('未连通时使用本地事件')) 'readme omits offline fallback'
-	Check ($portableReadme.Contains('可在局内「设置」关闭动态世情')) 'readme omits opt-out'
+	# 打包版不连世情服务（StoryDirector.offline_build）：读我要说清离线、不发数据、不收费，以及怎么试玩和回传
+	Check ($portableReadme.Contains('本包不连接动态世情服务')) 'readme does not state the package is offline'
+	Check ($portableReadme.Contains('局内状态和前世档案不会发出')) 'readme omits that no data is sent'
+	Check ($portableReadme.Contains('不会产生任何服务费用')) 'readme omits that no service cost occurs'
+	Check ($portableReadme.Contains('动态世情：本包离线')) 'readme omits the in-game offline label'
+	Check ($portableReadme.Contains('新开一卷')) 'readme omits how to start'
+	Check ($portableReadme.Contains('导出试玩报告')) 'readme omits how to export a report'
+	Check ($portableReadme.Contains('请先导出再合上')) 'readme omits that closing the book deletes the save'
 	Check (-not (Test-Path -LiteralPath (Join-Path $out 'user-note.txt'))) 'old extra file leaked into package'
 	$backups = @(Get-ChildItem -LiteralPath (Split-Path $out) -Directory -Filter 'windows.previous-*')
 	Check ($backups.Count -eq 1) 'old package not retained'

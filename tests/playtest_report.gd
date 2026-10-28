@@ -112,6 +112,9 @@ func test_missing_ctx() -> void:
 	check(enabled.contains("已启用（不代表服务已连接）"), "启用意愿不能被当成连接成功")
 	var disabled := Report.build(_dead_run(), State.new_meta(), {"director": false})
 	check(disabled.contains("动态世情：关闭"), "关闭状态未正确展示")
+	var offline := Report.build(_dead_run(), State.new_meta(), {"director": "offline"})
+	check(offline.contains("动态世情：本包离线（不连接服务）"), "打包版的报告没写明离线")
+	check(not offline.contains("已启用") and not offline.contains("动态世情：关闭"), "离线包的报告混进了开关状态")
 
 
 # ---------- 七、不要把本机路径带出去 ----------

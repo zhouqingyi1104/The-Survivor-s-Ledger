@@ -38,6 +38,12 @@ func _ready() -> void:
 	print("[export_smoke] 档案实际落在：%s" % resolved)
 	check(resolved == Game.memory_path_for(readonly), "档案路径与只读判定不一致：%s" % resolved)
 
+	# 2b. 打包版不连世情服务。是不是导出的包看 project.binary（导出时 project.godot 变成它），
+	# 不看 readonly：便携包的 res:// 是包所在的普通文件夹，写探针写得进去
+	var exported := FileAccess.file_exists("res://project.binary")
+	print("[export_smoke] 导出包=%s，世情离线=%s" % [str(exported), str(StoryDirector.offline_build())])
+	check(StoryDirector.offline_build() == exported, "世情离线判定与是否导出包不一致：离线=%s，导出包=%s" % [str(StoryDirector.offline_build()), str(exported)])
+
 	# 3. 数据表与中文资源都在 pck 里（导出的常见漏项）
 	Data.ensure()
 	check(not Data.table("roles").is_empty(), "身份表没进包")
