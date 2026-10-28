@@ -2003,7 +2003,7 @@ func _settings(body: VBoxContainer, in_game: bool) -> void:
 	if in_game and not Game.run.is_empty():
 		var enabled: bool = Director.state(Game.run).enabled
 		content.add_child(UI.button("动态世情：" + ("开启" if enabled else "关闭"), func(): StoryDirector.set_enabled(not enabled)))
-		content.add_child(UI.para("根据往来与处境在后台准备后续事件；关闭后，已许下的约定仍会兑现。", 15))
+		content.add_child(UI.para("开启表示允许后台准备动态世情；本机服务可用时会发送局内状态和前世档案，可能消耗服务账号额度或产生费用。未连通时使用本地事件；关闭后已许下的约定仍会兑现。", 15))
 	content.add_child(UI.sep())
 	content.add_child(UI.heading("画面", 20))
 	var video := VideoCfg.read()

@@ -62,6 +62,13 @@ class FakeGodot {
 	Check ((Build 'ok' 'portable') -eq 0) 'portable export failed'
 	Check ([IO.File]::ReadAllText((Join-Path $out '劫余录.exe')) -eq 'PORTABLE_RUNTIME') 'portable runtime incorrect'
 	Check ([IO.File]::ReadAllText((Join-Path $out '劫余录.pck')) -eq 'NEW_PCK') 'portable pck incorrect'
+	$portableReadme = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $out '读我.txt')
+	Check ($portableReadme.Contains('「开启」不代表已连接')) 'readme confuses enabled with connected'
+	Check ($portableReadme.Contains('本包不包含所需的本地服务')) 'readme omits service availability'
+	Check ($portableReadme.Contains('局内状态与前世档案（如有）')) 'readme omits transmitted data'
+	Check ($portableReadme.Contains('可能消耗服务账号额度或产生费用')) 'readme omits possible account usage'
+	Check ($portableReadme.Contains('未连通时使用本地事件')) 'readme omits offline fallback'
+	Check ($portableReadme.Contains('可在局内「设置」关闭动态世情')) 'readme omits opt-out'
 	Check (-not (Test-Path -LiteralPath (Join-Path $out 'user-note.txt'))) 'old extra file leaked into package'
 	$backups = @(Get-ChildItem -LiteralPath (Split-Path $out) -Directory -Filter 'windows.previous-*')
 	Check ($backups.Count -eq 1) 'old package not retained'
