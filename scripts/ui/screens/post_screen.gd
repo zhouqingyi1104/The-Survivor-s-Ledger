@@ -210,7 +210,7 @@ func _place_at(p: Vector3) -> void:
 	if uid >= 0:
 		var block: String = Post.can_act(Game.run)
 		var f := Home.find(Game.run, uid)
-		if block == "" and (f.is_empty() or str(f.id) != id or (Home.is_core(Game.run, f) and id in Game.run.get("broken", []))):
+		if block == "" and (f.is_empty() or str(f.id) != id):
 			block = "这件家具不能挪位。"
 		if block == "":
 			block = world.move_spot_block(Game.run, uid, p.x, p.z, rot)
@@ -649,7 +649,8 @@ func actions_for(id: String) -> Array:
 		var f := Home.find(run, uid)
 		if f.is_empty():
 			return []
-		var list := [["挪位…", func(): _start_move(uid), can]]
+		var move_reason := Home.move_block(run, uid)
+		var list := [["挪位…", func(): _start_move(uid), can if can != "" else move_reason]]
 		if Home.is_core(run, f):
 			return actions_for(str(f.id)) + list
 		list.append(["拆掉（退一半料）", _act(func(): return Post.act_unfurnish(Game.run, uid)), can])
@@ -706,13 +707,9 @@ func actions_for(id: String) -> Array:
 
 func _start_move(uid: int) -> void:
 	var f := Home.find(Game.run, uid)
-	var block := Post.can_act(Game.run)
-	if f.is_empty():
-		Game.toast.emit("这件家具不能挪位。")
-		return
-	if Home.is_core(Game.run, f) and str(f.id) in Game.run.get("broken", []):
-		Game.toast.emit("先修好这件家具再挪位。")
-		return
+	var block := Home.move_block(Game.run, uid)
+	if block == "":
+		block = Post.can_act(Game.run)
 	if block != "":
 		Game.toast.emit(block)
 		return

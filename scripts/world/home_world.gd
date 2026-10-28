@@ -756,9 +756,10 @@ func _move_route_block(rect: Rect2, run: Dictionary, ignore_uid: int) -> bool:
 
 ## 摆放预览及确认共用。几何/规则以外还检查当前场景静态碰撞。
 func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) -> String:
+	var eligibility := Home.move_block(run, uid)
+	if eligibility != "":
+		return eligibility
 	var f := Home.find(run, uid)
-	if f.is_empty():
-		return "找不到这件家具。"
 	x = Home.snap(x)
 	z = Home.snap(z)
 	var err := Home.spot_block(run, str(f.id), x, z, rot, uid)

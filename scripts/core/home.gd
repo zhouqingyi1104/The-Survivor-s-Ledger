@@ -203,10 +203,23 @@ static func add(run: Dictionary, id: String, x: float, z: float, rot: int) -> Di
 	return f
 
 
-static func move(run: Dictionary, uid: int, x: float, z: float, rot: int) -> String:
+## 移动入口、预览和最终写入共用，夜袭目标在整场战斗中保持不变。
+static func move_block(run: Dictionary, uid: int) -> String:
 	var f := find(run, uid)
 	if f.is_empty():
 		return "找不到这件家具。"
+	if not run.get("fight", {}).is_empty():
+		return "夜袭中不能挪动家具，先结束战斗。"
+	if is_core(run, f) and str(f.id) in run.get("broken", []):
+		return "先修好这件家具再挪位。"
+	return ""
+
+
+static func move(run: Dictionary, uid: int, x: float, z: float, rot: int) -> String:
+	var block := move_block(run, uid)
+	if block != "":
+		return block
+	var f := find(run, uid)
 	x = snap(x)
 	z = snap(z)
 	var err := spot_block(run, f.id, x, z, rot, uid)

@@ -1464,13 +1464,9 @@ func _pick_furnish(id: String) -> void:
 
 func _move_furn(uid: int) -> void:
 	var f := Home.find(Game.run, uid)
-	var block := Post.can_act(Game.run)
-	if f.is_empty():
-		Game.toast.emit("这件家具不能挪位。")
-		return
-	if Home.is_core(Game.run, f) and str(f.id) in Game.run.get("broken", []):
-		Game.toast.emit("先修好这件家具再挪位。")
-		return
+	var block := Home.move_block(Game.run, uid)
+	if block == "":
+		block = Post.can_act(Game.run)
 	if block != "":
 		Game.toast.emit(block)
 		return
