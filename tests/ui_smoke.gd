@@ -44,7 +44,8 @@ func run_flow() -> void:
 	check(not export_buttons.is_empty() and bool(export_buttons[0].disabled), "空档时导出按钮没变灰")
 	check(not _buttons("导入一局").is_empty(), "空档时导入按钮不见了")
 	await press("合上")
-	await press("新开一卷")
+	# 「新开一卷」直接快速开局（见 quick_start）；这里要走身份 → 难度 → 立愿整条自选流程
+	await press("自选开局")
 	check(Game.screen == "roles", "没进选身份界面")
 	await press("就是他了")
 	check(Game.screen == "difficulty", "没进选难度界面")

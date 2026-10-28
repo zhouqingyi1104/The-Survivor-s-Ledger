@@ -9,7 +9,8 @@ func _ready() -> void:
 	await get_tree().create_timer(0.2).timeout
 	var button: Button
 	for node in main.find_children("*", "Button", true, false):
-		if node.text == "新开一卷":
+		# 「新开一卷」现在直接开局（见 quick_start），这里点「自选开局」验路由
+		if node.text == "自选开局":
 			button = node
 			break
 	assert(button != null)

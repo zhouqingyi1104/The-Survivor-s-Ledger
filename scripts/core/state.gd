@@ -24,6 +24,13 @@ static func new_meta() -> Dictionary:
 		"daily": new_daily(), "past_lives": Past.fresh_book()}
 
 
+## 还没走完过一世：没结算过、没死过、前世档案里也没有一世。
+## 第一世的开局界面只讲眼前的事，身份解法、旧世经验这些要走过一世才看得懂。
+static func first_life(meta: Dictionary) -> bool:
+	return int(meta.get("runs", 0)) == 0 and int(meta.get("deaths", 0)) == 0 \
+		and int(meta.get("past_lives", {}).get("count", 0)) == 0
+
+
 ## 每日一局的记分板。只记每日局（种子按日期的那种），寻常随机局不往里记。
 ## best = 当日最好，all = 历来最好，都按模式分组（寻常 / 守到死）。
 static func new_daily() -> Dictionary:

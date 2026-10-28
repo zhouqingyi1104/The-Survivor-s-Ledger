@@ -196,6 +196,23 @@ func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boo
 	return ""
 
 
+## 快速开局：第一个已解锁的身份、寻常年景、不立愿、不带人、普通开局，直接进城备劫。
+## 想挑身份、难度、誓约与开局筹备的，从标题的「自选开局」走原来那四屏。
+func quick_start() -> String:
+	var role_id := quick_role()
+	if role_id == "":
+		return "没有可用的身份。"
+	return new_game(role_id)
+
+
+## 快速开局用的身份：身份表里第一个已解锁的。
+func quick_role() -> String:
+	for id in Data.table("roles"):
+		if role_unlocked(id):
+			return id
+	return ""
+
+
 ## 今天（本地日期）写成 2026-10-24。
 func today_text() -> String:
 	return State.today_text()

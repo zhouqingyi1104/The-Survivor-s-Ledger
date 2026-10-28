@@ -41,10 +41,12 @@ func _card(id: String, r: Dictionary) -> Control:
 	v.add_child(UI.label("【%s】" % r.trait, 19, UI.CINNABAR))
 	v.add_child(UI.para(r.trait_desc, 16))
 	v.add_child(UI.para("随身：" + Data.describe_items(r.items), 16, UI.INK_FAINT))
-	var identity := Identity.preview(id, Game.meta)
-	v.add_child(UI.para("身份解法：" + str(identity.get("headline", "")), 15, UI.DAI))
-	var source_count: int = identity.get("inheritance", []).size()
-	v.add_child(UI.para("旧世经验：%d 条可带入；开局后在劫余录查看来源与代价。" % source_count if source_count > 0 else "旧世经验：尚无符合条件的经历，仍有本职解法。", 15, UI.INK_SOFT))
+	# 身份解法要先懂主线和取证、旧世经验要先有过一世：第一世写了也看不懂，走过一世再露出来
+	if not State.first_life(Game.meta):
+		var identity := Identity.preview(id, Game.meta)
+		v.add_child(UI.para("身份解法：" + str(identity.get("headline", "")), 15, UI.DAI))
+		var source_count: int = identity.get("inheritance", []).size()
+		v.add_child(UI.para("旧世经验：%d 条可带入；开局后在劫余录查看来源与代价。" % source_count if source_count > 0 else "旧世经验：尚无符合条件的经历，仍有本职解法。", 15, UI.INK_SOFT))
 	var gap := Control.new()
 	gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(gap)

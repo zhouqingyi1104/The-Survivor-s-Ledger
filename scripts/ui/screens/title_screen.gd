@@ -11,6 +11,8 @@ const GOLD := Color("#d8b26a")
 
 var _vig
 var _base_modulate := 1.0
+## 点的是「新开一卷」（快速）还是「自选开局」：有旧卷要先确认合卷，确认完照这个走
+var _quick_new := true
 
 
 func build() -> void:
@@ -44,11 +46,12 @@ func build() -> void:
 	for side in ["left", "top", "bottom"]:
 		left.add_theme_constant_override("margin_" + side, 0)
 	left.add_theme_constant_override("margin_left", 64)
-	left.add_theme_constant_override("margin_top", 150)
-	left.add_theme_constant_override("margin_bottom", 120)
+	# 菜单要整段落在左下角题名（印章顶约在 535）上方：有旧卷时十项，下沿一压到题名就把「退出」盖住了
+	left.add_theme_constant_override("margin_top", 100)
+	left.add_theme_constant_override("margin_bottom", 205)
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(left)
-	var menu := UI.vbox(6)
+	var menu := UI.vbox(4)
 	menu.alignment = BoxContainer.ALIGNMENT_CENTER
 	menu.custom_minimum_size.x = 240
 	left.add_child(menu)
@@ -56,7 +59,11 @@ func build() -> void:
 	var meta: Dictionary = Game.meta
 	if Game.has_save():
 		menu.add_child(_item(_continue_label(), Game.continue_game, true))
-	menu.add_child(_item("新开一卷", _new_game, true))
+	# 第一次玩的人只该点一下就进城：身份、难度、誓约、开局筹备都收进「自选开局」
+	menu.add_child(_item("新开一卷", _new_game.bind(true), true,
+		"寻常年景、%s、不立愿，直接进城备劫。" % _quick_role_name()))
+	menu.add_child(_item("自选开局", _new_game.bind(false), false,
+		"自己挑身份、难度、誓约、同院的人与开局筹备。"))
 	menu.add_child(_item("心法 · 道心 %d" % int(meta.daoxin), func(): Game.go("talents")))
 	menu.add_child(_item("残卷 %d / %d" % [meta.clues.size(), Data.table("clues").size()], _show_clues))
 	menu.add_child(_item("玩法说明", func(): Dialogs.manual()))
@@ -167,9 +174,10 @@ func _ignore_pointer(node: Node) -> void:
 
 
 ## 左侧菜单的一条：平时是灰的，指上去变暖白并沉下去一点。
-func _item(text: String, cb: Callable, strong := false) -> Button:
+func _item(text: String, cb: Callable, strong := false, tip := "") -> Button:
 	var b := Button.new()
 	b.text = text
+	b.tooltip_text = tip
 	b.flat = true
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.add_theme_font_size_override("font_size", 20 if strong else 18)
@@ -235,11 +243,26 @@ func _grad(from: Color, to: Color, dir_vec: Vector2) -> TextureRect:
 
 # ---------- 动作 ----------
 
-func _new_game() -> void:
+func _quick_role_name() -> String:
+	return str(Data.table("roles").get(Game.quick_role(), {}).get("name", ""))
+
+
+## quick：「新开一卷」直接开局；否则「自选开局」去选身份。还有旧卷时两条路都先确认合卷。
+func _new_game(quick: bool) -> void:
+	_quick_new = quick
 	if Game.has_save():
 		UI.open_modal("confirm_new", "另起一卷？", _build_confirm, true, 520)
 	else:
+		_begin_new()
+
+
+func _begin_new() -> void:
+	if not _quick_new:
 		Game.go("roles")
+		return
+	var err := Game.quick_start()
+	if err != "":
+		Game.toast.emit(err)
 
 
 func _build_confirm(body: VBoxContainer) -> void:
@@ -262,7 +285,7 @@ func _discard_and_new() -> void:
 	# 读不出的卷不能让后续新局覆盖；结算失败也留在原局。
 	if not Game.continue_game(): return
 	if not Game.close_book(): return
-	Game.go("roles")
+	_begin_new()
 
 
 ## 试玩报告：把这些事实打包，玩家拿去发过来，我们就能复现那一局。
