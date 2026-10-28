@@ -1,7 +1,7 @@
 {
   "devices": {
-    "armor_hook": {"name": "破甲钩", "cost": {"wood": 2, "caltrops": 1}, "power": 2, "bonus_mod": "armored", "bonus_power": 4, "dur": 2, "time": 1, "surface": "gate", "desc": "钩住铜甲缝隙。守院门；对铜甲额外守力 4，不影响开门迎战。"},
-    "horde_rope": {"name": "拦尸绳阵", "cost": {"wood": 2, "nails": 1}, "power": 2, "bonus_mod": "horde", "bonus_power": 4, "dur": 2, "time": 1, "surface": "window", "desc": "横绳阻住拥挤的尸群。守窗；对尸海额外守力 4，不影响出门迎战。"},
+    "armor_hook": {"name": "破甲钩", "cost": {"wood": 2, "caltrops": 1}, "power": 2, "bonus_mod": "armored", "bonus_power": 4, "dur": 2, "time": 1, "surface": "gate", "desc": "钩住铜甲的甲缝。守院门，专对付铜甲。"},
+    "horde_rope": {"name": "拦尸绳阵", "cost": {"wood": 2, "nails": 1}, "power": 2, "bonus_mod": "horde", "bonus_power": 4, "dur": 2, "time": 1, "surface": "window", "desc": "横绳拦住挤成一团的尸群。守窗，专对付尸海。"},
     "peach_stake":  {"name": "桃木桩", "cost": {"wood": 2, "nails": 1}, "power": 4, "dur": 3, "time": 1, "surface": "gate", "desc": "院里埋一排削尖的木桩。守院门。"},
     "barricade":    {"name": "拒马", "cost": {"wood": 3, "nails": 2}, "power": 7, "dur": 3, "time": 1, "lv": 1, "surface": "gate", "desc": "交叉的木桩堵住巷口。守院门，需营造熟练 1 级。"},
     "ink_line":     {"name": "墨斗线", "cost": {"ink_line": 1}, "power": 6, "dur": 4, "time": 1, "surface": "window", "desc": "窗框、窗台弹满墨线。"},

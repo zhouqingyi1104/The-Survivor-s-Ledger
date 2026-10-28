@@ -273,7 +273,7 @@ func test_time_and_entry_guards() -> void:
 	check(Post._spot_for(breached, "weak") == "", "all sides broken have no guard location")
 	breached.plan_due = true
 	check(Post.choose_policy(breached, "manual") == "" and breached.guard_spot == "", "manual policy records empty guard position")
-	check(str(breached.log.back()).contains("没有可守面"), "policy log explains no guard location")
+	check(str(breached.log.back()).contains("三面都守不了"), "policy log explains no guard location")
 	var fixed_gate := sample(11)
 	check(Post._spot_for(fixed_gate, "gate") == "gate", "hold chooses intact closed gate")
 	fixed_gate.door.cur = 0
@@ -282,7 +282,7 @@ func test_time_and_entry_guards() -> void:
 	fixed_gate.door_open = true
 	check(Post._spot_for(fixed_gate, "gate") == "", "hold does not pretend to guard an open gate or redirect")
 	fixed_gate.plan_due = true
-	check(Post.choose_policy(fixed_gate, "hold") == "" and fixed_gate.guard_spot == "" and str(fixed_gate.log.back()).contains("所选院门不可守"), "hold reports chosen gate cannot be guarded")
+	check(Post.choose_policy(fixed_gate, "hold") == "" and fixed_gate.guard_spot == "" and str(fixed_gate.log.back()).contains("院门守不了"), "hold reports chosen gate cannot be guarded")
 	fixed_gate.door_open = false
 	check(Post._spot_for(fixed_gate, "gate") == "gate", "hold resumes guarding after gate closes")
 	var old := sample()

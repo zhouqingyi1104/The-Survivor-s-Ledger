@@ -464,7 +464,7 @@ static func choose_policy(run: Dictionary, id: String) -> String:
 	run.plan_due = false
 	var guard_text := "亲守%s" % Defense.surface_name(run.guard_spot)
 	if str(run.guard_spot) == "":
-		guard_text = "所选院门不可守" if str(p.get("spot", "gate")) == "gate" else "没有可守面"
+		guard_text = "院门守不了" if str(p.get("spot", "gate")) == "gate" else "三面都守不了"
 	State.note(run, "今夜方针：%s。%s。" % [p.name, guard_text])
 	return ""
 
@@ -907,7 +907,7 @@ static func identity_intel(run: Dictionary) -> Array:
 	for day in [11, 17, 20]:
 		var wave := Defense.wave_for_run(run, day)
 		if wave.is_empty(): continue
-		lines.append("第 %d 夜：%d 只，%s。%s" % [day, Defense._count(wave), Defense.mod_names(wave), "已开夜，按整夜锁定安排" if int(run.get("wave_day", 0)) == day else "今世干预变化后会重新核对"])
+		lines.append("第 %d 夜：%d 只，%s。%s" % [day, Defense._count(wave), Defense.mod_names(wave), "今夜已经开打，照原样打完" if int(run.get("wave_day", 0)) == day else "今世干预变化后会重新核对"])
 	return lines
 
 
@@ -1295,7 +1295,7 @@ static func device_block(run: Dictionary, device_id: String, night_action := fal
 	if targeted and not run.get("fight", {}).is_empty():
 		return "正在迎战，先结束战斗。"
 	if targeted and in_night(run) and not night_action:
-		return "夜战中请在轮间面板布置。"
+		return "夜里已经开打，到轮间的面板上去布。"
 	if State.prof_level(run, "build") < int(d.get("lv", 0)):
 		return "营造 %d 级才会做" % d.lv
 	if not Inv.has_all(run.home, d.cost):
@@ -1402,7 +1402,7 @@ static func _interrupt_targeted_device(run: Dictionary) -> void:
 	run.busy = {}
 	if paid is Dictionary:
 		Inv.add_all(run.home, paid)
-	State.note(run, "守具施工被打断，已投入的材料退回；已耗精力不退。")
+	State.note(run, "守具没做完就被打断，料退了回来，精力不退。")
 
 
 ## 夜袭将人送回院层前，不能让室内工作在返回后跨空间完成。

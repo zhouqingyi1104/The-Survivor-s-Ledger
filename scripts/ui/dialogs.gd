@@ -998,7 +998,7 @@ func _build(body: VBoxContainer) -> void:
 		var bonus_mod := str(d.get("bonus_mod", ""))
 		if bonus_mod != "":
 			var mod: Dictionary = Data.table("waves").mods.get(bonus_mod, {})
-			var target_line := UI.para("守%s；遇%s时基础守力额外 +%d，之后仍受寒冷与灯火影响。工作台施工 90 分钟、精力 10，完工时营造 2 级可多管 1 夜；夜战面板布置 20 分钟、精力 6，不额外延长。只参与该面守城，开门亲战和出门迎战不加成。施工遭尸潮、夜袭、战斗、天亮或身死中断，退回材料，已耗精力不退。" % [Defense.surface_name(str(d.surface)), str(mod.get("name", bonus_mod)), int(d.get("bonus_power", 0))], 15, UI.DAI)
+			var target_line := UI.para("守%s；遇上%s，这一面守力再 +%d，开门迎战时不算。营造到 2 级，做出来的多管 1 夜。做到一半被打断，料退回，精力不退。" % [Defense.surface_name(str(d.surface)), str(mod.get("name", bonus_mod)), int(d.get("bonus_power", 0))], 15, UI.DAI)
 			target_line.set_meta("defense_target", str(did))
 			info.add_child(target_line)
 		h.add_child(info)
@@ -1280,20 +1280,20 @@ func _night_plan(body: VBoxContainer) -> void:
 	var mods := Defense.mod_names(wave)
 	body.add_child(UI.para("更鼓敲过二更。街那头铜锣响了，门缝里透进一片火把的光——今夜要来 %d 只%s，分三轮撞门、窗、院墙。" % [
 		total, ("（%s）" % mods) if mods != "" else ""], 18, UI.INK))
-	body.add_child(UI.para("每漏进来一只，那一面就掉 %d 点耐久。选择「稳守」或「亲战」会自动处理轮间行动；选「亲自调度」则由你决定。" % Defense.leak_damage(int(run.pday)), 16))
+	body.add_child(UI.para("每漏进来一只，那一面就掉 %d 点耐久。选「稳守」或「亲战」，轮与轮之间的事替你料理；选「亲自调度」，就全由你定。" % Defense.leak_damage(int(run.pday)), 16))
 	var forecast := Defense.preview_night(run, wave)
 	var bonuses := []
 	for sid in Defense.SURFACES:
 		var bonus := float(forecast.get(sid, {}).get("bonus", 0))
 		if bonus > 0:
 			bonuses.append("%s +%.1f" % [Defense.surface_name(sid), bonus])
-	var bonus_text := "当前针对守具基础加成：" + ("、".join(bonuses) if not bonuses.is_empty() else "本波无额外守力")
-	bonus_text += "。按当前状态预估，未计入轮间修缮、迎战及状态变化；守面被撞破后该面加成失效，院门打开后门面加成失效。开门亲战和出门迎战不获加成。"
+	var bonus_text := "守具加成（按眼下估）：" + ("、".join(bonuses) if not bonuses.is_empty() else "没有")
+	bonus_text += "。哪一面被撞破、院门开着，那一面就不算。"
 	var forecast_line := UI.para(bonus_text, 14, UI.INK_SOFT)
 	forecast_line.set_meta("defense_forecast", true)
 	body.add_child(forecast_line)
 	if Defense._is_dark(wave):
-		body.add_child(UI.para("月黑预估按现有灯油计算：开夜时有油会自动用 1 份点灯；无油则守力降低。更夫无需点灯，也不受月黑影响。", 14))
+		body.add_child(UI.para("今夜月黑。开打时有灯油会自动点上一份；没油，守力要打折扣。更夫不用点灯，也不怕黑。", 14))
 	body.add_child(UI.sep())
 	var row := UI.hbox(10)
 	for opt in Post.policy_options(run):
@@ -1303,9 +1303,9 @@ func _night_plan(body: VBoxContainer) -> void:
 		v.add_child(UI.heading(opt[1], 21))
 		v.add_child(UI.para(opt[2], 14))
 		if str(Data.table("waves").policies.get(id, {}).get("spot", "")) == "weak":
-			v.add_child(UI.para("有可守面时，按当前状态选预计减少漏怪最多的一面；院门打开时不选门。", 14, UI.INK_SOFT))
+			v.add_child(UI.para("挑眼下最能少漏的那一面去守；院门开着就不守门。", 14, UI.INK_SOFT))
 		var chosen_spot := str(opt[3])
-		var spot_text := Defense.surface_name(chosen_spot) if chosen_spot != "" else ("院门不可守" if id == "hold" else "无可守面")
+		var spot_text := Defense.surface_name(chosen_spot) if chosen_spot != "" else ("院门守不了" if id == "hold" else "三面都守不了")
 		v.add_child(UI.label("亲守：%s" % spot_text, 15, UI.INK_SOFT))
 		var leak := int(opt[4])
 		v.add_child(UI.label("当前布防预估漏 %d 只" % leak, 16, UI.CINNABAR if leak > 0 else UI.JADE))
@@ -1326,7 +1326,7 @@ func _pick_policy(id: String) -> void:
 	if typeof(res) == TYPE_STRING and res == "":
 		UI.close_modal("night_plan")
 		if str(Game.run.get("guard_spot", "")) == "":
-			Game.toast.emit("院门不可守，稳守不会自动换面。" if id == "hold" else "今夜没有可守面，亲守不会增加守力。")
+			Game.toast.emit("院门守不了，稳守也不会改守别处。" if id == "hold" else "今夜三面都守不了，亲守也添不了守力。")
 		Sfx.play("bangzi", -6.0)
 
 
@@ -1355,7 +1355,7 @@ func _night_panel(body: VBoxContainer) -> void:
 		var bonus := float(pv.surfaces[sid].get("bonus", 0))
 		if bonus > 0:
 			round_bonuses.append("%s +%.1f" % [Defense.surface_name(sid), bonus])
-	var round_line := UI.para("本轮针对守具基础加成预估：%s。只参与守城，开门亲战和出门迎战不加成；不会保证多斩尸。" % ("、".join(round_bonuses) if not round_bonuses.is_empty() else "无额外守力"), 14)
+	var round_line := UI.para("这一轮的守具加成：%s。" % ("、".join(round_bonuses) if not round_bonuses.is_empty() else "没有"), 14)
 	round_line.set_meta("defense_round_bonus", true)
 	body.add_child(round_line)
 	body.add_child(UI.sep())
@@ -1409,7 +1409,7 @@ func _night_panel(body: VBoxContainer) -> void:
 			func(): _night_do(func(): return Post.night_build(Game.run, did), "")))
 	if targeted_rows.get_child_count() > 0:
 		body.add_child(targeted_rows)
-		body.add_child(UI.para("这两种守具在夜战面板布置基础管 2 夜，不享受营造等级延长；施工遭尸潮、夜袭、战斗、天亮或身死中断时退回材料，已耗精力不退。", 14))
+		body.add_child(UI.para("夜里临时布下的只管 2 夜，营造等级不加夜数；做到一半被打断，料退回，精力不退。", 14))
 	foot.add_child(UI.spacer())
 	foot.add_child(UI.button("等下一轮", func(): UI.close_modal("night")))
 	body.add_child(foot)
@@ -1595,7 +1595,7 @@ func _wave_report(body: VBoxContainer) -> void:
 				applied.append("%s +%.1f" % [Defense.surface_name(sid), bonus])
 		if not applied.is_empty():
 			bonus_rounds.append("第 %d 轮 %s" % [int(rep.round) + 1, "、".join(applied)])
-	var report_line := UI.para("针对守具参与守城的基础加成：%s。实际守力仍受寒冷与灯火影响，加成不等同额外斩杀数。" % ("；".join(bonus_rounds) if not bonus_rounds.is_empty() else "本夜无额外守力"), 14)
+	var report_line := UI.para("守具加成：%s。" % ("；".join(bonus_rounds) if not bonus_rounds.is_empty() else "这一夜没有"), 14)
 	report_line.set_meta("defense_report_bonus", true)
 	body.add_child(report_line)
 	if not w.get("broke", []).is_empty():

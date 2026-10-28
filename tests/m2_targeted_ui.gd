@@ -311,7 +311,7 @@ func _ready() -> void:
 	await frames(10)
 	check(text_in(main._screen).contains("月黑预估") and text_in(main._screen).contains("更夫免油"), "月黑 HUD 未说明自动点灯和更夫例外")
 	if not main.has_modal("night_plan"): Dialogs.night_plan(); await frames(10)
-	check(text_in(main._modals.night_plan).contains("自动用 1 份") and text_in(main._modals.night_plan).contains("无油"), "月黑方针面板未说明有油/无油")
+	check(text_in(main._modals.night_plan).contains("自动点上一份") and text_in(main._modals.night_plan).contains("没油"), "月黑方针面板未说明有油/无油")
 	await shot("dark_forecast")
 	await close_modals()
 
@@ -344,7 +344,7 @@ func _ready() -> void:
 	Game.refresh()
 	await frames(10)
 	if not main.has_modal("night_plan"): Dialogs.night_plan(); await frames(10)
-	check(text_in(main._modals.night_plan).contains("院门打开时不选门"), "方针说明缺少开门避让提示")
+	check(text_in(main._modals.night_plan).contains("院门开着就不守门"), "方针说明缺少开门避让提示")
 	var manual: Button
 	for b in main._modals.night_plan.find_children("*", "Button", true, false):
 		if b.is_visible_in_tree() and b.text == "亲自调度": manual = b; break
@@ -364,7 +364,7 @@ func _ready() -> void:
 		Game.refresh()
 		await frames(10)
 		if not main.has_modal("night_plan"): Dialogs.night_plan(); await frames(10)
-		check(text_in(main._modals.night_plan).count("亲守：无可守面") >= 2, "弱面方针未如实显示无可守面 " + case)
+		check(text_in(main._modals.night_plan).count("亲守：三面都守不了") >= 2, "弱面方针未如实显示无可守面 " + case)
 		var choice := str(spec[1])
 		var selected: Button
 		for b in main._modals.night_plan.find_children("*", "Button", true, false):
@@ -387,7 +387,7 @@ func _ready() -> void:
 	for b in main._modals.night_plan.find_children("*", "Button", true, false):
 		if b.is_visible_in_tree() and b.text == "稳守": hold = b; break
 	if check(hold != null, "稳守选项不存在"):
-		check(text_in(hold.get_parent()).contains("院门不可守"), "稳守门打开时未说明只是不守门")
+		check(text_in(hold.get_parent()).contains("院门守不了"), "稳守门打开时未说明只是不守门")
 		await click(hold.get_global_rect().get_center())
 		check(str(Game.run.guard_spot) == "" and not Game.run.plan_due, "稳守开门后仍错误亲守院门")
 	_finish()
