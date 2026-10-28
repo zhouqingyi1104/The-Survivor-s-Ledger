@@ -192,6 +192,7 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 | `opening_rules` / `opening_integration` / `opening_memory` / `opening_ui` | M4可变开局15项，真实钱物/时辰/信用/NPC/首危机、固定旧世来源、每日空手/旧档/跨世边界；分别664/61/275/609检查通过，新增Node开局4项及实际Godot快照15/15通过；受影响主线窗口本批354检查通过，相关回归见[22](docs/22-variable-openings.md) |
 | `cycle_rules` / `cycle_integration` / `cycle_memory` / `cycle_ui` / `cycle_recorded` | 旧诺/失约/救助、今世计时查证、匹配NPC碎片、互斥后果和固定新约；本批266/73/90/599/19检查通过，Node轮回5项、实际Godot快照8/8，前世窗口回归51检查；真实ARK low 1次及无网络回放，慢请求边界见[23](docs/23-cycle-inquiry.md) |
 | `player_animation` / `title_input` | 真实输入能驱动移动与动画；标题页按钮能被鼠标点到 |
+| `copy_lint` | 玩家看得到的字句里没有给开发看的词（禁用词表随文案改写逐批加，规范见 [38](docs/38-copy-style.md)）；`--script` 无界面运行 |
 | `quick_start` | 标题「新开一卷」一次点击进城（默认身份/寻常/不立愿/普通开局）、有旧卷时确认合卷、「自选开局」走选身份、第一世身份卡不提身份解法与旧世、菜单不被题名盖住（窗口模式，真实鼠标，临时目录） |
 | `input_settings` / `settings_ui` | 按键重绑与画面选项：默认绑定合同、改绑/冲突/取消/恢复默认、cfg 往返与脏数据；设置弹窗的真实鼠标 + 捕获键全流程（`settings_ui` 要窗口模式跑，画面选项会真的改窗口） |
 | `difficulty_ui` | 选难度界面整张卡点得中、切得动、不叠层（窗口模式，真实鼠标路由） |
