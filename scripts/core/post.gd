@@ -184,6 +184,7 @@ static func advance(run: Dictionary, minutes: int) -> String:
 		trade_refresh(run)
 		# 死因交给账本算（谁真的把气血打光），不再事后按属性猜
 		if (State.attr(run, "hp") <= 0 or run.phase == "dead") and State.check_death(run, DeathReport.verdict(run)):
+			_interrupt_targeted_device(run)
 			return "dead"
 		_check_busy(run)
 		if run.phase != "post":
@@ -292,6 +293,7 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 		WAVE_AT:
 			if not Defense.wave_for_run(run, int(run.pday)).is_empty() and int(run.wave_day) != int(run.pday):
 				NeighborHome.interrupt(run)
+				_interrupt_targeted_device(run)
 				_interrupt_room_work(run)
 				Floors.return_to_courtyard(run)
 				run.wave_due = true
@@ -303,6 +305,7 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 			# 尸潮还在街上，溃兵不会这时候来
 			if run.raid_tonight and not in_night(run):
 				NeighborHome.interrupt(run)
+				_interrupt_targeted_device(run)
 				_interrupt_room_work(run)
 				Floors.return_to_courtyard(run)
 				if str(run.busy.get("kind", "")) == "attic_build":
@@ -313,6 +316,7 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 				run.raid_tonight = false
 				return "raid"
 		DAY:
+			_interrupt_targeted_device(run)
 			if in_night(run):
 				_close_night(run)
 			_dawn(run)
@@ -395,6 +399,8 @@ static func resolve_wave(run: Dictionary) -> Dictionary:
 	run.wave_day = run.pday
 	Defense.start_night(run, wave)
 	var rep := Defense.next_round(run)
+	if run.phase == "dead":
+		_interrupt_targeted_device(run)
 	if run.phase == "post":
 		State.add_attr(run, "energy", -8)
 		State.add_attr(run, "mood", -2)
@@ -410,6 +416,8 @@ static func nod_round(run: Dictionary) -> Dictionary:
 	if not in_night(run):
 		return {}
 	var rep := Defense.next_round(run)
+	if run.phase == "dead":
+		_interrupt_targeted_device(run)
 	if int(rep.get("live_gate", 0)) > 0:
 		start_fight(run, int(rep.live_gate), "armored" in run.night.wave.get("mods", []))
 	_open_gap(run)
@@ -454,23 +462,36 @@ static func choose_policy(run: Dictionary, id: String) -> String:
 	run.night_policy = id
 	run.guard_spot = _spot_for(run, str(p.get("spot", "gate")))
 	run.plan_due = false
-	State.note(run, "今夜方针：%s。亲守%s。" % [p.name, Defense.surface_name(run.guard_spot)])
+	var guard_text := "亲守%s" % Defense.surface_name(run.guard_spot)
+	if str(run.guard_spot) == "":
+		guard_text = "所选院门不可守" if str(p.get("spot", "gate")) == "gate" else "没有可守面"
+	State.note(run, "今夜方针：%s。%s。" % [p.name, guard_text])
 	return ""
 
 
 ## 方针里的「亲守哪一面」：gate 固定守门，weak 选今夜最吃紧的一面。
 static func _spot_for(run: Dictionary, mode: String) -> String:
 	if mode == "gate":
-		return "gate"
+		return "" if Defense.is_broken(run, "gate") or bool(run.get("door_open", false)) else "gate"
 	var wave := Defense.wave_for_run(run, int(run.pday))
-	var best := "gate"
-	var worst := -999.0
+	# 每次假定亲守一面，比较和无亲守相比的预计漏怪减少；已破面及开门迎战不能受益。
+	var neutral := run.duplicate()
+	neutral.guard_spot = ""
+	var baseline := Defense.preview_night(neutral, wave)
+	var best := ""
+	var best_saved := -1
+	var best_threat := -1
 	for sid in Defense.SURFACES:
-		var pv := Defense.preview_night(run, wave)
-		var s: Dictionary = pv.get(sid, {})
-		var deficit := float(s.get("count", 0)) * Defense._cost(wave) - float(s.get("power", 0))
-		if deficit > worst:
-			worst = deficit
+		if Defense.is_broken(run, sid) or (sid == "gate" and bool(run.get("door_open", false))):
+			continue
+		var trial := neutral.duplicate()
+		trial.guard_spot = sid
+		var predicted := Defense.preview_night(trial, wave)
+		var saved := int(baseline.left) - int(predicted.left)
+		var threat := int(baseline.get(sid, {}).get("left", 0))
+		if saved > best_saved or (saved == best_saved and threat > best_threat):
+			best_saved = saved
+			best_threat = threat
 			best = sid
 	return best
 
@@ -486,10 +507,7 @@ static func policy_options(run: Dictionary) -> Array:
 		run.guard_spot = spot
 		var pv := Defense.preview_night(run, wave)
 		run.guard_spot = saved
-		var leak := 0
-		for sid in Defense.SURFACES:
-			var s: Dictionary = pv.get(sid, {})
-			leak += maxi(0, int(s.get("count", 0)) - int(floor(float(s.get("power", 0)) / Defense._cost(wave))) * Defense.rounds())
+		var leak := int(pv.get("left", 0))
 		out.append([id, p.name, p.desc, spot, leak])
 	return out
 
@@ -595,13 +613,16 @@ static func night_build(run: Dictionary, did: String) -> String:
 	var err := night_block(run, 6)
 	if err != "":
 		return err
-	err = device_block(run, did)
+	err = device_block(run, did, true)
 	if err != "":
 		return err
 	var d: Dictionary = Data.table("devices").devices[did]
 	Inv.take_all(run.home, d.cost)
 	run.night.acted = true
-	_start(run, "ward", {"device": did})
+	var data := {"device": did}
+	if did in ["armor_hook", "horde_rope"]:
+		data["paid_cost"] = d.cost.duplicate(true)
+	_start(run, "ward", data)
 	return ""
 
 
@@ -635,6 +656,7 @@ static func start_fight(run: Dictionary, count: int, armored: bool) -> void:
 	if not run.fight.is_empty():
 		return
 	NeighborHome.interrupt(run)
+	_interrupt_targeted_device(run)
 	_interrupt_room_work(run)
 	Floors.return_to_courtyard(run)
 	_interrupt_furnish(run)
@@ -1267,14 +1289,19 @@ static func _tend_garden(run: Dictionary, floor_id := "courtyard") -> void:
 	State.note(run, text)
 
 
-static func device_block(run: Dictionary, device_id: String) -> String:
+static func device_block(run: Dictionary, device_id: String, night_action := false) -> String:
 	var d: Dictionary = Data.table("devices").devices[device_id]
+	var targeted := device_id in ["armor_hook", "horde_rope"]
+	if targeted and not run.get("fight", {}).is_empty():
+		return "正在迎战，先结束战斗。"
+	if targeted and in_night(run) and not night_action:
+		return "夜战中请在轮间面板布置。"
 	if State.prof_level(run, "build") < int(d.get("lv", 0)):
 		return "营造 %d 级才会做" % d.lv
 	if not Inv.has_all(run.home, d.cost):
 		return "材料不够"
 	if int(d.time) > 0:
-		return can_act(run)
+		return can_act(run, (6 if night_action else 10) if targeted else 5)
 	if run.phase != "post" or not run.explore.is_empty():
 		return "现在不能做这个。"
 	return ""
@@ -1287,7 +1314,10 @@ static func act_build(run: Dictionary, device_id: String) -> String:
 	var d: Dictionary = Data.table("devices").devices[device_id]
 	Inv.take_all(run.home, d.cost)
 	if int(d.time) > 0:
-		_start(run, "build", {"device": device_id})
+		var data := {"device": device_id}
+		if device_id in ["armor_hook", "horde_rope"]:
+			data["paid_cost"] = d.cost.duplicate(true)
+		_start(run, "build", data)
 		State.note(run, "动手做%s。" % d.name)
 	else:
 		run.devices.append({"id": device_id, "dur": int(d.dur)})
@@ -1360,10 +1390,29 @@ static func _interrupt_furnish(run: Dictionary, reason := "夜袭") -> void:
 	State.note(run, "%s打断了家具安放，材料已退回。" % reason)
 
 
+## 只对新增针对守具返还实际投入；先清除 busy，重复中断不能再次退款。
+static func _interrupt_targeted_device(run: Dictionary) -> void:
+	var busy: Dictionary = run.get("busy", {})
+	if str(busy.get("kind", "")) not in ["build", "ward"]:
+		return
+	var data: Dictionary = busy.get("data", {})
+	if str(data.get("device", "")) not in ["armor_hook", "horde_rope"]:
+		return
+	var paid = data.get("paid_cost", {})
+	run.busy = {}
+	if paid is Dictionary:
+		Inv.add_all(run.home, paid)
+	State.note(run, "守具施工被打断，已投入的材料退回；已耗精力不退。")
+
+
 ## 夜袭将人送回院层前，不能让室内工作在返回后跨空间完成。
 ## 家具安放有付款快照，其余工作沿用原有中断规则，不猜测退款。
 static func _interrupt_room_work(run: Dictionary) -> void:
 	if str(run.get("home_floor", "courtyard")) == "courtyard" or run.get("busy", {}).is_empty():
+		return
+	# 恢复室内威胁存档也会走这里；先结清新守具的付款快照。
+	_interrupt_targeted_device(run)
+	if run.busy.is_empty():
 		return
 	var kind := str(run.busy.get("kind", ""))
 	var label := str(run.busy.get("label", "工作"))

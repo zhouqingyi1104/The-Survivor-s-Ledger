@@ -224,12 +224,31 @@ static func device_power_on(run: Dictionary, sid: String) -> float:
 	return p
 
 
-## 这一面的守力明细（只读，不扣东西）。
-static func surface_power(run: Dictionary, sid: String) -> Dictionary:
+## 当前波次下该面守具的针对性守力，未乘冻僵或灯光系数。
+static func device_bonus(run: Dictionary, sid: String, wave: Dictionary) -> float:
+	var bonus := 0.0
+	for d in run.get("devices", []):
+		var dev: Dictionary = Data.table("devices").devices.get(d.get("id", ""), {})
+		var on := str(dev.get("surface", "*"))
+		var mod := str(dev.get("bonus_mod", ""))
+		if (on == "*" or on == sid) and mod != "" and mod in wave.get("mods", []):
+			bonus += float(dev.get("bonus_power", 0))
+	return bonus
+
+
+## 这一面的守力明细（只读，不扣东西）；wave 为空时仅在已开夜引用锁定敌情。
+static func surface_power(run: Dictionary, sid: String, wave := {}) -> Dictionary:
 	var lines := []
 	var devices := device_power_on(run, sid)
 	if devices > 0:
 		lines.append(["守具", devices])
+	var active_wave: Dictionary = wave
+	if active_wave.is_empty():
+		active_wave = run.get("night", {}).get("wave", {})
+	var bonus := device_bonus(run, sid, active_wave)
+	if bonus > 0:
+		devices += bonus
+		lines.append(["针对敌情", bonus])
 	var extra := 0.0
 	if State.has_facility(run, "watchtower"):
 		extra += 2
@@ -282,22 +301,38 @@ static func total_power(run: Dictionary) -> float:
 
 ## 一整夜三面各来多少、各能斩多少（用当前布防，不扣东西）。
 static func preview_night(run: Dictionary, wave: Dictionary) -> Dictionary:
-	var out := {}
-	var total := _count(wave)
-	var cost := _cost(wave)
-	var counts := round_counts(wave)
+	var out := {"total": 0, "left": 0}
+	# 只模拟已有布局：不预测轮间修缮、迎战、精力变化或新守具。
+	var trial := run.duplicate()
+	trial.door = run.door.duplicate()
+	trial.window = run.window.duplicate()
+	trial.wall = run.wall.duplicate()
+	trial.night = run.get("night", {}).duplicate(true)
+	if trial.night.is_empty():
+		var dark := _is_dark(wave)
+		var lamp := dark and not State.is_role(trial, "watchman") and Inv.count(trial.home, "lamp_oil") > 0
+		trial.night = {"wave": wave, "sortie": {}, "charm": {}, "lamp": lamp,
+			"dark_unlit": dark and not lamp and not State.is_role(trial, "watchman")}
 	for sid in SURFACES:
-		var n := 0
-		for i in counts.size():
-			n += int(round(int(counts[i]) * float(split_of(wave).get(sid, 0.0))))
-		var p := float(surface_power(run, sid).total)
-		var part := part_of(run, sid)
-		var killed := mini(n, int(floor(p / cost)) * counts.size()) if n > 0 else 0
-		out[sid] = {
-			"name": surface_name(sid), "count": n, "power": snappedf(p, 0.1),
+		var part := part_of(trial, sid)
+		out[sid] = {"name": surface_name(sid), "count": 0,
+			"power": snappedf(float(surface_power(trial, sid, wave).total), 0.1),
 			"cur": int(part.cur), "max": int(part.max), "broken": int(part.cur) <= 0,
-		}
-	out["total"] = total
+			"bonus": 0.0, "left": 0}
+	var start_idx := clampi(int(trial.night.get("round", 0)), 0, rounds())
+	if bool(trial.night.get("done", false)):
+		start_idx = rounds()
+	for idx in range(start_idx, rounds()):
+		var pv := preview_round(trial, wave, idx)
+		for sid in SURFACES:
+			var s: Dictionary = pv.surfaces[sid]
+			out[sid].count += int(s.count)
+			out.total += int(s.count)
+			out[sid].left += int(s.left)
+			out[sid].bonus = maxf(float(out[sid].bonus), float(s.bonus))
+			out.left += int(s.left)
+			part_of(trial, sid).cur = int(s.after)
+		trial.night.sortie = {}
 	return out
 
 
@@ -311,26 +346,30 @@ static func preview_round(run: Dictionary, wave: Dictionary, idx: int, extra := 
 	for sid in SURFACES:
 		var n := int(counts[sid]) - int(cut.get(sid, 0)) - int(extra.get(sid, 0))
 		n = maxi(0, n)
-		var p := float(surface_power(run, sid).total)
+		var p := float(surface_power(run, sid, wave).total)
 		var part := part_of(run, sid)
 		var broken: bool = int(part.cur) <= 0
-		var killed := 0 if broken else mini(n, int(floor(p / cost)))
+		var open_gate: bool = sid == "gate" and bool(run.get("door_open", false))
+		var applies: bool = n > 0 and not broken and not open_gate
+		var killed := mini(n, int(floor(p / cost))) if applies else 0
 		var left := n - killed
-		var dmg := 0 if broken else left * leak
-		var enter := n if broken else 0
+		var dmg := left * leak if not broken and not open_gate else 0
+		var enter := n if broken and not open_gate else 0
 		var after := maxi(0, int(part.cur) - dmg)
-		if not broken and after <= 0:
+		if applies and after <= 0:
 			enter = int(ceil(left * 0.5))
-		elif not broken and after < int(part.max) * 0.25:
+		elif applies and after < int(part.max) * 0.25:
 			enter = int(ceil(left * 0.25))
 		out.surfaces[sid] = {
 			"name": surface_name(sid), "count": n, "power": snappedf(p, 0.1),
 			"killed": killed, "left": left, "dmg": dmg, "after": after,
-			"enter": enter, "broken": broken,
+			"enter": enter, "broken": broken, "bonus": device_bonus(run, sid, wave) if applies else 0.0,
 		}
 		out.killed = int(out.killed) + killed
 		out.enter = int(out.enter) + enter
 	out.hp = _inside_hp(int(out.enter))
+	if State.has_buff(run, "ward"):
+		out.hp = int(int(out.hp) / 2.0)
 	return out
 
 
@@ -380,10 +419,10 @@ static func resolve_round(run: Dictionary, idx: int) -> Dictionary:
 	}
 	for sid in SURFACES:
 		var n: int = maxi(0, int(counts[sid]) - int(run.night.sortie.get(sid, 0)))
-		var p := surface_power(run, sid)
+		var p := surface_power(run, sid, wave)
 		var part := part_of(run, sid)
 		var s := {"name": surface_name(sid), "count": n, "power": snappedf(float(p.total), 0.1),
-			"killed": 0, "left": n, "dmg": 0, "enter": 0, "broken": int(part.cur) <= 0}
+			"killed": 0, "left": n, "dmg": 0, "enter": 0, "broken": int(part.cur) <= 0, "bonus": 0.0}
 		if sid == "gate" and bool(run.get("door_open", false)):
 			# 门开着：这一面不结算，人直接进来（由 NightFight 在场上处理）
 			s.left = n
@@ -392,6 +431,8 @@ static func resolve_round(run: Dictionary, idx: int) -> Dictionary:
 			# 这一面昨夜就破了：今夜来的全进院子
 			s.enter = n
 		else:
+			if n > 0:
+				s.bonus = device_bonus(run, sid, wave)
 			var killed := mini(n, int(floor(float(p.total) / cost)))
 			var left := n - killed
 			var dmg := left * leak

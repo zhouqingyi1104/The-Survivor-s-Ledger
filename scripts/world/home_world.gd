@@ -657,6 +657,12 @@ func _rebuild_devices(run: Dictionary) -> void:
 	for id in counts:
 		for k in counts[id]:
 			match id:
+				"armor_hook":
+					var hook_model := K.node(_dynamic.devices, Vector3.ZERO, Vector3.ZERO, "device_armor_hook_%d" % k)
+					Props.device(hook_model, id, Vector3(0, 0, 8.6 + k * 0.45), k)
+				"horde_rope":
+					var rope_model := K.node(_dynamic.devices, Vector3.ZERO, Vector3.ZERO, "device_horde_rope_%d" % k)
+					Props.device(rope_model, id, WINDOW_POS + Vector3(0, -1.4, 0.35 + k * 0.12), k)
 				"ink_line":
 					Props.device(_dynamic.devices, id, Vector3(0, 0, GATE_Z + 0.32 + k * 0.05), k)
 					Props.device(_dynamic.devices, id, WINDOW_POS + Vector3(0, -1.4, 0.32), k)

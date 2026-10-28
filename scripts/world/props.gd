@@ -223,6 +223,19 @@ static func device(parent: Node3D, id: String, pos: Vector3, index: int) -> void
 				K.box(parent, Vector3(0.12, 1.5, 0.12), K.WOOD_LIGHT, p, Vector3(0, 0, 40))
 				K.box(parent, Vector3(0.12, 1.5, 0.12), K.WOOD_LIGHT, p, Vector3(0, 0, -40))
 			K.box(parent, Vector3(4.0, 0.12, 0.12), K.WOOD, pos + Vector3(0, 0.6, 0))
+		"armor_hook":
+			# 一排带铁钩的低横木，摆在院门外；仅表现已建好的守具。
+			K.box(parent, Vector3(3.0, 0.15, 0.18), K.WOOD_LIGHT, pos + Vector3(0, 0.48, 0))
+			for k in 4:
+				var p := pos + Vector3(-1.1 + k * 0.72, 0.55, 0)
+				K.box(parent, Vector3(0.08, 0.6, 0.08), K.mat(Color("#777d82"), 0.4), p, Vector3(0, 0, -25))
+				K.box(parent, Vector3(0.3, 0.08, 0.08), K.mat(Color("#777d82"), 0.4), p + Vector3(0.1, 0.28, 0))
+		"horde_rope":
+			# 窗前的绳网用可见绳索表示，不加碰撞或额外战斗效果。
+			for k in 4:
+				K.box(parent, Vector3(2.5, 0.07, 0.07), K.mat(Color("#c6a06a")), pos + Vector3(0, 0.35 + k * 0.28, 0))
+			for x in [-1.1, 0.0, 1.1]:
+				K.box(parent, Vector3(0.07, 1.1, 0.07), K.mat(Color("#c6a06a")), pos + Vector3(x, 0.78, 0))
 		"caltrop_field":
 			for k in 26:
 				var p := pos + Vector3(rng.randf_range(-2.0, 2.0), 0.06, rng.randf_range(-0.6, 0.6))

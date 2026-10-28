@@ -1158,10 +1158,16 @@ func _left_top(run: Dictionary) -> void:
 	f.add_child(place_line)
 	_live["place"] = place_line
 	# 守具按面挂；夜战时显示第几轮和这一轮各面来几只
+	var pending_wave := not wave.is_empty() and int(run.wave_day) != int(run.pday) and not Post.in_night(run)
+	var forecast := Defense.preview_night(run, wave) if pending_wave else {}
 	var parts := []
 	for sid in Defense.SURFACES:
-		parts.append("%s %.0f" % [Defense.surface_name(sid), float(Defense.surface_power(run, sid).total)])
-	f.add_child(Hud.text("守力 " + " · ".join(parts), 13, Hud.SUB))
+		var power := float(forecast.get(sid, {}).get("power", 0.0)) if pending_wave else float(Defense.surface_power(run, sid).total)
+		var unusable: bool = Defense.is_broken(run, sid) or (sid == "gate" and bool(run.door_open))
+		parts.append("%s %s" % [Defense.surface_name(sid), "无效" if unusable else "%.0f" % power])
+	f.add_child(Hud.text(("今夜守力预估 " if pending_wave else "守力 ") + " · ".join(parts), 13, Hud.SUB))
+	if pending_wave and Defense._is_dark(wave):
+		f.add_child(Hud.text("月黑预估：有油开夜自动用 1；更夫免油", 13, Hud.SUB))
 	if Post.in_night(run):
 		var night: Dictionary = run.night
 		var idx := int(night.round)
@@ -1171,15 +1177,10 @@ func _left_top(run: Dictionary) -> void:
 		f.add_child(Hud.text(line, 13, Hud.RED))
 		var cd := Defense.round_minute(idx) - Post.day_minute(run)
 		f.add_child(Hud.text("下一轮还有 %s" % Hud.duration(maxi(0, cd)), 13, Hud.GOLD))
-	elif not wave.is_empty() and int(run.wave_day) != int(run.pday):
-		var pv := Defense.preview_night(run, wave)
-		var leak := 0
-		for sid in Defense.SURFACES:
-			var s: Dictionary = pv.get(sid, {})
-			leak += maxi(0, int(s.get("count", 0)) - int(floor(float(s.get("power", 0)) / Defense._cost(wave))) * Defense.rounds())
-		f.add_child(Hud.text("今夜三面：门 %d · 窗 %d · 墙 %d　%s" % [
-			int(pv.gate.count), int(pv.window.count), int(pv.wall.count),
-			("预计漏 %d 只" % leak) if leak > 0 else "挡得住"], 13, Hud.RED if leak > 0 else Hud.GREEN))
+	elif pending_wave:
+		var leak := int(forecast.get("left", 0))
+		f.add_child(Hud.text("今夜三面：门 %d · 窗 %d · 墙 %d　预估漏 %d" % [
+			int(forecast.gate.count), int(forecast.window.count), int(forecast.wall.count), leak], 13, Hud.RED if leak > 0 else Hud.GREEN))
 	v.add_child(Hud.panel(f))
 	var quest := VBoxContainer.new()
 	var quest_row := HBoxContainer.new()
