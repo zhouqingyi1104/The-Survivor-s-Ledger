@@ -1663,7 +1663,7 @@ static func search(run: Dictionary, idx: int, option_id := "") -> Dictionary:
 		if res.get("mainline", false):
 			# Unlike ordinary searches, work now waits on the live clock. A fatal
 			# immediate capture must settle death before yielding back to the UI.
-			State.check_death(run, "主线调查时被尸群追上，没能逃回宅院。")
+			State.check_death(run, "外出调查时被尸群追上，没能逃回宅院。")
 			return res
 		if not prepaid:
 			run["neighbor_searching"] = true
@@ -1709,7 +1709,7 @@ static func site_journey_action(run: Dictionary, stage_id: String, choice_id: St
 	var err := _expedition_available(run)
 	if err != "": return {"blocked": err, "text": err}
 	var ex: Dictionary = run.explore
-	if ex.get("only_investigate", false): return {"blocked": "此行仅调查任务，现场资源尚未恢复。"}
+	if ex.get("only_investigate", false): return {"blocked": "这一趟只为查访，这里的东西还没缓过来。"}
 	var selected := SiteJourney.choice(str(ex.point), stage_id, choice_id)
 	if selected.is_empty(): return {"blocked": "没有这个现场行动。"}
 	var s := SiteJourney.state(run)

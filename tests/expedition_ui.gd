@@ -268,10 +268,10 @@ func investigation_visit() -> void:
 	await frames(12)
 	var hud_text := ""
 	for label in main._screen.hud.find_children("*", "Label", true, false): hud_text += label.text + "\n"
-	check(hud_text.contains("剧情调查专访") and hud_text.contains("暂无普通物资") and not hud_text.contains("搜寻 0 / 0"), "Investigation-only HUD misleading")
+	check(hud_text.contains("专程查访") and hud_text.contains("翻不出物资") and not hud_text.contains("搜寻 0 / 0"), "Investigation-only HUD misleading")
 	if not await walk("gate"): return
 	await key(KEY_E)
-	check(main.has_modal("expedition") and modal_text().contains("机关后没有普通搜寻物资") and modal_text().contains("目标不受机关影响"), "Investigation-only gate missing explanation")
+	check(main.has_modal("expedition") and modal_text().contains("机关后面也翻不出物资") and modal_text().contains("不受机关阻拦"), "Investigation-only gate missing explanation")
 	await key(KEY_ESCAPE)
 	var task := -1
 	for i in Game.run.explore.spots.size():

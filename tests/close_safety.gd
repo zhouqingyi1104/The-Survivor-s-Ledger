@@ -82,7 +82,7 @@ func _test_locked(action: String, suffix: String) -> void:
 
 func _on_toast(message: String) -> void:
 	notices.append(message)
-	if lock_suffix == "#" or not message.contains("Memory.md 未能写入"): return
+	if lock_suffix == "#" or not message.contains("前世档案没能写进文件"): return
 	if lock_suffix == SaveFile.TMP:
 		var temp := FileAccess.open(save + SaveFile.TMP, FileAccess.WRITE)
 		temp.store_string("test")

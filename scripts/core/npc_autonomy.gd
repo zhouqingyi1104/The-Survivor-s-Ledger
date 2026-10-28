@@ -162,7 +162,7 @@ static func _execute(run: Dictionary, actor: String) -> String:
 			"gather":
 				var amount := _gather_gain(stock, plan, supported)
 				if amount <= 0:
-					result += "发现目标周转库存已满，整理现有货物，没有额外耗米，也没有凭空增加物资。"
+					result += "存货已经堆满，只把现有的货理了理，没再耗米。"
 				elif plan.focus == "rice":
 					var before := int(stock.rice)
 					_adjust(stock, "rice", amount)
@@ -258,7 +258,7 @@ static func _block(run: Dictionary, actor: String, action: String) -> String:
 		if plan.mode == "gather":
 			var projected: Dictionary = person.stock.duplicate(true)
 			for item in plan.req: _adjust(projected, str(item), int(plan.req[item]))
-			if _gather_gain(projected, plan, true) <= 0: return "这份支援会填满筹措目标的库存，已没有增长余量；不能收物资承诺空的改善。"
+			if _gather_gain(projected, plan, true) <= 0: return "对方这样东西已经堆满，再送也添不进去。"
 		if not Inv.has_all(run.home, plan.req): return "需要%s。" % Data.describe_items(plan.req)
 	if action == "favor":
 		if int(trade.favors) < 1: return "对方还没有欠你的人情，需要人情 1。"
@@ -347,7 +347,7 @@ static func _effect(actor: String, plan: Dictionary, stock: Dictionary) -> Strin
 		"gather":
 			var amount := _gather_gain(stock, plan, supported)
 			if amount <= 0: return "16:00 目标库存已满，只整理现有货物，不再耗米或增加物资；没有可承诺的额外筹措收益。"
-			return "16:00 自己觅粮，按库存余量米粮实际增加 %d；物资属于对方，改变以后决定，不直接送给玩家。" % amount if plan.focus == "rice" else "16:00 自己耗米 1，按库存余量筹措%s %d；物资属于对方，改变以后决定。" % [focal, amount]
+			return "16:00 自己觅粮，按库存余量米粮实际增加 %d；这是对方自己的口粮，不会送给你。" % amount if plan.focus == "rice" else "16:00 自己耗米 1，按库存余量筹措%s %d；物资属于对方，改变以后决定。" % [focal, amount]
 		"stockpile": return "16:00 自己耗%s 1 备货；下一份新报价%s，旧报价与承诺不变。" % [focal, "不加价" if supported else "加收米 1"]
 		"guard": return "16:00 下一份新报价%s；旧报价与承诺不变。" % ("不加价，按原信任条件开放赊欠" if supported else "加收米 1，暂停赊欠")
 		"share": return "16:00 从自己库存扣%s %d，送到你家 %d；后续库存与决定随之改变。" % [focal, 2 if supported else 1, 2 if supported else 1]

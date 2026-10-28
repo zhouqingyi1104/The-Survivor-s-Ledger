@@ -175,7 +175,7 @@ static func choose(run: Dictionary, index: int) -> String:
 			q.stage = "closed"
 			q.ending = "共查青云" if action == "share" else "封存药账"
 		_:
-			return "无效的剧情动作。"
+			return "现在不能这样做。"
 	var result := str(c.result)
 	if action in ["supplies", "food", "buy_lead", "investigate", "fortify", "share", "seal", "stay_apart"]:
 		result = "此前%s；%s" % [resolution_text(q), result]

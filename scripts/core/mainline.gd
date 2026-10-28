@@ -21,7 +21,7 @@ const ACTIONS := {"host": ["接待道士", 30, 4], "self_route": ["买下义庄�
 	"prepare_light_escape": ["筹备轻装更道", 120, 8],
 	"prepare_convoy": ["筹备趟子手早行", 120, 12],
 	"prepare_paper_ritual": ["筹备纸阵法具", 150, 10]}
-const STAGES := {"waiting": "等待道士线索", "contact": "道士来访", "fallback": "自行打听义庄", "mortuary": "实查义庄", "mortuary_choice": "处置本世运尸簿", "temple": "实查青云观", "routes": "选择最后的活法", "escape_ready": "等待撤离窗口", "ritual_ready": "亲赴青云观封阵", "sealed": "七灯已熄，仍须守过残潮", "hold": "守住这座宅院", "closed": "主线已结案", "failed": "错过窗口，转守宅院", "endless": "劫后继续生活"}
+const STAGES := {"waiting": "等待道士线索", "contact": "道士来访", "fallback": "自行打听义庄", "mortuary": "实查义庄", "mortuary_choice": "处置本世运尸簿", "temple": "实查青云观", "routes": "选择最后的活法", "escape_ready": "等待撤离窗口", "ritual_ready": "亲赴青云观封阵", "sealed": "七灯已熄，仍须守过残潮", "hold": "守住这座宅院", "closed": "这一世的事已了结", "failed": "错过窗口，转守宅院", "endless": "劫后继续生活"}
 
 static func _day(run: Dictionary) -> int:
 	return maxi(1, int(run.get("t", 0)) / 1440 + 1)
@@ -43,7 +43,7 @@ static func _fact(run: Dictionary, action: String, result: String) -> String:
 	while s.history.size() > 16: s.history.pop_front()
 	s.last_result = result.left(240)
 	s.revision = int(s.revision) + 1
-	State.note(run, "二十日主线 · " + result)
+	State.note(run, "尸劫来历 · " + result)
 	return result
 
 static func _same_busy(run: Dictionary, work: Dictionary) -> bool:
@@ -64,11 +64,11 @@ static func poll(run: Dictionary) -> String:
 		var work: Dictionary = s.work
 		_reset_spot(run, work)
 		s.work = {}
-		facts.append(_fact(run, "interrupted", "%s中断，尚未生效；已耗物资与精力不退，原阶段仍可在期限内重试。" % str(work.get("label", "主线工作"))))
+		facts.append(_fact(run, "interrupted", "%s中断，尚未生效；已耗物资与精力不退，原阶段仍可在期限内重试。" % str(work.get("label", "调查"))))
 	var now := int(run.get("t", 0))
 	if s.stage == "waiting" and now >= (int(s.start_day) - 1) * 1440 + 120:
 		s.stage = "contact" if now < CONTACT_END else "fallback"
-		facts.append(_fact(run, "contact", "游方道士留下义庄与七盏灯的消息；第12日18:00前可接待，拒绝或错过仍能自查。" if s.stage == "contact" else "旧卷从当前日之后开始调查，没有追认旧世证据；道士窗口已过，第5日起的自查路线仍可使用。"))
+		facts.append(_fact(run, "contact", "游方道士留下义庄与七盏灯的消息；第12日18:00前可接待，拒绝或错过仍能自查。" if s.stage == "contact" else "道士已经离开；第5日起可付米1自行打听义庄的路。"))
 	if s.stage == "contact" and now >= CONTACT_END:
 		s.stage = "fallback"
 		facts.append(_fact(run, "contact_timeout", "道士已经离开，没有扣物资，也没有得到赠符或教学；仍可付米1自查义庄路线。"))
@@ -87,13 +87,13 @@ static func poll(run: Dictionary) -> String:
 	return "\n".join(facts)
 
 static func _access(run: Dictionary, outside := false) -> String:
-	if run.get("phase", "") != "post": return "当前不能推进本世主线。"
+	if run.get("phase", "") != "post": return "眼下没法接着查尸劫来历。"
 	if run.get("pending_event", "") != "" or run.get("dawn_due", false) or run.get("plan_due", false) or run.get("wave_due", false) or not run.get("wave_report", {}).is_empty(): return "先处理眼前的事件或夜战。"
 	if run.get("sleeping", false): return "正睡着。"
 	if not run.get("busy", {}).is_empty() or not state(run).work.is_empty(): return "正在忙别的事。"
 	if not run.get("fight", {}).is_empty(): return "先结束眼前的战斗。"
 	var night: Dictionary = run.get("night", {})
-	if not night.is_empty() and not night.get("done", false): return "尸潮未退，不能另开主线工作。"
+	if not night.is_empty() and not night.get("done", false): return "尸潮未退，这会儿不能动身去查。"
 	if run.get("neighbor_travel", false): return "仍在返程，先回到宅院。"
 	if not outside and not run.get("explore", {}).is_empty(): return "先回到宅院再安排。"
 	return ""
@@ -137,7 +137,7 @@ static func _action_block(run: Dictionary, action: String) -> String:
 	var s := state(run)
 	var now := int(run.get("t", 0))
 	if not action in _allowed(str(s.stage), run): return "当前阶段或身份经验不能作这个选择。"
-	if now < (int(s.start_day) - 1) * 1440 + 120: return "尚未到本世主线的公开时刻。"
+	if now < (int(s.start_day) - 1) * 1440 + 120: return "道士的消息还没传来。"
 	if action == "refuse": return "" if now < CONTACT_END else "道士来访窗口已过。"
 	if action in ["hold", "seal"]: return ""
 	if action == "self_route" and _day(run) < 5: return "第5日起才打听得到自查路线。"
@@ -159,7 +159,7 @@ static func _action_block(run: Dictionary, action: String) -> String:
 		var open := ESCAPE_OPEN - (1440 if method == "convoy" else 0)
 		if now < open: return "第%d日08:00才到这条路线的实际撤离窗口。" % (17 if method == "convoy" else 18)
 		if end > FINAL_END: return "来不及在第19日18:00前完成%d分钟撤离。" % int(spec[1])
-	elif action != "host" and end >= FINAL_END: return "主线最后窗口已过，不能再开工。"
+	elif action != "host" and end >= FINAL_END: return "最后的期限已过，不能再开工。"
 	if float(run.get("attrs", {}).get("energy", 0.0)) < int(spec[2]): return "精力不足，需要 %d。" % int(spec[2])
 	if not Inv.has_all(run.home, COSTS[action]): return "需要%s。" % Data.describe_items(COSTS[action])
 	return ""
@@ -174,7 +174,7 @@ static func _start(run: Dictionary, action: String, label: String, minutes: int,
 	return _fact(run, "start_" + action, "开始%s，需要%d分钟，完工才生效；中断不退已耗物资与精力。" % [label, minutes])
 
 static func act(run: Dictionary, action: String, token: String) -> String:
-	if token != _token(run): return "这份主线安排已过期，请重新查看。"
+	if token != _token(run): return "情况已经变了，请重新看一遍。"
 	var blocked := _action_block(run, action)
 	if blocked != "": return blocked
 	var s := state(run)
@@ -222,8 +222,8 @@ static func objective(run: Dictionary, pid: String) -> Dictionary:
 	var outbound := 0 if run.get("explore", {}).get("point", "") == pid else 60
 	if int(run.get("t", 0)) + outbound + minutes + return_time >= FINAL_END: blocked = "留不够调查、返程或封阵完工时间，第19日18:00前必须完成。"
 	if State.attr(run, "energy") < energy: blocked = "精力不足，需要 %d。" % energy
-	if not s.work.is_empty(): blocked = "先完成正在进行的主线工作。"
-	if int(run.get("t", 0)) < (int(s.start_day) - 1) * 1440 + 120: blocked = "尚未到本世主线的公开时刻。"
+	if not s.work.is_empty(): blocked = "先把手头的调查做完。"
+	if int(run.get("t", 0)) < (int(s.start_day) - 1) * 1440 + 120: blocked = "道士的消息还没传来。"
 	if id == "ritual" and s.get("ritual_method", "normal") == "paper" and not _identity_cap(run, "paper_ritual"): blocked = "本世没有有效的纸阵解法。"
 	return {"id": id, "name": names[id], "hint": hints[id], "block": blocked, "minutes": minutes, "energy": energy}
 
@@ -313,7 +313,7 @@ static func complete(run: Dictionary, data: Dictionary) -> String:
 		"self_route":
 			if s.stage != "fallback": return ""
 			s.stage = "mortuary"
-			return _fact(run, action, "付米买路的打听已经完成，今世义庄调查开放；没有道士赠符或画符教学，也不要求先救邻居。")
+			return _fact(run, action, "打听到了去义庄的路，可以去调查了；走这条路没有道士的赠符和画符教学。")
 		"disrupt", "copy":
 			if s.stage != "mortuary_choice" or not s.evidence.mortuary: return ""
 			if action == "disrupt": s.interventions.disrupt_t = now
@@ -443,18 +443,18 @@ static func continued(run: Dictionary) -> String:
 
 static func summary(run: Dictionary) -> String:
 	var s := state(run)
-	return str(STAGES.get(str(s.stage), "本世主线")) + " · " + ("已取本世义庄证据" if s.evidence.mortuary else "义庄尚待取证") + " · " + ("已取本世青云证据" if s.evidence.temple else "青云尚待取证")
+	return str(STAGES.get(str(s.stage), "尸劫来历")) + " · " + ("已取本世义庄证据" if s.evidence.mortuary else "义庄尚待取证") + " · " + ("已取本世青云证据" if s.evidence.temple else "青云尚待取证")
 
 static func view(run: Dictionary) -> Dictionary:
 	var s := state(run)
 	var target := "mortuary" if s.stage == "mortuary" else ("taoist_temple" if s.stage in ["temple", "ritual_ready"] else "")
-	var goals := {"waiting": "第3日08:00起留意道士线索，旧卷从当前日之后起步。", "contact": "接待道士或拒绝后自行寻路；来访不靠随机抽取。", "fallback": "第5日起付米1自行打听，无需先救邻居。", "mortuary": "到义庄专点调查运尸簿，完工再完成60分钟返程。", "mortuary_choice": "断运会改变未来铜甲尸潮；抄录保材料；封存锁为坚守。", "temple": "亲赴青云观取回七灯图与后山道图，完成返程才解锁路线。", "routes": "第12日起决定坚守、备撤离或备破阵；筹备完工后锁定。", "escape_ready": "第18日08:00至第19日18:00完成120分钟实际撤离。", "ritual_ready": "亲赴青云观阵眼施工90分钟，严格第19日18:00前完工。", "sealed": "现场已熄灯，仍需对付第20夜削弱后的残潮，活到21晨。", "hold": "保留物资，守过第20夜，21晨进入坚守结局。", "failed": "错过最后窗口后转守宅院，已投入不退，生存仍可继续。", "closed": "本世已结案，查看结局与真实调查、施工记录。", "endless": "无尽生活继续，主线结局不强制结束这一轮。"}
+	var goals := {"waiting": "第3日08:00起留意道士的消息。", "contact": "接待道士，或拒绝后自己寻路。", "fallback": "第5日起付米1自行打听义庄的路。", "mortuary": "到义庄专点调查运尸簿，完工再完成60分钟返程。", "mortuary_choice": "断运会改变未来铜甲尸潮；抄录保材料；封存锁为坚守。", "temple": "亲赴青云观取回七灯图与后山道图，完成返程才解锁路线。", "routes": "第12日起决定坚守、备撤离或备破阵；筹备完工后锁定。", "escape_ready": "第18日08:00至第19日18:00完成120分钟实际撤离。", "ritual_ready": "亲赴青云观阵眼施工90分钟，严格第19日18:00前完工。", "sealed": "现场已熄灯，仍需对付第20夜削弱后的残潮，活到21晨。", "hold": "保留物资，守过第20夜，21晨进入坚守结局。", "failed": "错过最后窗口后转守宅院，已投入不退，生存仍可继续。", "closed": "这一世的事已了结，可查看结局与调查、施工的记录。", "endless": "日子还在过下去，结局不会让这一轮停下。"}
 	var costs := []
 	for row in options(run): costs.append(str(row.hint))
 	var escape_spec := _escape_spec(run)
 	var escape_day := 17 if s.get("escape_method", "normal") == "convoy" else 18
 	if s.stage == "escape_ready": goals.escape_ready = "第%d日08:00起、第19日18:00前完成%d分钟实际撤离，精力%d；只有完工才离城。" % [escape_day, int(escape_spec[1]), int(escape_spec[2])]
-	return {"title": "二十日主线 · " + str(STAGES.get(str(s.stage), "调查")), "summary": summary(run), "goal": str(goals.get(str(s.stage), "")),
+	return {"title": "尸劫来历 · " + str(STAGES.get(str(s.stage), "调查")), "summary": summary(run), "goal": str(goals.get(str(s.stage), "")),
 		"target": target, "target_name": str(Data.table("map_points").get(target, {}).get("name", "")), "objective": objective(run, target),
 		"costs": costs, "deadlines": ["道士接待：第12日18:00前完工。", "撤离窗口：第%d日08:00至第19日18:00，当前方法需%d分钟。" % [escape_day, int(escape_spec[1])], "封阵：严格第19日18:00前现场完工；取证需额外60分钟返程。"],
 		"evidence": s.evidence.duplicate(), "route": str(s.route), "interventions": s.interventions.duplicate(), "token": _token(run), "stage": str(s.stage),

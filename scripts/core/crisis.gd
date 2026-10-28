@@ -7,7 +7,7 @@ const Past = preload("res://scripts/core/past_lives.gd")
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 const KINDS := ["well_freeze", "fuel_shortage", "herb_shortage"]
 const CATALOG := {
-	"well_freeze": {"title": "井口冻裂的风声", "sign": "井沿结起薄冰，汲水绳变得发硬。", "effect": "若成真，玩家与孩子都暂时不能打井水，孩子也无法顺带浇田；家中清水不变。", "prepare": {"wood": 1, "firewood": 1}, "emergency": {"firewood": 2, "wood": 1}, "real_evidence": "井壁裂缝已渗水结冰，绳结冻紧；冻裂的风险属实。", "false_evidence": "薄冰只在井沿，井壁完好、绳结能解开；这次是虚惊。"},
+	"well_freeze": {"title": "井口冻裂的风声", "sign": "井沿结起薄冰，汲水绳变得发硬。", "effect": "若成真，你和孩子都暂时打不了井水，孩子也无法顺带浇田；家中清水不变。", "prepare": {"wood": 1, "firewood": 1}, "emergency": {"firewood": 2, "wood": 1}, "real_evidence": "井壁裂缝已渗水结冰，绳结冻紧；冻裂的风险属实。", "false_evidence": "薄冰只在井沿，井壁完好、绳结能解开；这次是虚惊。"},
 	"fuel_shortage": {"title": "运柴中断的风声", "sign": "运柴车渐少，便道的积雪越来越厚。", "effect": "若成真，老周与过路客此后新形成的现货报价加收米 1；已展示的报价、欠账和回礼不变。", "prepare": {"wood": 1, "nails": 1}, "emergency": {"wood": 2, "nails": 2}, "real_evidence": "便道承重木松动，积雪堵住车轮；运输中断的风险属实。", "false_evidence": "运柴车只是绕道过桥，便道还能通行；这次是虚惊。"},
 	"herb_shortage": {"title": "药草挤兑的风声", "sign": "医馆门外排起队，往来的药篮渐空。", "effect": "若成真，阿宁此后新形成的现货报价不再含艾草，并加收米 1；已有药品与签约物资不变。", "prepare": {"mugwort": 2, "water": 1}, "emergency": {"mugwort": 3, "water": 2}, "real_evidence": "待分装药材赶不上排队的人数，艾草供给确实吃紧。", "false_evidence": "队伍是在分领已经备齐的药包，后院仍有药草；这次是虚惊。"},
 }

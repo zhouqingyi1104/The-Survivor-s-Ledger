@@ -223,7 +223,7 @@ func _expedition_panel(body: VBoxContainer, mode: String, idx: int) -> void:
 	if mode == "gate":
 		contents.add_child(UI.para("线索和通路仅保留本次外出，回家后重置。", 15, UI.INK_SOFT))
 		if ex.get("only_investigate", false):
-			contents.add_child(UI.para("此地物资尚未恢复，本趟是剧情调查；机关后没有普通搜寻物资。主线与邻人目标不受机关影响。", 16, UI.GOLD))
+			contents.add_child(UI.para("这里的东西还没缓过来，这一趟只为查访，机关后面也翻不出物资；要查的地方不受机关阻拦。", 16, UI.GOLD))
 		if progress.get("unlocked", false):
 			contents.add_child(UI.para("通路已打开。", 17, UI.GOLD))
 		else:
@@ -549,7 +549,7 @@ func build_hud() -> void:
 		if spot.done: searched += 1
 		elif Explore.site_options(run, i).size() > 1: site_target = str(spot.name)
 	if ex.get("only_investigate", false):
-		v.add_child(UI.line("剧情调查专访 · 此地暂无普通物资，任务目标仍可调查。", 15, UI.GOLD, 300))
+		v.add_child(UI.line("专程查访 · 这里暂时翻不出物资，要查的地方照样能查。", 15, UI.GOLD, 300))
 		v.add_child(UI.label("返程需 %d 分钟" % int(Post.ACTIONS.travel[1]), 15, UI.INK_SOFT))
 	else:
 		v.add_child(UI.label("搜寻 %d / %d 处 · 返程需 %d 分钟" % [searched, ordinary, int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
@@ -559,11 +559,11 @@ func build_hud() -> void:
 	if Neighbor.state(run).stage in ["fetch", "carrying"]:
 		v.add_child(UI.label("送药截止：第 4 日 18:00（含返程）", 15, UI.GOLD))
 	if Neighbor.state(run).medicine:
-		v.add_child(UI.label("贴身任务药 ×1 · 不占背囊", 16, UI.GOLD))
+		v.add_child(UI.label("贴身药包 ×1 · 不占背囊", 16, UI.GOLD))
 	var objective := Mainline.objective(run, str(ex.point))
 	v.add_child(UI.line(Mainline.summary(run), 15, UI.GOLD, 300))
 	if not objective.is_empty():
-		v.add_child(UI.line("主线目标：" + str(objective.name), 15, UI.GOLD, 300))
+		v.add_child(UI.line("要查的：" + str(objective.name), 15, UI.GOLD, 300))
 	_work_label = UI.label("", 15, UI.GOLD)
 	v.add_child(_work_label)
 	corner_panel(v, Control.PRESET_TOP_LEFT)

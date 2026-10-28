@@ -158,7 +158,7 @@ static func _hint(c: Dictionary, action: String) -> String:
 	if action == "verify_fragment": return text + "只核对当事人本人已公开且对应本案的片段；仍须完工才有今世证据。"
 	var condition := str(c.evidence.get("condition", ""))
 	var give: Dictionary = spec.get(condition, {})
-	return text + "信任+%d（上限5）、人情+%d（上限3）；完工%d日后的08:00固定收到%s。赠米和对方擅长物资计入其周转库存，其余为本世代办消耗。" % [int(spec.trust), int(spec.favors), int(spec.days), Data.describe_items(give)]
+	return text + "信任+%d（上限5）、人情+%d（上限3）；完工%d日后的08:00固定收到%s。" % [int(spec.trust), int(spec.favors), int(spec.days), Data.describe_items(give)]
 
 static func act(run: Dictionary, case_id: String, action: String, token: String) -> String:
 	if token != _token(run): return "这份轮回调查安排已过期，请重新查看。"

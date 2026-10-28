@@ -50,7 +50,7 @@ static func visible_points(run: Dictionary) -> Array:
 static func point_block(run: Dictionary, pid: String) -> String:
 	if not Data.table("map_points").has(pid): return "没有这个可探索的地方。"
 	var p: Dictionary = Data.table("map_points")[pid]
-	if p.has("unlock_flag") and not State.flag(run, p.unlock_flag): return "尚未找到这里的进山路，先查清主线线索。"
+	if p.has("unlock_flag") and not State.flag(run, p.unlock_flag): return "还没找到进山的路，先把义庄那边查清。"
 	if run.pday < int(p.get("unlock_day", 0)):
 		return "第 %d 日后才打听到这里" % p.unlock_day
 	if p.has("fall_day") and run.pday >= int(p.fall_day):
@@ -175,14 +175,14 @@ static func search(run: Dictionary, idx: int, option_id := "", reserved_gain := 
 	if Expedition.target_locked(run, idx):
 		return {"blocked": "道路被机关封住；先查找两处线索，再解开机关。"}
 	if spot.has("mainline"):
-		if option_id not in ["", "normal"]: return {"blocked": "任务目标不能使用地点特色。"}
+		if option_id not in ["", "normal"]: return {"blocked": "要查的地方不能用这里的特别做法。"}
 		var result := Mainline.search_objective(run, spot)
 		if not result.is_empty() and int(ex.exposure) >= EXPOSURE_MAX and str(result.get("blocked", "")) == "":
 			result["caught"] = true
 			_caught(run, Data.table("map_points")[ex.point])
 		return result
 	if spot.has("neighbor"):
-		if option_id not in ["", "normal"]: return {"blocked": "任务目标不能使用地点特色。"}
+		if option_id not in ["", "normal"]: return {"blocked": "要查的地方不能用这里的特别做法。"}
 		return Neighbor.search_objective(run, spot)
 	if option_id == "": option_id = "normal"
 	var selected := {}

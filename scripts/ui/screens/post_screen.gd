@@ -1013,7 +1013,7 @@ func _update_tags() -> void:
 			used["plot%d" % k] = true
 		var head := player.global_position + Vector3(0, 2.3, 0)
 		if run.sleeping:
-			_show_tag("busy", head, "睡梦中 Zzz")
+			_show_tag("busy", head, "熟睡中")
 			used["busy"] = true
 		elif Post.is_busy(run):
 			_show_tag("busy", head, "%s中 %s" % [run.busy.label, Hud.duration(int(run.busy.end) - int(run.t))], Post.busy_progress(run), Hud.GOLD)
@@ -1479,9 +1479,8 @@ func _update_live() -> void:
 		pl.visible = Game.placing != ""
 		if pl.visible:
 			var fd: Dictionary = Home.data(Game.placing)
-			var fsz := Home.size_of(Game.placing, Game.placing_rot)
-			pl.text = "%s %s（%.2f×%.2f · %d°）· %s · 左键确认 · R 转向 · Esc 取消" % [
-				"挪动" if Game.moving_uid >= 0 else "摆放", fd.get("name", ""), fsz.x, fsz.y, Game.placing_rot, "可放下" if _place_reason == "" else _place_reason]
+			pl.text = "%s %s · %s · 左键确认 · R 转向 · Esc 取消" % [
+				"挪动" if Game.moving_uid >= 0 else "摆放", fd.get("name", ""), "可放下" if _place_reason == "" else _place_reason]
 	if _live.has("agenda_status"):
 		var sm := Agenda.summary(run)
 		var line := "待办 %s 小时 · 到 22:00 余 %s 小时" % [Agenda.hours_text(int(sm.need)), Agenda.hours_text(int(sm.left))]

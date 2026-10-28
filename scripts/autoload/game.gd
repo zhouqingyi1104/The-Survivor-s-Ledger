@@ -825,7 +825,7 @@ func _sync_life_memory() -> void:
 	if path == "": return
 	var error := MemoryFile.sync(meta, path)
 	if error != OK and memory_status != "write_failed":
-		toast.emit("前世档案 Memory.md 未能写入，本轮记录仍保存在跨轮回存档中。")
+		toast.emit("前世档案没能写进文件；这一轮的记录仍留在存档里。")
 	memory_status = "updated" if error == OK else "write_failed"
 
 

@@ -183,7 +183,7 @@ func _ready() -> void:
 		return
 	var text := labels_in(modal())
 	check(Dialogue.state(Game.run).actors.size() == 1 and Dialogue.state(Game.run).actors.has("ning"), "Opening one actor froze another actor's unread dialogue")
-	check(text.contains("自主周转库存") and text.contains("独立契约货盘"), "NPC stock was confused with trading contract stock")
+	check(text.contains("对方存货") and text.contains("另算，不从这里出"), "NPC stock was confused with trading contract stock")
 	check(text.contains("当前目标") and text.contains("决定原因") and text.contains("16:00") and text.contains("新报价政策"), "Goal, reason, deadline or actual policy missing")
 	check(text.contains("按此计划的实际后果") and text.contains(str(Npc.view(Game.run, "ning").effect)), "Local numeric consequence missing before intervention")
 	check(text.contains("尚未觉醒") and not text.contains("秘密旧世"), "UI exposed unawakened memory")

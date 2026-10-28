@@ -27,7 +27,7 @@
      "check": "bought_none_cat", "cat": "守具"},
     {"id": "no_med", "name": "不服药", "desc": "整局不买药。金创药、避瘟散、艾草、安神汤都不备。", "mul": 1.05,
      "check": "bought_none_cat", "cat": "药"},
-    {"id": "one_trip", "name": "一趟", "desc": "备劫三日只回家卸一次货。省脚程、也躲开后两日涨价，其实不吃亏，所以不抬倍率。", "mul": 1.00,
+    {"id": "one_trip", "name": "一趟", "desc": "备劫三日只回家卸一次货。省脚程，也躲开后两日涨价；算不上吃亏，道心不加成。", "mul": 1.00,
      "check": "counter_max", "counter": "home_trips", "max": 1}
   ]
 }

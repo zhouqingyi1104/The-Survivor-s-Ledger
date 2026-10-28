@@ -289,7 +289,7 @@ func _mainline(body: VBoxContainer) -> void:
 	var routes := {"": "尚未锁定", "hold": "坚守宅院", "escape": "备好撤离", "ritual": "备好破阵"}
 	content.add_child(UI.para("本世路线：" + str(routes.get(str(view.get("route", "")), "尚未锁定")), 17, UI.GOLD))
 	var interventions: Dictionary = view.get("interventions", {})
-	content.add_child(UI.para("已完成干预：断运%s；封阵%s。\n尸潮变化只计实际完工，已经开战的整夜安排保持原样。" % ["（" + _crisis_when(int(interventions.disrupt_t)) + "）" if int(interventions.get("disrupt_t", -1)) >= 0 else " 未做", "（" + _crisis_when(int(interventions.ritual_t)) + "）" if int(interventions.get("ritual_t", -1)) >= 0 else " 未做"], 16))
+	content.add_child(UI.para("已做成的事：断运%s；封阵%s。\n完工后才改变尸潮；已经开打的那一夜不变。" % ["（" + _crisis_when(int(interventions.disrupt_t)) + "）" if int(interventions.get("disrupt_t", -1)) >= 0 else " 未做", "（" + _crisis_when(int(interventions.ritual_t)) + "）" if int(interventions.get("ritual_t", -1)) >= 0 else " 未做"], 16))
 	var target := str(view.get("target", ""))
 	var objective: Dictionary = view.get("objective", {})
 	if target != "":
@@ -304,7 +304,7 @@ func _mainline(body: VBoxContainer) -> void:
 		depart.set_meta("mainline_depart", target)
 		content.add_child(depart)
 	var work: Dictionary = view.get("work", {})
-	if not work.is_empty(): content.add_child(UI.para("正在执行：%s · %s 完工。开始付出的材料不退，完工才生效。" % [str(run.get("busy", {}).get("label", "主线事务")), _crisis_when(int(work.get("end_t", 0)))], 17, UI.GOLD))
+	if not work.is_empty(): content.add_child(UI.para("正在执行：%s · %s 完工。开始付出的材料不退，完工才生效。" % [str(run.get("busy", {}).get("label", "调查")), _crisis_when(int(work.get("end_t", 0)))], 17, UI.GOLD))
 	if str(view.get("last_result", "")) != "": content.add_child(UI.para("最近结果：" + str(view.last_result), 17, UI.JADE))
 	for option in Mainline.options(run):
 		var card := UI.vbox(4)
@@ -391,10 +391,10 @@ func _npc_autonomy(body: VBoxContainer) -> void:
 	var view := Npc.view(run, _npc_actor)
 	var person := Trade.contact(run, _npc_actor)
 	content.add_child(UI.label("%s · 信任 %+d · 人情 %d" % [str(view.get("name", Trade.ACTORS[_npc_actor])), int(person.trust), int(person.favors)], 20, UI.GOLD))
-	var stock := UI.para("自主周转库存：" + Data.describe_items(view.get("stock", {})), 17)
+	var stock := UI.para("对方存货：" + Data.describe_items(view.get("stock", {})), 17)
 	stock.name = "NpcStockSummary"
 	content.add_child(stock)
-	content.add_child(UI.para("这是对方用于生活和自主行动的物资；现货报价、赊欠和已约回礼使用独立契约货盘。", 15, UI.INK_SOFT))
+	content.add_child(UI.para("这是对方自家过日子的东西；卖给你的现货、赊欠和回礼另算，不从这里出。", 15, UI.INK_SOFT))
 	content.add_child(UI.label("当前目标：" + str(view.get("goal", "等待下一日安排")), 19, UI.GOLD))
 	content.add_child(UI.para("决定原因：" + str(view.get("reason", "尚未公开今日决定。")), 16))
 	var memory: Dictionary = view.get("memory", {})
@@ -492,7 +492,7 @@ func _crisis(body: VBoxContainer) -> void:
 	var view := Crisis.view(run)
 	var content := UI.vbox(10)
 	if view.is_empty():
-		content.add_child(UI.para("近日尚无公开预兆。新的风声会出现在宅院上方；断网也照常推进，不需要等人回信。", 18))
+		content.add_child(UI.para("近日没有风声。有新的风声，会挂在宅院上方。", 18))
 	else:
 		content.add_child(UI.label(str(view.title) + " · " + crisis_status(view), 20, UI.GOLD))
 		content.add_child(UI.para("预兆：%s\n线索来源：%s" % [str(view.sign), str(view.source)], 17))
@@ -660,7 +660,7 @@ func _cycle_inquiry(body: VBoxContainer) -> void:
 		var source := str(entry.get("source_label", ""))
 		if source != "": card.add_child(UI.para("旧世来源：" + source, 16, UI.JADE))
 		if str(entry.get("stage", "")) == "sealed":
-			card.add_child(UI.para("这是玩家带入的旧梦，尚未在今世查访，也不代表邻人已经觉醒。", 15, UI.INK_SOFT))
+			card.add_child(UI.para("这是你带来的旧梦，还没在这一世查访过；邻人未必也记得。", 15, UI.INK_SOFT))
 		for field in ["publish_text", "clue", "evidence_text"]:
 			var line := str(entry.get(field, ""))
 			if line != "": card.add_child(UI.para(line, 16, UI.JADE if field == "evidence_text" else UI.INK))
@@ -707,36 +707,36 @@ func _past_lives(body: VBoxContainer) -> void:
 	var run := _run()
 	var p := Past.state(run)
 	var book := Past.book(Game.meta)
-	body.add_child(UI.para("已封存 %d 世，保留最近八世的人物往事。翻回昨日仍属于同一世，未曾发生的事不会成为记忆。" % int(book.count), 17))
+	body.add_child(UI.para("已记下 %d 世。翻回昨日仍算同一世，翻掉的事不会留进记忆。" % int(book.count), 17))
 	if Past.daily(run):
-		body.add_child(UI.para("每日一局不唤醒或归档人物前世记忆，保持同日条件一致。", 16, UI.GOLD))
+		body.add_child(UI.para("每日一局里没人会记起前世，好让同一天的每一局条件都一样。", 16, UI.GOLD))
 	var content := UI.vbox(10)
 	var cycle_entry := UI.button("轮回调查 · 查访旧诺、失约与救助", cycle_inquiry)
 	cycle_entry.set_meta("cycle_entry", "past_lives")
 	content.add_child(cycle_entry)
 	content.add_child(UI.label("本世带入的身份经验", 21, UI.GOLD))
 	var sources := _identity_inheritance(Identity.view(run).get("inheritance", []))
-	content.add_child(UI.para(sources if sources != "" else "本世尚未带入符合条件的身份经验。只有真实发生并归档的经历才会解锁新解法。", 16))
+	content.add_child(UI.para(sources if sources != "" else "这一世还没有可用的前世经验。前世真正做成的事，才会在后来的世里开出新解法。", 16))
 	var identity_entry := UI.button("身份与旧世 · 查看经验能解开的选择", identity_paths)
 	identity_entry.set_meta("identity_entry", "past_lives")
 	content.add_child(identity_entry)
 	content.add_child(UI.label("本世觉醒", 21, UI.GOLD))
 	var awakened := Past.public_memories(run)
 	if awakened.is_empty():
-		content.add_child(UI.para("本世尚无人觉醒。片段并非每世出现，也不需要等待 AI；日间往来时偶尔会浮现。", 16))
+		content.add_child(UI.para("这一世还没有人记起前世。不是每一世都会有，白天往来时偶尔会浮现。", 16))
 	for fragment in awakened:
 		var when := "上一世" if int(fragment.age) == 1 else "%d 世前" % int(fragment.age)
 		content.add_child(UI.para("%s · %s：%s" % [Past.ACTORS[fragment.actor], when, fragment.fact], 17))
 		var response: String = {"": "尚未回应", "acknowledge": "承认似曾相识", "compensate": "用今世行动回应", "dismiss": "只当作旧梦"}.get(fragment.response, "已回应")
 		content.add_child(UI.para("你的回应：" + response, 15, UI.INK_SOFT))
 	content.add_child(UI.sep())
-	content.add_child(UI.label("本世留痕 · 结算后归档", 21, UI.GOLD))
-	if p.trace.is_empty(): content.add_child(UI.para("尚无可辨认的人物往事。给药、拒绝、药账处置与真实物资往来会留下事实。", 16))
+	content.add_child(UI.label("本世留痕 · 合卷后记下", 21, UI.GOLD))
+	if p.trace.is_empty(): content.add_child(UI.para("还没有记下的人物往事。给药、拒绝、处置药账、和人换过东西，都会记在这里。", 16))
 	for fact in p.trace:
 		content.add_child(UI.para("%s · 第 %d 日：%s" % [Past.ACTORS[fact.actor], int(fact.day), fact.fact], 16))
 	content.add_child(UI.sep())
 	content.add_child(UI.label("旧世档案", 21, UI.GOLD))
-	if book.lives.is_empty(): content.add_child(UI.para("还没有封存的旧世；从启用本机制后真实经历的这一世开始记。", 16))
+	if book.lives.is_empty(): content.add_child(UI.para("还没有走完的前世。这一世合卷后，会从这里记起。", 16))
 	for k in range(book.lives.size() - 1, -1, -1):
 		var life: Dictionary = book.lives[k]
 		content.add_child(UI.label("第 %d 世留痕" % int(life.life), 18, UI.GOLD))
