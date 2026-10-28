@@ -186,7 +186,7 @@ func investigate(kind: String, day: int, save_return := false) -> void:
 	var target := "mortuary" if kind == "mortuary" else "taoist_temple"
 	if save_return:
 		await click(meta_button("mainline_map", true, modal()))
-		check(main.has_modal("explore_pick") and labels_in(main._modals.explore_pick).contains("本世调查"), "Actual map entry did not explain the special investigation")
+		check(main.has_modal("explore_pick") and labels_in(main._modals.explore_pick).contains("今世调查"), "Actual map entry did not explain the special investigation")
 		await click(meta_button("explore_depart", target, main._modals.explore_pick))
 	else: await click(meta_button("mainline_depart", target, modal()))
 	check(Game.screen == "explore", "Actual mouse departure did not reach the investigation site")
@@ -251,7 +251,7 @@ func investigate(kind: String, day: int, save_return := false) -> void:
 func reach_routes(disrupt := false) -> void:
 	await fresh()
 	await open_story(true)
-	check(labels_in(modal()).contains("期限") and labels_in(modal()).contains("旧世残卷"), "Deadline or current-life evidence boundary missing from panel")
+	check(labels_in(modal()).contains("期限") and labels_in(modal()).contains("前世残卷"), "Deadline or current-life evidence boundary missing from panel")
 	var water := Inv.count(Game.run.home, "water")
 	var firewood := Inv.count(Game.run.home, "firewood")
 	await choose("host", true)

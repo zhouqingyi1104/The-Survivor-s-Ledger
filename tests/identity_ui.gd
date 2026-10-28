@@ -197,7 +197,7 @@ func test_base(role: String) -> void:
 	var base := meta_button("identity_action", BASE[role], modal())
 	var old := meta_button("identity_action", LEGACY[role], modal())
 	check(base != null and not base.disabled and old != null and old.disabled, "Base and previous-life requirements did not differ for " + role)
-	check(labels_in(modal()).contains("行动与代价") and labels_in(modal()).contains("本世调查和返程不能省略"), "Identity costs or evidence boundary invisible")
+	check(labels_in(modal()).contains("行动与代价") and labels_in(modal()).contains("今世调查和返程不能省略"), "Identity costs or evidence boundary invisible")
 	if role == "scholar":
 		await snapshot("locked")
 		var paper := Inv.count(Game.run.home, "talisman_paper")
@@ -268,7 +268,7 @@ func _ready() -> void:
 	Game.go("roles")
 	await frames(8)
 	for role in BASE: check(meta_button("identity_role", role) != null, "Role screen omitted a playable identity")
-	check(labels_in(main._screen).contains("身份解法") and labels_in(main._screen).contains("旧世经验"), "Role cards did not preview identity and legacy routes")
+	check(labels_in(main._screen).contains("身份解法") and labels_in(main._screen).contains("前世经验"), "Role cards did not preview identity and legacy routes")
 	await snapshot("roles", main._screen)
 	for role in BASE: await test_base(role)
 	for role in LEGACY: await test_legacy(role)

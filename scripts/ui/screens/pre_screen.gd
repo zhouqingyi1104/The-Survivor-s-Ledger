@@ -113,7 +113,7 @@ func build_hud() -> void:
 	_status(run)
 	_places(run)
 	var top := UI.hbox(6)
-	var opening_entry := UI.button("本世开局", Dialogs.opening_info)
+	var opening_entry := UI.button("今世开局", Dialogs.opening_info)
 	opening_entry.set_meta("opening_entry", "pre")
 	top.add_child(opening_entry)
 	top.add_child(UI.button("囤货清单", Dialogs.checklist))

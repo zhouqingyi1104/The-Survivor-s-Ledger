@@ -216,7 +216,7 @@ func test_countdown() -> void:
 	var died := _base()
 	died.pday = 20
 	died.phase = "dead"
-	check(Brief.countdown(died) == "本世结束" and Brief.progress(died) < 1.0, "第20日身死不能显示劫满或满进度")
+	check(Brief.countdown(died) == "这一世结束" and Brief.progress(died) < 1.0, "第20日身死不能显示劫满或满进度")
 	var escape := _base()
 	escape.pday = 18
 	escape.phase = "ending"

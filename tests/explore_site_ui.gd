@@ -150,7 +150,7 @@ func _ready() -> void:
 		messages.clear()
 		await key(KEY_E)
 		await click(option_button("site"))
-		var expected := "留下供物 · 心情 %d → %d（含耗时变化） · 阳气外泄 %d → %d" % [old_mood, State.attr(Game.run, "mood"), old_exposure, int(Game.run.explore.exposure)]
+		var expected := "留下供物 · 心神 %d → %d（含耗时变化） · 阳气外泄 %d → %d" % [old_mood, State.attr(Game.run, "mood"), old_exposure, int(Game.run.explore.exposure)]
 		check(expected in messages, "Offering feedback does not report actual values")
 		check(not main.has_modal("explore_loot"), "Offering opened an empty loot modal")
 		check(Game.run.explore.spots[site_idx].done, "Offering did not complete")

@@ -25,7 +25,7 @@ static func sections() -> Array:
 		{
 			"title": "常用的几个键",
 			"rows": [
-				{"action": "journal", "text": "劫余录：本世目标、今日要务、各种入口。"},
+				{"action": "journal", "text": "劫余录：今世目标、今日要务、各种入口。"},
 				{"action": "inventory", "text": "看家里的存货。"},
 				{"action": "interact", "text": "走到物件旁边用一下（灶台、井、床、门）。"},
 				{"action": "wait", "text": "等一刻：把时间推到下一个节点，空档时用。"},

@@ -14,7 +14,7 @@ const EXPOSURE_MAX := 100
 const SITE_SPOTS := {"rice_ruin": "米仓", "city_god": "供桌", "school": "藏书阁", "pharmacy_ruin": "药柜", "lumber": "木垛", "mortuary": "前厅棺木", "granary": "东仓", "taoist_temple": "丹房"}
 const SITE_BRIEFS := {
 	"rice_ruin": "每次到访可细筛一处粮袋，耗时30分钟，保证找到米2、杂粮1。",
-	"city_god": "每次到访可花20分钟留下一处供物，放弃该处物资，心情最多+3、阳气外泄最多减少10。",
+	"city_god": "每次到访可花20分钟留下一处供物，放弃该处物资，心神最多+3、阳气外泄最多减少10。",
 	"school": "每次到访可花35分钟整理一处书架，保证找到《齐民要术》残本1。",
 	"pharmacy_ruin": "每次到访可花30分钟辨认一处药格，保证找到金创药1、避瘟散1。",
 	"lumber": "每次到访可花35分钟拆取一处木垛，得到木料2、柴3，须考虑负重。",
@@ -201,7 +201,7 @@ static func search(run: Dictionary, idx: int, option_id := "", reserved_gain := 
 			State.add_attr(run, "mood", 3)
 			spot["loot"] = {}
 			State.add_xp(run, "search", 2)
-			ex.notes.append("留下供物，心情回暖，阳气外泄减少。")
+			ex.notes.append("留下供物，心神回暖，阳气外泄减少。")
 			return {"found": {}, "gain": 0, "caught": false, "clue": "", "full": false, "minutes": 20}
 		if pid == "mortuary":
 			Inv.add(ex.bag, "talisman", -1)

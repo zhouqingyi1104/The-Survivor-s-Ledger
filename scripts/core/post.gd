@@ -854,7 +854,7 @@ static func trade_refresh(run: Dictionary) -> String:
 	crisis_refresh(run)
 	mainline_refresh(run)
 	var identity_result := Identity.poll(run)
-	if identity_result != "": Director.note_world(run, "身份与旧世 · 工作中断", identity_result)
+	if identity_result != "": Director.note_world(run, "身份与前世 · 工作中断", identity_result)
 	var cycle_result := Cycle.poll(run)
 	if cycle_result != "": Director.note_world(run, "轮回调查 · 旧诺与今证", cycle_result)
 	Trade.state(run)
@@ -907,7 +907,7 @@ static func identity_intel(run: Dictionary) -> Array:
 	for day in [11, 17, 20]:
 		var wave := Defense.wave_for_run(run, day)
 		if wave.is_empty(): continue
-		lines.append("第%d夜：%d只，%s。%s" % [day, Defense._count(wave), Defense.mod_names(wave), "已开夜，按整夜锁定安排" if int(run.get("wave_day", 0)) == day else "本世干预变化后会重新核对"])
+		lines.append("第%d夜：%d只，%s。%s" % [day, Defense._count(wave), Defense.mod_names(wave), "已开夜，按整夜锁定安排" if int(run.get("wave_day", 0)) == day else "今世干预变化后会重新核对"])
 	return lines
 
 
@@ -1075,7 +1075,7 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 		"craft":
 			var c: Dictionary = Data.table("devices").crafts[data.craft]
 			if c.has("identity") and Identity.craft_block(run, str(data.craft)) != "":
-				State.note(run, "身份配方的本世条件已经失效，未得到产物；已投入的材料和精力不退。")
+				State.note(run, "身份配方的今世条件已经失效，未得到产物；已投入的材料和精力不退。")
 				return
 			Inv.add_all(run.home, c.out)
 			State.note(run, "%s，得%s。" % [c.name, Data.describe_items(c.out)])
@@ -1425,7 +1425,7 @@ static func _interrupt_room_work(run: Dictionary) -> void:
 	match kind:
 		"identity":
 			var result := Identity.poll(run)
-			if result != "": Director.note_world(run, "身份与旧世 · 工作中断", result)
+			if result != "": Director.note_world(run, "身份与前世 · 工作中断", result)
 		"cycle_inquiry":
 			var result := Cycle.poll(run)
 			if result != "": Director.note_world(run, "轮回调查 · 旧诺与今证", result)

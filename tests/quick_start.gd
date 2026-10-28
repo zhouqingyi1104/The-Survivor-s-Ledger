@@ -74,7 +74,7 @@ func test_custom_first_life() -> void:
 	await click(menu_button("自选开局"))
 	check(Game.screen == "roles", "「自选开局」没去选身份：%s" % Game.screen)
 	var text := labels_in(main._screen)
-	for word in ["身份解法", "旧世", "取证"]:
+	for word in ["身份解法", "旧世", "前世", "取证"]:
 		check(not text.contains(word), "第一世的身份卡出现了「%s」" % word)
 	check(text.contains("落第书生") and text.contains("随身"), "身份卡的基本信息不见了")
 	Game.go("title")
@@ -145,7 +145,7 @@ func test_roles_after_first_life() -> void:
 	Game.go("roles")
 	await frames(6)
 	var text := labels_in(main._screen)
-	check(text.contains("身份解法") and text.contains("旧世经验"), "走过一世后身份卡仍不提身份解法与旧世")
+	check(text.contains("身份解法") and text.contains("前世经验"), "走过一世后身份卡仍不提身份解法与前世")
 	finished += 1
 
 

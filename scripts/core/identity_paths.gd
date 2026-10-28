@@ -9,13 +9,13 @@ const Data = preload("res://scripts/core/data.gd")
 const TAGS := {"sealed_lamps": "曾完成七灯封阵", "escaped_city": "曾实际撤离离城", "gave_medicine": "曾赠药救邻", "returned_evidence": "曾把义庄证物带回"}
 const ACTIONS := {
 	"scholar_collate": {"role": "scholar", "name": "校勘七灯旧文", "cost": {"talisman_paper": 2, "cinnabar": 1}, "minutes": 90, "energy": 6, "hp": 0, "cap": "scribe_talisman", "legacy": "", "effect": "开启青云观，学会省纸符方；没有断运，第11/17夜仍有铜甲。"},
-	"scholar_diagram": {"role": "scholar", "name": "重绘旧世七灯图", "cost": {"talisman_paper": 2, "lamp_oil": 1}, "minutes": 120, "energy": 8, "hp": 0, "cap": "paper_ritual", "legacy": "sealed_lamps", "effect": "开启青云观，解锁纸阵破阵筹备；放弃省纸符方，仍须今世青云取证与现场封阵。"},
+	"scholar_diagram": {"role": "scholar", "name": "重绘前世七灯图", "cost": {"talisman_paper": 2, "lamp_oil": 1}, "minutes": 120, "energy": 8, "hp": 0, "cap": "paper_ritual", "legacy": "sealed_lamps", "effect": "开启青云观，解锁纸阵破阵筹备；放弃省纸符方，仍须今世青云取证与现场封阵。"},
 	"escort_intercept": {"role": "escort", "name": "强截运尸车", "cost": {"caltrops": 1}, "minutes": 90, "energy": 12, "hp": 12, "cap": "", "legacy": "", "effect": "开启青云观并截断运尸，移除尚未开夜的第11/17夜铜甲；会受伤，气血不能扣至0。"},
-	"escort_convoy": {"role": "escort", "name": "勘明旧世出城路", "cost": {"rice": 1, "water": 1, "wood": 1}, "minutes": 120, "energy": 8, "hp": 0, "cap": "early_convoy", "legacy": "escaped_city", "effect": "开启青云观，解锁提前出城方法；不截断运尸，仍须今世青云取证、备行装和实际离城。"},
+	"escort_convoy": {"role": "escort", "name": "勘明前世出城路", "cost": {"rice": 1, "water": 1, "wood": 1}, "minutes": 120, "energy": 8, "hp": 0, "cap": "early_convoy", "legacy": "escaped_city", "effect": "开启青云观，解锁提前出城方法；不截断运尸，仍须今世青云取证、备行装和实际离城。"},
 	"herbalist_lure": {"role": "herbalist", "name": "辨药导走尸群", "cost": {"plague_powder": 1, "mugwort": 3}, "minutes": 60, "energy": 6, "hp": 0, "cap": "efficient_plague", "legacy": "", "effect": "开启青云观，学会省艾草药方；尚未开夜的第11/17夜基础尸数乘0.9，铜甲保留。"},
 	"herbalist_ink": {"role": "herbalist", "name": "调配救邻药墨", "cost": {"mugwort": 2, "water": 1}, "minutes": 90, "energy": 6, "hp": 0, "cap": "medicinal_talisman", "legacy": "gave_medicine", "effect": "开启青云观，学会药墨镇尸符；放弃省艾草药方与导尸减潮，不替代今世取证。"},
 	"watchman_lane": {"role": "watchman", "name": "勘明轻装更道", "cost": {"lamp_oil": 1}, "minutes": 60, "energy": 6, "hp": 0, "cap": "light_escape", "legacy": "", "effect": "开启青云观，解锁轻装撤离；少耗木钉但筹备与撤离更久，不减尸潮。"},
-	"watchman_intel": {"role": "watchman", "name": "核对旧世运尸更簿", "cost": {"talisman_paper": 1, "water": 1}, "minutes": 90, "energy": 6, "hp": 0, "cap": "wave_intel", "legacy": "returned_evidence", "effect": "开启青云观，解锁真实尸潮情报；放弃轻装更道，不断运，也不把旧世证据当今世成果。"},
+	"watchman_intel": {"role": "watchman", "name": "核对前世运尸更簿", "cost": {"talisman_paper": 1, "water": 1}, "minutes": 90, "energy": 6, "hp": 0, "cap": "wave_intel", "legacy": "returned_evidence", "effect": "开启青云观，解锁真实尸潮情报；放弃轻装更道，不断运，也不把前世证据当今世成果。"},
 }
 const ORDER := ["scholar_collate", "scholar_diagram", "escort_intercept", "escort_convoy", "herbalist_lure", "herbalist_ink", "watchman_lane", "watchman_intel"]
 const CRAFTS := {"scribe_talisman": "scribe_talisman", "efficient_plague": "efficient_plague", "medicinal_talisman": "medicinal_talisman"}
@@ -113,13 +113,13 @@ static func _block(run: Dictionary, id: String) -> String:
 	var a: Dictionary = ACTIONS[id]
 	if str(run.get("role", "")) != str(a.role): return "只有%s能用这条解法。" % str(Data.table("roles")[a.role].name)
 	if not _legacy(run, str(a.legacy)):
-		return "每日一局不使用前世专属解法。" if Past.daily(run) else "缺少确证前世经历：%s；未完工作与旧世传闻不算。" % str(TAGS.get(a.legacy, ""))
+		return "每日一局不使用前世专属解法。" if Past.daily(run) else "缺少确证前世经历：%s；未完工作与前世传闻不算。" % str(TAGS.get(a.legacy, ""))
 	var s := state(run)
-	if str(s.chosen) != "": return "本世已经选定一种身份解法，不能兼得另一条。"
+	if str(s.chosen) != "": return "今世已经选定一种身份解法，不能兼得另一条。"
 	var access := _access(run)
 	if access != "": return access
 	var main := Mainline.state(run)
-	if main.stage != "mortuary_choice" or not main.evidence.get("mortuary", false): return "先把本世义庄运尸簿带回；公共处置或身份解法一经完成，就不能再选另一种。"
+	if main.stage != "mortuary_choice" or not main.evidence.get("mortuary", false): return "先把今世义庄运尸簿带回；公共处置或身份解法一经完成，就不能再选另一种。"
 	if int(run.get("t", 0)) + int(a.minutes) + 140 >= Mainline.FINAL_END: return "留不够身份工作及青云观往返取证的140分钟，第19日18:00前必须完成。"
 	if float(run.get("attrs", {}).get("energy", 0.0)) < float(a.energy): return "精力不足，需要%d。" % int(a.energy)
 	if int(a.hp) > 0 and State.attr(run, "hp") <= int(a.hp): return "气血不足，强截要耗%d气血且必须活着回来。" % int(a.hp)
@@ -132,7 +132,7 @@ static func options(run: Dictionary) -> Array:
 		var a: Dictionary = ACTIONS[id]
 		if str(run.get("role", "")) != a.role: continue
 		var cost_text := "%s；%d分钟，精力%d%s。" % [Data.describe_items(a.cost), int(a.minutes), int(a.energy), "，气血%d" % int(a.hp) if int(a.hp) > 0 else ""]
-		out.append({"id": id, "text": a.name, "hint": a.effect + "本世只能选一法；完工才生效，中断不退款。", "cost_text": cost_text, "block": _block(run, id)})
+		out.append({"id": id, "text": a.name, "hint": a.effect + "今世只能选一法；完工才生效，中断不退款。", "cost_text": cost_text, "block": _block(run, id)})
 	return out
 
 static func act(run: Dictionary, id: String, token: String) -> String:
@@ -166,10 +166,10 @@ static func complete(run: Dictionary, data: Dictionary) -> String:
 		return _fact(run, "invalid_completion", "身份工作条件已经改变，没有解锁任何能力；已付材料不退。")
 	if int(run.get("t", 0)) + 140 >= Mainline.FINAL_END:
 		s.work = {}
-		return _fact(run, "late_completion", "身份工作完工太晚，留不够本世青云观取证时间，没有生效；投入不退。")
+		return _fact(run, "late_completion", "身份工作完工太晚，留不够今世青云观取证时间，没有生效；投入不退。")
 	var result := Mainline.identity_resolution(run, id)
 	s.work = {}
-	if result == "": return _fact(run, "invalid_completion", "本世取证或阶段已改变，这项身份处置没有生效；不能补领能力，投入不退。")
+	if result == "": return _fact(run, "invalid_completion", "今世取证或阶段已改变，这项身份处置没有生效；不能补领能力，投入不退。")
 	s.chosen = id
 	s.completed_t = int(run.t)
 	s.learned = [] if str(ACTIONS[id].cap) == "" else [str(ACTIONS[id].cap)]
@@ -178,7 +178,7 @@ static func complete(run: Dictionary, data: Dictionary) -> String:
 static func craft_block(run: Dictionary, id: String) -> String:
 	if not id in CRAFTS: return ""
 	if has(run, str(CRAFTS[id])): return ""
-	return "尚未完成本世对应身份解法，不能使用%s配方。" % {"scribe_talisman": "书生省纸符", "efficient_plague": "药徒省艾草", "medicinal_talisman": "救邻药墨符"}[id]
+	return "尚未完成今世对应身份解法，不能使用%s配方。" % {"scribe_talisman": "书生省纸符", "efficient_plague": "药徒省艾草", "medicinal_talisman": "救邻药墨符"}[id]
 
 static func wave_effect(run: Dictionary, day: int) -> Dictionary:
 	var out := {"remove_mods": [], "count_mul": 1.0, "reason": ""}
@@ -188,7 +188,7 @@ static func wave_effect(run: Dictionary, day: int) -> Dictionary:
 	if int(run.get("wave_day", 0)) == day or (not active.is_empty() and int(active.get("wave", {}).get("day", -1)) == day): return out
 	if int(state(run).completed_t) >= start: return out
 	out.count_mul = 0.9
-	out.reason = "本世辨药导尸已完成，第%d夜基础尸数乘0.9；铜甲仍在。" % day
+	out.reason = "今世辨药导尸已完成，第%d夜基础尸数乘0.9；铜甲仍在。" % day
 	return out
 
 static func preview(role: String, meta: Dictionary) -> Dictionary:
@@ -206,16 +206,16 @@ static func preview(role: String, meta: Dictionary) -> Dictionary:
 		legacy_tag = str(ACTIONS[id].legacy)
 		for entry in inherited:
 			if entry.tag == legacy_tag: unlocked = true
-	return {"headline": "可选「%s」；%s「%s」。两法均须今世取证。" % [base_name, "亦可改选" if unlocked else "旧世确证后可选", legacy_name], "inheritance": inherited}
+	return {"headline": "可选「%s」；%s「%s」。两法均须今世取证。" % [base_name, "亦可改选" if unlocked else "前世确证后可选", legacy_name], "inheritance": inherited}
 
 static func view(run: Dictionary) -> Dictionary:
 	var s := state(run)
 	var role := str(run.get("role", ""))
 	var active := _active(run)
-	var summary := "先交回本世义庄证据，再在公共处置与身份专法间作一个选择。"
+	var summary := "先交回今世义庄证据，再在公共处置与身份专法间作一个选择。"
 	if not s.work.is_empty(): summary = "%s正在进行，尚未解锁能力；中断不退款。" % str(s.work.get("label", "身份工作"))
-	elif active != "": summary = "本世已选「%s」。%s" % [str(ACTIONS[active].name), str(ACTIONS[active].effect)]
-	elif str(s.chosen) != "": summary = "这份身份能力当前无效，不能领取跨身份、未完成或每日局旧世成果。"
+	elif active != "": summary = "今世已选「%s」。%s" % [str(ACTIONS[active].name), str(ACTIONS[active].effect)]
+	elif str(s.chosen) != "": summary = "这份身份能力当前无效，不能领取跨身份、未完成或每日局前世成果。"
 	var inherited := []
 	if not Past.daily(run):
 		for entry in s.inherited:

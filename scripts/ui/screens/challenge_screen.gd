@@ -144,7 +144,7 @@ func _normalize_opening() -> void:
 
 func _build_openings(parent: VBoxContainer) -> void:
 	parent.add_child(UI.label("这世带着什么回来 · 只选一项", 22, UI.DAI))
-	parent.add_child(UI.para("先花银和时间筹备，换来不同物资、人情与首场危机风声；放下旧世也能照常开始。", 16))
+	parent.add_child(UI.para("先花银和时间筹备，换来不同物资、人情与首场危机风声；放下前世也能照常开始。", 16))
 	var grid := UI.grid(2, 12, 12)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for option in Opening.options(Game.pending_role, Game.meta, _daily, _vows, Game.pending_difficulty):

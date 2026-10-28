@@ -32,7 +32,7 @@ static func _cycle_fact_id(actor: String, kind: String, status: String, id: Stri
 static func _cycle_fact(actor: String, kind: String, status: String) -> String:
 	if kind == "rescue": return "你曾实际向%s送出救助；这不证明对方已经康复。" % ACTORS[actor]
 	if kind == "breach": return "你曾对%s许下约定，却没能依约完成。" % ACTORS[actor]
-	return "你曾实际履行对%s的约定。" % ACTORS[actor] if status == "kept" else "你曾对%s许下约定；旧世合卷时尚未兑现。" % ACTORS[actor]
+	return "你曾实际履行对%s的约定。" % ACTORS[actor] if status == "kept" else "你曾对%s许下约定；前世合卷时尚未兑现。" % ACTORS[actor]
 
 static func record_cycle(run: Dictionary, actor: String, kind: String, status: String, fact_id: String) -> void:
 	if daily(run) or not _cycle_fact_id(actor, kind, status, fact_id): return
@@ -750,11 +750,11 @@ static func awakening(run: Dictionary) -> Dictionary:
 		var public := {"actor": f.actor, "life": int(f.life), "age": age, "fact_id": f.fact_id, "fact": f.fact, "response": ""}
 		p.awakenings.append(public)
 		var when := "上一世" if age == 1 else "%d 世前" % age
-		var scene_text := "%s捎来一段难以解释的梦话。对方认不清那张脸，却说出了你曾做过的事。\n记忆碎片（%s，第 %d 日）：%s\n这是旧世的片段，今世如何相处仍由你决定。" % [ACTORS[f.actor], when, int(f.get("day", 0)), f.fact]
+		var scene_text := "%s捎来一段难以解释的梦话。对方认不清那张脸，却说出了你曾做过的事。\n记忆碎片（%s，第 %d 日）：%s\n这是前世的片段，今世如何相处仍由你决定。" % [ACTORS[f.actor], when, int(f.get("day", 0)), f.fact]
 		return {"uid": "world:memory:%s:%s" % [p.id, f.actor], "actor": f.actor, "title": "前尘回响 · " + ACTORS[f.actor], "text": scene_text,
 			"past_memory": {"actor": f.actor, "fact_id": f.fact_id, "life": int(f.life)}, "choices": [
-				{"id": "acknowledge", "text": "承认这段似曾相识", "result": "你承认自己也有相似的片段，但不把旧世当作今世的债。对方愿意重新认识你。", "req": {}, "give": {}, "relation": 1, "mood": 2 if int(f.valence) > 0 else -1},
-				{"id": "compensate", "text": "送出米 1，以今世行动回应", "result": "你送出一份米粮，让今世的善意落到实处。旧世的片段没有替你决定这次行动。", "req": {"rice": 1}, "give": {}, "relation": 2, "mood": 1},
+				{"id": "acknowledge", "text": "承认这段似曾相识", "result": "你承认自己也有相似的片段，但不把前世当作今世的债。对方愿意重新认识你。", "req": {}, "give": {}, "relation": 1, "mood": 2 if int(f.valence) > 0 else -1},
+				{"id": "compensate", "text": "送出米 1，以今世行动回应", "result": "你送出一份米粮，让今世的善意落到实处。前世的片段没有替你决定这次行动。", "req": {"rice": 1}, "give": {}, "relation": 2, "mood": 1},
 				{"id": "dismiss", "text": "只当作一场旧梦", "result": "你没有追问梦的来处。对方收起这段话，与你暂时疏远了一些。", "req": {}, "give": {}, "relation": -1, "mood": 0}]}
 	return {}
 

@@ -419,7 +419,7 @@ func _execute_search(idx: int, option_id: String) -> void:
 			return
 		if offering:
 			# 心情可能受上限及耗时影响；显示真实结算值，不虚报固定收益。
-			Game.toast.emit("留下供物 · 心情 %d → %d（含耗时变化） · 阳气外泄 %d → %d" % [mood_before, State.attr(Game.run, "mood"), exposure_before, int(field.get("exposure", 0))])
+			Game.toast.emit("留下供物 · 心神 %d → %d（含耗时变化） · 阳气外泄 %d → %d" % [mood_before, State.attr(Game.run, "mood"), exposure_before, int(field.get("exposure", 0))])
 			_near = -99
 			return
 		Sfx.play("cloth" if res.found.is_empty() else "leather", -2.0)

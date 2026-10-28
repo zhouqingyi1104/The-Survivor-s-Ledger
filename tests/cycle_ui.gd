@@ -270,9 +270,9 @@ func test_entries_and_boundaries() -> void:
 	check(labels_in(modal()).contains("每日局不启用") and Cycle.view(Game.run).cases.is_empty(), "Daily UI exposed old-life advantage")
 	await fresh("rescue", false, true, true)
 	await open_cycle()
-	if Cycle.view(Game.run).cases.size() != 2 or not labels_in(modal()).contains("尚未起算") or not labels_in(modal()).contains("不代表邻人已经觉醒"):
+	if Cycle.view(Game.run).cases.size() != 2 or not labels_in(modal()).contains("尚未起算") or not labels_in(modal()).contains("邻人未必也记得"):
 		print("Cycle sealed diagnostic: ", Cycle.view(Game.run), "\n", labels_in(modal()))
-	check(Cycle.view(Game.run).cases.size() == 2 and labels_in(modal()).contains("尚未起算") and labels_in(modal()).contains("不代表邻人已经觉醒"), "Future dossier slots omitted timing or falsely awakened an NPC")
+	check(Cycle.view(Game.run).cases.size() == 2 and labels_in(modal()).contains("尚未起算") and labels_in(modal()).contains("邻人未必也记得"), "Future dossier slots omitted timing or falsely awakened an NPC")
 	check(button_meta("cycle_action", "inquire", modal()) == null, "Sealed dream can be investigated before publication")
 	await snapshot("sealed")
 	await fresh("breach")
@@ -296,7 +296,7 @@ func test_entries_and_boundaries() -> void:
 	Cycle.poll(Game.run)
 	Game.refresh()
 	await frames()
-	check(first_case().stage == "expired" and labels_in(modal()).contains("窗口已过") and button_meta("cycle_action", "inquire", modal()) == null, "Expired dossier failed to explain consequence or kept an action alive")
+	check(first_case().stage == "expired" and labels_in(modal()).contains("期限已过") and button_meta("cycle_action", "inquire", modal()) == null, "Expired dossier failed to explain consequence or kept an action alive")
 	await snapshot("expired")
 
 func test_fragment_decline_and_reload() -> void:

@@ -236,7 +236,7 @@ func test_next_life() -> void:
 		await click(button_meta("opening_start", "selected"))
 		Game.run.companions = ["carpenter"]
 		await ending_fixture(dead)
-		check(labels_in(main._screen).contains("沿用本世开局"), "Restart did not disclose preserved opening")
+		check(labels_in(main._screen).contains("沿用今世开局"), "Restart did not disclose preserved opening")
 		var next_button := button_meta("opening_next", true)
 		var stale_next: Callable = next_button.pressed.get_connections()[0].callable
 		var stale_restart: Callable = text_button("重新来过" if dead else "重 走").pressed.get_connections()[0].callable

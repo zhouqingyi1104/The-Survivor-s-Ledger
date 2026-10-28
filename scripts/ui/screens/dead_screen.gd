@@ -32,7 +32,7 @@ func build() -> void:
 		"回到　第 %d 日清晨\n保留　你知道的一切（残卷、记忆）\n代价　寿元：气血上限 -10（现为 %d）\n　　　残页 -1" % [back_day, int(run.attrs.hp_max)],
 		"翻回去", Game.rewind, not can_rewind, "残页用尽了" if int(run.rebirths_left) <= 0 else ""))
 	row.add_child(_card("翻回扉页", "“从第一页重新写——这次你知道该写什么。”",
-		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷；沿用本世开局\n收获　道心 +%d" % gain.total,
+		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷；沿用今世开局\n收获　道心 +%d" % gain.total,
 		"重新来过", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
 	row.add_child(_card("合上此录", "“到这里就够了。”",
 		"结算　这一卷到此为止\n收获　道心 +%d\n之后　回到标题，可去参悟心法" % gain.total,
@@ -44,7 +44,7 @@ func build() -> void:
 	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(d)
 
-	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，再保留身份与难度，重新选择下世筹备；原重走按钮会沿用本世开局。")
+	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，再保留身份与难度，重新选择下世筹备；原重走按钮会沿用今世开局。")
 	choose.set_meta("opening_next", true)
 	# 这一页正是玩家最想吐槽的时候：顺手把这一局的取证打包，别等合卷把存档删了
 	var tail := UI.hbox(12)
@@ -64,7 +64,7 @@ func _recap(run: Dictionary) -> Control:
 		var parts := []
 		for s in reps.shares:
 			parts.append("%s %d" % [s.name, int(s.amount)])
-		rows.append(["死因构成", "本世共失血 %d：%s" % [int(reps.total), " · ".join(parts)]])
+		rows.append(["死因构成", "这一世共失血 %d：%s" % [int(reps.total), " · ".join(parts)]])
 	if str(reps.last) != "":
 		rows.append(["最后一击", str(reps.last)])
 	# 此前：一条一行，最多两条。三条拼成一行会挤得看不出时刻。

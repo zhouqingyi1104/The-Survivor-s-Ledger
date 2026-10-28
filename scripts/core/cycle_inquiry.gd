@@ -9,7 +9,7 @@ const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 const KINDS := ["promise", "breach", "rescue"]
 const TITLES := {"promise": "隔世旧诺", "breach": "失约的回声", "rescue": "旧日伸出的手"}
-const STAGES := {"sealed": "残梦尚未浮现", "lead": "已有旧梦，待今世查访", "interviewed": "查访完成，待对照账页", "verified": "今世已查证，待选择", "working": "正在兑现本世选择", "resolved": "本世已处理", "expired": "已错过本世窗口"}
+const STAGES := {"sealed": "残梦尚未浮现", "lead": "已有旧梦，待今世查访", "interviewed": "查访完成，待对照账页", "verified": "今世已查证，待选择", "working": "正在兑现今世选择", "resolved": "今世已处理", "expired": "已错过查访期限"}
 const CUES := ["old_note", "familiar_dream", "folded_page"]
 const ROUTES := {
 	"renew": {"kind": "promise", "name": "以今世行动续约", "req": {"rice": 1, "wood": 1}, "silver": 0, "minutes": 60, "energy": 6, "trust": 2, "favors": 1, "days": 1, "need": {"water": 2}, "stable": {"firewood": 1}},
@@ -87,9 +87,9 @@ static func _same_busy(run: Dictionary, work: Dictionary) -> bool:
 	return busy.get("kind", "") == "cycle_inquiry" and busy.get("data", {}).get("id", "") == work.get("id", "") and busy.get("data", {}).get("case_id", "") == work.get("case_id", "") and busy.get("data", {}).get("action", "") == work.get("action", "")
 
 static func _access(run: Dictionary) -> String:
-	if not _enabled(run): return "本轮没有可调查的旧世案件；每日局不启用旧世调查。"
+	if not _enabled(run): return "本轮没有可调查的前世案件；每日局不启用前世调查。"
 	if run.get("phase", "") != "post": return "尸劫降临后才能查访今世。"
-	if State.attr(run, "hp") <= 0: return "已经无法继续本世查访。"
+	if State.attr(run, "hp") <= 0: return "已经无法继续今世查访。"
 	if run.get("pending_event", "") != "" or run.get("dawn_due", false) or run.get("plan_due", false) or run.get("wave_due", false) or not run.get("wave_report", {}).is_empty(): return "先处理眼前事件或夜战。"
 	if run.get("sleeping", false): return "正在休息。"
 	if not run.get("busy", {}).is_empty() or not state(run).work.is_empty(): return "正在忙别的事。"
@@ -134,7 +134,7 @@ static func _block(run: Dictionary, c: Dictionary, action: String) -> String:
 	var access := _access(run)
 	if access != "": return access
 	if not action in _allowed(c): return "这个阶段不能作此选择。"
-	if int(run.get("t", 0)) >= int(c.deadline_t): return "本案的今世窗口已经结束。"
+	if int(run.get("t", 0)) >= int(c.deadline_t): return "这宗旧案的查访期限已经过了。"
 	if action == "decline": return ""
 	if action == "verify_fragment" and not _fragment(run, c): return "这位当事人尚未觉醒与本案世次、事实一致的记忆碎片。"
 	var spec := _spec(c, action)
@@ -163,7 +163,7 @@ static func _hint(c: Dictionary, action: String) -> String:
 static func act(run: Dictionary, case_id: String, action: String, token: String) -> String:
 	if token != _token(run): return "这份轮回调查安排已过期，请重新查看。"
 	var c := _case(run, case_id)
-	if c.is_empty(): return "没有这宗本世旧案。"
+	if c.is_empty(): return "没有这宗今世旧案。"
 	var block := _block(run, c, action)
 	if block != "": return block
 	if action == "decline":
@@ -172,7 +172,7 @@ static func act(run: Dictionary, case_id: String, action: String, token: String)
 		if c.get("attempted", false): Past.record_cycle(run, str(c.actor), "breach", "broken", "cycle_%s_broken" % str(c.kind))
 		Trade.influence(run, str(c.actor), -1, "轮回调查：选择不续旧诺，今世暂时疏远")
 		State.add_attr(run, "mood", 2)
-		_fact(run, c, action, "你选择%s；没有额外物资支出，今世信任-1、心神+2，旧世承诺没有变成今世欠账。" % {"promise": "不续旧诺", "breach": "拒背旧债", "rescue": "各顾自家"}[c.kind])
+		_fact(run, c, action, "你选择%s；没有额外物资支出，今世信任-1、心神+2，前世承诺没有变成今世欠账。" % {"promise": "不续旧诺", "breach": "拒背旧债", "rescue": "各顾自家"}[c.kind])
 		return ""
 	var spec := _spec(c, action)
 	Inv.take_all(run.home, spec.req)
@@ -186,7 +186,7 @@ static func act(run: Dictionary, case_id: String, action: String, token: String)
 	if ROUTES.has(action): c.stage = "working"
 	if ROUTES.has(action): c["attempted"] = true
 	run.busy = {"kind": "cycle_inquiry", "label": str(spec.name), "start": int(run.t), "end": int(s.work.end_t), "data": {"id": id, "case_id": case_id, "action": action}}
-	_fact(run, c, "start_" + action, "开始%s：%s 完工才产生证据、关系变化或本世回礼。" % [str(spec.name), _cost(spec)])
+	_fact(run, c, "start_" + action, "开始%s：%s 完工才产生证据、关系变化或今世回礼。" % [str(spec.name), _cost(spec)])
 	return ""
 
 static func poll(run: Dictionary) -> String:
@@ -207,7 +207,7 @@ static func poll(run: Dictionary) -> String:
 		if not delivery.is_empty() and not delivery.done and int(run.get("t", 0)) >= int(delivery.due_t):
 			Inv.add_all(run.home, delivery.give)
 			delivery.done = true
-			facts.append(_fact(run, c, "delivery", "%s按本世新约送来%s，回礼已兑现。" % [ACTORS[c.actor], Data.describe_items(delivery.give)]))
+			facts.append(_fact(run, c, "delivery", "%s按今世新约送来%s，回礼已兑现。" % [ACTORS[c.actor], Data.describe_items(delivery.give)]))
 		if c.stage in ["lead", "interviewed", "verified", "working"] and int(run.get("t", 0)) >= int(c.deadline_t):
 			var finishing: bool = not s.work.is_empty() and s.work.case_id == c.id and int(s.work.end_t) == int(run.t) and int(run.t) == int(c.deadline_t) and _same_busy(run, s.work)
 			if not finishing:
@@ -217,8 +217,8 @@ static func poll(run: Dictionary) -> String:
 				c.stage = "expired"
 				c.route = "expired"
 				if c.get("attempted", false): Past.record_cycle(run, str(c.actor), "breach", "broken", "cycle_%s_broken" % str(c.kind))
-				if c.get("contacted", false): Trade.influence(run, str(c.actor), -1, "轮回调查窗口已过，今世查访后没有继续相处")
-				facts.append(_fact(run, c, "expired", "%s的本世查访窗口已过；%s，已投入不退，没有生成旧债。" % [ACTORS[c.actor], "今世已联系却未能继续，信任-1" if c.get("contacted", false) else "仅有私人旧梦，今世信任不变"]))
+				if c.get("contacted", false): Trade.influence(run, str(c.actor), -1, "轮回调查期限已过，查访后没有再来往")
+				facts.append(_fact(run, c, "expired", "%s的查访期限已过；%s，已投入不退，没有生成旧债。" % [ACTORS[c.actor], "今世已联系却未能继续，信任-1" if c.get("contacted", false) else "仅有私人旧梦，今世信任不变"]))
 		if c.stage == "sealed" and _day(run) >= int(c.publish_day) and _quiet(run):
 			c.stage = "lead"
 			c.publish_day = _day(run)
@@ -240,7 +240,7 @@ static func complete(run: Dictionary, data: Dictionary) -> String:
 	s.work = {}
 	if run.get("phase", "") != "post" or State.attr(run, "hp") <= 0 or int(run.t) > int(c.deadline_t):
 		if c.stage == "working": c.stage = str(work.prior_stage)
-		return _fact(run, c, "interrupted", "%s没有在有效窗口内完成，未获得证据或回礼，投入不退。" % str(work.label))
+		return _fact(run, c, "interrupted", "%s没有在期限内完成，未获得证据或回礼，投入不退。" % str(work.label))
 	var action := str(work.action)
 	if action == "inquire":
 		if c.stage != "lead": return ""
@@ -329,18 +329,18 @@ static func view(run: Dictionary) -> Dictionary:
 				rows.append({"id": action, "text": text, "hint": _hint(c, action), "block": _block(run, c, action)})
 			var evidence_text := str(c.evidence.get("text", "尚未取得今世证据；你的旧梦不能替当事人觉醒。"))
 			var fragment_text := "当事人本人已公开对应碎片，可在查访后以水1、30分钟互证。" if _fragment(run, c) else "目前只有你的旧梦；当事人没有公开对应记忆碎片。"
-			var clue := str(c.source.fact) + "\n" + fragment_text if c.stage != "sealed" else "残梦尚未浮现，公布后可核对具体旧世来源；当事人今世尚未被联系。"
+			var clue := str(c.source.fact) + "\n" + fragment_text if c.stage != "sealed" else "残梦尚未浮现，公布后可核对具体前世来源；当事人今世尚未被联系。"
 			var cue_text: String = {"old_note": "残页上似曾相识的字迹", "familiar_dream": "夜里再度浮现的旧梦", "folded_page": "夹在账页里的折角"}[c.cue]
 			var last_result := str(c.last_result)
-			if not c.delivery.is_empty(): last_result += "\n本世回礼：第%d日08:00，%s，%s。" % [int(c.delivery.due_t) / 1440 + 1, Data.describe_items(c.delivery.give), "已送达" if c.delivery.done else "尚未送达"]
+			if not c.delivery.is_empty(): last_result += "\n今世回礼：第%d日08:00，%s，%s。" % [int(c.delivery.due_t) / 1440 + 1, Data.describe_items(c.delivery.give), "已送达" if c.delivery.done else "尚未送达"]
 			cases.append({"id": c.id, "actor": c.actor, "kind": c.kind, "title": TITLES[c.kind] + " · " + ACTORS[c.actor], "source_label": "第%d世 · 记录日第%d日 · %s" % [int(c.source.source_life), int(c.source.day), ACTORS[c.actor]] if c.stage != "sealed" else "待残梦浮现后核对来源", "clue": clue, "evidence": c.evidence.duplicate(true), "evidence_text": evidence_text, "stage": c.stage, "stage_label": STAGES[c.stage], "deadline_text": "第%d日18:00截止，截止当刻完工有效。" % (int(c.deadline_t) / 1440 + 1) if int(c.deadline_t) >= 0 else "旧梦将在第%d日08:00后安静时浮现；尚未起算查访期限。" % int(c.publish_day), "publish_text": cue_text, "last_result": last_result, "options": rows})
 	var work: Dictionary = s.work.duplicate(true)
 	if not work.is_empty(): work["remaining"] = maxi(0, int(work.end_t) - int(run.get("t", 0)))
-	var summary := "尚无可核实的旧世承诺、失约或救助；本世实际选择会留待后来。"
+	var summary := "尚无可核实的前世承诺、失约或救助；今世实际选择会留待后来。"
 	if not cases.is_empty():
 		var active := 0
 		for c in s.cases:
 			if not c.stage in ["resolved", "expired"]: active += 1
-		summary = "%d宗旧案，%d宗待处理；旧世是线索，今世查访与新约才改变相处。" % [cases.size(), active]
+		summary = "%d宗旧案，%d宗待处理；前世是线索，今世查访与新约才改变相处。" % [cases.size(), active]
 	if Past.daily(run): summary = "每日局不启用前世案件与记忆调查。"
 	return {"title": "轮回调查 · 旧诺与今证", "summary": summary, "token": _token(run), "cases": cases, "history": s.history.duplicate(true) if _enabled(run) else [], "work": work, "last_result": str(s.last_result) if _enabled(run) else ""}

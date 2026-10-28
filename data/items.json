@@ -10,7 +10,7 @@
   "radish":         {"name": "萝卜", "unit": "根", "cat": "菜", "price": 15, "weight": 1.5, "eat": {"food": 10, "water": 3}, "desc": "冬天的萝卜赛人参。"},
   "chive":          {"name": "韭菜", "unit": "把", "cat": "菜", "price": 10, "weight": 0.5, "eat": {"food": 4}, "desc": "割了还会再长。"},
   "lingzhi":        {"name": "灵芝", "unit": "朵", "cat": "菜", "price": 2000, "weight": 0.3, "eat": {"hp": 15, "mood": 8}, "desc": "观里传出来的灵种，能吊命。"},
-  "salt":           {"name": "盐", "unit": "包", "cat": "杂", "price": 80, "weight": 1, "desc": "做菜放一撮，心情都好些。"},
+  "salt":           {"name": "盐", "unit": "包", "cat": "杂", "price": 80, "weight": 1, "desc": "做菜放一撮，心神都好些。"},
   "water":          {"name": "清水", "unit": "瓢", "cat": "水", "price": 0, "weight": 2, "eat": {"water": 30}, "desc": "井里打上来的水。"},
   "firewood":       {"name": "柴", "unit": "捆", "cat": "柴炭", "price": 40, "weight": 5, "desc": "生火做饭用。没炭的冷夜，两捆柴也能顶一夜。"},
   "charcoal":       {"name": "木炭", "unit": "筐", "cat": "柴炭", "price": 200, "weight": 8, "desc": "冷夜里烧一筐取暖。"},

@@ -126,7 +126,7 @@ func _ready() -> void:
 	check(event.choices.size() == 3 and event.has("past_memory"), "Awakening did not offer its three local choices")
 	check(Past.public_memories(Game.run).size() == 1 and Director.snapshot(Game.run).state.recollections.size() == 1, "Awakened fact was not made available to future planning")
 	var modal: Node = main._modals.event
-	check(labels_in(modal).contains("你曾把药交给阿宁。") and labels_in(modal).contains("旧世的片段"), "Rendered awakening lost its true fact or past-life distinction")
+	check(labels_in(modal).contains("你曾把药交给阿宁。") and labels_in(modal).contains("前世的片段"), "Rendered awakening lost its true fact or past-life distinction")
 	for prefix in ["承认这段似曾相识", "送出米 1", "只当作一场旧梦"]:
 		check(button_with(prefix, modal) != null, "Missing awakening choice: " + prefix)
 	var pay := button_with("送出米 1", modal)

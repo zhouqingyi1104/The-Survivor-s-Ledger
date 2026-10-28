@@ -104,7 +104,7 @@ static func _body(view: Dictionary) -> String:
 	if str(view.get("effect", "")) != "": text += "\n安排：" + str(view.effect)
 	var memory: Dictionary = view.get("memory", {})
 	if not memory.is_empty():
-		text += "\n我记起的旧世碎片：" + str(memory.fact)
+		text += "\n我记起的前世碎片：" + str(memory.fact)
 	var response := str(plan.get("response", ""))
 	if response == "support": text += "\n你已经送来支援，我会照已经说明的安排做。"
 	elif response == "favor": text += "\n你已经凭情改托，我会按锁定的物资交付。"
