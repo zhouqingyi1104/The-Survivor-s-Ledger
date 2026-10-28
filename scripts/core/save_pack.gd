@@ -78,7 +78,7 @@ static func validate_data(data: Dictionary) -> Dictionary:
 	if int(version) > Migrate.VERSION:
 		return {"ok": false, "future": true, "note": "这份存档来自更新的游戏版本，本版本不能安全读取。"}
 	if not _playable_run(run):
-		return {"ok": false, "future": false, "note": "存档缺少必要的身份、阶段或局内数据，不能安全读取。"}
+		return {"ok": false, "future": false, "note": "这份存档不完整，读不出来。"}
 	var snapshots = data.get("snapshots", {})
 	if not snapshots is Dictionary:
 		return {"ok": false, "future": false, "note": "存档里的回溯快照损坏。"}

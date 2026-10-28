@@ -1452,7 +1452,7 @@ func _update_live() -> void:
 		(_live.mainline as Label).tooltip_text = Mainline.summary(run)
 	if _live.has("npc_pending"):
 		var count: int = Dialogs.npc_pending_count(run)
-		(_live.npc_pending as Label).text = "邻里待介入 %d · J" % count if count > 0 else "J"
+		(_live.npc_pending as Label).text = "邻人待回话 %d · J" % count if count > 0 else "J"
 	if _live.has("crisis_countdown"):
 		var crisis_view := Crisis.view(run)
 		(_live.crisis_countdown as Label).text = Dialogs.crisis_clock_text(crisis_view)

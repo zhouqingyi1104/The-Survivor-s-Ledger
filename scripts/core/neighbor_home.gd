@@ -142,6 +142,6 @@ static func poll(run: Dictionary) -> String:
 		Trade.influence(run, "zhou", actual, q.result)
 	else:
 		Trade._history(run, "zhou", "neighbor_home", q.result + "（信任已经到头，这次没变）")
-	q.result += "信任实际变化 %+d。" % actual
+	q.result += "信任变化 %+d。" % actual
 	State.note(run, q.result)
 	return q.result

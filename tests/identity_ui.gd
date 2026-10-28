@@ -197,7 +197,7 @@ func test_base(role: String) -> void:
 	var base := meta_button("identity_action", BASE[role], modal())
 	var old := meta_button("identity_action", LEGACY[role], modal())
 	check(base != null and not base.disabled and old != null and old.disabled, "Base and previous-life requirements did not differ for " + role)
-	check(labels_in(modal()).contains("行动与代价") and labels_in(modal()).contains("今世调查和返程不能省略"), "Identity costs or evidence boundary invisible")
+	check(labels_in(modal()).contains("行动与代价") and labels_in(modal()).contains("这一世还得亲自做"), "Identity costs or evidence boundary invisible")
 	if role == "scholar":
 		await snapshot("locked")
 		var paper := Inv.count(Game.run.home, "talisman_paper")
@@ -217,7 +217,7 @@ func test_base(role: String) -> void:
 	if role == "scholar":
 		await snapshot("working", main._screen)
 		await open_identity()
-		check(labels_in(modal()).contains("还需 90 分钟") and meta_button("identity_action", chosen, modal()).disabled, "Ongoing identity work has no accurate remaining time or allows duplicate start")
+		check(labels_in(modal()).contains("还要 90 分钟") and meta_button("identity_action", chosen, modal()).disabled, "Ongoing identity work has no accurate remaining time or allows duplicate start")
 		await close_modals()
 	await advance_work(int(MINUTES[chosen]) - 1)
 	check(Identity.state(Game.run).completed_t < 0, "Identity solution completed one minute early")

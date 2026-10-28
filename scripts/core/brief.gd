@@ -30,7 +30,7 @@ static func goal(run: Dictionary) -> String:
 		return "这一世已结束，可在生死簿查看后续选择。"
 	if str(run.get("phase", "")) == "ending":
 		var ending: Dictionary = run.get("mainline", {}).get("ending", {})
-		return "已完成撤离，今世结案。" if ending.get("kind", "") == "escape" else "已守过第二十夜，今世结案。"
+		return "已经撤离，这一世到此了结。" if ending.get("kind", "") == "escape" else "已守过第二十夜，这一世到此了结。"
 	if bool(run.get("endless", false)):
 		return "守到死：没有终点，能撑多久算多久。"
 	if str(run.get("phase", "")) == "pre":

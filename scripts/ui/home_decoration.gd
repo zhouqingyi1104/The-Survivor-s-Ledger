@@ -18,7 +18,7 @@ static func _build(body: VBoxContainer) -> void:
 	var content := UI.vbox(8)
 	UI.expand(content)
 	scroll.add_child(content)
-	content.add_child(UI.para("改变院墙、院内铺地、灯饰和花木的样子，仅供观赏，不改变照明、战斗或生存数值。恢复原样免费，不退回材料；再次选用其他样式需重新备料。灯饰和花木摆在固定位置，可能与家具重叠。", 15))
+	content.add_child(UI.para("换院墙、铺地、灯饰和花木的样子，只为好看，不影响照明和守夜。换回原样不花钱，但料不退；再换别的样式要重新备料。灯饰和花木摆在固定的地方，可能和家具挤在一起。", 15))
 	for category in ["wall", "floor", "lamps", "plants"]:
 		var section: Dictionary = Decoration.OPTIONS[category]
 		content.add_child(UI.sep())
@@ -42,7 +42,7 @@ static func _confirm(category: String, choice: String) -> void:
 		var spec: Dictionary = Decoration.OPTIONS[category].choices[choice]
 		var cost: Dictionary = spec.cost
 		var text := Data.describe_items(cost) if not cost.is_empty() else "免费"
-		body.add_child(UI.para("改为%s：%s。确认后立即生效，材料不退。" % [spec.name, text], 16))
+		body.add_child(UI.para("换成%s：%s。确认就换，料不退。" % [spec.name, text], 16))
 		var reason := Decoration.block(Game.run, category, choice)
 		if reason != "":
 			body.add_child(UI.label(reason, 15, UI.CINNABAR))

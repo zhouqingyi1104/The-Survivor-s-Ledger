@@ -194,7 +194,7 @@ static func act(run: Dictionary, action: String, token: String) -> String:
 	return ""
 
 static func options(run: Dictionary) -> Array:
-	var labels := {"host": "接待道士", "refuse": "婉拒来访，自行寻路", "self_route": "付米买下旧路线", "disrupt": "截断运尸支路", "copy": "抄录线索，保留材料", "seal": "封存证据，留守宅院", "hold": "选择坚守", "prepare_escape": "筹备撤离", "prepare_ritual": "筹备破阵", "escape": "实际撤离离城"}
+	var labels := {"host": "接待道士", "refuse": "婉拒来访，自行寻路", "self_route": "付米买下旧路线", "disrupt": "截断运尸支路", "copy": "抄录线索，保留材料", "seal": "封存证据，留守宅院", "hold": "选择坚守", "prepare_escape": "筹备撤离", "prepare_ritual": "筹备破阵", "escape": "动身离城"}
 	var hints := {"host": "清水 ×1、柴 ×1，30 分钟、精力 4。招待完他会教你画符，留下镇尸符 ×1、符纸 ×2 和一页残卷，告诉你义庄在哪。", "refuse": "不花东西，不算失约。第 5 日起可付米 1 自己打听，但没有道士的符和画符的法子。", "self_route": "米 ×1，60 分钟、精力 4。打听到去义庄的路，但没有道士的符和画符的法子。", "disrupt": "镇尸符 ×1、灯油 ×1，60 分钟、精力 6。断了运尸的路，第 11、17 夜不会再有铜甲；也能去查青云观了。", "copy": "30 分钟、精力 4，不花料。能去查青云观，尸潮照旧。", "seal": "不花东西。定下坚守，不再撤离或破阵。", "hold": "不花东西也不花时间。定下坚守，不再撤离或破阵；守过第 20 夜还能接着过下去。", "prepare_escape": "米 ×3、清水 ×3、木料 ×2、铁钉 ×1，90 分钟、精力 8。备好就定下撤离：第 18 日 08:00 至第 19 日 18:00 之间动身，撤离要 120 分钟。提前离城，拿不到守满二十日的奖励。", "prepare_ritual": "镇尸符 ×2、灯油 ×1、黑狗血 ×1，120 分钟、精力 10。备好就定下破阵：还要上青云观封阵 90 分钟，第 19 日 18:00 前封好，第 20 夜才会变弱。", "escape": "120 分钟、精力 10，第 19 日 18:00 前走完。走了就回不来这座宅院，也拿不到守满二十日的奖励。"}
 	var rows := []
 	labels.merge({"prepare_light_escape": "轻装更道撤离", "prepare_convoy": "趟子手提早出城", "prepare_paper_ritual": "以纸阵替狗血封阵"})

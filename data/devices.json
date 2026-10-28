@@ -16,8 +16,8 @@
     "press_charcoal": {"name": "烧炭", "verb": "烧", "in": {"firewood": 2}, "out": {"charcoal": 1}, "time": 1, "desc": "两捆柴压成一筐木炭。同样过一夜，轻 2 斤，火到后半夜也不会弱。"},
     "mix_plague": {"name": "配避瘟散", "verb": "炼", "in": {"mugwort": 3}, "out": {"plague_powder": 1}, "time": 1, "desc": "三束艾草炼一包避瘟散。艾草自用只能熏屋压一压尸毒，炼了才是十拿九稳的药。"},
     "press_ration": {"name": "压干粮", "verb": "压", "in": {"rice": 1}, "out": {"flatbread": 4}, "time": 1, "desc": "一斗米压成四张炊饼。不生火、不占灶、省柴省水；只是做不成粥，渴了还得另打水。"},
-    "scribe_talisman": {"name": "省纸符方", "verb": "画", "in": {"talisman_paper": 1, "cinnabar": 1}, "out": {"talisman": 2}, "time": 1, "identity": "scribe_talisman", "desc": "书生今世校勘后方可画；省一张符纸，代价是没有截断铜甲运送。"},
-    "efficient_plague": {"name": "辨药避瘟散", "verb": "炼", "in": {"mugwort": 2}, "out": {"plague_powder": 1}, "time": 1, "identity": "efficient_plague", "desc": "药徒今世辨药导尸后学会；两束艾草炼一包，先前导尸已经消耗成药。"},
-    "medicinal_talisman": {"name": "药墨符方", "verb": "画", "in": {"talisman_paper": 1, "mugwort": 2}, "out": {"talisman": 1}, "time": 1, "identity": "medicinal_talisman", "desc": "药徒凭真实前世交药经验，在今世续研后才会；以艾草替朱砂，不能兼得辨药导尸。"}
+    "scribe_talisman": {"name": "省纸符方", "verb": "画", "in": {"talisman_paper": 1, "cinnabar": 1}, "out": {"talisman": 2}, "time": 1, "identity": "scribe_talisman", "desc": "书生校勘过七灯旧文才会画；省一张符纸，代价是没有截断铜甲的运送。"},
+    "efficient_plague": {"name": "辨药避瘟散", "verb": "炼", "in": {"mugwort": 2}, "out": {"plague_powder": 1}, "time": 1, "identity": "efficient_plague", "desc": "药徒辨药导尸之后学会；两束艾草炼一包。"},
+    "medicinal_talisman": {"name": "药墨符方", "verb": "画", "in": {"talisman_paper": 1, "mugwort": 2}, "out": {"talisman": 1}, "time": 1, "identity": "medicinal_talisman", "desc": "药徒前世交过药，这一世接着琢磨才会；拿艾草代朱砂，学了就不能再辨药导尸。"}
   }
 }

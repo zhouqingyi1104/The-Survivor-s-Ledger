@@ -179,7 +179,7 @@ func investigate() -> void:
 	await advance_work(29)
 	check(first_case().stage == "lead", "Inquiry completed one minute early")
 	await open_cycle()
-	check(labels_in(modal()).contains("还需 1 分钟") and button_meta("cycle_action", "inquire", modal()).disabled, "Ongoing inquiry omitted actual remaining time or allowed duplicate work")
+	check(labels_in(modal()).contains("还要 1 分钟") and button_meta("cycle_action", "inquire", modal()).disabled, "Ongoing inquiry omitted actual remaining time or allowed duplicate work")
 	await advance_work(1)
 	check(first_case().stage == "interviewed" and first_case().evidence.is_empty(), "Inquiry completion skipped independent current-life verification")
 	var before := Game.run.duplicate(true)
@@ -211,7 +211,7 @@ func test_routes() -> void:
 			var money := int(Game.run.silver)
 			var items: Dictionary = Game.run.home.duplicate()
 			var button := button_meta("cycle_action", action, modal())
-			check(button != null and not button.disabled and labels_in(modal()).contains("完工") and labels_in(modal()).contains("08:00"), "Route omitted its actual cost, delayed result or return time")
+			check(button != null and not button.disabled and labels_in(modal()).contains("做完") and labels_in(modal()).contains("08:00"), "Route omitted its actual cost, delayed result or return time")
 			if action == "pay_repair":
 				await snapshot("verified")
 				var scroll := modal().find_child("CycleInquiryScroll", true, false) as ScrollContainer
@@ -252,7 +252,7 @@ func test_routes() -> void:
 func test_entries_and_boundaries() -> void:
 	await fresh()
 	await open_cycle()
-	check(labels_in(modal()).contains("尚无可核实") and Cycle.view(Game.run).cases.is_empty(), "First life invented a prior-life case")
+	check(labels_in(modal()).contains("还没有能查的") and Cycle.view(Game.run).cases.is_empty(), "First life invented a prior-life case")
 	await close_modals()
 	Dialogs.journal()
 	await frames()
@@ -267,12 +267,12 @@ func test_entries_and_boundaries() -> void:
 	check(modal() != null and not main.has_modal("past_lives"), "Actual past-life entry failed to reveal current inquiry")
 	await fresh("promise", true)
 	await open_cycle()
-	check(labels_in(modal()).contains("每日局不启用") and Cycle.view(Game.run).cases.is_empty(), "Daily UI exposed old-life advantage")
+	check(labels_in(modal()).contains("每日一局里不查前世") and Cycle.view(Game.run).cases.is_empty(), "Daily UI exposed old-life advantage")
 	await fresh("rescue", false, true, true)
 	await open_cycle()
-	if Cycle.view(Game.run).cases.size() != 2 or not labels_in(modal()).contains("尚未起算") or not labels_in(modal()).contains("邻人未必也记得"):
+	if Cycle.view(Game.run).cases.size() != 2 or not labels_in(modal()).contains("期限到时才开始算") or not labels_in(modal()).contains("邻人未必也记得"):
 		print("Cycle sealed diagnostic: ", Cycle.view(Game.run), "\n", labels_in(modal()))
-	check(Cycle.view(Game.run).cases.size() == 2 and labels_in(modal()).contains("尚未起算") and labels_in(modal()).contains("邻人未必也记得"), "Future dossier slots omitted timing or falsely awakened an NPC")
+	check(Cycle.view(Game.run).cases.size() == 2 and labels_in(modal()).contains("期限到时才开始算") and labels_in(modal()).contains("邻人未必也记得"), "Future dossier slots omitted timing or falsely awakened an NPC")
 	check(button_meta("cycle_action", "inquire", modal()) == null, "Sealed dream can be investigated before publication")
 	await snapshot("sealed")
 	await fresh("breach")
@@ -296,7 +296,7 @@ func test_entries_and_boundaries() -> void:
 	Cycle.poll(Game.run)
 	Game.refresh()
 	await frames()
-	check(first_case().stage == "expired" and labels_in(modal()).contains("期限已过") and button_meta("cycle_action", "inquire", modal()) == null, "Expired dossier failed to explain consequence or kept an action alive")
+	check(first_case().stage == "expired" and labels_in(modal()).contains("期限过了") and button_meta("cycle_action", "inquire", modal()) == null, "Expired dossier failed to explain consequence or kept an action alive")
 	await snapshot("expired")
 
 func test_fragment_decline_and_reload() -> void:
@@ -311,7 +311,7 @@ func test_fragment_decline_and_reload() -> void:
 	p.awakenings = [{"actor": "ning", "life": 1, "fact_id": "medicine", "fact": "你曾把药交给阿宁。", "age": 1, "response": ""}]
 	Game.refresh()
 	await frames()
-	check(not button_meta("cycle_action", "verify_fragment", modal()).disabled and labels_in(modal()).contains("本人已公开对应碎片"), "Matching publicly awakened fragment failed to unlock alternate check")
+	check(not button_meta("cycle_action", "verify_fragment", modal()).disabled and labels_in(modal()).contains("对方自己也记起了这一段"), "Matching publicly awakened fragment failed to unlock alternate check")
 	await snapshot("fragment")
 	var water := Inv.count(Game.run.home, "water")
 	await click(button_meta("cycle_action", "verify_fragment", modal()), true)

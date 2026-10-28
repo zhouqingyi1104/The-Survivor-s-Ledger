@@ -860,7 +860,7 @@ static func trade_refresh(run: Dictionary) -> String:
 	Trade.state(run)
 	var npc_result := Npcs.poll(run)
 	if npc_result != "":
-		Director.note_world(run, "邻人与商情 · 自主行动", npc_result)
+		Director.note_world(run, "邻人与商情 · 他们的打算", npc_result)
 	var result := Trade.poll(run)
 	if result != "":
 		Director.note_choice(run, "纸鹤往来 · 履约与期限", result)
@@ -907,7 +907,7 @@ static func identity_intel(run: Dictionary) -> Array:
 	for day in [11, 17, 20]:
 		var wave := Defense.wave_for_run(run, day)
 		if wave.is_empty(): continue
-		lines.append("第 %d 夜：%d 只，%s。%s" % [day, Defense._count(wave), Defense.mod_names(wave), "今夜已经开打，照原样打完" if int(run.get("wave_day", 0)) == day else "今世干预变化后会重新核对"])
+		lines.append("第 %d 夜：%d 只，%s。%s" % [day, Defense._count(wave), Defense.mod_names(wave), "今夜已经开打，照原样打完" if int(run.get("wave_day", 0)) == day else "断运或封阵做成后会重新算"])
 	return lines
 
 

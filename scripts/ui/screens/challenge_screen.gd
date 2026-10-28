@@ -144,7 +144,7 @@ func _normalize_opening() -> void:
 
 func _build_openings(parent: VBoxContainer) -> void:
 	parent.add_child(UI.label("这世带着什么回来 · 只选一项", 22, UI.DAI))
-	parent.add_child(UI.para("先花银和时间筹备，换来不同物资、人情与首场危机风声；放下前世也能照常开始。", 16))
+	parent.add_child(UI.para("先花银子和时辰筹备，换来不同的物资、人情和头一场风声；不选也能照常开始。", 16))
 	var grid := UI.grid(2, 12, 12)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for option in Opening.options(Game.pending_role, Game.meta, _daily, _vows, Game.pending_difficulty):
@@ -241,7 +241,7 @@ func _mode_note() -> String:
 		if "survive" in _picked:
 			out.append("「活到终局」在这种局里不会达成，别白挑")
 	if _daily:
-		out.append("每日一局：种子按 %s 给，同一天所有人同一副牌；同一副牌可以重打，记当日最好的一次" % Game.today_text())
+		out.append("每日一局：牌按 %s 定，同一天大家拿到同一副牌；同一副牌可以重打，记当日最好的一次" % Game.today_text())
 	return "；".join(out) + "。"
 
 

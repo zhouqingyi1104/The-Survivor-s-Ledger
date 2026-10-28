@@ -27,7 +27,7 @@ func build() -> void:
 		if id in run.known_clues:
 			known += 1
 	var truth := "残卷 %d / %d。" % [known, clues.size()]
-	truth += "今世调查与路线选择已留在这一卷中，合卷或再入轮回时写入前世档案。"
+	truth += "这一世查到的、选下的，都记在这一卷里；合卷或再入轮回时，会写进前世档案。"
 	var t := UI.para(truth, 18, UI.DAI)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
@@ -43,7 +43,7 @@ func build() -> void:
 		v.add_child(recap)
 
 	var gain := Ledger.daoxin_gain(run, Ledger.ending_bonus(run))
-	var bonus := UI.label("今世结局奖励：道心 +%d（总收获见下方）" % Ledger.ending_bonus(run), 17, UI.DAI)
+	var bonus := UI.label("这一世的结局奖励：道心 +%d（总收获见下方）" % Ledger.ending_bonus(run), 17, UI.DAI)
 	bonus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(bonus)
 	# 每日一局：这一局还没落盘（道心是点了"重走/合上"才结算），先把记分板预览出来
@@ -60,13 +60,13 @@ func build() -> void:
 		row.add_child(_card("留在这里", "「门还在，灶还热，那就接着住。」",
 			"继续　在这座宅院里守下去\n之后　每三夜一波尸潮，越来越凶\n结算　等你合上此录时再算道心", "守 下 去", Game.keep_living.bind(str(run.get("past_lives", {}).get("id", "")))))
 	else:
-		v.add_child(UI.para("这条路线已结案；可以带着记忆重走，或合上这一卷。", 17, UI.DAI))
+		v.add_child(UI.para("这条路已经走完；可以带着记忆重走，或合上这一卷。", 17, UI.DAI))
 	row.add_child(_card("再入轮回", "「这一回，我知道该往哪走。」",
 		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷；沿用今世开局\n收获　道心 +%d" % gain.total, "重 走", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
 	row.add_child(_card("合上此录", "「到这里就够了。」",
 		"结算　这一卷到此为止\n收获　道心 +%d" % gain.total, "合 上", Game.close_book.bind(str(run.get("past_lives", {}).get("id", "")))))
 
-	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，再保留身份与难度，重新选择下世筹备；原重走按钮会沿用今世开局。")
+	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，身份和难度不变，重新选下一世的开局筹备；「重走」则沿用这一世的开局。")
 	choose.set_meta("opening_next", true)
 	# 这一页正是玩家最想吐槽的时候：顺手把这一局的取证打包，别等合卷把存档删了
 	var tail := UI.hbox(12)

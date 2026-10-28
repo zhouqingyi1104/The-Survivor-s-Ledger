@@ -10,19 +10,19 @@ static func open() -> void:
 
 
 static func _build(body: VBoxContainer) -> void:
-	body.add_child(UI.para("先清理东侧空地，再备料施工。完工后可走入侧院并安放家具；尸潮期间不能动工，若工程被打断，已备材料保留，未完成的工时须重新投入。", 16))
+	body.add_child(UI.para("先清出东边的空地，再备料、动工。完工后能走进侧院、摆家具。尸潮来时不能动工；被打断的话，备好的料还在，没做完的工得重做。", 16))
 	var stage := Expansion.stage(Game.run)
 	var text := ""
 	var action := ""
 	match stage:
 		"survey":
-			text = "尚未清理 · 查勘清理需 60 分钟、5 精力。"
+			text = "还没清理 · 清理要 60 分钟、精力 5。"
 			action = "查勘清理"
 		"cleared":
-			text = "空地已清理 · 备料需木料 8、铁钉 4，备料后材料不再重复收取。"
+			text = "空地已清好 · 备料要木料 ×8、铁钉 ×4，备一次就够。"
 			action = "备料"
 		"ready":
-			text = "材料已备好 · 施工需 120 分钟、8 精力。"
+			text = "料已备好 · 动工要 120 分钟、精力 8。"
 			action = "开始施工"
 		"complete":
 			text = "东侧院已完工，可从东墙开口进入。"

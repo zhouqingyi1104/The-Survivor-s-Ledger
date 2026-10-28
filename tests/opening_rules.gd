@@ -190,7 +190,7 @@ func test_legacy_and_daily_boundaries() -> void:
 	var legacy := sample()
 	legacy.opening = {"schema": 1, "legacy": true, "choice": "plain", "applied": true}
 	var before := protected_state(legacy)
-	check(Core.view(legacy).summary.contains("旧卷") and Core.context(legacy).effects.gained.is_empty(), "Old saves claimed a newly given opening")
+	check(Core.view(legacy).summary.contains("照原来的开局") and Core.context(legacy).effects.gained.is_empty(), "Old saves claimed a newly given opening")
 	check(apply(legacy, "scholar_stock") != "" and protected_state(legacy) == before, "Old save retroactively claimed starting goods")
 
 func test_generic_sources_and_tie_order() -> void:

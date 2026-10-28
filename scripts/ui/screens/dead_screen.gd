@@ -44,7 +44,7 @@ func build() -> void:
 	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(d)
 
-	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，再保留身份与难度，重新选择下世筹备；原重走按钮会沿用今世开局。")
+	var choose := UI.button("另选下一世开局", Game.choose_next_opening.bind(str(run.get("past_lives", {}).get("id", ""))), false, "先结算这一世，身份和难度不变，重新选下一世的开局筹备；「重走」则沿用这一世的开局。")
 	choose.set_meta("opening_next", true)
 	# 这一页正是玩家最想吐槽的时候：顺手把这一局的取证打包，别等合卷把存档删了
 	var tail := UI.hbox(12)

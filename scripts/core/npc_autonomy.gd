@@ -27,7 +27,7 @@ static func state(run: Dictionary) -> Dictionary:
 		if not s.actors.has(actor):
 			var stock := {"rice": 3}
 			stock[FOCAL[actor]] = 3
-			s.actors[actor] = {"stock": stock, "plan": {}, "policy": _normal_policy(), "last_result": "尚未作出自主安排。"}
+			s.actors[actor] = {"stock": stock, "plan": {}, "policy": _normal_policy(), "last_result": "还没有打算。"}
 	return s
 
 ## Lazy counterpart of Trade.state, without a preload cycle.
@@ -112,7 +112,7 @@ static func _decide(run: Dictionary, actor: String, day: int) -> String:
 			details.append("眼下对你的信任只有 %d" % int(trade.trust))
 		if int(trade.breaches) > 0:
 			codes.append("breach")
-			details.append("还有 %d 笔失约未化解" % int(trade.breaches))
+			details.append("还有 %d 笔失约没补" % int(trade.breaches))
 		if response == "dismiss":
 			codes.append("memory_dismiss")
 			details.append("他记起的前世旧梦，被你推开了")
@@ -245,7 +245,7 @@ static func _block(run: Dictionary, actor: String, action: String) -> String:
 	if access != "": return access
 	var person: Dictionary = state(run).actors[actor]
 	var plan: Dictionary = person.plan
-	if plan.is_empty(): return "尚未公开新的自主安排。"
+	if plan.is_empty(): return "还没说出新的打算。"
 	if int(run.get("t", 0)) < _decision_t(int(plan.day)): return "他还没说出打算，没法插手。"
 	if plan.status != "pending" or int(run.get("t", 0)) >= int(plan.due_t): return "他已经动手了，插不上手了。"
 	if plan.response != "": return "这回你已经回过话了。"
