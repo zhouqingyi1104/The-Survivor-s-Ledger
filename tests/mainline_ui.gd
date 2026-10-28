@@ -251,7 +251,7 @@ func investigate(kind: String, day: int, save_return := false) -> void:
 func reach_routes(disrupt := false) -> void:
 	await fresh()
 	await open_story(true)
-	check(labels_in(modal()).contains("期限") and labels_in(modal()).contains("前世残卷"), "Deadline or current-life evidence boundary missing from panel")
+	check(labels_in(modal()).contains("期限") and labels_in(modal()).contains("前世的残卷"), "Deadline or current-life evidence boundary missing from panel")
 	var water := Inv.count(Game.run.home, "water")
 	var firewood := Inv.count(Game.run.home, "firewood")
 	await choose("host", true)

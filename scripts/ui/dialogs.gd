@@ -285,9 +285,9 @@ func _mainline(body: VBoxContainer) -> void:
 	for cost in view.get("costs", []):
 		content.add_child(UI.para("行动与代价：" + str(cost), 16))
 	var evidence: Dictionary = view.get("evidence", {})
-	content.add_child(UI.para("今世已交回证据：义庄运尸簿%s · 七灯及后山图%s\n前世残卷可供阅读，不能代替这一世亲自调查和完成返程。" % [" ✓" if bool(evidence.get("mortuary", false)) else " 未取回", " ✓" if bool(evidence.get("temple", false)) else " 未取回"], 16, UI.JADE))
-	var routes := {"": "尚未锁定", "hold": "坚守宅院", "escape": "备好撤离", "ritual": "备好破阵"}
-	content.add_child(UI.para("今世路线：" + str(routes.get(str(view.get("route", "")), "尚未锁定")), 17, UI.GOLD))
+	content.add_child(UI.para("已带回的证据：义庄运尸簿%s · 七灯及后山图%s\n前世的残卷能读，但证据得这一世亲自去拿回来。" % [" ✓" if bool(evidence.get("mortuary", false)) else " 未取回", " ✓" if bool(evidence.get("temple", false)) else " 未取回"], 16, UI.JADE))
+	var routes := {"": "还没定", "hold": "坚守宅院", "escape": "备好撤离", "ritual": "备好破阵"}
+	content.add_child(UI.para("这一世的出路：" + str(routes.get(str(view.get("route", "")), "还没定")), 17, UI.GOLD))
 	var interventions: Dictionary = view.get("interventions", {})
 	content.add_child(UI.para("已做成的事：断运%s；封阵%s。\n完工后才改变尸潮；已经开打的那一夜不变。" % ["（" + _crisis_when(int(interventions.disrupt_t)) + "）" if int(interventions.get("disrupt_t", -1)) >= 0 else " 未做", "（" + _crisis_when(int(interventions.ritual_t)) + "）" if int(interventions.get("ritual_t", -1)) >= 0 else " 未做"], 16))
 	var target := str(view.get("target", ""))
@@ -295,7 +295,7 @@ func _mainline(body: VBoxContainer) -> void:
 	if target != "":
 		content.add_child(UI.label("调查地点：" + str(view.get("target_name", target)), 19, UI.GOLD))
 		if not objective.is_empty():
-			content.add_child(UI.para("专属目标：%s\n%s" % [str(objective.get("name", "")), str(objective.get("hint", ""))], 17))
+			content.add_child(UI.para("要查的：%s\n%s" % [str(objective.get("name", "")), str(objective.get("hint", ""))], 17))
 		var block := Post.can_act(run, 10)
 		if block == "": block = Explore.point_block(run, target)
 		if block == "" and Post.day_minute(run) + 60 >= Post.CURFEW_AT: block = "天快黑了，无法完成出门路程。"
@@ -304,7 +304,7 @@ func _mainline(body: VBoxContainer) -> void:
 		depart.set_meta("mainline_depart", target)
 		content.add_child(depart)
 	var work: Dictionary = view.get("work", {})
-	if not work.is_empty(): content.add_child(UI.para("正在执行：%s · %s 完工。开始付出的材料不退，完工才生效。" % [str(run.get("busy", {}).get("label", "调查")), _crisis_when(int(work.get("end_t", 0)))], 17, UI.GOLD))
+	if not work.is_empty(): content.add_child(UI.para("正在做：%s · %s 做完。" % [str(run.get("busy", {}).get("label", "调查")), _crisis_when(int(work.get("end_t", 0)))], 17, UI.GOLD))
 	if str(view.get("last_result", "")) != "": content.add_child(UI.para("最近结果：" + str(view.last_result), 17, UI.JADE))
 	for option in Mainline.options(run):
 		var card := UI.vbox(4)
@@ -316,9 +316,9 @@ func _mainline(body: VBoxContainer) -> void:
 		card.add_child(button)
 		content.add_child(UI.panel(card))
 	content.add_child(UI.sep())
-	content.add_child(UI.label("今世调查记录", 19, UI.GOLD))
+	content.add_child(UI.label("调查记录", 19, UI.GOLD))
 	var history: Array = view.get("history", [])
-	if history.is_empty(): content.add_child(UI.para("尚无今世调查记录。", 16))
+	if history.is_empty(): content.add_child(UI.para("还没有调查记录。", 16))
 	for k in range(history.size() - 1, -1, -1):
 		var entry: Dictionary = history[k]
 		content.add_child(UI.para("第 %d 日 %s · %s" % [int(entry.get("day", 0)), _trade_clock(int(entry.get("t", 0))), str(entry.get("result", ""))], 15))
@@ -469,17 +469,17 @@ func crisis_status(view: Dictionary) -> String:
 	var certainty: String = {"unknown": "尚未核实", "real": "已核实 · 属实", "false": "已核实 · 虚惊"}.get(str(view.get("confirmed", "unknown")), "尚未核实")
 	if str(view.get("stage", "")) == "impact": return "危机已发生 · " + certainty
 	if str(view.get("stage", "")) == "resolved":
-		return {"averted": "已结案 · 提前防住", "false_alarm": "已结案 · 虚惊", "endured": "已结案 · 影响结束", "repaired": "已结案 · 补救完成"}.get(str(view.get("outcome", "")), "已结案")
+		return {"averted": "已了结 · 提前防住", "false_alarm": "已了结 · 虚惊", "endured": "已了结 · 影响过去", "repaired": "已了结 · 补救完成"}.get(str(view.get("outcome", "")), "已了结")
 	return "预兆 · " + certainty
 
 
 func crisis_clock_text(view: Dictionary) -> String:
-	if view.is_empty(): return "暂无公开预兆"
+	if view.is_empty(): return "暂时没有风声"
 	if str(view.get("stage", "")) == "resolved": return crisis_status(view)
 	var target := int(view.get("end_t", 0)) if str(view.get("stage", "")) == "impact" else int(view.get("impact_t", 0))
 	var left := maxi(0, target - int(_run().get("t", 0)))
 	var duration := "%d 天 %02d:%02d" % [left / 1440, (left % 1440) / 60, left % 60] if left >= 1440 else "%02d:%02d" % [left / 60, left % 60]
-	var prefix := "影响结束还有 " if str(view.get("stage", "")) == "impact" else ("预计发生还有 " if str(view.get("confirmed", "")) == "real" else "可能发生还有 ")
+	var prefix := "影响结束还有 " if str(view.get("stage", "")) == "impact" else ("预计应验还有 " if str(view.get("confirmed", "")) == "real" else "可能应验还有 ")
 	return prefix + duration
 
 
@@ -497,16 +497,16 @@ func _crisis(body: VBoxContainer) -> void:
 		content.add_child(UI.label(str(view.title) + " · " + crisis_status(view), 20, UI.GOLD))
 		content.add_child(UI.para("预兆：%s\n线索来源：%s" % [str(view.sign), str(view.source)], 17))
 		content.add_child(UI.para(crisis_clock_text(view), 19, UI.CINNABAR if str(view.stage) == "impact" else UI.GOLD))
-		content.add_child(UI.para("预告发生：%s\n若成真的自然恢复：%s" % [_crisis_when(int(view.impact_t)), _crisis_when(int(view.end_t))], 16))
+		content.add_child(UI.para("预告应验：%s\n若成真，自己缓过来：%s" % [_crisis_when(int(view.impact_t)), _crisis_when(int(view.end_t))], 16))
 		var evidence := str(view.get("evidence", ""))
-		content.add_child(UI.para("已知证据：" + (evidence if evidence != "" else "尚未取得证据，不能确定这则风声是否属实。"), 17, UI.JADE if evidence != "" else UI.INK_SOFT))
+		content.add_child(UI.para("已知证据：" + (evidence if evidence != "" else "还没查到证据，说不准是真是假。"), 17, UI.JADE if evidence != "" else UI.INK_SOFT))
 		if str(view.get("effect", "")) != "":
 			content.add_child(UI.para(str(view.effect), 16))
-		var responses := {"": "尚未选择", "prepare": "自行筹备", "aid": "请线人帮忙", "ignore": "本次观望（已放弃后续提前处置机会）", "emergency": "事后补救"}
+		var responses := {"": "尚未选择", "prepare": "自己防备", "aid": "请线人帮忙", "ignore": "先看看（不再提前防备）", "emergency": "事后补救"}
 		content.add_child(UI.para("本场应对：%s%s" % [responses.get(str(view.get("response", "")), "已记录"), " · 防护已完成" if bool(view.get("protected", false)) else ""], 16))
 		var work: Dictionary = view.get("work", {})
 		if not work.is_empty():
-			content.add_child(UI.para("正在执行：%s · 预计 %s 完成。材料已经付出，工作完成才生效。" % [{"investigate": "核实风声", "prepare": "提前处置", "aid": "请线人帮忙", "emergency": "事后补救"}.get(str(work.get("action", "")), "危机事务"), _crisis_when(int(work.end_t))], 17, UI.GOLD))
+			content.add_child(UI.para("正在做：%s · 预计 %s 做完。" % [{"investigate": "核实风声", "prepare": "提前处置", "aid": "请线人帮忙", "emergency": "事后补救"}.get(str(work.get("action", "")), "这件事"), _crisis_when(int(work.end_t))], 17, UI.GOLD))
 		if str(view.get("last_result", "")) != "":
 			content.add_child(UI.para("最新危机记录：" + str(view.last_result), 17, UI.JADE))
 		for option in Crisis.options(run):
@@ -521,7 +521,7 @@ func _crisis(body: VBoxContainer) -> void:
 	content.add_child(UI.sep())
 	content.add_child(UI.label("危机记录 · 最近十二条", 19, UI.GOLD))
 	var history: Array = Crisis.state(run).get("history", [])
-	if history.is_empty(): content.add_child(UI.para("尚无公开危机或实际处置记录。", 16))
+	if history.is_empty(): content.add_child(UI.para("还没有风声和应对的记录。", 16))
 	var titles := {"well_freeze": "井口冻裂", "fuel_shortage": "运柴中断", "herb_shortage": "药草挤兑"}
 	for k in range(history.size() - 1, maxi(-1, history.size() - 13), -1):
 		var entry: Dictionary = history[k]

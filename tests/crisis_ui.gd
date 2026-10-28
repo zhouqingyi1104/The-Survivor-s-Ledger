@@ -166,7 +166,7 @@ func _ready() -> void:
 		return
 	var initial := Crisis.view(Game.run)
 	check(initial.confirmed == "unknown" and str(initial.evidence) == "", "UI leaked uninvestigated truth")
-	check(labels_in(modal()).contains("尚未取得证据") and labels_in(modal()).contains("线索来源"), "Unknown truth or source missing in panel")
+	check(labels_in(modal()).contains("还没查到证据") and labels_in(modal()).contains("线索来源"), "Unknown truth or source missing in panel")
 	for action in ["investigate", "prepare", "aid", "ignore", "emergency"]:
 		check(action_button(action) != null, "Missing crisis action: " + action)
 	check(labels_in(modal()).contains("30") and labels_in(modal()).contains("精力"), "Investigation cost/time was hidden")
