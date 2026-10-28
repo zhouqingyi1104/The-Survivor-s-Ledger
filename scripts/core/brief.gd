@@ -11,6 +11,8 @@ extends RefCounted
 const State = preload("res://scripts/core/state.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Defense = preload("res://scripts/core/defense.gd")
+const Post = preload("res://scripts/core/post.gd")
+const Crisis = preload("res://scripts/core/crisis.gd")
 
 ## 危急（今天不管就会死）/ 要紧（会在几日内咬人）/ 提醒（知道就好）
 const ALARM := 2
@@ -24,6 +26,11 @@ const MAX_LINES := 4
 static func goal(run: Dictionary) -> String:
 	if run.is_empty():
 		return "还没有开局。"
+	if str(run.get("phase", "")) == "dead":
+		return "这一世已结束，可在生死簿查看后续选择。"
+	if str(run.get("phase", "")) == "ending":
+		var ending: Dictionary = run.get("mainline", {}).get("ending", {})
+		return "已完成撤离，本世结案。" if ending.get("kind", "") == "escape" else "已守过第二十夜，本世结案。"
 	if bool(run.get("endless", false)):
 		return "守到死：没有终点，能撑多久算多久。"
 	if str(run.get("phase", "")) == "pre":
@@ -32,14 +39,19 @@ static func goal(run: Dictionary) -> String:
 	var left: int = State.STORY_DAYS - int(run.get("pday", 0))
 	if left > 0:
 		return "距劫满还有 %d 日（共 %d 日）。" % [left, State.STORY_DAYS]
-	return "已经活过 %d 日。" % State.STORY_DAYS
+	if bool(run.get("dawn_due", false)) and int(run.get("t", 0)) >= State.STORY_DAYS * Post.DAY:
+		return "第二十夜已过，翻阅天亮结算后进入结局。"
+	return "第 %d 日：守过今晚，到天亮才算劫满。" % State.STORY_DAYS
 
 
 ## 进度：0..1，用在进度条或"HUD 上的那句距离"。
 static func progress(run: Dictionary) -> float:
 	if run.is_empty() or bool(run.get("endless", false)):
 		return 0.0
-	return clampf(float(run.get("pday", 0)) / float(State.STORY_DAYS), 0.0, 1.0)
+	var value := clampf(float(run.get("pday", 0)) / float(State.STORY_DAYS), 0.0, 1.0)
+	if str(run.get("phase", "")) != "ending":
+		value = minf(value, float(State.STORY_DAYS - 1) / float(State.STORY_DAYS))
+	return value
 
 
 ## 今天该注意的事。按 level 降序，最多 MAX_LINES 条。
@@ -78,20 +90,37 @@ static func lines(run: Dictionary) -> Array:
 			out.append({"level": WARN, "text": "今夜有尸潮：天黑前把门窗墙补齐、守具摆好。"})
 
 	# 三、冷夜却没有能烧的
-	var cold := int(State.weather(run).get("cold", 0))
+	var cold := Post.cold_of(run)
 	var wood := Inv.count(run.get("home", {}), "firewood")
 	var coal := Inv.count(run.get("home", {}), "charcoal")
-	if cold > 0 and wood + coal == 0:
-		out.append({"level": WARN, "text": "今夜会冷，屋里没有柴也没有炭。"})
-	elif cold > 0 and wood + coal <= 1 and not bool(run.get("heated", false)):
-		out.append({"level": NOTE, "text": "只剩 %d 份柴炭，一捆柴只够烧半夜。" % (wood + coal)})
+	var oil := Inv.count(run.get("home", {}), "diesel")
+	var generator_ready := State.has_facility(run, "generator") and oil > 0
+	if cold > 0:
+		if bool(run.get("heated", false)):
+			if bool(run.get("heat_weak", false)):
+				out.append({"level": NOTE, "text": "今晚只烧了一捆柴，火势较弱。"})
+		elif Post.day_minute(run) >= Post.HEAT_AT:
+			out.append({"level": WARN, "text": "今晚没有生火，20:00 的取暖时刻已过。"})
+		elif not generator_ready and coal <= 0:
+			if wood <= 0:
+				out.append({"level": WARN, "text": "今夜会冷，屋里没有柴也没有炭，也没有可用的发电机柴油。"})
+			elif wood == 1:
+				out.append({"level": NOTE, "text": "只剩一捆柴，一捆柴只够烧半夜。"})
 
 	# 四、断粮断水
 	var food := Inv.total(run.get("home", {}), Inv.GRAINS) + Inv.total(run.get("home", {}), Inv.food_ids(run.get("home", {})))
 	if food <= 0:
 		out.append({"level": ALARM, "text": "仓里没有能下锅的东西了。"})
-	if Inv.count(run.get("home", {}), "water") <= 0 and not State.has_facility(run, "water_vat"):
-		out.append({"level": WARN, "text": "没有存水，也没有水缸；渴起来只能去井边。"})
+	if Inv.count(run.get("home", {}), "water") <= 0:
+		# 查询危机时用临时外壳，避免第一次查看提示时初始化并改变存档。
+		var crisis_view := {"crisis": run.get("crisis", {}), "pday": run.get("pday", 0)}
+		var well_block := Crisis.well_block(crisis_view)
+		var water_text := "仓里没有存水；可以去井边打水。"
+		if well_block != "":
+			water_text = "仓里没有存水；" + well_block
+		elif bool(run.get("well_used", false)):
+			water_text = "仓里没有存水；今天已经打过水了。"
+		out.append({"level": WARN, "text": water_text})
 
 	if out.is_empty():
 		out.append({"level": NOTE, "text": "眼下没有急事，去差事单上挑几件做。"})
@@ -103,6 +132,11 @@ static func lines(run: Dictionary) -> Array:
 static func countdown(run: Dictionary) -> String:
 	if run.is_empty():
 		return ""
+	if str(run.get("phase", "")) == "dead":
+		return "本世结束"
+	if str(run.get("phase", "")) == "ending":
+		var ending: Dictionary = run.get("mainline", {}).get("ending", {})
+		return "已撤离" if ending.get("kind", "") == "escape" else "劫满"
 	if bool(run.get("endless", false)):
 		return "守到死"
 	if str(run.get("phase", "")) == "pre":
@@ -110,4 +144,6 @@ static func countdown(run: Dictionary) -> String:
 	var left: int = State.STORY_DAYS - int(run.get("pday", 0))
 	if left > 0:
 		return "距劫满 %d 日" % left
-	return "劫满"
+	if bool(run.get("dawn_due", false)) and int(run.get("t", 0)) >= State.STORY_DAYS * Post.DAY:
+		return "待天亮结算"
+	return "守过第 20 夜"

@@ -10,6 +10,8 @@ const Pre = preload("res://scripts/core/pre.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Defense = preload("res://scripts/core/defense.gd")
 const Brief = preload("res://scripts/core/brief.gd")
+const Post = preload("res://scripts/core/post.gd")
+const Crisis = preload("res://scripts/core/crisis.gd")
 
 var checks := 0
 var failures := 0
@@ -124,11 +126,54 @@ func test_no_food_or_water() -> void:
 	check(joined.contains("没有能下锅"), "断粮没说：%s" % joined)
 	check(joined.contains("没有存水"), "缺水没说：%s" % joined)
 
-	# 有水缸就不算"没有存水"
+	# 水缸只让打水多一瓢，不凭空补水。
 	var vat := _calm_day()
 	vat.home = {}
 	vat.facilities = ["water_vat"]
-	check(not _join(Brief.lines(vat)).contains("没有存水"), "有水缸却还说没有存水")
+	check(_join(Brief.lines(vat)).contains("没有存水"), "水缸空了仍应提醒没有存水")
+	check(_join(Brief.lines(vat)).contains("井边打水"), "井可用时应提示去井边打水")
+	vat.well_used = true
+	check(_join(Brief.lines(vat)).contains("今天已经打过水"), "当日已经打水时不该提示仍可打水")
+	vat.well_used = false
+	vat.crisis = {"active": {"kind": "well_freeze", "stage": "impact"}}
+	check(Crisis.well_block(vat) != "", "夹具必须真的封井")
+	check(_join(Brief.lines(vat)).contains("井口冻裂"), "封井时应说明无法打水")
+	vat.home.water = 1
+	check(not _join(Brief.lines(vat)).contains("没有存水"), "仓中有水不该说没有存水")
+	var pristine := _calm_day()
+	pristine.home.erase("water")
+	var before: Dictionary = pristine.duplicate(true)
+	Brief.lines(pristine)
+	check(pristine == before, "查看缺水提示不应修改局面")
+
+	# 核对与 20:00 实际燃料优先顺序一致。
+	var oil := _cold_day()
+	oil.home = {"rice": 1, "water": 1, "diesel": 1}
+	oil.facilities = ["generator"]
+	check(not _join(Brief.lines(oil)).contains("没有柴也没有炭"), "有发电机与柴油时不能暗示无取暖材料")
+	Post._heat(oil)
+	check(oil.heated and Inv.count(oil.home, "diesel") == 0, "发电机应消耗柴油并取暖")
+	oil.t = (int(oil.pday) - 1) * Post.DAY + Post.HEAT_AT
+	check(not _join(Brief.lines(oil)).contains("没有生火"), "已经启动发电机不能说未生火")
+	var empty_oil := _cold_day()
+	empty_oil.home = {"rice": 1, "water": 1}
+	empty_oil.facilities = ["generator"]
+	check(_join(Brief.lines(empty_oil)).contains("没有柴也没有炭"), "发电机无油且无柴炭应提醒")
+	var coal := _cold_day()
+	coal.home = {"rice": 1, "water": 1, "charcoal": 1}
+	check(not _join(Brief.lines(coal)).contains("只够烧半夜"), "一块炭足够整夜，不能说一捆柴")
+	Post._heat(coal)
+	check(coal.heated and not coal.heat_weak, "实际烧炭应是整夜的强火")
+	var one_wood := _cold_day()
+	one_wood.home = {"rice": 1, "water": 1, "firewood": 1}
+	check(_join(Brief.lines(one_wood)).contains("只够烧半夜"), "只有一捆柴应提示弱火")
+	Post._heat(one_wood)
+	check(one_wood.heated and one_wood.heat_weak, "实际烧一捆柴应是弱火")
+	one_wood.t = (int(one_wood.pday) - 1) * Post.DAY + Post.HEAT_AT
+	check(_join(Brief.lines(one_wood)).contains("火势较弱"), "弱火已经烧起时应报告现状")
+	var missed := _cold_day()
+	missed.t = (int(missed.pday) - 1) * Post.DAY + Post.HEAT_AT
+	check(_join(Brief.lines(missed)).contains("取暖时刻已过"), "错过20:00后不能暗示库存会自动用于今晚取暖")
 
 
 # ---------- 七、条数与顺序 ----------
@@ -156,8 +201,29 @@ func test_countdown() -> void:
 	check(Brief.goal(run).contains("还有 7 日"), "目标句里的天数不对：%s" % Brief.goal(run))
 	check(absf(Brief.progress(run) - 13.0 / 20.0) < 0.001, "进度不对：%f" % Brief.progress(run))
 	run.pday = 20
-	check(Brief.countdown(run) == "劫满", "最后一天没说劫满：%s" % Brief.countdown(run))
-	check(Brief.progress(run) == 1.0, "最后一天的进度不是 1")
+	run.t = 19 * Post.DAY
+	check(Brief.countdown(run) == "守过第 20 夜", "第20日清晨不能提前说劫满：%s" % Brief.countdown(run))
+	check(Brief.goal(run).contains("到天亮才算劫满"), "第20日目标应说明还要守夜")
+	check(Brief.progress(run) < 1.0, "第20日尚未结局，进度不能满")
+	run.t = 20 * Post.DAY
+	run.dawn_due = true
+	check(Brief.countdown(run) == "待天亮结算", "第二十夜结束尚须翻阅天亮报告")
+	check(Brief.goal(run).contains("翻阅天亮结算"), "应说明天亮结算")
+	Post.ack_dawn(run)
+	check(run.phase == "ending", "翻阅第二十夜后的天亮报告才进入结局")
+	check(Brief.countdown(run) == "劫满", "实际劫满应显示劫满")
+	check(Brief.progress(run) == 1.0, "实际劫满后进度应为1")
+	var died := _base()
+	died.pday = 20
+	died.phase = "dead"
+	check(Brief.countdown(died) == "本世结束" and Brief.progress(died) < 1.0, "第20日身死不能显示劫满或满进度")
+	var escape := _base()
+	escape.pday = 18
+	escape.phase = "ending"
+	escape.mainline = {"ending": {"kind": "escape"}}
+	check(Brief.goal(escape).contains("撤离") and Brief.countdown(escape) == "已撤离", "提前撤离不能说守满20夜")
+	run.phase = "post"
+	run.dawn_due = false
 	run.endless = true
 	check(Brief.countdown(run) == "守到死", "守到死模式的倒计时不对：%s" % Brief.countdown(run))
 	check(Brief.goal(run).contains("没有终点"), "守到死模式的目标句不对：%s" % Brief.goal(run))
@@ -172,6 +238,7 @@ func _calm_day() -> Dictionary:
 	for day in range(1, State.STORY_DAYS + 1):
 		if Defense.wave_for_run(run, day).is_empty() and int(_weather(day).get("cold", 0)) == 0:
 			run.pday = day
+			run.t = (day - 1) * Post.DAY
 			return run
 	return run
 
@@ -182,6 +249,7 @@ func _wave_day() -> Dictionary:
 	for day in range(1, State.STORY_DAYS + 1):
 		if not Defense.wave_for_run(run, day).is_empty():
 			run.pday = day
+			run.t = (day - 1) * Post.DAY
 			return run
 	return run
 
@@ -192,6 +260,7 @@ func _cold_day() -> Dictionary:
 	for day in range(1, State.STORY_DAYS + 1):
 		if int(_weather(day).get("cold", 0)) > 0:
 			run.pday = day
+			run.t = (day - 1) * Post.DAY
 			return run
 	return run
 
