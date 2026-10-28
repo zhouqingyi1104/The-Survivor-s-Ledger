@@ -509,15 +509,29 @@ static var _res_writable := -1
 static func res_writable() -> bool:
 	if _res_writable >= 0:
 		return _res_writable == 1
-	var probe := "res://.write_probe"
-	var f := FileAccess.open(probe, FileAccess.WRITE)
-	if f == null:
-		_res_writable = 0
-		return false
-	f.close()
-	DirAccess.remove_absolute(ProjectSettings.globalize_path(probe))
-	_res_writable = 1
-	return true
+	# Claim a fresh directory atomically before creating anything inside it.
+	# A fixed filename could truncate an unrelated existing file.
+	for attempt in 4:
+		var probe := "res://.write_probe_" + Crypto.new().generate_random_bytes(16).hex_encode()
+		if _probe_writable_directory(probe):
+			_res_writable = 1
+			return true
+	_res_writable = 0
+	return false
+
+
+static func _probe_writable_directory(path: String) -> bool:
+	var absolute := ProjectSettings.globalize_path(path)
+	# make_dir is the ownership boundary: if anything already exists at this
+	# name, never open, replace, or clean it up.
+	if DirAccess.make_dir_absolute(absolute) != OK: return false
+	var file_path := path.path_join("probe")
+	var file := FileAccess.open(file_path, FileAccess.WRITE)
+	var opened := file != null
+	if opened: file.close()
+	var file_removed := not opened or DirAccess.remove_absolute(ProjectSettings.globalize_path(file_path)) == OK
+	var directory_removed := DirAccess.remove_absolute(absolute) == OK
+	return opened and file_removed and directory_removed
 
 
 func _sync_life_memory() -> void:

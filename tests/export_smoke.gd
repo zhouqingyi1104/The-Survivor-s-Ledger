@@ -18,10 +18,16 @@ var failures := 0
 
 func _ready() -> void:
 	# 0. 这次到底跑在什么里面：res:// 能不能写，就是"打包了没有"的事实依据
+	var old_probe := "res://.write_probe"
+	var old_probe_exists := FileAccess.file_exists(old_probe)
+	var old_probe_hash := FileAccess.get_sha256(old_probe) if old_probe_exists else ""
+	var old_probe_dir := DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(old_probe))
 	var readonly: bool = Game.res_is_readonly()
 	print("[export_smoke] 打包特性=%s，res:// 可写=%s，判定只读=%s" % [
 		str(OS.has_feature("template")), str(Game.res_writable()), str(readonly)])
-	check(not FileAccess.file_exists("res://.write_probe"), "探测文件没清掉")
+	check(FileAccess.file_exists(old_probe) == old_probe_exists, "已有旧探针文件存在状态改变")
+	if old_probe_exists: check(FileAccess.get_sha256(old_probe) == old_probe_hash, "已有旧探针文件被覆盖")
+	check(DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(old_probe)) == old_probe_dir, "已有旧探针目录存在状态改变")
 
 	# 1. 路径规则本身：只读就落 user://，能写就落项目根
 	check(Game.memory_path_for(true) == "user://Memory.md", "只读时档案路径不是 user://")
@@ -44,6 +50,7 @@ func _ready() -> void:
 	var forced_id := OS.get_environment("LEDGER_EXPORT_SMOKE_PROBE_ID")
 	if forced_id.is_valid_int() and forced_id.length() <= 18 and not forced_id.begins_with("-"):
 		probe_id = forced_id
+	_test_resource_probe(probe_id)
 	var probe := "user://export_smoke_save_%s.json" % probe_id
 	for path in [probe, probe + SaveFile.BAK, probe + SaveFile.TMP]:
 		if _probe_exists(path):
@@ -90,3 +97,39 @@ func check(ok: bool, msg: String) -> void:
 
 func _probe_exists(path: String) -> bool:
 	return FileAccess.file_exists(path) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(path))
+
+
+func _test_resource_probe(id: String) -> void:
+	var root := "user://export_smoke_probe_" + id
+	if _probe_exists(root):
+		check(false, "写入探针测试目录已存在，拒绝覆盖：%s" % root)
+		return
+	check(Game._probe_writable_directory(root), "独占探针未能创建和清理")
+	check(not _probe_exists(root), "独占探针目录未清理")
+	var absolute := ProjectSettings.globalize_path(root)
+	if DirAccess.make_dir_absolute(absolute) != OK:
+		check(false, "无法建立探针碰撞测试目录")
+		return
+	var marker := root.path_join("probe")
+	var f := FileAccess.open(marker, FileAccess.WRITE)
+	if f == null:
+		check(false, "无法建立探针碰撞测试文件")
+		DirAccess.remove_absolute(absolute)
+		return
+	f.store_string("已有文件，不能改写")
+	f.close()
+	var before := FileAccess.get_sha256(marker)
+	check(not Game._probe_writable_directory(root), "已有目录被误认作独占探针")
+	check(FileAccess.get_sha256(marker) == before, "已有目录内的文件被覆盖")
+	check(DirAccess.remove_absolute(ProjectSettings.globalize_path(marker)) == OK, "清理测试文件失败")
+	check(DirAccess.remove_absolute(absolute) == OK, "清理测试目录失败")
+	var existing := FileAccess.open(root, FileAccess.WRITE)
+	if existing == null:
+		check(false, "无法建立同名文件碰撞测试")
+		return
+	existing.store_string("已有同名文件")
+	existing.close()
+	var file_hash := FileAccess.get_sha256(root)
+	check(not Game._probe_writable_directory(root), "已有文件被误认作独占探针目录")
+	check(FileAccess.get_sha256(root) == file_hash, "已有同名文件被覆盖")
+	check(DirAccess.remove_absolute(absolute) == OK, "清理同名测试文件失败")
