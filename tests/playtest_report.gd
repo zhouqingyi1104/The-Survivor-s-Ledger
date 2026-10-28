@@ -107,7 +107,11 @@ func test_missing_ctx() -> void:
 	var text := Report.build(_dead_run(), State.new_meta(), {})
 	check(text.contains("版本：?"), "缺版本时没有占位符")
 	check(text.contains("按键：全部默认"), "缺改键信息时没兜底成默认")
-	check(text.contains("动态世情"), "缺动态世情信息时没兜底")
+	check(text.contains("动态世情：未载入本局"), "缺动态世情信息时应如实显示未知")
+	var enabled := Report.build(_dead_run(), State.new_meta(), {"director": true})
+	check(enabled.contains("已启用（不代表服务已连接）"), "启用意愿不能被当成连接成功")
+	var disabled := Report.build(_dead_run(), State.new_meta(), {"director": false})
+	check(disabled.contains("动态世情：关闭"), "关闭状态未正确展示")
 
 
 # ---------- 七、不要把本机路径带出去 ----------

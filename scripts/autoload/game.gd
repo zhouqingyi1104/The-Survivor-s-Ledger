@@ -547,33 +547,78 @@ func _delete_save() -> void:
 ## 玩家说"有点难"没法下手；有了种子、死因账本和最后几十条记录，就能在本地复现。
 ## 返回 {"ok": bool, "dir": String, "files": Array, "note": String}；dir 是绝对路径，界面直接显示。
 func export_playtest() -> Dictionary:
-	var stamp := _stamp_text()
-	var dir := "user://reports/" + stamp
-	var absolute := ProjectSettings.globalize_path(dir)
-	if DirAccess.make_dir_recursive_absolute(absolute) != OK and not DirAccess.dir_exists_absolute(absolute):
-		return {"ok": false, "dir": "", "files": [], "note": "建不了报告目录：" + absolute}
+	var created := _create_report_dir(_stamp_text())
+	if not bool(created.ok):
+		return {"ok": false, "dir": "", "files": [], "note": str(created.note)}
+	return _export_playtest_to(str(created.dir))
 
+
+## 每次导出独占新目录，同秒重复点击也不会覆盖或混入前一份报告。
+func _create_report_dir(stamp: String) -> Dictionary:
+	var parent := "user://reports"
+	var parent_abs := ProjectSettings.globalize_path(parent)
+	var error := DirAccess.make_dir_recursive_absolute(parent_abs)
+	if error != OK and not DirAccess.dir_exists_absolute(parent_abs):
+		return {"ok": false, "dir": "", "note": "建不了报告目录（错误 %d）。" % error}
+	for i in range(1000):
+		var name := stamp if i == 0 else "%s-%d" % [stamp, i]
+		var dir := parent.path_join(name)
+		var absolute := ProjectSettings.globalize_path(dir)
+		if DirAccess.dir_exists_absolute(absolute) or FileAccess.file_exists(dir): continue
+		error = DirAccess.make_dir_absolute(absolute)
+		if error == OK: return {"ok": true, "dir": dir, "note": ""}
+		if DirAccess.dir_exists_absolute(absolute) or FileAccess.file_exists(dir): continue
+		return {"ok": false, "dir": "", "note": "建不了报告目录（错误 %d）。" % error}
+	return {"ok": false, "dir": "", "note": "报告目录已满，无法创建新报告。"}
+
+
+## 只写新报告目录，不触碰存档、备份或此前保存失败的提醒。
+func _export_playtest_to(dir: String) -> Dictionary:
+	var absolute := ProjectSettings.globalize_path(dir)
+	var report_run := run.duplicate(true)
+	var report_meta := meta.duplicate(true)
+	var report_snapshots := snapshots.duplicate(true)
 	var files: Array = []
-	var text := PlaytestReport.build(run, meta, _report_ctx())
+	var source := "current" if not report_run.is_empty() else ("disk" if FileAccess.file_exists(save_path) else "none")
+	var snapshot_note := "附件中的本局存档是导出时的内存快照，含回溯页；原存档未改写。" if source == "current" else ("当前未载入本局，附件是磁盘上已有的主存档，报告没有读取其局面。" if source == "disk" else "当前未载入本局，磁盘上没有主存档；若有备份将单独列为附件。")
+	var text := PlaytestReport.build(report_run.duplicate(true), report_meta.duplicate(true), _report_ctx(report_run, report_snapshots))
+	text = text.replace("# 劫余录 试玩报告\n", "# 劫余录 试玩报告\n\n" + snapshot_note + "\n")
 	var error := _write_text(dir.path_join("report.md"), text)
 	if error != OK:
 		return {"ok": false, "dir": absolute, "files": [], "note": "报告写不进去（错误 %d）" % error}
 	files.append("report.md")
-	# 存档与底稿原样附上：有它们才能在本地把这一局原样打开
-	for src in [save_path, save_path + SaveFile.BAK, meta_path]:
-		if not FileAccess.file_exists(src): continue
-		var name: String = src.get_file()
-		if _write_text(dir.path_join(name), FileAccess.get_file_as_string(src)) == OK:
-			files.append(name)
+	var save_name := save_path.get_file()
+	var meta_name := meta_path.get_file()
+	if save_name == "" or meta_name == "" or save_name == meta_name or save_name in ["report.md", "Memory.md"] or meta_name in ["report.md", "Memory.md", save_name + SaveFile.BAK]:
+		return {"ok": false, "dir": absolute, "files": files, "note": "报告文件名冲突，无法安全导出。"}
+	# 正在玩的局和底稿以同一份内存快照为准，不依赖最近一次自动存档。
+	if not report_run.is_empty():
+		var saved := SaveFile.write(dir.path_join(save_name), {"run": report_run, "snapshots": report_snapshots})
+		if not bool(saved.ok):
+			return {"ok": false, "dir": absolute, "files": files, "note": "当前局快照写入失败（%s，错误 %d）。" % [str(saved.step), int(saved.error)]}
+		files.append(save_name)
+	elif FileAccess.file_exists(save_path):
+		error = DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path), ProjectSettings.globalize_path(dir.path_join(save_name)))
+		if error != OK: return {"ok": false, "dir": absolute, "files": files, "note": "存档复制失败（错误 %d）。" % error}
+		files.append(save_name)
+	var saved_meta := SaveFile.write(dir.path_join(meta_name), report_meta)
+	if not bool(saved_meta.ok):
+		return {"ok": false, "dir": absolute, "files": files, "note": "跨轮回底稿写入失败（%s，错误 %d）。" % [str(saved_meta.step), int(saved_meta.error)]}
+	files.append(meta_name)
+	# 原有备份和前世档案仍附带；只要存在却复制失败，就明确报告失败。
+	if FileAccess.file_exists(save_path + SaveFile.BAK):
+		error = DirAccess.copy_absolute(ProjectSettings.globalize_path(save_path + SaveFile.BAK), ProjectSettings.globalize_path(dir.path_join(save_name + SaveFile.BAK)))
+		if error != OK: return {"ok": false, "dir": absolute, "files": files, "note": "存档备份复制失败（错误 %d）。" % error}
+		files.append(save_name + SaveFile.BAK)
 	var memory := resolved_memory_path()
 	if memory != "" and FileAccess.file_exists(memory):
-		if _write_text(dir.path_join("Memory.md"), FileAccess.get_file_as_string(memory)) == OK:
-			files.append("Memory.md")
-	save_notice = ""
-	return {"ok": true, "dir": absolute, "files": files, "note": ""}
+		error = DirAccess.copy_absolute(ProjectSettings.globalize_path(memory), ProjectSettings.globalize_path(dir.path_join("Memory.md")))
+		if error != OK: return {"ok": false, "dir": absolute, "files": files, "note": "前世档案复制失败（错误 %d）。" % error}
+		files.append("Memory.md")
+	return {"ok": true, "dir": absolute, "files": files, "note": "", "save_source": source}
 
 
-func _report_ctx() -> Dictionary:
+func _report_ctx(report_run: Dictionary, report_snapshots: Dictionary) -> Dictionary:
 	var changed := {}
 	var saved := InputCfg.read()
 	for action in saved:
@@ -582,11 +627,13 @@ func _report_ctx() -> Dictionary:
 			names.append(InputCfg.key_name(int(key)))
 		changed[InputCfg.LABELS.get(action, action)] = "、".join(names)
 	var size := "无"
-	if FileAccess.file_exists(save_path):
+	if not report_run.is_empty():
+		size = "%.0f KB（当前快照）" % (float(JSON.stringify({"run": report_run, "snapshots": report_snapshots}, "\t").to_utf8_buffer().size()) / 1024.0)
+	elif FileAccess.file_exists(save_path):
 		size = "%.0f KB" % (float(FileAccess.get_file_as_string(save_path).length()) / 1024.0)
-	var director := true
-	if not run.is_empty():
-		director = bool(Director.state(run).enabled)
+	var director = null
+	if not report_run.is_empty():
+		director = bool(Director.state(report_run.duplicate(true)).enabled)
 	var window := DisplayServer.window_get_size()
 	return {
 		"now": "%s %s" % [State.today_text(), Time.get_time_string_from_system().left(5)],

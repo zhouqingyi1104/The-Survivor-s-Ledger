@@ -1972,9 +1972,11 @@ func playtest_exported(result: Dictionary) -> void:
 func _playtest_report(body: VBoxContainer, result: Dictionary) -> void:
 	if not bool(result.get("ok", false)):
 		body.add_child(UI.para("没导出来：%s" % str(result.get("note", "原因不明")), 17, UI.CINNABAR))
-		body.add_child(UI.para("可以先把存档目录里的 save.json 手动发过来：%s" % ProjectSettings.globalize_path("user://"), 15, UI.INK_SOFT))
+		body.add_child(UI.para("存档目录里的 save.json 可能落后当前进度：%s" % ProjectSettings.globalize_path("user://"), 15, UI.INK_SOFT))
 		return
-	body.add_child(UI.para("这一局的事实已经打包好了。把整个文件夹压一下发过来就行——里面有种子、死因构成、最后几十条记录和存档本身。", 17))
+	var source := str(result.get("save_source", "none"))
+	var explanation := "已附导出时的本局快照和回溯页，原存档未改写。" if source == "current" else ("当前没有载入本局，已附磁盘上已有的主存档；报告没有读取其中的局面。" if source == "disk" else "当前没有载入本局，也没有可附的主存档。")
+	body.add_child(UI.para(explanation + " 报告可打包分享；请先查看附件内容。", 17))
 	body.add_child(UI.sep())
 	body.add_child(UI.label("文件夹", 15, UI.DAI))
 	var path := UI.para(str(result.get("dir", "")), 16, UI.CINNABAR)
@@ -1982,6 +1984,10 @@ func _playtest_report(body: VBoxContainer, result: Dictionary) -> void:
 	body.add_child(UI.label("里面的文件", 15, UI.DAI))
 	var files: Array = result.get("files", [])
 	body.add_child(UI.para("、".join(files) if not files.is_empty() else "（只有报告）", 16, UI.INK_SOFT))
+	if Game.save_path.get_file() + ".bak" in files:
+		body.add_child(UI.para("已附磁盘上的上一份存档备份。", 15, UI.INK_FAINT))
+	if not "Memory.md" in files:
+		body.add_child(UI.para("没有可附的前世档案。", 15, UI.INK_FAINT))
 	body.add_child(UI.sep())
 	body.add_child(UI.para("报告末尾留了三个空，想写就写：最烦的三件事、最看不懂的三处、二十天是长了还是短了。不写也不影响上面的数据。", 15, UI.INK_FAINT))
 
