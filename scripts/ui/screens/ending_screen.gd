@@ -3,6 +3,7 @@ extends "res://scripts/ui/screens/screen_base.gd"
 
 const Ledger = preload("res://scripts/core/ledger.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const EndingReport = preload("res://scripts/core/ending_report.gd")
 
 
 func build() -> void:
@@ -30,6 +31,16 @@ func build() -> void:
 	var t := UI.para(truth, 18, UI.DAI)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(t)
+
+	# 这一世靠什么扛住的：和生死簿残页对称，赢也要知道自己怎么赢的。
+	# 拼成一段而不是四行——结局页本来就长，多四行会把下面的选项卡顶出屏幕
+	var recap_parts := []
+	for entry in EndingReport.lines(run):
+		recap_parts.append("%s：%s" % [str(entry.label), str(entry.text)])
+	if not recap_parts.is_empty():
+		var recap := UI.para("这一世　" + "　".join(recap_parts), 17, UI.DAI)
+		recap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		v.add_child(recap)
 
 	var gain := Ledger.daoxin_gain(run, Ledger.ending_bonus(run))
 	var bonus := UI.label("本世结局奖励：道心 +%d（总收获见下方）" % Ledger.ending_bonus(run), 17, UI.DAI)
