@@ -109,6 +109,8 @@ static func _source_text(a: Dictionary) -> String:
 static func _hint(a: Dictionary) -> String:
 	if a.name == ACTIONS.plain.name: return str(a.deed) + "选定就不能改，也不能再领别的。"
 	var money := "银 %d 文" % int(a.silver)
+	# 不占备劫时辰的就不提时辰，免得写出「花 0 个时辰」
+	var hours := "；花 %d 个时辰" % int(a.hours) if int(a.hours) > 0 else ""
 	var spent := "；交出%s" % Data.describe_items(a.spent) if not a.spent.is_empty() else ""
 	var contact := ""
 	if str(a.actor) in NAMES:
@@ -118,7 +120,7 @@ static func _hint(a: Dictionary) -> String:
 	if str(a.kind) == "": warning = "头一场风声照前世的经历来，到时再核实、应对"
 	var source := _source_text(a)
 	var source_hint := "依据%s。" % source if source != "" else ""
-	return "%s；花 %d 个时辰%s，得到%s。%s%s；%s。%s这一世只能选一种。" % [money, int(a.hours), spent, Data.describe_items(a.gained), str(a.deed), contact, warning, source_hint]
+	return "%s%s%s，得到%s。%s%s；%s。%s这一世只能选一种。" % [money, hours, spent, Data.describe_items(a.gained), str(a.deed), contact, warning, source_hint]
 
 static func _eligibility(role: String, a: Dictionary, inherited: Array, daily: bool, vows: Array, silver: int, home: Dictionary) -> String:
 	if str(a.role) != "" and a.role != role: return "这个开局筹备只适合%s。" % str(Data.table("roles").get(a.role, {}).get("name", a.role))

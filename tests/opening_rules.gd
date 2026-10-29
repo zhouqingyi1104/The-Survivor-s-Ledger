@@ -95,6 +95,9 @@ func test_neutral_and_previews() -> void:
 		for row in choices:
 			check(row.keys().size() == 4 and row.has("id") and row.has("text") and row.has("hint") and row.has("block"), "Preview row changed public shape")
 			check(not row.text.is_empty() and not row.hint.is_empty(), "Choice has no meaningful preview")
+			# 不占时辰的不提时辰（不写「花 0 个时辰」），占时辰的写明花几个
+			var hours := int(Core.ACTIONS[row.id].hours)
+			check(row.hint.contains("花 %d 个时辰" % hours) if hours > 0 else not row.hint.contains("个时辰"), "Preview misstates preparation hours: " + str(row.id))
 			if row.block != "": blocked += 1
 		check(blocked == 3, "Fresh preview must allow exactly plain and two base preparations")
 		for mode in [[true, []], [false, ["bare"]]]:
