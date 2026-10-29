@@ -192,7 +192,7 @@ func test_planning_and_migration() -> void:
 	old.version = 19
 	var silver := int(old.silver)
 	var migrated := Migrate.save({"run": old.duplicate(true), "snapshots": {"1": old.duplicate(true)}})
-	check(migrated.run.version == 20 and Cycle.state(migrated.run).cases.is_empty() and Cycle.state(migrated.snapshots["1"]).cases.is_empty() and migrated.run.silver == silver, "v20 migration granted cases or changed old stock")
+	check(migrated.run.version == Migrate.VERSION and Cycle.state(migrated.run).cases.is_empty() and Cycle.state(migrated.snapshots["1"]).cases.is_empty() and migrated.run.silver == silver, "v19 save upgraded to latest granted cases or changed old stock")
 	Game.meta = meta
 	check(Game.new_game("scholar", "normal", [], [], [], false, true) == "", "Daily Game candidate failed")
 	check(Cycle.state(Game.run).sources.is_empty() and Cycle.planning(Game.run).slots.is_empty() and Cycle.view(Game.run).cases.is_empty(), "Daily birth retained private inquiry sources")
