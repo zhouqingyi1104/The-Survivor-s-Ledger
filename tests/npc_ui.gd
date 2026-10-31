@@ -46,6 +46,13 @@ func prefix_button(prefix: String, parent: Node = null) -> Button:
 		if button.is_visible_in_tree() and button.text.begins_with(prefix): return button
 	return null
 
+## 劫余录分「今世 / 人 / 前世」三页，邻人与商情在「人」页。
+func journal_tab(id: String, node: Node) -> void:
+	for button in node.find_children("*", "Button", true, false):
+		if button.has_meta("journal_tab") and str(button.get_meta("journal_tab")) == id:
+			await click(button)
+			return
+
 func click(button: Button, twice := false) -> void:
 	if not check(button != null and not button.disabled, "Missing enabled NPC UI button"): return
 	var ancestor: Node = button.get_parent()
@@ -78,6 +85,7 @@ func open_from_journal() -> void:
 		if button.tooltip_text == "劫余录": entry = button; break
 	await click(entry)
 	check(main.has_modal("journal"), "Actual HUD journal entry failed")
+	await journal_tab("people", main._modals.get("journal"))
 	await click(prefix_button("邻人与商情", main._modals.get("journal")))
 	check(modal() != null, "Journal NPC action entry failed")
 

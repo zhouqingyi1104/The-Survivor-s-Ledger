@@ -49,6 +49,10 @@ func button_text(text: String, node: Node = null) -> Button:
 		if button.is_visible_in_tree() and button.text == text: return button
 	return null
 
+## 劫余录分「今世 / 人 / 前世」三页，入口在各自的页里；先翻到那一页。
+func journal_tab(id: String, node: Node) -> void:
+	await click(button_meta("journal_tab", id, node))
+
 func click(button: Button, twice := false) -> void:
 	if not check(button != null and not button.disabled, "Missing enabled cycle mouse target"): return
 	DisplayServer.window_move_to_foreground()
@@ -256,6 +260,7 @@ func test_entries_and_boundaries() -> void:
 	await close_modals()
 	Dialogs.journal()
 	await frames()
+	await journal_tab("past", main._modals.get("journal"))
 	await click(button_meta("cycle_entry", "journal", main._modals.get("journal")))
 	if modal() == null or main.has_modal("journal"):
 		print("Cycle journal diagnostic: ", main._modals.keys(), " pointer=", get_viewport().get_mouse_position(), " source=", button_meta("cycle_entry", "journal", main._modals.get("journal")))

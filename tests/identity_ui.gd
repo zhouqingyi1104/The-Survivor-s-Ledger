@@ -134,6 +134,8 @@ func open_identity(from_journal := false) -> void:
 		for button in main._screen.hud.find_children("*", "Button", true, false):
 			if button.tooltip_text == "劫余录": journal = button; break
 		await click(journal)
+		# 劫余录分「今世 / 人 / 前世」三页，身份入口在「前世」页。
+		await click(meta_button("journal_tab", "past", main._modals.get("journal")))
 		await click(meta_button("identity_entry", "journal", main._modals.get("journal")))
 	else:
 		await click(meta_button("mainline_entry", true))

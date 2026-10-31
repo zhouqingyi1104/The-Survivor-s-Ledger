@@ -27,6 +27,13 @@ func button_with(prefix: String, parent: Node = null) -> Button:
 		if button.is_visible_in_tree() and button.text.begins_with(prefix): return button
 	return null
 
+## 劫余录分「今世 / 人 / 前世」三页，前世记忆在前世页。
+func journal_tab(id: String, node: Node) -> void:
+	for button in node.find_children("*", "Button", true, false):
+		if button.has_meta("journal_tab") and str(button.get_meta("journal_tab")) == id:
+			button.pressed.emit()
+			return
+
 func labels_in(parent: Node) -> String:
 	var lines := PackedStringArray()
 	for label in parent.find_children("*", "Label", true, false):
@@ -154,6 +161,8 @@ func _ready() -> void:
 	check(Game.run.pending_event == "" and Past.public_memories(Game.run).size() == 1, "Already witnessed awakening repeated after load")
 	main.close_modal("event")
 	Dialogs.journal()
+	await frames()
+	journal_tab("past", main._modals.journal)
 	await frames()
 	var memory_button := button_with("前世记忆", main._modals.journal)
 	if check(memory_button != null and not memory_button.disabled, "Journal is missing its past-life memory entry"):

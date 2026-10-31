@@ -46,7 +46,7 @@ static func setup(scene: String) -> void:
 			run.t = int(run.t) + 14 * 60 + 30
 			Post.sleep(run)
 			Game.act(func(): return "")
-		"post", "cook", "garden", "build", "omens", "inventory", "explore_pick", "menu", "closeup", "hall", "kitchen", "settings":
+		"post", "cook", "garden", "build", "omens", "inventory", "explore_pick", "menu", "closeup", "hall", "kitchen", "settings", "journal":
 			_to_post()
 			var run: Dictionary = Game.run
 			Post.plant(run, 0, "radish")
@@ -73,6 +73,8 @@ static func setup(scene: String) -> void:
 				"explore_pick":
 					run.busy = {}
 					Dialogs.explore_pick()
+				"journal":
+					Dialogs.journal()
 		"explore":
 			_to_post()
 			var run: Dictionary = Game.run

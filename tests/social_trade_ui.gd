@@ -47,6 +47,13 @@ func labels_in(parent: Node) -> String:
 		if label.is_visible_in_tree(): lines.append(label.text)
 	return "\n".join(lines)
 
+## 劫余录分「今世 / 人 / 前世」三页，纸鹤往来在「人」页。
+func journal_tab(id: String, node: Node) -> void:
+	for button in node.find_children("*", "Button", true, false):
+		if button.has_meta("journal_tab") and str(button.get_meta("journal_tab")) == id:
+			await click(button)
+			return
+
 func click(button: Button, twice := false) -> void:
 	if not check(button != null and not button.disabled, "Could not click enabled UI button"):
 		return
@@ -79,6 +86,7 @@ func open_from_journal() -> void:
 				break
 		await click(entry)
 	if not check(main.has_modal("journal"), "HUD journal button failed to open journal"): return
+	await journal_tab("people", main._modals.journal)
 	await click(button_with("纸鹤往来", main._modals.journal))
 	check(main.has_modal("social_trade"), "Actual journal entry failed to open trade modal")
 
