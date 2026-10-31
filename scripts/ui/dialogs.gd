@@ -1353,8 +1353,11 @@ func _night_panel(body: VBoxContainer) -> void:
 	body.add_child(UI.para("第 %d / %d 轮。这一轮要来 %d 只。离下一轮还有 %d 分钟——只够做一件事。" % [
 		idx + 1, int(night.rounds), int(pv.surfaces.gate.count) + int(pv.surfaces.window.count) + int(pv.surfaces.wall.count),
 		maxi(0, Defense.round_minute(idx) - Post.day_minute(run))], 17))
-	body.add_child(UI.para("院门%s。开着的时候，这一轮本该撞门的那些会直接走进来，砸菜畦、米袋和家具；关着就只能挨撞。" % (
-		"开着" if bool(run.door_open) else "闩着"), 15, UI.CINNABAR if bool(run.door_open) else UI.INK_SOFT))
+	var door_open := bool(run.door_open)
+	var door_line := UI.para("院门开着，这一轮撞门的会直接进院，砸菜畦和米袋。" if door_open else "院门闩着，撞门的只能对着门撞。", 15, UI.CINNABAR if door_open else UI.INK_SOFT)
+	door_line.tooltip_text = "进院的那几只先砸菜畦、米袋和家具，砸到什么算什么；门闩着，它们就只能撞门。"
+	door_line.mouse_filter = Control.MOUSE_FILTER_PASS
+	body.add_child(door_line)
 	var round_bonuses := []
 	for sid in Defense.SURFACES:
 		var bonus := float(pv.surfaces[sid].get("bonus", 0))
@@ -1413,8 +1416,11 @@ func _night_panel(body: VBoxContainer) -> void:
 		foot.add_child(UI.button("布 %s → %s" % [devices[did].name, Defense.surface_name(str(devices[did].surface))],
 			func(): _night_do(func(): return Post.night_build(Game.run, did), "")))
 	if targeted_rows.get_child_count() > 0:
+		var note := UI.para("现做的只管 2 夜。", 14, UI.INK_SOFT)
+		note.tooltip_text = "夜里现做的守具只管今夜与明夜，营造等级不加夜数；做到一半被打断，料退回，精力不退。"
+		note.mouse_filter = Control.MOUSE_FILTER_PASS
+		body.add_child(note)
 		body.add_child(targeted_rows)
-		body.add_child(UI.para("夜里临时布下的只管 2 夜，营造等级不加夜数；做到一半被打断，料退回，精力不退。", 14))
 	foot.add_child(UI.spacer())
 	foot.add_child(UI.button("等下一轮", func(): UI.close_modal("night")))
 	body.add_child(foot)

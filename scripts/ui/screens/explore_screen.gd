@@ -515,7 +515,7 @@ func build_hud() -> void:
 	var p: Dictionary = Data.table("map_points")[ex.point]
 	var v := UI.vbox(4)
 	v.add_child(UI.heading(p.name, 26))
-	v.add_child(UI.line(p.desc, 15, UI.INK_SOFT, 300))
+	v.add_child(UI.wrap_line(p.desc, 15, UI.INK_SOFT, 300))
 	if not ex.get("only_investigate", false):
 		var journey_profile: Dictionary = SiteJourney.profile(str(ex.point))
 		var grades := {"easy": "简单", "medium": "中等", "hard": "困难"}
@@ -532,7 +532,7 @@ func build_hud() -> void:
 	var clue_count := 0
 	for known in found:
 		if bool(known): clue_count += 1
-	v.add_child(UI.line("探索 · %s：线索 %d/%d · %s" % [str(profile.get("title", "现场")), clue_count, profile.get("clues", []).size(), "通路已开" if progress.get("unlocked", false) else "通路待解"], 15, UI.GOLD, 300))
+	v.add_child(UI.wrap_line("探索 · %s：线索 %d/%d · %s" % [str(profile.get("title", "现场")), clue_count, profile.get("clues", []).size(), "通路已开" if progress.get("unlocked", false) else "通路待解"], 15, UI.GOLD, 300))
 	var journal := UI.button("查看已发现线索", func(): _open_expedition("journal"))
 	journal.set_meta("expedition_journal", true)
 	v.add_child(journal)
@@ -549,21 +549,21 @@ func build_hud() -> void:
 		if spot.done: searched += 1
 		elif Explore.site_options(run, i).size() > 1: site_target = str(spot.name)
 	if ex.get("only_investigate", false):
-		v.add_child(UI.line("专程查访 · 这里暂时翻不出物资，要查的地方照样能查。", 15, UI.GOLD, 300))
+		v.add_child(UI.wrap_line("专程查访 · 这里暂时翻不出物资，要查的地方照样能查。", 15, UI.GOLD, 300))
 		v.add_child(UI.label("返程需 %d 分钟" % int(Post.ACTIONS.travel[1]), 15, UI.INK_SOFT))
 	else:
 		v.add_child(UI.label("搜寻 %d / %d 处 · 返程需 %d 分钟" % [searched, ordinary, int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
 	if site_target != "": v.add_child(UI.label("特色行动：" + site_target, 15, UI.GOLD))
-	v.add_child(UI.line("带着：" + (Data.describe_items(ex.bag) if not ex.bag.is_empty() else "空手"), 15, UI.INK_SOFT, 300))
-	v.add_child(UI.line(Neighbor.summary(run), 16, UI.INK_SOFT, 300))
+	v.add_child(UI.wrap_line("带着：" + (Data.describe_items(ex.bag) if not ex.bag.is_empty() else "空手"), 15, UI.INK_SOFT, 300))
+	v.add_child(UI.wrap_line(Neighbor.summary(run), 16, UI.INK_SOFT, 300))
 	if Neighbor.state(run).stage in ["fetch", "carrying"]:
 		v.add_child(UI.label("送药截止：第 4 日 18:00（含返程）", 15, UI.GOLD))
 	if Neighbor.state(run).medicine:
 		v.add_child(UI.label("贴身药包 ×1 · 不占背囊", 16, UI.GOLD))
 	var objective := Mainline.objective(run, str(ex.point))
-	v.add_child(UI.line(Mainline.summary(run), 15, UI.GOLD, 300))
+	v.add_child(UI.wrap_line(Mainline.summary(run), 15, UI.GOLD, 300))
 	if not objective.is_empty():
-		v.add_child(UI.line("要查的：" + str(objective.name), 15, UI.GOLD, 300))
+		v.add_child(UI.wrap_line("要查的：" + str(objective.name), 15, UI.GOLD, 300))
 	_work_label = UI.label("", 15, UI.GOLD)
 	v.add_child(_work_label)
 	corner_panel(v, Control.PRESET_TOP_LEFT)

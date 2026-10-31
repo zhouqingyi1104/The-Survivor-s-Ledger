@@ -182,6 +182,14 @@ static func line(text: String, size: int, color: Color, width: float) -> Label:
 	return l
 
 
+## 定宽自动换行：HUD 里宁可多占一行，也不要截断（现场描述、主线进度这类必须读全）。
+static func wrap_line(text: String, size: int, color: Color, width: float) -> Label:
+	var l := label(text, size, color, true)
+	l.custom_minimum_size.x = width
+	l.tooltip_text = text
+	return l
+
+
 ## 日志的单行版本，给 HUD 用。
 static func log_lines(lines: Array, count: int, size: int, width: float) -> VBoxContainer:
 	var v := vbox(2)
