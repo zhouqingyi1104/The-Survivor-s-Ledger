@@ -307,7 +307,7 @@ func _build_clues(body: VBoxContainer) -> void:
 		body.add_child(row)
 	if Game.meta.clues.size() >= clues.size():
 		body.add_child(UI.sep())
-		body.add_child(UI.para("五篇残卷拼在一起，真相只有一个：尸劫是青云观主炼尸所致。下一卷，也许可以在血月之前上山。", 18, UI.CINNABAR))
+		body.add_child(UI.para("五篇残卷拼在一起：尸劫是青云观主炼尸所致。下一卷，也许可以在血月之前上山。", 18, UI.CINNABAR))
 
 
 ## 版本号只在 project.godot 的 application/config/version 里维护（0.10.0 → "0.10"），界面不再写死。

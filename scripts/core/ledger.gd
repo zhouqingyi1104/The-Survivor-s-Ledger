@@ -115,7 +115,7 @@ static func settle(run: Dictionary) -> Dictionary:
 	if State.has_talent(run, "jishan"):
 		lines.append(["积善之家", 2])
 	if int(run.merit) > 0:
-		lines.append(["功德生息", clampi(int(run.merit * 0.05), 1, 10)])
+		lines.append(["功德日增", clampi(int(run.merit * 0.05), 1, 10)])
 	var total := 0
 	for l in lines:
 		total += int(l[1])

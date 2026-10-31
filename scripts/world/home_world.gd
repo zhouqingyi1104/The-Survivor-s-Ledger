@@ -1051,7 +1051,7 @@ func _move_route_block(rect: Rect2, run: Dictionary, ignore_uid: int) -> bool:
 	return rect.intersects(Rect2(-0.6, -6.6, 1.2, 13.2))
 
 
-## 新建和挪位同样检查物理障碍与通路，不能穿过侧墙或堵住工作站。
+## 新建和挪位同样检查物理障碍与通路，不能穿过侧墙或堵住工作台。
 func build_spot_block(run: Dictionary, id: String, x: float, z: float, rot: int) -> String:
 	if _floor == "guest_zhou":
 		return "做客时不能布置邻家的家具。"
@@ -1062,7 +1062,7 @@ func build_spot_block(run: Dictionary, id: String, x: float, z: float, rot: int)
 	if err != "":
 		return err
 	if _move_route_block(Home.rect_of(id, x, z, rot), run, -1):
-		return "这里要留给工作站和通路。"
+		return "这里要留给工作台和通路。"
 	if not is_inside_tree():
 		return "院子还没准备好。"
 	var size := Home.size_of(id, rot)
@@ -1096,7 +1096,7 @@ func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) ->
 	if err != "":
 		return err
 	if _move_route_block(Home.rect_of(str(f.id), x, z, rot), run, uid):
-		return "这里要留给工作站和通路。"
+		return "这里要留给工作台和通路。"
 	if not is_inside_tree():
 		return "院子还没准备好。"
 	var size := Home.size_of(str(f.id), rot)
@@ -1125,13 +1125,13 @@ func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) ->
 		for info in SPOTS.values():
 			var other: Vector3 = info.stand
 			if Vector2(stand.x - other.x, stand.z - other.z).length() < 2.0:
-				return "家具正面离其他工作站太近。"
+				return "家具正面离其他工作台太近。"
 		for other in run.get("furniture", []):
 			if int(other.uid) == uid or not Home.is_core(run, other):
 				continue
 			var p := Home.stand(other)
 			if Vector2(stand.x - p.x, stand.z - p.z).length() < 2.0:
-				return "家具正面离其他工作站太近。"
+				return "家具正面离其他工作台太近。"
 		var stand_rect := Rect2(stand.x - 0.4, stand.z - 0.4, 0.8, 0.8)
 		if Home.area_of(stand_rect, run) == "":
 			return "家具正面没有站人的地方。"

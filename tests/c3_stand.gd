@@ -29,7 +29,7 @@ func _ready() -> void:
 	var bench := Home.core(run, "bench")
 	var uid := int(bench.uid)
 	var conflict := world.move_spot_block(run, uid, 5.25, -5.5, 270)
-	check(conflict == "家具正面离其他工作站太近。", "bench beside desk allowed overlapping work positions: " + conflict)
+	check(conflict == "家具正面离其他工作台太近。", "bench beside desk allowed overlapping work positions: " + conflict)
 	for rot in [0, 90, 180, 270]:
 		var valid := false
 		var blocked_front := false

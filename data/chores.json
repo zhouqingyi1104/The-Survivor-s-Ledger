@@ -46,7 +46,7 @@
   "share_bread":    {"name": "巷口分一张饼", "spot": "gate", "minutes": 45, "energy": 2, "cost": {"flatbread": 1}, "merit": 3, "attrs": {"mood": 4}, "deadline": 240, "tag": "人", "weight": 2,
                      "why": "过路的孩子饿得站不住，再晚就走了。"},
   "talk_mates":     {"name": "陪同院的人说说话", "spot": "bed", "minutes": 60, "energy": 1, "attrs": {"mood": 6}, "need": {"mates": true}, "tag": "人", "weight": 3,
-                     "why": "一院子人互相撑着，日子才熬得下去。"},
+                     "why": "灶膛里还剩点火，同院的人蹲着烤手，半天没吭声。"},
   "strip_planks":   {"name": "拆旧床板取料", "spot": "bed", "minutes": 120, "energy": 8, "gain": {"wood": 1}, "limit": 2, "tag": "材", "weight": 2,
                      "why": "西厢那张旧床板拆了，正好是一根修门的木料；拆完就没了。"},
   "breathe":        {"name": "吐纳调息", "spot": "shrine", "minutes": 60, "energy": 0, "attrs": {"hp": 6, "mood": 3}, "need": {"hurt": true}, "tag": "神", "weight": 3,

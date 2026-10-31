@@ -8,7 +8,7 @@ const Trade = preload("res://scripts/core/social_trade.gd")
 const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 const ACTORS := {"ning": "阿宁", "zhou": "木料场老周", "traveler": "过路客"}
 const KINDS := ["promise", "breach", "rescue"]
-const TITLES := {"promise": "隔世旧诺", "breach": "失约的回声", "rescue": "旧日伸出的手"}
+const TITLES := {"promise": "旧诺未了", "breach": "旧约已失", "rescue": "旧恩未报"}
 const STAGES := {"sealed": "残梦尚未浮现", "lead": "已有旧梦，待今世查访", "interviewed": "查访完成，待对照账页", "verified": "今世已查证，待选择", "working": "正在兑现今世选择", "resolved": "今世已处理", "expired": "已错过查访期限"}
 const CUES := ["old_note", "familiar_dream", "folded_page"]
 const ROUTES := {
@@ -341,6 +341,6 @@ static func view(run: Dictionary) -> Dictionary:
 		var active := 0
 		for c in s.cases:
 			if not c.stage in ["resolved", "expired"]: active += 1
-		summary = "%d 宗旧案，%d 宗待处理。前世只是线索，这一世怎么相处，看你查访和新订的约。" % [cases.size(), active]
+		summary = "%d 宗旧案，%d 宗待处理。先逐宗查访，再挑续约还是放下。" % [cases.size(), active]
 	if Past.daily(run): summary = "每日一局里不查前世旧案。"
 	return {"title": "轮回调查 · 旧诺与今证", "summary": summary, "token": _token(run), "cases": cases, "history": s.history.duplicate(true) if _enabled(run) else [], "work": work, "last_result": str(s.last_result) if _enabled(run) else ""}

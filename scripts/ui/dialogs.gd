@@ -183,7 +183,7 @@ func _opening_info(body: VBoxContainer) -> void:
 			content.add_child(UI.para("头一场风声：第 %d 日 · %s · 线人 %s。是真是假，到时再查。" % [int(warning.get("warning_day", 0)), title, Director.ACTORS.get(str(warning.get("actor", "")), "邻人")], 16, UI.GOLD))
 	var source := str(view.get("source_label", ""))
 	if source != "": content.add_child(UI.para("筹备依据：" + source, 16, UI.JADE))
-	content.add_child(UI.para("这是这一世开局花掉和得到的。往后怎么样，看你怎么选；下一世可以另选。", 15, UI.INK_SOFT))
+	content.add_child(UI.para("这是这一世开局花掉和得到的；下一世可以另选。", 15, UI.INK_SOFT))
 	for entry in view.get("history", []):
 		if entry is Dictionary:
 			content.add_child(UI.para(str(entry.get("text", entry.get("result", ""))), 16))
@@ -1474,7 +1474,7 @@ func _furnish(body: VBoxContainer) -> void:
 	scroll.add_child(content)
 	content.add_child(UI.para("挑一件，在当前空间点地面放下。R 转方向，Esc 取消；不能堵通路，也不能和别的东西挤在一起。", 16))
 	if Floors.current(run) != "courtyard":
-		content.add_child(UI.para("家具原有的全宅效果仍会生效；做饭、睡觉等工作请回院内对应工作站。", 14))
+		content.add_child(UI.para("家具原有的全宅效果仍会生效；做饭、睡觉等工作请回院内对应工作台。", 14))
 	content.add_child(UI.sep())
 	var items: Dictionary = Data.table("furniture")
 	var keys := items.keys()

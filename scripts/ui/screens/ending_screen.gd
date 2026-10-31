@@ -61,7 +61,7 @@ func build() -> void:
 			"继续　在这座宅院里守下去\n之后　每三夜一波尸潮，越来越凶\n结算　等你合上此录时再算道心", "守 下 去", Game.keep_living.bind(str(run.get("past_lives", {}).get("id", "")))))
 	else:
 		v.add_child(UI.para("这条路已经走完；可以带着记忆重走，或合上这一卷。", 17, UI.DAI))
-	row.add_child(_card("再入轮回", "「这一回，我知道该往哪走。」",
+	row.add_child(_card("再入轮回", "「从头再把门窗钉一遍。」",
 		"回到　三日之前，同一身份重新备劫\n保留　心法、残卷；沿用今世开局\n收获　道心 +%d" % gain.total, "重 走", Game.restart_from_cover.bind(str(run.get("past_lives", {}).get("id", "")))))
 	row.add_child(_card("合上此录", "「到这里就够了。」",
 		"结算　这一卷到此为止\n收获　道心 +%d" % gain.total, "合 上", Game.close_book.bind(str(run.get("past_lives", {}).get("id", "")))))

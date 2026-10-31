@@ -753,8 +753,8 @@ static func awakening(run: Dictionary) -> Dictionary:
 		var scene_text := "%s捎来一段难以解释的梦话。对方认不清那张脸，却说出了你曾做过的事。\n记忆碎片（%s，第 %d 日）：%s\n这是前世的片段，今世如何相处仍由你决定。" % [ACTORS[f.actor], when, int(f.get("day", 0)), f.fact]
 		return {"uid": "world:memory:%s:%s" % [p.id, f.actor], "actor": f.actor, "title": "前尘回响 · " + ACTORS[f.actor], "text": scene_text,
 			"past_memory": {"actor": f.actor, "fact_id": f.fact_id, "life": int(f.life)}, "choices": [
-				{"id": "acknowledge", "text": "承认这段似曾相识", "result": "你承认自己也有相似的片段，但不把前世当作今世的债。对方愿意重新认识你。", "req": {}, "give": {}, "relation": 1, "mood": 2 if int(f.valence) > 0 else -1},
-				{"id": "compensate", "text": "送出米 1，用这一世的行动回应", "result": "你送出一份米粮，让这一世的善意落到实处。", "req": {"rice": 1}, "give": {}, "relation": 2, "mood": 1},
+				{"id": "acknowledge", "text": "承认这段似曾相识", "result": "你承认自己也有相似的片段。对方盯着你看了一会儿，说他梦里也有这道门，往后照新认识的人来往。", "req": {}, "give": {}, "relation": 1, "mood": 2 if int(f.valence) > 0 else -1},
+				{"id": "compensate", "text": "送出米 1，用这一世的行动回应", "result": "你把米袋推过去，对方双手接了，捧在手里掂了掂，才收进屋里。", "req": {"rice": 1}, "give": {}, "relation": 2, "mood": 1},
 				{"id": "dismiss", "text": "只当作一场旧梦", "result": "你没有追问梦的来处。对方收起这段话，与你暂时疏远了一些。", "req": {}, "give": {}, "relation": -1, "mood": 0}]}
 	return {}
 

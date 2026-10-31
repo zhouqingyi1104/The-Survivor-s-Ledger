@@ -27,7 +27,7 @@
   },
   "builder": {
     "name": "营造坊", "travel": 2, "kind": "facility", "must": true,
-    "desc": "★ 必去。订下的营造活计会在尸劫来临前装好。工期一日，第三日再订就来不及了。",
+    "desc": "订下的营造活计会在尸劫来临前装好。工期一日，第三天再去，人家就不接活了。",
     "order_last_day": 2
   },
   "temple": {
