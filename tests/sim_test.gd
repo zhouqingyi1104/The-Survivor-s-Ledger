@@ -958,6 +958,8 @@ func test_broken() -> void:
 	run.phase = "post"
 	run.pday = 3
 	run.today = {"ate": [], "actions": [], "kills": 0, "merit": 0}
+	# 家具是过完备劫才摆出来的（pre.gd 调 ensure_layout）；这里直接开局，得自己摆。
+	Home.ensure_layout(run)
 	var t: String = Post.apply_wreck(run, 3)
 	check("stove" in run.broken, "灶台被砸了却没记下来：%s" % t)
 	var t2: String = Post.apply_wreck(run, 4)
