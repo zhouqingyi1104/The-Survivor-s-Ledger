@@ -3,80 +3,80 @@
   "actors": {
     "ning": {
       "openers": {
-        "n_o1": {"text": "先听我把打算说完，可好？", "tone": "all"},
-        "n_o2": {"text": "日子要一寸一寸地挪，我也得拿个主意。", "tone": "all"},
-        "n_o3": {"text": "我把话写在这里，免得彼此猜。", "tone": "all"},
-        "n_o4": {"text": "你且听听，合不合适再说。", "tone": "all"},
-        "n_o5": {"text": "有些事总要想清楚了再做。", "tone": "all"},
-        "n_o6": {"text": "这点盘算，我想亲口告诉你。", "tone": "all"},
-        "n_o7": {"text": "与你说话，我愿意少绕几个弯。", "tone": "warm"},
-        "n_o8": {"text": "你愿意听，我便细细说。", "tone": "warm"},
-        "n_o9": {"text": "我还是把界限先说清楚。", "tone": "guarded"},
-        "n_o10": {"text": "话可以慢慢讲，主意得由我自己拿。", "tone": "guarded"}
+        "n_o1": {"text": "水缸结了冰，我把最要紧的先说。", "tone": "all"},
+        "n_o2": {"text": "药罐在火上滚着，我走不开。", "tone": "all"},
+        "n_o3": {"text": "阿爹喝了药，今天能自己坐起来。", "tone": "all"},
+        "n_o4": {"text": "再过半个时辰我得去挑水。", "tone": "all"},
+        "n_o5": {"text": "这包艾草是上回剩的，你收着。", "tone": "all"},
+        "n_o6": {"text": "粥还在灶上温着，我站不久。", "tone": "all"},
+        "n_o7": {"text": "你上回替我取药那趟，我一直记着。", "tone": "warm"},
+        "n_o8": {"text": "上回借你那根晾衣绳，今早还了。", "tone": "warm"},
+        "n_o9": {"text": "药钱我照市价付，不赊。", "tone": "guarded"},
+        "n_o10": {"text": "柜里只取一包，别多动。", "tone": "guarded"}
       },
       "closers": {
-        "n_c1": {"text": "你也顾着自己的日子，别勉强。", "tone": "all"},
-        "n_c2": {"text": "听过便好，怎么回应由你。", "tone": "all"},
-        "n_c3": {"text": "心里有数，总比相互猜着强。", "tone": "all"},
-        "n_c4": {"text": "愿咱们都能把眼前的路看稳些。", "tone": "all"},
-        "n_c5": {"text": "话说到这里，你慢慢斟酌。", "tone": "all"},
-        "n_c6": {"text": "我不替你拿主意。", "tone": "all"},
-        "n_c7": {"text": "愿你我说话，都能留些暖意。", "tone": "warm"},
-        "n_c8": {"text": "能这样好好商量，我心里是欢喜的。", "tone": "warm"},
-        "n_c9": {"text": "先照说清的办，别靠猜。", "tone": "guarded"},
-        "n_c10": {"text": "我说得直，你也不必急着答应。", "tone": "guarded"}
+        "n_c1": {"text": "话说到这儿，你看这个价成不成。", "tone": "all"},
+        "n_c2": {"text": "有事你敲两下墙，我听得见。", "tone": "all"},
+        "n_c3": {"text": "搁着也行，米我先留着，我不催你。", "tone": "all"},
+        "n_c4": {"text": "明早井台见，桶我给你带过去。", "tone": "all"},
+        "n_c5": {"text": "你给句话，我好赶回家烧火。", "tone": "all"},
+        "n_c6": {"text": "我得回去看火，锅坐着水，别糊了。", "tone": "all"},
+        "n_c7": {"text": "粥我搁你门口了，碗记得还。", "tone": "warm"},
+        "n_c8": {"text": "我这儿也紧，半升米还是分得开。", "tone": "warm"},
+        "n_c9": {"text": "应了我就按这个办，艾草照送。", "tone": "guarded"},
+        "n_c10": {"text": "价说定了，我才好动手备药。", "tone": "guarded"}
       }
     },
     "zhou": {
       "openers": {
-        "z_o1": {"text": "盘算得明白，手上才不乱。", "tone": "all"},
-        "z_o2": {"text": "我这人嘴笨，先说打算。", "tone": "all"},
-        "z_o3": {"text": "咱把事情摊开讲。", "tone": "all"},
-        "z_o4": {"text": "一桩是一桩，听我讲完再定。", "tone": "all"},
-        "z_o5": {"text": "过日子也像打榫，落手前得量。", "tone": "all"},
-        "z_o6": {"text": "我的算盘是这样打的。", "tone": "all"},
-        "z_o7": {"text": "咱说话可以敞亮些。", "tone": "warm"},
-        "z_o8": {"text": "跟你商量，我就不卖关子了。", "tone": "warm"},
-        "z_o9": {"text": "规矩先摆在前头。", "tone": "guarded"},
-        "z_o10": {"text": "话说实在些，省得各想各的。", "tone": "guarded"}
+        "z_o1": {"text": "料场那半边棚被雪压塌了。", "tone": "all"},
+        "z_o2": {"text": "铁钉我数了两遍，只剩半包。", "tone": "all"},
+        "z_o3": {"text": "肩上还挂着刨花，我从料场过来。", "tone": "all"},
+        "z_o4": {"text": "锯刚磨好，刃口热得烫手。", "tone": "all"},
+        "z_o5": {"text": "天黑前我得把这车料卸完。", "tone": "all"},
+        "z_o6": {"text": "未时我得赶车走，这会儿有空。", "tone": "all"},
+        "z_o7": {"text": "上回你送我那碗热汤，够意思。", "tone": "warm"},
+        "z_o8": {"text": "上回你帮我抬那根梁，我记着。", "tone": "warm"},
+        "z_o9": {"text": "料是先付后取的，别怪我。", "tone": "guarded"},
+        "z_o10": {"text": "做归我做，搬料的事我不揽。", "tone": "guarded"}
       },
       "closers": {
-        "z_c1": {"text": "你掂量自己的家底再回话。", "tone": "all"},
-        "z_c2": {"text": "别急着点头，想妥了再说。", "tone": "all"},
-        "z_c3": {"text": "把话讲透，心里就少个疙瘩。", "tone": "all"},
-        "z_c4": {"text": "能不能搭手，你自己定。", "tone": "all"},
-        "z_c5": {"text": "这便是我的打算。", "tone": "all"},
-        "z_c6": {"text": "各人的日子，都得各人掂量。", "tone": "all"},
-        "z_c7": {"text": "愿咱们说句实话都不费劲。", "tone": "warm"},
-        "z_c8": {"text": "有商有量，比闷着强。", "tone": "warm"},
-        "z_c9": {"text": "先看清楚，免得回头争执。", "tone": "guarded"},
-        "z_c10": {"text": "我只把眼前的话说定，不多夸口。", "tone": "guarded"}
+        "z_c1": {"text": "成不成你回一句，我好动手。", "tone": "all"},
+        "z_c2": {"text": "我回去接着刨那根料。", "tone": "all"},
+        "z_c3": {"text": "明早这时我推车过来。", "tone": "all"},
+        "z_c4": {"text": "不行就早说，料别糟践。", "tone": "all"},
+        "z_c5": {"text": "你要的料我先搁后院了。", "tone": "all"},
+        "z_c6": {"text": "我得回去把锯末扫了。", "tone": "all"},
+        "z_c7": {"text": "这堆料我先给你码上。", "tone": "warm"},
+        "z_c8": {"text": "料价涨了，我自家也紧。", "tone": "warm"},
+        "z_c9": {"text": "按这个价走，三天里不涨。", "tone": "guarded"},
+        "z_c10": {"text": "不成也言语一声，别晾着我。", "tone": "guarded"}
       }
     },
     "traveler": {
       "openers": {
-        "t_o1": {"text": "路要自己选，话先讲明白。", "tone": "all"},
-        "t_o2": {"text": "容我说说眼下的盘算。", "tone": "all"},
-        "t_o3": {"text": "与其绕弯，不如开门见山。", "tone": "all"},
-        "t_o4": {"text": "我习惯先把利害想清楚。", "tone": "all"},
-        "t_o5": {"text": "你听个明白，再作自己的选择。", "tone": "all"},
-        "t_o6": {"text": "这番打算，不必藏着掖着。", "tone": "all"},
-        "t_o7": {"text": "能坦坦荡荡说话，是件舒心事。", "tone": "warm"},
-        "t_o8": {"text": "与你商量，我愿说得细些。", "tone": "warm"},
-        "t_o9": {"text": "情面归情面，分寸也得留着。", "tone": "guarded"},
-        "t_o10": {"text": "你我先把边界说清。", "tone": "guarded"}
+        "t_o1": {"text": "街面今早空得反常。", "tone": "all"},
+        "t_o2": {"text": "城门口的尸群挪了地方。", "tone": "all"},
+        "t_o3": {"text": "我这双鞋走烂三回了。", "tone": "all"},
+        "t_o4": {"text": "包袱里就剩半张饼。", "tone": "all"},
+        "t_o5": {"text": "天黑前我要出西门。", "tone": "all"},
+        "t_o6": {"text": "趁雪没化，我在檐下多站会儿。", "tone": "all"},
+        "t_o7": {"text": "你留我喝了碗热的，少见。", "tone": "warm"},
+        "t_o8": {"text": "上回临走你塞给我半张饼。", "tone": "warm"},
+        "t_o9": {"text": "我不留宿，连你的饭也不吃。", "tone": "guarded"},
+        "t_o10": {"text": "借你檐下站站，不进屋。", "tone": "guarded"}
       },
       "closers": {
-        "t_c1": {"text": "你按自己的难处取舍便是。", "tone": "all"},
-        "t_c2": {"text": "怎么选，我都不替你开口。", "tone": "all"},
-        "t_c3": {"text": "想清楚再应，不必抢这一句话。", "tone": "all"},
-        "t_c4": {"text": "各自心里有杆秤，就好说话。", "tone": "all"},
-        "t_c5": {"text": "话摆在这里，留你斟酌。", "tone": "all"},
-        "t_c6": {"text": "你有你的路，我也有我的打算。", "tone": "all"},
-        "t_c7": {"text": "愿这番商量让彼此心里亮些。", "tone": "warm"},
-        "t_c8": {"text": "话说得投机，人也轻快些。", "tone": "warm"},
-        "t_c9": {"text": "照明白的话办，少些误会。", "tone": "guarded"},
-        "t_c10": {"text": "我不强求，你也莫含糊应承。", "tone": "guarded"}
+        "t_c1": {"text": "我今夜睡城西的破庙。", "tone": "all"},
+        "t_c2": {"text": "下回打这儿过，我敲你的门。", "tone": "all"},
+        "t_c3": {"text": "你给句话，我趁天亮走。", "tone": "all"},
+        "t_c4": {"text": "你不肯就摇个头，我不纠缠。", "tone": "all"},
+        "t_c5": {"text": "这包盐先搁你门板上。", "tone": "all"},
+        "t_c6": {"text": "我上路了，天亮前一定出巷。", "tone": "all"},
+        "t_c7": {"text": "热汤你自家留着，我喝过了。", "tone": "warm"},
+        "t_c8": {"text": "下回我给你捎双厚袜。", "tone": "warm"},
+        "t_c9": {"text": "应不下你就摇头，我另找人。", "tone": "guarded"},
+        "t_c10": {"text": "话摆明了，我不赊也不欠米。", "tone": "guarded"}
       }
     }
   }
