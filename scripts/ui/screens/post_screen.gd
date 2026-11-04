@@ -378,12 +378,15 @@ func _night_sounds(run: Dictionary, delta: float) -> void:
 		Sfx.play("gust", -14.0, 0.1)
 
 
-## 配乐和环境声跟着昼夜走：白天一点古筝，入夜只剩风雪；生火做饭、夜里烧炭时有柴火声。
+## 白天古筝、夜间守夜曲；开门迎敌优先用战斗曲，风雪和柴火仍走环境声。
 func _scene_audio(run: Dictionary) -> void:
 	if _show != null or Game.screen != "post":
 		return
 	var night: bool = Post.is_night(run)
-	Sfx.music("" if night else "lotus_pond", -13.0, 3.0)
+	var fighting: bool = not run.get("fight", {}).is_empty()
+	var track := "dragon_dance" if fighting else ("night_watch" if night else "lotus_pond")
+	var music_db := -7.0 if fighting else -13.0
+	Sfx.music(track, music_db, 1.2 if fighting else 3.0)
 	Sfx.ambience("wind_loop", -8.0 if night else -15.0, 3.0)
 	var fire: bool = _busy_kind == "cook" or (bool(run.get("heated", false)) and night)
 	Sfx.ambience("fire_loop", -9.0 if fire else null, 1.5)
@@ -519,6 +522,7 @@ func _start_round() -> void:
 	_hold_show()
 	_show = RoundShow.new()
 	world.add_child(_show)
+	Sfx.music("dragon_dance", -7.0, 1.2)
 	var rep = Game.act(func(): return Post.nod_round(Game.run))
 	if rep == null or rep.is_empty():
 		_end_show()

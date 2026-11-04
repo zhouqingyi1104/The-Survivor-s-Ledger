@@ -2165,7 +2165,7 @@ func _settings(body: VBoxContainer, in_game: bool) -> void:
 		h.add_child(slider)
 		h.add_child(pct)
 		content.add_child(h)
-	content.add_child(UI.para("声音素材：Kenney、OpenGameArt、BiteMe Games（CC0）；梆子、更鼓、赶尸铃、铜锣为程序合成。", 14, UI.INK_FAINT))
+	content.add_child(UI.para("声音素材：Kenney、OpenGameArt、BiteMe Games（CC0）；守夜配乐、梆子、更鼓、赶尸铃、铜锣为本项目程序合成。", 14, UI.INK_FAINT))
 	if in_game:
 		content.add_child(UI.sep())
 		var row := UI.hbox()

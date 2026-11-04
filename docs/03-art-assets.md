@@ -142,8 +142,8 @@ blender -b --factory-startup --python tools/pipeline/bl_dress.py -- \
 
 ## 七、声音（v0.4，2026-10-22）
 
-全部是 CC0（可商用、不用署名），原始包在 `assets/third_party/audio/`（`.gdignore`，引擎不导入），
-挑出来转好的 OGG 在 `assets/audio/`（约 4.3 MB）。
+第三方声音素材为 CC0（可商用、不用署名），原始包在 `assets/third_party/audio/`（`.gdignore`，引擎不导入），
+挑出来转好的 OGG 在 `assets/audio/`（含守夜曲约 4.4 MB，2026-11-04）。
 
 | 来源 | 内容 | 用在哪 |
 |---|---|---|
@@ -155,6 +155,7 @@ blender -b --factory-startup --python tools/pipeline/bl_dress.py -- \
 | [OpenGameArt · Wind](https://opengameart.org/content/wind)（IgnasD） | 三阵风 | 夜里偶尔一阵风 |
 | [OpenGameArt · Fireplace Sound Loop](https://opengameart.org/content/fireplace-sound-loop)（PagDev） | 柴火噼啪（循环） | 生火做饭、夜里烧炭 |
 | 程序合成（`tools/pipeline/synth_sfx.py`） | 梆子、更鼓、赶尸铃、铜锣、风雪（可无缝循环）、打水、喝水 | 打更、尸潮开锣、夜里远处的铃声、环境风雪、打水 |
+| 本项目程序合成（`tools/pipeline/synth_night_music.py`，2026-11-04） | `night_watch.ogg` 守夜曲；固定种子、无第三方采样，生成与验证见 [46](46-night-music.md) | 宅院入夜与轮间休整；战斗期间仍用 Dragon Dance，不归入 BiteMe 的两首素材 |
 
 重新生成：
 
@@ -163,13 +164,21 @@ python -I tools/pipeline/synth_sfx.py <合成输出目录>
 python -I tools/pipeline/build_audio.py assets/third_party/audio/raw <合成输出目录> assets/audio
 ```
 
+守夜曲单独重建（只生成本项目的新曲，不覆盖前两首第三方音乐）：
+
+```bash
+python -I tools/pipeline/synth_night_music.py build/night-music-qa --asset-path assets/audio/music/night_watch.ogg --verify-reproducible
+```
+
+该脚本复用既有 NumPy / SciPy 与 FFmpeg，输出源 WAV、OGG、机器分析和接缝预览；只将新曲 OGG 及导入设置入库。生成文件与真人听感验收分开记录。
+
 （需要 ffmpeg。下载用的是 kenney.nl / opengameart.org 的直链和 `tools/pipeline/itch_dl.py`，解压后放进 `assets/third_party/audio/raw/<来源>/`。）
 
 游戏里怎么响（`scripts/autoload/audio.gd`，自动加载为 `Sfx`）：
 - 三条总线：配乐、音效、风声环境，音量在"设置"里调，存在 meta 里。
 - 脚步按动作的步点响，屋里木地板、院里石板、城里雪地各一种声音；跑起来步点自然变密。
-- 宅院白天低低一点古筝、入夜只剩风雪；戌时一更起，每更先一声更鼓再按更数敲梆子；夜里偶尔一阵风、远处一声赶尸铃。
-- 尸潮来时开锣、换激战曲，僵尸低吼和砸门声在 3D 里定位。
+- 宅院白天低低一点古筝、夜间用低声守夜曲叠风雪；戌时一更起，每更先一声更鼓再按更数敲梆子；夜里偶尔一阵风、远处一声赶尸铃。
+- 尸潮三轮演出与开门迎敌用激战曲，结束后恢复当时的昼夜配乐；僵尸低吼和砸门声在 3D 里定位。
 
 ## 八、主角女身（413 Games，CC0，2026-10-23 接入）
 

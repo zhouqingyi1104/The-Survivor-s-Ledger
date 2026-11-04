@@ -5,7 +5,8 @@ extends Node
 ##   strikes(名字列表)   —— 一串间隔敲下去（打更：先一声更鼓，再按更数敲梆子）
 ##   ambience(名字, 音量) / music(名字) —— 循环的环境声 / 配乐，切换时淡入淡出
 ## 素材来源和许可证见 docs/03-art-assets.md；中式的梆子、更鼓、赶尸铃、铜锣、风雪是 tools/pipeline/synth_sfx.py 合成的。
-## 文件由 tools/pipeline/build_audio.py 生成，同名多份按 _1 _2 … 编号，份数记在 VARIANTS。
+## 大部分文件由 tools/pipeline/build_audio.py 生成；守夜曲单独由 synth_night_music.py 生成。
+## 同名音效多份按 _1 _2 … 编号，份数记在 VARIANTS。
 
 const SFX := "res://assets/audio/sfx/%s.ogg"
 const AMB := "res://assets/audio/amb/%s.ogg"
