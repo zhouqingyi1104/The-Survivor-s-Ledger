@@ -15,6 +15,8 @@ const Defense = preload("res://scripts/core/defense.gd")
 const Migrate = preload("res://scripts/core/migrate.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Companion = preload("res://scripts/core/companion.gd")
+const Agenda = preload("res://scripts/core/agenda.gd")
+const BalanceRunner = preload("res://tests/support/balance_runner.gd")
 
 const SHOPPING := [
 	["builder", ["door_bar", "water_vat", "window_board", "stove"]],
@@ -60,6 +62,15 @@ var res_zero := 0
 ## 诊断用：备劫时买货被拦下的原因（银子 vs 负重 vs 缺货 vs 关门）
 var block_reasons: Dictionary = {}
 var pre_silver_start := 0
+## B4 定向入口才启用这些策略开关；旧有对照保持一趟、无差事。
+var balance_active := false
+var balance_finished := false
+var bot_chores := false
+var bot_max_trips := 1
+var balance_first_error := ""
+var bot_trip_counts: Dictionary = {}
+var bot_chore_attempts := 0
+var bot_guard := ""
 ## 誓约对照段每档跑几局。6 局时 2/6 和 3/6 只差一局，噪声有一档，20 局才敢下结论。
 const VOW_SAMPLE := 40
 
@@ -79,6 +90,8 @@ var pac_was_idle := false
 
 func _init() -> void:
 	Data.ensure()
+	if BalanceRunner.dispatch(self, OS.get_cmdline_user_args()):
+		return
 	# 设 PACING=1 才做节奏诊断（默认零开销）
 	pacing = OS.get_environment("PACING") != ""
 	var results := []
@@ -439,11 +452,18 @@ func _ok(name: String) -> void:
 
 func check(cond: bool, msg: String) -> void:
 	if not cond:
+		if balance_active and balance_first_error != "":
+			return
 		failures += 1
+		if balance_active:
+			balance_first_error = msg
 		push_error("断言失败：" + msg)
 
 
 func check_invariants(run: Dictionary) -> void:
+	if balance_active:
+		check(not bool(run.get("door_open", false)), "稳守机器人意外打开院门")
+		check(run.get("fight", {}).is_empty(), "稳守机器人遗漏即时战斗")
 	for k in State.ATTR_NAMES:
 		var v := State.attr(run, k)
 		check(v >= 0 and v <= State.attr_max(run, k), "属性越界 %s=%d" % [k, v])
@@ -496,7 +516,7 @@ func shop_pre(run: Dictionary) -> void:
 		plan.append(["rice_shop", {"flatbread": 10, "rice": 2}])
 		plan.append(["grocery", {"firewood": 2}])
 	var guard := 0
-	while run.phase == "pre" and guard < 200:
+	while run.phase == "pre" and guard < 200 and balance_first_error == "":
 		guard += 1
 		check_invariants(run)
 		if plan.is_empty():
@@ -549,6 +569,7 @@ func shop_pre(run: Dictionary) -> void:
 				else:
 					Pre.travel(run, "home")
 	if run.phase == "pre":
+		bot_guard = "shopping_loop"
 		check(false, "备劫阶段没结束")
 
 
@@ -638,7 +659,7 @@ func choose_action(run: Dictionary) -> bool:
 		return Post.act_garden(run) == ""
 	if Post.craft_block(run, "draw_talisman") == "":
 		return Post.act_craft(run, "draw_talisman") == ""
-	if "explore" not in run.today.actions and m < 480:
+	if run.today.actions.count("explore") < bot_max_trips and m < 480:
 		var low_food := Inv.total(run.home, Inv.GRAINS) + dishes(run) / 3 < 6
 		var low_fuel := Inv.count(run.home, "firewood") + Inv.count(run.home, "charcoal") * 2 < 4
 		var best := ""
@@ -654,8 +675,21 @@ func choose_action(run: Dictionary) -> bool:
 			if best == "" or (low_food and pid in ["rice_ruin", "granary"]):
 				best = pid
 		if best != "" and Post.act_explore(run, best) == "":
+			var day := str(int(run.pday))
+			bot_trip_counts[day] = int(bot_trip_counts.get(day, 0)) + 1
 			do_explore(run)
 			return true
+	# 只从玩家此刻看得见的合法单子选；收益只能由真实工序完成发放。
+	if bot_chores:
+		Post.ensure_agenda(run)
+		for row in Agenda.rows(run):
+			if str(row.kind) == "chore" and str(row.status) == "open" and str(row.block) == "" \
+				and Post.can_act(run, int(row.energy)) == "":
+				var error := Post.act_chore(run, int(row.idx))
+				check(error == "", "合法差事启动失败：%s / %s" % [str(row.id), error])
+				if error == "":
+					bot_chore_attempts += 1
+					return true
 	for book in Inv.ids_in_cat(run.home, "书"):
 		if book not in run.read:
 			return Post.act_read(run, book) == ""
@@ -736,7 +770,7 @@ func play_day(run: Dictionary) -> void:
 		if int(run.merit) >= int(o.cost) + 6:
 			Ledger.take_omen(run, id)
 	var guard := 0
-	while run.phase == "post" and guard < 900:
+	while run.phase == "post" and guard < 900 and balance_first_error == "":
 		guard += 1
 		check_invariants(run)
 		if run.pending_event != "":
@@ -815,6 +849,9 @@ func play_day(run: Dictionary) -> void:
 				pac_was_idle = true
 			_pac_day(run, 30, "idle")
 			Post.advance(run, 30)
+	if run.phase == "post" and guard >= 900:
+		bot_guard = "day_action_loop"
+		check(not balance_active, "第%d日行动循环耗尽，局未完成" % int(run.pday))
 
 
 func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionary:
@@ -826,6 +863,10 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 	pac_days = {}
 	pac_idle_runs = 0
 	pac_was_idle = false
+	bot_trip_counts = {}
+	bot_chore_attempts = 0
+	bot_guard = ""
+	var failures_before := failures
 	var meta := State.new_meta()
 	var run := State.new_run(role, meta, seed_value, difficulty_id, [], boons_picked, vows_picked)
 	run.companions = mates_picked.duplicate()
@@ -836,7 +877,7 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 		Inv.add(run.home, "lamp_oil", 2)
 	var silver_left := int(run.silver)
 	var guard := 0
-	while run.phase == "post" and guard < 40:
+	while run.phase == "post" and guard < 40 and balance_first_error == "":
 		guard += 1
 		play_day(run)
 	# 劫满后转无尽：走真实路径（Game.keep_living 的三步），再接着打到死
@@ -848,11 +889,17 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 			guard += 1
 			play_day(run)
 	check_invariants(run)
+	var terminal: bool = run.phase in ["dead", "ending"]
+	if not terminal and bot_guard == "":
+		bot_guard = "run_day_loop" if guard >= 40 else "rule_error"
+	check(not balance_active or terminal, "整局未抵达死亡或劫满：phase=%s guard=%s" % [str(run.phase), bot_guard])
 	var win: bool = run.phase == "ending"
 	# 劫满要带上那 10 点，否则胜局的道心被少算（原来这里漏了，导致"胜负道心一样"的假象）
-	var gain := Ledger.end_run(run, meta, Ledger.ENDING_BONUS if win else 0)
+	var gain := Ledger.end_run(run, meta, Ledger.ENDING_BONUS if win else 0) if terminal or not balance_active \
+		else {"total": 0, "days": maxi(0, int(run.pday) - 1)}
+	var outcome := "劫满" if win else ("身死" if run.phase == "dead" else "未完成")
 	var line := "%-6s seed=%d  %s  第%d日  尸潮守住%d  斩尸%d  功德%d  余银%s  道心+%d  %s" % [
-		State.role(run).name, seed_value, "劫满" if win else "身死", run.pday, run.waves_survived,
+		State.role(run).name, seed_value, outcome, run.pday, run.waves_survived,
 		run.kills, run.merit, Pre.money(silver_left), gain.total, run.death_cause]
 	if pacing:
 		pac_report("%s seed=%d" % [State.role(run).name, seed_value])
@@ -861,7 +908,23 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 	for v in Ledger.vow_results(run):
 		if not bool(v.met):
 			broken += 1
+	var chores_done := 0
+	for count in run.get("agenda", {}).get("used", {}).values():
+		chores_done += int(count)
+	var trips := 0
+	for count in bot_trip_counts.values():
+		trips += int(count)
 	return {"line": line, "days": gain.days, "win": win, "hp": State.attr(run, "hp"),
+		"role": role, "seed": seed_value, "difficulty": difficulty_id, "phase": str(run.phase),
+		"terminal": terminal, "guard": bot_guard, "day_iterations": guard,
+		"invariant_failures": failures - failures_before, "first_error": balance_first_error,
+		"rng_n": int(run.rng_n), "t": int(run.t), "cause": str(run.death_cause),
+		"hp_log": run.hp_log.duplicate(true), "last_hurt": run.last_hurt.duplicate(true),
+		"resources": run.home.duplicate(true), "cart": run.cart.duplicate(true),
+		"attrs": run.attrs.duplicate(true), "silver_final": int(run.silver),
+		"chores_completed": chores_done, "chores_attempted": bot_chore_attempts,
+		"chores_used": run.get("agenda", {}).get("used", {}).duplicate(true),
+		"explorations": trips, "explorations_by_day": bot_trip_counts.duplicate(true),
 		"daoxin": int(gain.total), "broken": broken,
 		"silver_start": pre_silver_start, "silver_left": silver_left,
 		"endless": bool(run.get("endless", false)), "pday": int(run.pday),
@@ -1642,10 +1705,36 @@ func test_difficulty() -> void:
 	check(Post.cold_of(doom) == 44, "荒年寒冷没加上去：%d" % Post.cold_of(doom))
 	check(Post.cold_of(mild) == 22, "暖冬寒冷没减下来：%d" % Post.cold_of(mild))
 	check(Post.cold_of(a) == 30, "寻常年景的寒冷被改了：%d" % Post.cold_of(a))
-	# 尸潮：第 11 夜 24 只，doom 1.35 → 32，mild 0.85 → 20
+	# B4 实测后的配置绑定：通过本世真实入口读取难度，不只测传入任意乘数的工具函数。
 	check(int(Defense.wave_for_day(11, 1.0).count) == 24, "第 11 夜基数不对")
-	check(int(Defense.wave_for_day(11, 1.35).count) == 32, "荒年尸潮没放大：%d" % int(Defense.wave_for_day(11, 1.35).count))
-	check(int(Defense.wave_for_day(11, 0.85).count) == 20, "暖冬尸潮没缩小：%d" % int(Defense.wave_for_day(11, 0.85).count))
+	var expected_waves := {"mild": [0.85, 20], "normal": [1.0, 24], "harsh": [3.3, 79], "doom": [3.8, 91]}
+	for id in expected_waves:
+		var probe := State.new_run("scholar", meta, 77, str(id))
+		var expected: Array = expected_waves[id]
+		check(is_equal_approx(float(State.diff(probe).wave_mul), float(expected[0])), "%s 实际尸潮参数不是 %.2f" % [str(id), float(expected[0])])
+		var actual := Defense.wave_for_run(probe, 11)
+		check(int(actual.count) == int(expected[1]), "%s 第11夜真实尸潮不是%d：%d" % [str(id), int(expected[1]), int(actual.count)])
+	# 开夜真实入口写下的 wave 随存档保留；缓存参数改变只能影响未开夜的预测。
+	for id in ["harsh", "doom"]:
+		var locked := State.new_run("scholar", meta, 77, id)
+		locked.phase = "post"
+		locked.pday = 11
+		locked.t = 10 * Post.DAY + 960
+		var wave := Defense.wave_for_run(locked, 11)
+		Defense.start_night(locked, wave)
+		var saved: Dictionary = Data.normalize(JSON.parse_string(JSON.stringify(locked)))
+		for row in Data.table("difficulty"):
+			if str(row.id) != id:
+				continue
+			var original_mul: float = row.params.wave_mul
+			row.params.wave_mul = 0.5
+			check(is_equal_approx(float(State.diff(saved).wave_mul), 0.5), "临时尸潮参数未生效，锁定测试无效")
+			var fresh := State.new_run("scholar", meta, 77, id)
+			check(int(Defense.wave_for_run(fresh, 11).count) == 12, "未开夜的预测没有读取临时参数")
+			check(Defense.wave_for_run(locked, 11) == wave, "%s 已开夜尸潮被缓存参数重算" % id)
+			check(Defense.wave_for_run(saved, 11) == wave, "%s 存档当前夜尸潮被缓存参数重算" % id)
+			row.params.wave_mul = original_mul
+			check(is_equal_approx(float(State.diff(saved).wave_mul), original_mul), "锁定测试未还原尸潮参数")
 	# 难度名字
 	check(State.diff_name(doom) == "永夜", "难度名字不对：%s" % State.diff_name(doom))
 	# 乱写的 id：数值全部退回 1.0，不把一局搅坏
@@ -1685,8 +1774,8 @@ func test_difficulty() -> void:
 	check(absf(float(cold_rows[1][1]) - 9.0) < 0.1, "寻常年景掉温不是 9.0：%.2f" % float(cold_rows[1][1]))
 	check(absf(float(cold_rows[3][1]) - 13.2) < 0.1, "永夜掉温不是 13.2：%.2f" % float(cold_rows[3][1]))
 	print("难度预设：永夜 银%d 血%d 冷%d° 第11夜%d只；暖冬 银%d 冷%d° 第11夜%d只；冷夜掉温 %.1f/%.1f/%.1f/%.1f" % [
-		int(doom.silver), int(doom.attrs.hp_max), Post.cold_of(doom), int(Defense.wave_for_day(11, 1.35).count),
-		int(mild.silver), Post.cold_of(mild), int(Defense.wave_for_day(11, 0.85).count),
+		int(doom.silver), int(doom.attrs.hp_max), Post.cold_of(doom), int(Defense.wave_for_run(doom, 11).count),
+		int(mild.silver), Post.cold_of(mild), int(Defense.wave_for_run(mild, 11).count),
 		float(cold_rows[0][1]), float(cold_rows[1][1]), float(cold_rows[2][1]), float(cold_rows[3][1])])
 	_ok("test_difficulty")
 
