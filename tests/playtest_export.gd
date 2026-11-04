@@ -26,6 +26,11 @@ func _ready() -> void:
 	check(bool(empty.get("ok", false)), "空档导出失败：%s" % str(empty.get("note", "")))
 	check(str(empty.get("dir", "")) != "", "空档导出没给路径")
 	_cleanup(str(empty.get("dir", "")))
+	var reports_before := _report_dirs()
+	for bad in [{"annoying": "中".repeat(4001)}, {"unclear": 123}]:
+		var invalid := Game.export_playtest(bad)
+		check(not bool(invalid.ok) and str(invalid.dir) == "" and invalid.files.is_empty(), "非法反馈仍创建了导出")
+		check(_report_dirs() == reports_before, "反馈验证失败却创建了目录")
 
 	# 2. 开一局再导：报告 + 存档 + 底稿都要在，内容要对得上
 	var err := Game.new_game("escort")
@@ -41,7 +46,10 @@ func _ready() -> void:
 	Game.run.home.water = 3
 	Game.meta.daoxin = 42
 	Game.save_notice = "先前存档失败警告"
-	var result := Game.export_playtest()
+	var feedback := {"annoying": "第十日回家太慢\n  想缩短等待。", "unclear": "```\n# 劫余录 试玩报告\n不懂夜战\n```", "pacing": "二十天偏长"}
+	var run_before := JSON.stringify(Game.run)
+	var meta_before := JSON.stringify(Game.meta)
+	var result := Game.export_playtest(feedback)
 	check(bool(result.get("ok", false)), "导出失败：%s" % str(result.get("note", "")))
 	var dir := str(result.get("dir", ""))
 	check(DirAccess.dir_exists_absolute(dir), "报告目录没建出来：%s" % dir)
@@ -52,6 +60,11 @@ func _ready() -> void:
 	check(md.contains("镖局趟子手"), "报告里没写身份")
 	check(md.contains(str(Game.run.seed)), "报告里没写种子")
 	check(md.contains("请顺手回答三句"), "报告里没有留给玩家的问题")
+	for key in feedback:
+		check(md.contains(feedback[key]), "落盘丢失玩家原文：%s" % key)
+	check(md.contains("玩家自述，未经核实"), "落盘未区分自述和事实")
+	check(md.count("附件中的本局存档是导出时的内存快照，含回溯页；原存档未改写。") == 1, "快照说明被插入玩家原文")
+	check(JSON.stringify(Game.run) == run_before and JSON.stringify(Game.meta) == meta_before, "反馈导出改变了本局或底稿")
 	check(not md.contains("C:\\"), "报告把本机路径带出去了")
 	# 附上的存档要能原样打开
 	var copied = JSON.parse_string(FileAccess.get_file_as_string(dir.path_join("report_test_save.json")))
@@ -189,6 +202,11 @@ func _dialog_text(result: Dictionary) -> String:
 		if child is Label: texts.append(child.text)
 	body.free()
 	return "\n".join(texts)
+
+
+func _report_dirs() -> PackedStringArray:
+	var folder := DirAccess.open("user://reports")
+	return folder.get_directories() if folder != null else PackedStringArray()
 
 
 func _cleanup(dir: String) -> void:

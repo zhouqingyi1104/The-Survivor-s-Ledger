@@ -20,12 +20,14 @@ const QUESTIONS := [
 	"最看不懂的三处（不知道为什么要做、不知道做了会发生什么）：",
 	"二十天是长了还是短了？从第几天开始觉得重复：",
 ]
+const FEEDBACK_KEYS := ["annoying", "unclear", "pacing"]
+const MAX_FEEDBACK_CHARS := 4000
 ## 分隔线（Markdown 里一眼能看出段落）
 const RULE := "----"
 
 
 ## 生成报告的全文。ctx 见 Game.export_playtest() 的组装处：
-##   version / engine / os / resolution / save_bytes / bindings / director
+##   version / engine / os / resolution / save_bytes / bindings / director / feedback
 static func build(run: Dictionary, meta: Dictionary, ctx: Dictionary = {}) -> String:
 	var out := []
 	out.append("# 劫余录 试玩报告")
@@ -48,7 +50,7 @@ static func build(run: Dictionary, meta: Dictionary, ctx: Dictionary = {}) -> St
 		out.append_array(_log_section(run))
 	out.append_array(_meta_section(meta))
 	out.append_array(_settings_section(ctx))
-	out.append_array(_questions_section())
+	out.append_array(_questions_section(ctx.get("feedback", {})))
 	return "\n".join(out) + "\n"
 
 
@@ -213,13 +215,42 @@ static func _settings_section(ctx: Dictionary) -> Array:
 
 # ---------- 留给玩家的问题 ----------
 
-static func _questions_section() -> Array:
+## 校验在创建导出目录之前执行；不截断、不把非文本值变成玩家回答。
+static func feedback_error(feedback: Dictionary) -> String:
+	for i in range(FEEDBACK_KEYS.size()):
+		var answer = feedback.get(FEEDBACK_KEYS[i], "")
+		if not answer is String:
+			return "第 %d 题的回答必须是文字。" % (i + 1)
+		if answer.length() > MAX_FEEDBACK_CHARS:
+			return "第 %d 题超过 %d 字，请缩短后再导出；输入仍保留。" % [i + 1, MAX_FEEDBACK_CHARS]
+	return ""
+
+
+static func _questions_section(feedback: Variant) -> Array:
 	var out := []
 	out.append("## 请顺手回答三句（不答也行）")
 	out.append("")
-	for q in QUESTIONS:
-		out.append("**%s**" % q)
+	out.append("以下为玩家自述，未经核实；空白表示未填写。")
+	out.append("")
+	if not feedback is Dictionary or feedback_error(feedback) != "":
+		out.append("（回答格式不正确，未收录；请返回游戏检查后重新导出。）")
+		feedback = {}
+	for i in range(QUESTIONS.size()):
+		out.append("**%s**" % QUESTIONS[i])
 		out.append("")
-		out.append("　")
+		var answer: String = feedback.get(FEEDBACK_KEYS[i], "")
+		if answer.strip_edges() == "":
+			out.append("（未填写）")
+		else:
+			# 长于原文里任何连续反引号，防止 Markdown/HTML 脱离自述区。
+			var longest := 0
+			var consecutive := 0
+			for ch in answer:
+				consecutive = consecutive + 1 if ch == "`" else 0
+				longest = maxi(longest, consecutive)
+			var fence := "`".repeat(maxi(3, longest + 1))
+			out.append(fence + "text")
+			out.append(answer)
+			out.append(fence)
 		out.append("")
 	return out

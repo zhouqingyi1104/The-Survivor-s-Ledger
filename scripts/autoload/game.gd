@@ -853,14 +853,17 @@ func _delete_save() -> bool:
 ## 把这一局打包成一册能发出去的取证：报告 + 存档 + 底稿 + 前世档案。
 ## 玩家说"有点难"没法下手；有了种子、死因账本和最后几十条记录，就能在本地复现。
 ## 返回 {"ok": bool, "dir": String, "files": Array, "note": String}；dir 是绝对路径，界面直接显示。
-func export_playtest() -> Dictionary:
+func export_playtest(feedback: Dictionary = {}) -> Dictionary:
+	var invalid := PlaytestReport.feedback_error(feedback)
+	if invalid != "":
+		return {"ok": false, "dir": "", "files": [], "note": invalid}
 	if _rewind_pending():
 		_ensure_rewind_resolved()
 		return {"ok": false, "dir": "", "files": [], "note": "请先处理未完成的回溯，再导出试玩报告。"}
 	var created := _create_report_dir(_stamp_text())
 	if not bool(created.ok):
 		return {"ok": false, "dir": "", "files": [], "note": str(created.note)}
-	return _export_playtest_to(str(created.dir))
+	return _export_playtest_to(str(created.dir), feedback)
 
 
 ## 每次导出独占新目录，同秒重复点击也不会覆盖或混入前一份报告。
@@ -883,7 +886,10 @@ func _create_report_dir(stamp: String) -> Dictionary:
 
 
 ## 只写新报告目录，不触碰存档、备份或此前保存失败的提醒。
-func _export_playtest_to(dir: String) -> Dictionary:
+func _export_playtest_to(dir: String, feedback: Dictionary = {}) -> Dictionary:
+	var invalid := PlaytestReport.feedback_error(feedback)
+	if invalid != "":
+		return {"ok": false, "dir": "", "files": [], "note": invalid}
 	var absolute := ProjectSettings.globalize_path(dir)
 	var report_run := run.duplicate(true)
 	var report_meta := meta.duplicate(true)
@@ -891,8 +897,10 @@ func _export_playtest_to(dir: String) -> Dictionary:
 	var files: Array = []
 	var source := "current" if not report_run.is_empty() else ("disk" if FileAccess.file_exists(save_path) else "none")
 	var snapshot_note := "附件中的本局存档是导出时的内存快照，含回溯页；原存档未改写。" if source == "current" else ("当前未载入本局，附件是磁盘上已有的主存档，报告没有读取其局面。" if source == "disk" else "当前未载入本局，磁盘上没有主存档；若有备份将单独列为附件。")
-	var text := PlaytestReport.build(report_run.duplicate(true), report_meta.duplicate(true), _report_ctx(report_run, report_snapshots))
-	text = text.replace("# 劫余录 试玩报告\n", "# 劫余录 试玩报告\n\n" + snapshot_note + "\n")
+	var ctx := _report_ctx(report_run, report_snapshots)
+	ctx["feedback"] = feedback.duplicate(true)
+	var text := PlaytestReport.build(report_run.duplicate(true), report_meta.duplicate(true), ctx)
+	text = text.insert("# 劫余录 试玩报告\n".length(), "\n" + snapshot_note + "\n")
 	var error := _write_text(dir.path_join("report.md"), text)
 	if error != OK:
 		return {"ok": false, "dir": absolute, "files": [], "note": "报告写不进去（错误 %d）" % error}

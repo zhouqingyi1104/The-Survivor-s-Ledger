@@ -30,6 +30,7 @@ const VideoCfg = preload("res://scripts/core/video_cfg.gd")
 const Brief = preload("res://scripts/core/brief.gd")
 const Manual = preload("res://scripts/core/manual.gd")
 const Agenda = preload("res://scripts/core/agenda.gd")
+const PlaytestFeedback = preload("res://scripts/ui/playtest_feedback.gd")
 const INVENTORY_PAPER = preload("res://assets/ui/inventory/paper.png")
 const INVENTORY_ART := {
 	"rice": preload("res://assets/ui/inventory/rice.png"),
@@ -2060,6 +2061,10 @@ func _set_pack_status(text: String, ok: bool) -> void:
 	(label as Label).add_theme_color_override("font_color", UI.INK if ok else UI.CINNABAR)
 
 
+func playtest_feedback() -> void:
+	PlaytestFeedback.open()
+
+
 ## 试玩报告导出的结果：路径 + 附了哪些文件 + 怎么发过来。
 ## 路径不能只用一个 toast——它长、会消失，玩家还要去文件管理器里找。
 func playtest_exported(result: Dictionary) -> void:
@@ -2069,7 +2074,8 @@ func playtest_exported(result: Dictionary) -> void:
 func _playtest_report(body: VBoxContainer, result: Dictionary) -> void:
 	if not bool(result.get("ok", false)):
 		body.add_child(UI.para("没导出来：%s" % str(result.get("note", "原因不明")), 17, UI.CINNABAR))
-		body.add_child(UI.para("存档目录里的 save.json 可能落后当前进度：%s" % ProjectSettings.globalize_path("user://"), 15, UI.INK_SOFT))
+		var retry := "填写内容还在下层表单中；合上此页后可修改或重试。" if UI.has_modal("playtest_feedback") else "请检查可用空间与文件写入权限后重试。"
+		body.add_child(UI.para(retry, 15, UI.INK_SOFT))
 		return
 	var source := str(result.get("save_source", "none"))
 	var explanation := "已附导出时的本局快照和回溯页，原存档未改写。" if source == "current" else ("当前没有载入本局，已附磁盘上已有的主存档；报告没有读取其中的局面。" if source == "disk" else "当前没有载入本局，也没有可附的主存档。")
@@ -2086,7 +2092,7 @@ func _playtest_report(body: VBoxContainer, result: Dictionary) -> void:
 	if not "Memory.md" in files:
 		body.add_child(UI.para("没有可附的前世档案。", 15, UI.INK_FAINT))
 	body.add_child(UI.sep())
-	body.add_child(UI.para("报告末尾留了三个空，想写就写：最烦的三件事、最看不懂的三处、二十天是长了还是短了。不写也不影响上面的数据。", 15, UI.INK_FAINT))
+	body.add_child(UI.para("报告末尾附有三问的玩家自述，空答会标为未填写。回答不会改变上面的局面数据。", 15, UI.INK_FAINT))
 
 
 ## 设置：画面、按键、音量；在游戏里打开时还能回标题（进度已自动存档）。
@@ -2167,6 +2173,10 @@ func _settings(body: VBoxContainer, in_game: bool) -> void:
 		row.add_child(UI.button("回到标题", func(): Game.go("title")))
 		content.add_child(row)
 	body.add_child(UI.scroll(content, mini(460, maxi(240, int(get_viewport().get_visible_rect().size.y) - 170))))
+	if in_game:
+		var feedback := UI.button("导出试玩报告", playtest_feedback)
+		feedback.set_meta("feedback_entry", true)
+		body.add_child(feedback)
 
 
 func _res_text(index: int) -> String:

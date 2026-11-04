@@ -78,7 +78,7 @@ func build() -> void:
 
 
 func _export_report() -> void:
-	Dialogs.playtest_exported(Game.export_playtest())
+	Dialogs.playtest_feedback()
 
 
 func _card(title: String, quote: String, body_text: String, btn: String, cb: Callable) -> Control:

@@ -25,6 +25,7 @@ func _initialize() -> void:
 	test_ending_run()
 	test_missing_ctx()
 	test_no_local_paths()
+	test_feedback()
 	print("[playtest_report] %d 项检查，失败 %d 处" % [checks, failures])
 	quit(0 if failures == 0 else 1)
 
@@ -125,6 +126,33 @@ func test_no_local_paths() -> void:
 	check(not text.contains("C:\\"), "报告里带上了本机绝对路径")
 	check(not text.contains("res://"), "报告里带上了 res:// 路径")
 	check(not text.contains(OS.get_environment("USERNAME")), "报告里带上了本机用户名")
+
+
+func test_feedback() -> void:
+	var blank := Report.build({}, State.new_meta())
+	check(blank.count("（未填写）") == 3, "空答没有逐题明确未填写")
+	check(blank.contains("玩家自述，未经核实"), "没有区分主观回答与客观事实")
+	var answer := "  第十日卡住了。\n## 自己写的标题\n```\n<script>不是报告事实</script>\n````\n  "
+	var feedback := {"annoying": answer, "unclear": "不知道该带多少粮\n也不知道何时返程", "pacing": "二十天偏长", "other": "不应输出的额外字段"}
+	var before := JSON.stringify(feedback)
+	var text := Report.build({}, State.new_meta(), {"feedback": feedback})
+	for question in Report.QUESTIONS:
+		check(text.contains(question), "填写答案丢掉原问题")
+	check(text.contains("`````text\n" + answer + "\n`````"), "玩家原文或 Markdown 边界未保留")
+	check(text.contains(feedback.unclear) and text.contains(feedback.pacing), "中文多行或后两题丢失")
+	check(text.find("## 本机设置") < text.find("玩家自述"), "回答混入事实区")
+	check(not text.contains(feedback.other), "额外字段被当成玩家回答")
+	check(JSON.stringify(feedback) == before, "报告修改了输入回答")
+	check(Report.feedback_error({}) == "", "空答不能导出")
+	check(Report.feedback_error({"annoying": "中".repeat(4000)}) == "", "4000 字边界被拒绝")
+	check(Report.feedback_error({"annoying": "中".repeat(4001)}).contains("4000"), "超长回答未明确拒绝")
+	check(Report.feedback_error({"unclear": ["假回答"]}).contains("文字"), "非文本被冒充玩家回答")
+	var invalid := Report.build({}, State.new_meta(), {"feedback": {"annoying": 42}})
+	check(invalid.contains("回答格式不正确") and not invalid.contains("```text\n42"), "直接生成时非法值冒充回答")
+	var invalid_container := Report.build({}, State.new_meta(), {"feedback": "非问卷"})
+	check(invalid_container.contains("回答格式不正确"), "非法容器未明确提示")
+	var max_text := Report.build({}, State.new_meta(), {"feedback": {"pacing": "中".repeat(4000)}})
+	check(max_text.contains("中".repeat(4000)), "上限回答被静默截断")
 
 
 # ---------- 小工具 ----------

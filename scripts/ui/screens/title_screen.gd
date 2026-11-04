@@ -290,7 +290,7 @@ func _discard_and_new() -> void:
 
 ## 试玩报告：把这些事实打包，玩家拿去发过来，我们就能复现那一局。
 func _export_report() -> void:
-	Dialogs.playtest_exported(Game.export_playtest())
+	Dialogs.playtest_feedback()
 
 
 func _show_clues() -> void:
