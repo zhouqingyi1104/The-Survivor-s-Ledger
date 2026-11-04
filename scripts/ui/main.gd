@@ -20,9 +20,17 @@ const SCREENS := {
 var _holder: Control
 var _modal_layer: Control
 var _toasts: VBoxContainer
+var _toast_entries := {}
 var _modals := {}
 var _screen: Control
 var _backdrop: Control
+
+
+class ToastEntry extends RefCounted:
+	var panel: PanelContainer
+	var label: Label
+	var count := 1
+	var tween: Tween
 
 
 ## 弹窗：Game 一有变化就重画内容，所以弹窗里的按钮按下去，界面马上跟着变。
@@ -217,13 +225,35 @@ func modal_count() -> int:
 
 
 func show_toast(text: String) -> void:
-	var p := UI.panel(UI.label(text, 18, UI.PAPER_LIGHT), Color(UI.INK, 0.88))
-	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_toasts.add_child(p)
-	var tw := create_tween()
-	tw.tween_interval(2.2)
-	tw.tween_property(p, "modulate:a", 0.0, 0.6)
-	tw.tween_callback(p.queue_free)
+	# 按原文合并；计数后缀只是显示内容，不能成为下一次查找的键。
+	var entry: ToastEntry = _toast_entries.get(text)
+	if entry != null and entry.tween != null:
+		entry.tween.kill()
+	if entry != null and is_instance_valid(entry.panel) and not entry.panel.is_queued_for_deletion():
+		entry.count += 1
+		entry.label.text = "%s ×%d" % [text, entry.count]
+	else:
+		entry = ToastEntry.new()
+		entry.label = UI.label(text, 18, UI.PAPER_LIGHT)
+		entry.panel = UI.panel(entry.label, Color(UI.INK, 0.88))
+		entry.panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_toasts.add_child(entry.panel)
+		_toast_entries[text] = entry
+	# 淡出中的同句也复用原条，取消旧回调，再从完整驻留时间开始。
+	entry.panel.modulate.a = 1.0
+	entry.tween = create_tween()
+	entry.tween.tween_interval(2.2)
+	entry.tween.tween_property(entry.panel, "modulate:a", 0.0, 0.6)
+	entry.tween.tween_callback(_expire_toast.bind(text, entry.panel))
+
+
+func _expire_toast(text: String, panel: PanelContainer) -> void:
+	# 旧节点的清理不能移除同文后来生成的新条。
+	var entry: ToastEntry = _toast_entries.get(text)
+	if entry != null and entry.panel == panel:
+		_toast_entries.erase(text)
+	if is_instance_valid(panel):
+		panel.queue_free()
 
 
 # ---------- 截图演示 ----------

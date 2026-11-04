@@ -14,6 +14,7 @@ const HomeWorld = preload("res://scripts/world/home_world.gd")
 const Player = preload("res://scripts/world/player.gd")
 const CamRig = preload("res://scripts/world/cam_rig.gd")
 const WaveShow = preload("res://scripts/world/wave_show.gd")
+const RoundShow = preload("res://scripts/world/round_show.gd")
 const Outline = preload("res://scripts/world/outline.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
@@ -46,6 +47,8 @@ var player: CharacterBody3D
 var rig: Node3D
 var _show: Node3D
 var _show_layer: Control
+var _holding_show := false
+var _night_after_show := false
 var _tag_layer: Control
 var _tags := {}
 var _menu: PanelContainer
@@ -455,18 +458,7 @@ func advance(mins: int) -> void:
 		_start_wave()
 		return
 	if stop == "wave_round":
-		var rep = Game.act(func(): return Post.nod_round(Game.run))
-		Game.refresh()
-		if not rep.is_empty():
-			var line := "第 %d 轮结束：斩 %d 只" % [int(rep.round) + 1, int(rep.killed)]
-			if int(rep.get("enter", 0)) > 0:
-				line += "，进院 %d 只" % int(rep.enter)
-			if not rep.get("broke", []).is_empty():
-				line += "，有一面被撞破"
-			Game.toast.emit(line)
-			Sfx.play("hit_door", -6.0)
-		if Post.in_night(Game.run):
-			Dialogs.night_panel()
+		_start_round()
 		return
 	if stop == "plan":
 		Game.refresh()
@@ -506,15 +498,13 @@ func _start_wave() -> void:
 	var run: Dictionary = Game.run
 	if not run.wave_due or _show != null:
 		return
-	_close_menu()
-	player.stop()
+	_hold_show()
 	Sfx.play("luo", -1.0, 0.0)
 	Sfx.music("dragon_dance", -7.0, 1.2)
 	Sfx.ambience("fire_loop", null)
 	var before: Dictionary = run.duplicate(true)
 	_show = WaveShow.new()
 	world.add_child(_show)
-	Game.hold_screen = true
 	var rep = Game.act(func(): return Post.resolve_wave(Game.run))
 	world.sync(before)
 	_show.play(world, rig, {"wave": rep}, player.global_position)
@@ -522,14 +512,47 @@ func _start_wave() -> void:
 	_build_show_layer()
 
 
+## 先持有界面再结算：第三轮致死也要演完这一轮，随后再切身死页。
+func _start_round() -> void:
+	if _show != null or not Post.in_night(Game.run):
+		return
+	_hold_show()
+	_show = RoundShow.new()
+	world.add_child(_show)
+	var rep = Game.act(func(): return Post.nod_round(Game.run))
+	if rep == null or rep.is_empty():
+		_end_show()
+		return
+	_night_after_show = true
+	# 演出时普通刷新会跳过 sync_world；先画本轮真实破损，再给镜头看。
+	world.sync(Game.run)
+	_show.play(world, rig, rep)
+	_show.finished.connect(_end_show)
+	_build_show_layer()
+
+
+func _hold_show() -> void:
+	_close_menu()
+	player.stop()
+	player.enabled = false
+	rig.input_enabled = false
+	_holding_show = true
+	Game.hold_screen = true
+
+
 func _build_show_layer() -> void:
 	UI.clear(_show_layer)
 	hud.visible = false
 	_tag_layer.visible = false
-	var p := Hud.panel(Hud.title(_show.banner, 34))
+	var title := Hud.title(_show.banner, 28 if _show is RoundShow else 34)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.custom_minimum_size.x = minf(900.0, maxf(240.0, size.x - 100.0))
+	var p := Hud.panel(title)
 	_show_layer.add_child(p)
 	Hud.pin(p, Control.PRESET_CENTER_TOP, 30)
 	var skip := Hud.button("跳过", func(): _show.skip(), false, "", 17)
+	skip.name = "SkipNightShow"
 	_show_layer.add_child(skip)
 	Hud.pin(skip, Control.PRESET_BOTTOM_RIGHT, 24)
 
@@ -543,9 +566,24 @@ func _end_show() -> void:
 	hud.visible = true
 	_tag_layer.visible = true
 	rig.release()
+	rig.input_enabled = true
+	_holding_show = false
 	Game.hold_screen = false
+	var open_night := _night_after_show
+	_night_after_show = false
 	Game.refresh()
 	_scene_audio(Game.run)
+	if open_night and Game.run.phase == "post" and Post.in_night(Game.run):
+		Dialogs.night_panel()
+
+
+func _exit_tree() -> void:
+	# 换场不经过 finished；只释放本屏持有的演出锁。
+	if _holding_show:
+		_holding_show = false
+		Game.hold_screen = false
+		if is_instance_valid(rig):
+			rig.release()
 
 
 ## 事件 → 战报 → 天亮结算，自动弹出。
@@ -1116,7 +1154,10 @@ func _left_top(run: Dictionary) -> void:
 			h.add_child(right)
 			_live.get_or_add("crops", []).append([plot, icon, right])
 		g.add_child(h)
-	v.add_child(Hud.panel(g))
+	var garden_panel := Hud.panel(g)
+	garden_panel.name = "GardenHUDCard"
+	v.add_child(garden_panel)
+	_live["garden_panel"] = garden_panel
 	# 尸潮预警
 	var f := VBoxContainer.new()
 	f.add_theme_constant_override("separation", 2)
@@ -1220,7 +1261,10 @@ func _left_top(run: Dictionary) -> void:
 	cycle_entry.tooltip_text = "查访前世的承诺、失约与救助；旧梦和邻人的觉醒片段都须今世查证。"
 	cycle_row.add_child(cycle_entry)
 	quest.add_child(cycle_row)
-	v.add_child(Hud.panel(quest))
+	var quest_panel := Hud.panel(quest)
+	quest_panel.name = "QuestHUDCard"
+	v.add_child(quest_panel)
+	_live["quest_panel"] = quest_panel
 	hud.add_child(v)
 	Hud.pin(v, Control.PRESET_TOP_LEFT, 14)
 
@@ -1354,6 +1398,7 @@ func _left_bottom(run: Dictionary) -> void:
 	v.add_theme_constant_override("separation", 6)
 	# 今日差事的账：还有多少事、天色还剩多久。常驻在这里，玩家一抬眼就知道"还有的忙"
 	var ag := HBoxContainer.new()
+	ag.name = "DayAgendaHUDRow"
 	ag.add_theme_constant_override("separation", 6)
 	var ag_btn := Hud.button("差事 · %s" % _hotkey_text("agenda"), Dialogs.agenda, false, "今天能做的事：各花多久、换来什么。做不完，得挑。", 13)
 	ag_btn.name = "AgendaButton"
@@ -1362,6 +1407,7 @@ func _left_bottom(run: Dictionary) -> void:
 	ag.add_child(ag_status)
 	_live["agenda_status"] = ag_status
 	_live["agenda_button"] = ag_btn
+	_live["agenda_row"] = ag
 	v.add_child(ag)
 	var q := HBoxContainer.new()
 	q.add_theme_constant_override("separation", 6)
@@ -1445,6 +1491,10 @@ func _update_live() -> void:
 	var run: Dictionary = Game.run
 	if _live.is_empty() or run.phase != "post":
 		return
+	# 18:00 可能只更新时钟，按当前状态显隐，避免等下一次重画才收起。
+	for key in ["garden_panel", "quest_panel", "agenda_row"]:
+		if _live.has(key):
+			(_live[key] as Control).visible = not _night_hud(run)
 	if _live.has("neighbor"):
 		(_live.neighbor as Label).text = Neighbor.summary(run)
 	if _live.has("mainline"):
@@ -1501,6 +1551,10 @@ func _update_live() -> void:
 				var at := (Post.clock(run) + mins) % 1440
 				s = "空档 → %02d:%02d" % [at / 60, at % 60]
 		(_live.speed_status as Label).text = s
+
+
+func _night_hud(run: Dictionary) -> bool:
+	return Post.is_night(run) or Post.in_night(run) or not run.get("fight", {}).is_empty()
 
 
 ## 菜畦清单里的倒计时（整点和重画时更新；每帧改字体颜色会让界面每帧重新排版）。
