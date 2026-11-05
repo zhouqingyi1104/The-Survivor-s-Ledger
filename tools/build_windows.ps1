@@ -10,20 +10,20 @@
 #   powershell -File tools\build_windows.ps1 -Mode portable
 #   powershell -File tools\build_windows.ps1 -Mode release  # 没模板会直接报错退出
 #
-# 导出模板怎么装：
-#   下载 https://github.com/godotengine/godot/releases/download/<版本>-stable/Godot_v<版本>-stable_export_templates.tpz
-#   解压后把 templates\ 里的文件放进 %APPDATA%\Godot\export_templates\<版本>.stable\
-#   （目录名要和引擎版本完全一致，脚本会自己算出来并打印）
+# 模板使用 tools/install_windows_templates.ps1 校验安装到项目忽略目录。
+# 构建只使用带官方来源与逐文件校验记录的模板，不写用户全局模板目录。
 
 param(
 	[string]$OutDir = "build/windows",
 	[string]$Preset = "Windows Desktop",
 	[ValidateSet("auto", "release", "portable")]
-	[string]$Mode = "auto"
+	[string]$Mode = "auto",
+	[string]$TemplatesDir = ''
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'windows_templates.ps1')
 $godot = Join-Path $root "tools\godot\Godot_v4.7.2-stable_win64_console.exe"
 $runtime = Join-Path $root "tools\godot\Godot_v4.7.2-stable_win64.exe"
 
@@ -36,17 +36,17 @@ $versionLine = & $godot --version
 if ($LASTEXITCODE -ne 0) { throw "读取引擎版本失败（退出码 $LASTEXITCODE）。" }
 $version = ($versionLine -split '\.official')[0]     # 4.7.2.stable
 if (-not $version) { throw "读不出引擎版本：$versionLine" }
-$templates = Join-Path $env:APPDATA "Godot\export_templates\$version"
-$hasTemplates = Test-Path (Join-Path $templates "windows_release_x86_64.exe")
+if (-not $TemplatesDir) { $TemplatesDir = Join-Path $root "tools\godot\export-templates\$version" }
+$hasTemplates = Test-Path -LiteralPath $TemplatesDir -PathType Container
 
 if ($Mode -eq "auto") {
 	$Mode = if ($hasTemplates) { "release" } else { "portable" }
 }
-if ($Mode -eq "release" -and -not $hasTemplates) {
-	throw "要出 release 但没装导出模板。模板目录应为：$templates"
-}
+if ($Mode -eq "release") { $verifiedTemplate = Get-VerifiedWindowsTemplates -TemplatesDir $TemplatesDir -Version $version }
 
-$out = [IO.Path]::GetFullPath((Join-Path $root $OutDir)).TrimEnd([IO.Path]::DirectorySeparatorChar)
+if ([IO.Path]::IsPathRooted($OutDir)) { $out = [IO.Path]::GetFullPath($OutDir) }
+else { $out = [IO.Path]::GetFullPath((Join-Path $root $OutDir)) }
+$out = $out.TrimEnd([IO.Path]::DirectorySeparatorChar)
 $parent = [IO.Path]::GetDirectoryName($out)
 $leaf = [IO.Path]::GetFileName($out)
 $rootPath = [IO.Path]::GetFullPath($root).TrimEnd([IO.Path]::DirectorySeparatorChar)
@@ -59,16 +59,21 @@ if (Test-Path -LiteralPath $out) {
 		throw "输出路径不是普通目录：$out"
 	}
 }
+Assert-LedgerPlainPath $parent
 New-Item -ItemType Directory -Force -Path $parent | Out-Null
 $token = [Guid]::NewGuid().ToString('N')
 $stage = Join-Path $parent (".$leaf.staging-$token")
 $backup = Join-Path $parent ("$leaf.previous-$token")
+$templateWork = Join-Path $parent (".$leaf.templates-$token")
 if (Test-Path -LiteralPath $backup) { throw "备份路径已存在：$backup" }
 New-Item -ItemType Directory -Path $stage -ErrorAction Stop | Out-Null
 $exe = Join-Path $stage "劫余录.exe"
 $pck = Join-Path $stage "劫余录.pck"
 $oldMoved = $false
 $published = $false
+$oldAppData = $env:APPDATA
+$oldLocalAppData = $env:LOCALAPPDATA
+$templateWorkCreated = $false
 
 # The console preset embeds the pack. Only accept a release without a separate
 # pck when the selected preset explicitly says so; stale pcks can never satisfy it.
@@ -90,12 +95,36 @@ function Test-EmbeddedPreset([string]$name) {
 	return ($index -ne '' -and $embed.ContainsKey($index + '.options') -and $embed[$index + '.options'])
 }
 
+function Assert-NoCustomReleaseTemplate([string]$name) {
+	$configPath = Join-Path $root 'export_presets.cfg'
+	$section = ''
+	$index = ''
+	$custom = @{}
+	foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
+		if ($line -match '^\[preset\.(\d+)(\.options)?\]$') { $section = $Matches[1] + $Matches[2] }
+		elseif (-not $section.EndsWith('.options') -and $line -match '^name="(.*)"$' -and $Matches[1] -ceq $name) { $index = $section }
+		elseif ($section.EndsWith('.options') -and $line -match '^custom_template/release="(.*)"$') { $custom[$section] = $Matches[1] }
+	}
+	if ($index -ne '' -and $custom.ContainsKey($index + '.options') -and $custom[$index + '.options'] -ne '') {
+		throw 'Release preset cannot override the verified Windows template.'
+	}
+}
+
 Write-Host "引擎：$version"
 Write-Host "模式：$Mode"
 Write-Host "输出：$out"
 
 try {
 	if ($Mode -eq "release") {
+		Assert-NoCustomReleaseTemplate $Preset
+		if (Test-Path -LiteralPath $templateWork) { throw "临时模板目录已存在：$templateWork" }
+		New-Item -ItemType Directory -Path $templateWork | Out-Null
+		$templateWorkCreated = $true
+		$env:APPDATA = Join-Path $templateWork 'appdata'
+		$env:LOCALAPPDATA = Join-Path $templateWork 'localappdata'
+		New-Item -ItemType Directory -Path $env:APPDATA,$env:LOCALAPPDATA | Out-Null
+		$isolatedTemplates = Join-Path $env:APPDATA "Godot\export_templates\$version"
+		$isolatedTemplate = Copy-VerifiedWindowsTemplates $verifiedTemplate $isolatedTemplates $version
 		& $godot --headless --path $root --export-release $Preset $exe
 	} else {
 		& $godot --headless --path $root --export-pack $Preset $pck
@@ -153,6 +182,9 @@ $memoryText
 
 【内置字体】
 中文字体随包携带，无需安装系统楷体。字体来源和完整 OFL 许可见同目录「字体许可.txt」。
+
+【游戏引擎】
+本游戏使用 Godot Engine。引擎及所含开源组件的许可：https://godotengine.org/license
 "@
 	Set-Content -LiteralPath (Join-Path $stage "读我.txt") -Value $readme -Encoding UTF8
 	$fontLicenses = Join-Path $root 'assets/fonts/LICENSES.txt'
@@ -160,6 +192,18 @@ $memoryText
 		throw '缺少字体许可；原输出未替换。'
 	}
 	Copy-Item -LiteralPath $fontLicenses -Destination (Join-Path $stage '字体许可.txt')
+	$engineFiles = @(
+		Get-LedgerFileRecord $godot ([IO.Path]::GetFileName($godot))
+		Get-LedgerFileRecord $runtime ([IO.Path]::GetFileName($runtime))
+	)
+	$provenance = [ordered]@{
+		schema_version = 1
+		mode = $Mode
+		engine = [ordered]@{ version = $version; files = $engineFiles }
+		template = $(if ($Mode -eq 'release') { $isolatedTemplate.Manifest } else { $null })
+		files = @(Get-LedgerPackageFiles $stage)
+	}
+	$provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $stage 'package-provenance.json') -Encoding UTF8
 
 	# Keep the previous directory intact; a new package never mixes old files or modes.
 	if (Test-Path -LiteralPath $out) {
@@ -183,6 +227,15 @@ $memoryText
 	if ($oldMoved) { Write-Host "原输出完整保留在：$backup" }
 	Write-Host "下一步：双击 exe 试玩；存档在 %APPDATA%\Godot\app_userdata\劫余录\"
 } finally {
+	$env:APPDATA = $oldAppData
+	$env:LOCALAPPDATA = $oldLocalAppData
+	if ($templateWorkCreated -and (Test-Path -LiteralPath $templateWork -PathType Container)) {
+		Assert-LedgerPlainPath $templateWork
+		$resolvedTemplates = (Resolve-Path -LiteralPath $templateWork).ProviderPath
+		if ($resolvedTemplates -eq [IO.Path]::GetFullPath($templateWork) -and [IO.Path]::GetDirectoryName($resolvedTemplates) -eq $parent) {
+			Remove-Item -LiteralPath $templateWork -Recurse -Force
+		} else { Write-Warning "临时模板目录路径发生变化，未清理：$templateWork" }
+	}
 	# This GUID-named directory was created by this invocation, never supplied by a user.
 	if (-not $published -and (Test-Path -LiteralPath $stage -PathType Container)) {
 		$resolvedStage = (Resolve-Path -LiteralPath $stage).ProviderPath

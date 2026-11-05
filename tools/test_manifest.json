@@ -1134,6 +1134,10 @@
       "reason": "干净构建脚本专项，可能触发打包；发布候选显式运行，不在规则入口隐式构建。"
     },
     {
+      "entry": "tests/windows_release_probe.gd",
+      "reason": "C2 真实导出程序专项：仅在 exe/PCK 哈希相同的独立 QA 副本用旁置 override.cfg 与场景执行，必须验证 template/release 特性及全新隔离用户目录；正式包不含 QA 入口，开发引擎运行不满足验收，不纳入普通源码测试。"
+    },
+    {
       "entry": "tests/test_courtyard_runner.py",
       "reason": "旧庭院专项 Python 启动器自测，绑定 tools/test_courtyard_scenery.py，不是 Godot 场景入口。"
     },

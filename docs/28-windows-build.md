@@ -1,5 +1,7 @@
 # Windows 打包
 
+2026-11-05 C2 后续实施见 [50](50-windows-release.md)：用户已授权同版本官方模板，构建改为可显式选择独立 release；以下 2026-10-26 的下载速度、预估体积和未完成项是历史记录，当前状态与实际体积以 50 的验收表为准。复现入口改用 `tools/install_windows_templates.ps1`（固定摘要、仅启用 Windows x64）及 `tools/build_windows_clean.ps1 -Commit <SHA> -Mode release`，不要沿用文末整包安装到用户目录的旧步骤。
+
 2026-11-05 字体补充：两种打包模式及干净提交构建均须把 `assets/fonts/LICENSES.txt` 作为「字体许可.txt」放在 exe 旁，缺失或为空即停止替换旧包。中文与界面符号字体作为资源进入 PCK；字体原始版本、哈希及 C3 实际验收见 [48](48-bundled-fonts.md)。历史体积只代表各批当时的包，当前以构建输出为准。
 
 2026-10-26。承接路线图 M5「独立安装包」。验收标准：**给一个不会装 Godot 的人一个文件夹/一个 exe，双击就能玩**。

@@ -1,14 +1,27 @@
-﻿# Build a portable playtest package from one committed tree, never the worktree.
+﻿# Build a playtest package from one committed tree, never the worktree.
 param(
     [string]$Commit = 'HEAD',
-    [string]$OutDir = 'build/windows-clean'
+    [string]$OutDir = 'build/windows-clean',
+    [ValidateSet('portable', 'release')]
+    [string]$Mode = 'portable',
+    [string]$TemplatesDir = ''
 )
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\')
+. (Join-Path $PSScriptRoot 'windows_templates.ps1')
 $engine = Join-Path $root 'tools/godot/Godot_v4.7.2-stable_win64.exe'
 $console = Join-Path $root 'tools/godot/Godot_v4.7.2-stable_win64_console.exe'
 foreach ($binary in @($engine, $console)) {
     if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) { throw "找不到本地 Godot 引擎：$binary" }
+}
+# Capture the template before APPDATA changes. An explicit release never falls back.
+$versionLine = & $console --version
+if ($LASTEXITCODE -ne 0) { throw "读取引擎版本失败（退出码 $LASTEXITCODE）。" }
+$version = ($versionLine -split '\.official')[0]
+if (-not $version) { throw "读不出引擎版本：$versionLine" }
+if ($Mode -eq 'release') {
+    if (-not $TemplatesDir) { $TemplatesDir = Join-Path $root "tools/godot/export-templates/$version" }
+    $verifiedTemplate = Get-VerifiedWindowsTemplates -TemplatesDir $TemplatesDir -Version $version
 }
 $sha = (& git -C $root rev-parse --verify --end-of-options "$Commit^{commit}" 2>&1)
 if ($LASTEXITCODE -ne 0 -or $sha -notmatch '^[0-9a-f]{40}$') { throw "无法解析提交：$Commit" }
@@ -42,6 +55,7 @@ if (Test-Path -LiteralPath $out) {
     $existing = Get-Item -LiteralPath $out -Force
     if (-not $existing.PSIsContainer -or ($existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "输出路径不是普通目录：$out" }
 }
+Assert-LedgerPlainPath $parent
 New-Item -ItemType Directory -Force -Path $parent | Out-Null
 $token = [guid]::NewGuid().ToString('N')
 $work = Join-Path ([IO.Path]::GetTempPath()) "ledger-clean-$token"
@@ -60,6 +74,10 @@ try {
     $env:APPDATA = Join-Path $work 'appdata'
     $env:LOCALAPPDATA = Join-Path $work 'localappdata'
     New-Item -ItemType Directory -Path $source,$env:APPDATA,$env:LOCALAPPDATA | Out-Null
+    if ($Mode -eq 'release') {
+        $isolatedTemplates = Join-Path $env:APPDATA "Godot/export_templates/$version"
+        $isolatedTemplate = Copy-VerifiedWindowsTemplates $verifiedTemplate $isolatedTemplates $version
+    }
     & git -C $root archive --format=zip "--output=$archive" $sha
     if ($LASTEXITCODE -ne 0) { throw '提取提交失败。' }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -70,6 +88,9 @@ try {
     $sourceConsole = Join-Path $sourceTools ([IO.Path]::GetFileName($console))
     $builder = Join-Path $source 'tools/build_windows.ps1'
     if (-not (Test-Path -LiteralPath $builder -PathType Leaf)) { throw '该提交没有 Windows 打包脚本。' }
+    if ($Mode -eq 'release' -and -not (Test-Path -LiteralPath (Join-Path $source 'tools/windows_templates.ps1') -PathType Leaf)) {
+        throw '该提交尚不支持经过模板校验的 release 构建。'
+    }
     Write-Host "构建提交：$sha（不包含工作区未提交或未跟踪内容）"
     Write-Host '正在隔离环境中导入资源……'
     $importLog = Join-Path $work 'import.log'
@@ -80,21 +101,52 @@ try {
         $importErrors | ForEach-Object { Write-Host $_.Line }
         throw "资源导入失败（退出码 $importExit，错误数 $($importErrors.Count)）。"
     }
-    & powershell.exe -NoProfile -File $builder -Mode portable
-    if ($LASTEXITCODE -ne 0) { throw "便携包构建失败（退出码 $LASTEXITCODE）。" }
+    $builderArgs = @('-NoProfile', '-File', $builder, '-Mode', $Mode)
+    if ($Mode -eq 'release') { $builderArgs += @('-TemplatesDir', $isolatedTemplate.Directory) }
+    & powershell.exe @builderArgs
+    if ($LASTEXITCODE -ne 0) { throw "$Mode 包构建失败（退出码 $LASTEXITCODE）。" }
     $package = Join-Path $source 'build/windows'
     foreach ($name in @('劫余录.exe', '劫余录.pck', '读我.txt', '字体许可.txt')) {
         $item = Join-Path $package $name
         if (-not (Test-Path -LiteralPath $item -PathType Leaf) -or (Get-Item -LiteralPath $item).Length -eq 0) { throw "包文件缺失或为空：$name" }
-        Copy-Item -LiteralPath $item -Destination $stage
+    }
+    # Keep every actual exporter sidecar (including DLLs), with no stale files from older packages.
+    foreach ($record in @(Get-LedgerPackageFiles $package)) {
+        $sourceFile = Join-Path $package $record.path
+        $destinationFile = Join-Path $stage $record.path
+        New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($destinationFile)) | Out-Null
+        Copy-Item -LiteralPath $sourceFile -Destination $destinationFile
+        $copied = Get-LedgerFileRecord $destinationFile $record.path
+        if ($copied.sha256 -cne $record.sha256 -or $copied.size_bytes -ne $record.size_bytes) { throw "包文件复制后校验失败：$($record.path)" }
+    }
+    $runtimeText = if ($Mode -eq 'release') {
+        "运行时使用通过固定官方 TPZ 来源、版本与逐文件 SHA256 校验的 Godot $version Windows x64 release 模板；不属于该源码提交。"
+    } else {
+        '便携运行时使用构建者本机 Godot 引擎，不属于该提交。'
     }
     @"
 试玩包来源提交：$sha
 游戏项目内容仅来自该提交，不包含构建者工作区未提交、未跟踪或忽略的文件。
 也不含 .gitignore 排除的素材（如 cs-studio 铺面模型）：城里这些铺面会退回代码拼的厅堂，和开发机上看到的不同。
-便携运行时使用构建者本机 Godot 引擎，不属于该提交。
-这是便携试玩包，不代表正式发行或玩家验收。
+$runtimeText
+构建模式：$Mode；引擎/模板与实际包目录逐文件大小、SHA256 见 package-provenance.json。
+这是试玩包，不代表正式发行或玩家验收。
 "@ | Set-Content -LiteralPath (Join-Path $stage '构建来源.txt') -Encoding UTF8
+    $provenance = [ordered]@{
+        schema_version = 1
+        source_commit = $sha
+        mode = $Mode
+        engine = [ordered]@{
+            version = $version
+            files = @(
+                Get-LedgerFileRecord $engine ([IO.Path]::GetFileName($engine))
+                Get-LedgerFileRecord $console ([IO.Path]::GetFileName($console))
+            )
+        }
+        template = $(if ($Mode -eq 'release') { $isolatedTemplate.Manifest } else { $null })
+        files = @(Get-LedgerPackageFiles $stage)
+    }
+    $provenance | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $stage 'package-provenance.json') -Encoding UTF8
     if (Test-Path -LiteralPath $out) {
         Move-Item -LiteralPath $out -Destination $backup -ErrorAction Stop
         $oldMoved = $true

@@ -155,6 +155,8 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 
 ## 测试
 
+Windows 独立试玩包：先按授权启用固定版本模板 `powershell.exe -NoProfile -File tools/install_windows_templates.ps1 -Download`，再运行 `powershell.exe -NoProfile -File tools/build_windows_clean.ps1 -Commit <40位SHA> -Mode release`。只从该提交构建，保留 exe、PCK、字体许可及逐文件来源；不含本机私有素材。下载校验、图标和真实导出程序的验收边界见 [50](docs/50-windows-release.md)。省略模式时干净构建仍使用 portable。
+
 日常用统一入口（现有 Python 3.10+ 和 Godot 4.7.2，无需安装新包）：
 
 ```powershell
@@ -164,7 +166,7 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 ./tools/run_tests.ps1 -Tier ui -Case title_input
 ```
 
-`fast` 是 5 项编译/小型规则，`core` 是 61 项无界面检查，`ui` 是 36 项窗口检查；`full` 为全部 118 项已登记 Godot 离线测试，只在发布候选手动执行。平台限制与 22 项专项/诊断排除理由见 [清单](tools/test_manifest.json)，登记不代表已跑过。失败立即停止，修复后只用 `-Case` 重跑失败项；未知用例、超时、脚本错误或缺完成标记都不会假绿。
+`fast` 是 5 项编译/小型规则，`core` 是 61 项无界面检查，`ui` 是 36 项窗口检查；`full` 为全部 118 项已登记 Godot 离线测试，只在发布候选手动执行。平台限制与 23 项专项/诊断排除理由见 [清单](tools/test_manifest.json)，登记不代表已跑过。失败立即停止，修复后只用 `-Case` 重跑失败项；未知用例、超时、脚本错误或缺完成标记都不会假绿。
 
 游戏进程在 `build/test-runs/<唯一ID>/project` 快照内运行，每项另有隔离用户目录，不在源码工作区写存档或测试图片。完整日志、快照哈希和 `results.json` 均保留在本轮目录。已知退出清理信息标成 `PASS_WITH_WARNINGS`，并未消除。公开仓库推送/PR 自动运行相同入口的 fast 与运行器负例；本地通过不等于远端 CI 通过，见 [49](docs/49-test-entry-ci.md)。
 
