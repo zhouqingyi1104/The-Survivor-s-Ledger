@@ -79,7 +79,8 @@ func _process(delta: float) -> void:
 		return
 	# 废墟里时间照走（正常速度），到酉时（21:00）必须回家
 	if not blocked and not _fleeing and not Post.blocked(Game.run) and Game.speed > 0:
-		_acc += 4.0 * delta
+		var rate := Post.BUSY_RATE if Game.run.busy.get("kind", "") == "travel" else 4.0
+		_acc += rate * delta
 		if _acc >= 1.0:
 			var mins := int(_acc)
 			_acc -= mins
@@ -101,7 +102,7 @@ func _process(delta: float) -> void:
 	if is_instance_valid(_return_button): _return_button.disabled = Post.is_busy(Game.run)
 	if is_instance_valid(_work_label):
 		_work_label.visible = Post.is_busy(Game.run)
-		if Post.is_busy(Game.run): _work_label.text = "%s中 · 还需 %d 分钟" % [str(Game.run.busy.get("label", "调查")), maxi(0, int(Game.run.busy.get("end", 0)) - int(Game.run.t))]
+		if Post.is_busy(Game.run): _work_label.text = "%s中 · 还需 %d 分钟" % ["赶路" if Game.run.busy.get("kind", "") == "travel" else str(Game.run.busy.get("label", "调查")), maxi(0, int(Game.run.busy.get("end", 0)) - int(Game.run.t))]
 	player.enabled = not blocked
 	rig.input_enabled = not blocked
 	player.cam_yaw = rig.yaw
@@ -118,9 +119,10 @@ func _process(delta: float) -> void:
 
 func _update_hint() -> void:
 	var ex: Dictionary = Game.run.explore
-	if Post.is_busy(Game.run) and Game.run.busy.get("kind", "") == "mainline":
+	if Post.is_busy(Game.run) and Game.run.busy.get("kind", "") in ["mainline", "travel"]:
 		_hint.visible = true
-		_hint_label.text = "%s中 · 还需 %d 分钟；完成后才能继续翻找或返程。" % [str(Game.run.busy.get("label", "调查")), maxi(0, int(Game.run.busy.get("end", 0)) - int(Game.run.t))]
+		var left := maxi(0, int(Game.run.busy.get("end", 0)) - int(Game.run.t))
+		_hint_label.text = "仍在赶路 · 还需 %d 分钟；抵达后才能继续行动。" % left if Game.run.busy.get("kind", "") == "travel" else "%s中 · 还需 %d 分钟；完成后才能继续翻找或返程。" % [str(Game.run.busy.get("label", "调查")), left]
 		_hint.reset_size()
 		_hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_MINSIZE, 70)
 		return
@@ -340,7 +342,7 @@ func _journey_transfer(id: String, item: String, take: bool) -> void:
 func search(idx: int) -> void:
 	var ex: Dictionary = Game.run.explore
 	if Post.is_busy(Game.run):
-		Game.toast.emit("先完成眼前的工作，不能同时翻找另一处。")
+		Game.toast.emit("仍在赶路，抵达后才能翻找。" if Game.run.busy.get("kind", "") == "travel" else "先完成眼前的工作，不能同时翻找另一处。")
 		return
 	if ex.is_empty() or ex.caught or idx < 0 or idx >= ex.spots.size():
 		return
@@ -499,7 +501,7 @@ func finish() -> void:
 	if Game.run.explore.is_empty():
 		return
 	if Post.is_busy(Game.run):
-		Game.toast.emit("先完成眼前的工作；尚未完工的调查不能带回证据。")
+		Game.toast.emit("仍在赶路，抵达后才能继续行动。" if Game.run.busy.get("kind", "") == "travel" else "先完成眼前的工作；尚未完工的调查不能带回证据。")
 		return
 	Sfx.play("door_close", -3.0)
 	Game.act(func(): return Post.finish_explore(Game.run))

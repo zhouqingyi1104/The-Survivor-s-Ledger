@@ -106,6 +106,7 @@ func _start() -> void:
 		if not _require(not FileAccess.file_exists(path), "development file leaked into package: " + path):
 			return
 	if _only == "headless":
+		game.speed = 0
 		if not _resources():
 			return
 		if not _require(game.quick_start() == "", "new game could not persist to default save path"):
@@ -118,13 +119,19 @@ func _start() -> void:
 			return
 		if not _offline_receipt(game, first_event):
 			return
+		if not _require(_travel_clock(game, 30), "answered packaged event lost its remaining outbound travel"):
+			return
 		if not _roundtrip(game, "post"):
 			return
-		print("[windows_release_probe] HEADLESS PASS: template/release/offline; 20 tables; 57 textures/55 atlas; 2 fonts actual 400/700; 2 OFL; 72 events/60 active/49 new; first-day 08:00 offline decision resolved; default save roundtrip; Memory=user://")
+		if not _finish_trip(game):
+			return
+		if not _roundtrip(game, "post"):
+			return
+		print("[windows_release_probe] HEADLESS PASS: template/release/offline; 20 tables; 57 textures/55 atlas; 2 fonts actual 400/700; 2 OFL; 72 events/60 active/49 new; first-day 08:00 offline decision resolved; 07:30 departure/08:30 arrival/09:30 return; saved remaining travel; default save roundtrip; Memory=user://")
 	else:
 		if not await _visual(game):
 			return
-		print("[windows_release_probe] VISUAL PASS: title mouse quick-start; first-day 08:00 offline event mouse choice; courtyard HUD/clock; 57 inventory cards; 4 screenshots; default save roundtrip")
+		print("[windows_release_probe] VISUAL PASS: title mouse quick-start; first-day 08:00 offline event mouse choice; visible remaining travel/08:30 arrival/09:30 return; courtyard HUD/clock; 57 inventory cards; 5 screenshots; default save roundtrip")
 	_completed = true
 	print("[windows_release_probe] COMPLETE PASS only=%s checks=%d" % [_only, _checks])
 	quit(0)
@@ -216,10 +223,15 @@ func _first_offline_event(game) -> Dictionary:
 		pre.start_disaster(game.run)
 	if not _require(game.run.get("phase", "") == "post" and int(game.run.get("pday", -1)) == 1 and int(game.run.get("t", -1)) == 0 and game.run.get("pending_event", "") == "", "offline decision must begin at the real first-day dawn"):
 		return {}
-	var stop: String = str(post.advance(game.run, 120))
+	if not _require(str(post.advance(game.run, 90)) == "" and int(game.run.t) == 90 and game.run.get("busy", {}).is_empty()
+		and game.run.get("explore", {}).is_empty(), "real first-day advance did not reach 07:30 ready to depart"):
+		return {}
+	if not _require(str(game.act(func(): return post.act_explore(game.run, "rice_ruin"))) == "", "packaged 07:30 departure failed"):
+		return {}
 	game.refresh()
 	var id: String = str(game.run.get("pending_event", ""))
-	if not _require(stop == "event" and int(game.run.get("pday", -1)) == 1 and int(game.run.get("t", -1)) == 120 and id.begins_with("oe_"), "real first-day 08:00 did not present a new offline event"):
+	if not _require(int(game.run.get("pday", -1)) == 1 and int(game.run.get("t", -1)) == 120 and id.begins_with("oe_")
+		and _travel_clock(game, 30), "real first-day 08:00 did not interrupt outbound travel with a new offline event"):
 		return {}
 	var entry: Dictionary = events.entry(game.run)
 	if not _require(not str(entry.get("title", "")).is_empty() and not str(entry.get("text", "")).is_empty() and entry.get("choices", []).size() >= 2, "packaged offline event presentation is incomplete"):
@@ -238,6 +250,52 @@ func _offline_receipt(game, event: Dictionary) -> bool:
 	if not _require(str(game.run.get("pending_event", "")) == "" and event.id in game.run.get("seen_events", []) and not str(game.run.get("event_result", "")).is_empty(), "offline choice did not resolve, record its result, and enter seen events"):
 		return false
 	if not _require(str(game.run.event_result) == str(event.result), "offline fallback result differs from its packaged choice receipt"):
+		return false
+	return true
+
+
+func _travel_clock(game, remaining: int) -> bool:
+	var busy: Dictionary = game.run.get("busy", {})
+	var field: Dictionary = game.run.get("explore", {})
+	return str(game.run.get("phase", "")) == "post" and int(game.run.get("pday", -1)) == 1 \
+		and int(game.run.get("t", -1)) == 150 - remaining and str(busy.get("kind", "")) == "travel" \
+		and int(busy.get("start", -1)) == 90 and int(busy.get("end", -1)) == 150 \
+		and str(busy.get("data", {}).get("direction", "")) == "out" \
+		and str(busy.get("data", {}).get("point", "")) == "rice_ruin" \
+		and not field.is_empty() and str(field.get("point", "")) == "rice_ruin"
+
+
+func _same_value(left: Variant, right: Variant) -> bool:
+	var data = load("res://scripts/core/data.gd")
+	return data.normalize(left) == data.normalize(right)
+
+
+## The same packaged core rules must pay the remaining journey before any field work.
+func _finish_trip(game) -> bool:
+	var post = load("res://scripts/core/post.gd")
+	if not _require(post != null and _travel_clock(game, 30) and str(game.run.get("pending_event", "")) == "", "trip continuation needs an answered event and 30 real minutes remaining"):
+		return false
+	var before: Dictionary = game.run.duplicate(true)
+	if not _require(post.search(game.run, 0).is_empty() and str(post.act_rest(game.run)) != ""
+		and str(post.act_explore(game.run, "rice_ruin")) != "" and post.finish_explore(game.run).is_empty()
+		and _same_value(game.run, before), "remaining outbound travel allowed search/housework/new departure/early return or changed state"):
+		return false
+	if not _require(str(post.advance(game.run, 29)) == "" and _travel_clock(game, 1), "29 minutes did not retain the last outbound minute"):
+		return false
+	before = game.run.duplicate(true)
+	if not _require(post.search(game.run, 0).is_empty() and _same_value(game.run, before), "08:29 permitted search before real arrival"):
+		return false
+	if not _require(str(post.advance(game.run, 1)) == "" and int(game.run.t) == 150 and game.run.busy.is_empty()
+		and not game.run.explore.is_empty(), "08:30 did not complete packaged outbound travel exactly once"):
+		return false
+	game.refresh()
+	if not _require(game.screen == "explore", "arrived trip did not retain the actual exploration screen"):
+		return false
+	var home: Dictionary = game.run.home.duplicate(true)
+	var returned: Variant = game.act(func(): return post.finish_explore(game.run))
+	if not _require(returned is Dictionary and not returned.is_empty() and int(game.run.t) == 210
+		and game.run.explore.is_empty() and game.run.busy.is_empty() and not game.run.get("neighbor_travel", false)
+		and game.screen == "post" and _same_value(game.run.home, home), "empty packaged return did not pay 60 minutes once and restore the courtyard"):
 		return false
 	return true
 
@@ -265,6 +323,10 @@ func _roundtrip(game, expected_phase: String) -> bool:
 	if not _require(str(game.run.get("phase", "")) == expected_phase and str(game.run.get("role", "")) == str(before.role) and int(game.run.get("t", -1)) == int(before.t) and game.run.get("flags", {}).get("windows_release_probe", "") == "default-path-roundtrip", "reloaded run differs from saved phase/role/time/marker"):
 		return false
 	if not _require(game.run.get("seen_events", []) == before.get("seen_events", []) and str(game.run.get("event_result", "")) == str(before.get("event_result", "")), "resolved offline event receipt did not survive the default save roundtrip"):
+		return false
+	if not _require(_same_value(game.run.get("busy", {}), before.get("busy", {}))
+		and _same_value(game.run.get("explore", {}), before.get("explore", {}))
+		and bool(game.run.get("neighbor_travel", false)) == bool(before.get("neighbor_travel", false)), "remaining travel start/end/direction/field state did not survive the default save roundtrip"):
 		return false
 	return true
 
@@ -366,6 +428,24 @@ func _visual(game) -> bool:
 		return false
 	if not _require(not main.has_modal("event"), "offline event result did not close through real mouse input"):
 		return false
+	await _frames(8)
+	if not _require(_travel_clock(game, 30) and game.screen == "explore", "mouse-answered event lost the real remaining outbound trip"):
+		return false
+	var field_screen = main._screen
+	if not _require(is_instance_valid(field_screen._work_label) and field_screen._work_label.is_visible_in_tree()
+		and field_screen._work_label.text.contains("赶路") and field_screen._work_label.text.contains("30 分钟")
+		and field_screen._hint.is_visible_in_tree() and field_screen._hint_label.text.contains("仍在赶路")
+		and field_screen._hint_label.text.contains("30 分钟") and field_screen._return_button.disabled,
+		"actual rendered field screen lacks accurate remaining travel/blocked return"):
+		return false
+	for label in [field_screen._work_label, field_screen._hint_label]:
+		if not _require(root.get_visible_rect().encloses(label.get_global_rect()), "remaining-travel text is clipped at 1280x720"):
+			return false
+	if not await _shot("travel-remaining"):
+		return false
+	if not _finish_trip(game):
+		return false
+	await _frames(16)
 	var clocks := 0
 	for control in main._screen.find_children("*", "Control", true, false):
 		if control.get_script() != null and control.get_script().resource_path == "res://scripts/ui/widgets/clock_dial.gd" and control.is_visible_in_tree():

@@ -37,6 +37,8 @@
 
 离线世情已扩为 60 条可抽事件（总表 72 条），每天 08:00 由邻居、可选导演或离线池占用同一事件时点，优先未见内容；新增 49 条原创事件及精力不足、零钱成本提示的验证见 [51-offline-events.md](docs/51-offline-events.md)。事件密度的规则验证不等于整局平衡或玩家试玩验收。
 
+外出途中遇事会保留剩余赶路时间，尚未完成的普通翻找不提前发物资；返回后仍在赶路时不能开始家务或再次出门，范围与定向验证见 [53](docs/53-interrupted-field-time.md)。C1 后已按真实耗时重采 120 局，难度目标仍未通过，参数保持原值，见 [52](docs/52-balance-after-offline-events.md)。
+
 截图在 [docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；夜战见 `night_policy.png` 与 `night_panel.png`；开局模式与同院见 `challenge_modes.png`、`challenge_mates.png`）。
 
 ## 运行
@@ -168,7 +170,7 @@ Windows 独立试玩包：先按授权启用固定版本模板 `powershell.exe -
 ./tools/run_tests.ps1 -Tier ui -Case title_input
 ```
 
-`fast` 是 5 项编译/小型规则，`core` 是 62 项无界面检查，`ui` 是 37 项窗口检查；`full` 为全部 120 项已登记 Godot 离线测试，只在发布候选手动执行。平台限制与 23 项专项/诊断排除理由见 [清单](tools/test_manifest.json)，登记不代表已跑过。失败立即停止，修复后只用 `-Case` 重跑失败项；未知用例、超时、脚本错误或缺完成标记都不会假绿。
+`fast` 是 5 项编译/小型规则，`core` 是 63 项无界面检查，`ui` 是 38 项窗口检查；`full` 为全部 122 项已登记 Godot 离线测试，只在发布候选手动执行。平台限制与 23 项专项/诊断排除理由见 [清单](tools/test_manifest.json)，登记不代表已跑过。失败立即停止，修复后只用 `-Case` 重跑失败项；未知用例、超时、脚本错误或缺完成标记都不会假绿。
 
 游戏进程在 `build/test-runs/<唯一ID>/project` 快照内运行，每项另有隔离用户目录，不在源码工作区写存档或测试图片。完整日志、快照哈希和 `results.json` 均保留在本轮目录。已知退出清理信息标成 `PASS_WITH_WARNINGS`，并未消除。公开仓库推送/PR 自动运行相同入口的 fast 与运行器负例；本地通过不等于远端 CI 通过，见 [49](docs/49-test-entry-ci.md)。
 

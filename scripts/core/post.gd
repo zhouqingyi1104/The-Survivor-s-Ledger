@@ -301,7 +301,8 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 				run.wave_due = true
 				run.sleeping = false
 				_interrupt_furnish(run)
-				run.busy = {}
+				if str(run.busy.get("kind", "")) != "travel":
+					run.busy = {}
 				return "wave"
 		RAID_AT:
 			# 尸潮还在街上，溃兵不会这时候来
@@ -372,7 +373,8 @@ static func _dawn(run: Dictionary) -> void:
 	run.sleeping = false
 	NeighborHome.interrupt(run, "天亮")
 	_interrupt_furnish(run, "天亮")
-	run.busy = {}
+	if str(run.busy.get("kind", "")) != "travel":
+		run.busy = {}
 	run.dawn_due = true
 	# 同院的人天亮各干一件事（先收口粮），动静放进天亮报告
 	var help := Companion.dawn(run)
@@ -994,6 +996,13 @@ static func _check_busy(run: Dictionary) -> void:
 ## 做完了，见成果。
 static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 	match kind:
+		"travel":
+			if run.get("phase", "") != "post": return
+			if str(data.get("direction", "")) == "return":
+				run.erase("neighbor_travel")
+				State.note(run, "返程走完，回到宅院。")
+			else:
+				State.note(run, "已抵达，可以开始搜寻。")
 		"neighbor_wall":
 			NeighborHome.complete(run)
 		"attic_build":
@@ -1410,6 +1419,8 @@ static func _interrupt_targeted_device(run: Dictionary) -> void:
 ## 夜袭将人送回院层前，不能让室内工作在返回后跨空间完成。
 ## 家具安放有付款快照，其余工作沿用原有中断规则，不猜测退款。
 static func _interrupt_room_work(run: Dictionary) -> void:
+	if str(run.get("busy", {}).get("kind", "")) == "travel":
+		return
 	if str(run.get("home_floor", "courtyard")) == "courtyard" or run.get("busy", {}).is_empty():
 		return
 	# 恢复室内威胁存档也会走这里；先结清新守具的付款快照。
@@ -1623,33 +1634,41 @@ static func act_explore(run: Dictionary, pid: String) -> String:
 	run.today.actions.append("explore")
 	Ledger.check_wish(run, "action", "explore")
 	State.note(run, "出门去%s。" % Data.table("map_points")[pid].name)
+	run.busy = {"kind": "travel", "label": "赶往" + str(Data.table("map_points")[pid].name),
+		"start": int(run.t), "end": int(run.t) + int(ACTIONS.travel[1]), "data": {"direction": "out", "point": pid}}
 	advance(run, int(ACTIONS.travel[1]))
 	return ""
 
 
 static func search(run: Dictionary, idx: int, option_id := "") -> Dictionary:
-	if run.explore.is_empty() or run.explore.get("curfew_due", false) or blocked(run) or is_busy(run) or run.sleeping or not run.fight.is_empty():
+	if run.explore.is_empty() or run.explore.get("curfew_due", false) or run.explore.get("caught", false) or blocked(run) or is_busy(run) or run.sleeping or not run.fight.is_empty():
 		return {}
-	if Expedition.target_locked(run, idx):
+	if idx < 0 or idx >= run.explore.get("spots", []).size() or run.explore.spots[idx].get("done", false):
+		return {}
+	# 门禁会补齐旧现场的派生状态；拒绝时只在副本补齐，保持原子性。
+	if Expedition.target_locked({"explore": run.explore.duplicate(true)}, idx):
 		return {"blocked": "道路被机关封住；先查找两处线索，再解开机关。"}
 	var prepaid := false
 	var reserved_gain := -1
-	if option_id == "site":
-		if idx < 0 or idx >= run.explore.get("spots", []).size() or run.explore.spots[idx].get("done", false): return {}
+	var spot: Dictionary = run.explore.spots[idx]
+	if option_id == "site" and (spot.has("mainline") or spot.has("neighbor")):
+		return {"blocked": "这里不能使用地点特色。"}
+	if not spot.has("mainline") and not spot.has("neighbor"):
+		var selected_id := "normal" if option_id == "" else option_id
 		var selected := {}
 		for option in Explore.site_options(run, idx):
-			if option.id == option_id: selected = option; break
-		if selected.is_empty(): return {"blocked": "这里不能使用地点特色。"}
+			if option.id == selected_id: selected = option; break
+		if selected.is_empty(): return {"blocked": "这里不能使用地点特色。" if option_id == "site" else "无效的搜寻方式。"}
 		if str(selected.block) != "": return {"blocked": selected.block}
 		var pid := str(run.explore.point)
-		var minutes := int(Explore.SITE_MINUTES.get(pid, ACTIONS.search[1]))
+		var minutes := int(Explore.SITE_MINUTES.get(pid, ACTIONS.search[1])) if selected_id == "site" else int(ACTIONS.search[1])
 		# 先预留按出发时状态计算的危险，再推进时间；事件打断时不产生任何成果。
-		if pid != "city_god": reserved_gain = Explore.exposure_gain(run, pid)
+		if selected_id != "site" or pid != "city_god": reserved_gain = Explore.exposure_gain(run, pid)
 		var started := int(run.t)
 		run["neighbor_searching"] = true
 		var stop := advance(run, minutes)
 		run.erase("neighbor_searching")
-		if int(run.t) - started < minutes or run.get("phase", "") != "post" or run.explore.is_empty() or run.explore.get("curfew_due", false):
+		if int(run.t) - started < minutes or run.get("phase", "") != "post" or run.explore.is_empty() or run.explore.get("curfew_due", false) or run.explore.get("caught", false):
 			return {"blocked": "现场行动被%s打断，已耗时 %d 分钟；未完成，也没有取得物资或效果。" % ["宵禁" if stop == "curfew" else "突发状况", int(run.t) - started]}
 		prepaid = true
 	var story_revision := int(Mainline.state(run).revision)
@@ -1659,7 +1678,7 @@ static func search(run: Dictionary, idx: int, option_id := "") -> Dictionary:
 	if str(res.get("blocked", "")) != "": return res
 	if not res.is_empty():
 		State.add_attr(run, "energy", -float(ACTIONS.search[2]))
-		# 特色行动已经推进完时间，受捕后的伤害不会再经过 advance 的死亡检查。
+		# 普通/特色行动已经推进完时间，受捕后的伤害不会再经过 advance 的死亡检查。
 		if prepaid and res.get("caught", false):
 			State.check_death(run, "搜寻时被尸群追上，没能逃回宅院。")
 		if res.get("mainline", false):
@@ -1782,8 +1801,9 @@ static func finish_explore(run: Dictionary) -> Dictionary:
 	if run.phase == "post":
 		if Mainline.begin_return(run, field_state): return summary
 		run["neighbor_travel"] = true
+		run.busy = {"kind": "travel", "label": "返家赶路", "start": int(run.t),
+			"end": int(run.t) + int(ACTIONS.travel[1]), "data": {"direction": "return", "point": str(field_state.point)}}
 		advance(run, int(ACTIONS.travel[1]))
-		run.erase("neighbor_travel")
 		Neighbor.poll(run)
 	return summary
 

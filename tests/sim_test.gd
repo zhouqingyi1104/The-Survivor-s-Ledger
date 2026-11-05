@@ -68,6 +68,8 @@ var balance_finished := false
 var bot_chores := false
 var bot_max_trips := 1
 var balance_first_error := ""
+## B4 只记真实完成的事件决定；不把弹窗出现或失败尝试计作收益。
+var balance_events: Array = []
 var bot_trip_counts: Dictionary = {}
 var bot_chore_attempts := 0
 var bot_guard := ""
@@ -697,26 +699,50 @@ func choose_action(run: Dictionary) -> bool:
 
 
 func do_explore(run: Dictionary) -> void:
+	if not _settle_bot_travel(run):
+		return
 	for idx in run.explore.spots.size():
 		if run.explore.is_empty() or run.explore.caught or int(run.explore.exposure) > 65 or Post.blocked(run):
 			break
-		var result := Post.search(run, idx)
-		for id in result.get("found", {}):
-			Explore.take(run, idx, str(id), int(result.found[id]))
-		if run.pending_event != "":
-			handle_event(run)
+		# A morning event interrupts an unfinished search. Answer it, then actually
+		# retry that same spot; never take goods before the work has completed.
+		for attempt in 16:
+			var result := Post.search(run, idx)
+			var interrupted: bool = run.pending_event != ""
+			if not _settle_bot_travel(run):
+				return
+			# At an exact event boundary, finished loot must wait for the answer too.
+			for id in result.get("found", {}):
+				Explore.take(run, idx, str(id), int(result.found[id]))
+			if not result.has("blocked") or not interrupted or run.explore.is_empty() or run.explore.spots[idx].done:
+				break
+			if attempt == 15:
+				check(false, "外出翻找反复中断，未完成：%d" % idx)
+				return
 	if not run.explore.is_empty():
 		Post.finish_explore(run)
+		_settle_bot_travel(run)
 
 
-func handle_event(run: Dictionary) -> void:
-	var e: Dictionary = Events.entry(run)
-	var pick: int = e.choices.size() - 1
-	for idx in e.choices.size():
-		if Events.choice_ok(run, e.choices[idx]):
-			pick = idx
-			break
-	Events.choose(run, pick)
+## 路上遇事仍要付完原来60分钟；不以提前抵达/直接放弃现场改变搜寻策略。
+func _settle_bot_travel(run: Dictionary) -> bool:
+	for attempt in 32:
+		if run.phase != "post" or (balance_active and balance_first_error != ""):
+			return false
+		if run.pending_event != "":
+			if not handle_event(run): return false
+			continue
+		if Post.is_busy(run) and str(run.busy.get("kind", "")) == "travel":
+			if Post.blocked(run): return false
+			Post.advance(run, maxi(1, int(run.busy.end) - int(run.t)))
+			continue
+		return not Post.blocked(run)
+	check(false, "赶路反复中断，未能抵达")
+	return false
+
+
+func handle_event(run: Dictionary) -> bool:
+	return BalanceRunner.handle_event(self, run)
 
 
 ## 记一次"玩家真的做了个决定"（开始干活、翻找、读书……）。
@@ -774,8 +800,8 @@ func play_day(run: Dictionary) -> void:
 		guard += 1
 		check_invariants(run)
 		if run.pending_event != "":
-			handle_event(run)
-			pac_events += 1
+			if not handle_event(run):
+				return
 			continue
 		if run.plan_due:
 			choose_policy(run)
@@ -830,6 +856,8 @@ func play_day(run: Dictionary) -> void:
 		var started := false
 		if Post.can_act(run, 0) == "":
 			started = choose_action(run)
+		if balance_active and balance_first_error != "":
+			return
 		if started:
 			_pac_action(run)
 		if Post.is_busy(run):
@@ -857,6 +885,7 @@ func play_day(run: Dictionary) -> void:
 func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionary:
 	pac_actions = 0
 	pac_events = 0
+	balance_events = []
 	pac_busy = 0
 	pac_idle = 0
 	pac_sleep = 0
@@ -925,6 +954,7 @@ func play(role: String, seed_value: int, difficulty_id := "normal") -> Dictionar
 		"chores_completed": chores_done, "chores_attempted": bot_chore_attempts,
 		"chores_used": run.get("agenda", {}).get("used", {}).duplicate(true),
 		"explorations": trips, "explorations_by_day": bot_trip_counts.duplicate(true),
+		"events_resolved": balance_events.size(), "event_records": balance_events.duplicate(true),
 		"daoxin": int(gain.total), "broken": broken,
 		"silver_start": pre_silver_start, "silver_left": silver_left,
 		"endless": bool(run.get("endless", false)), "pday": int(run.pday),

@@ -262,9 +262,16 @@ func run_route(pid: String, item: String, count: int, answer: String) -> void:
 			get_viewport().get_texture().get_image().save_png(OS.get_temp_dir().path_join("ledger-journey-choice-" + pid + ".png"))
 		var before := int(Game.run.t)
 		if id == "s0":
+			# Closing the modal resumes ordinary field time. Isolate cancellation
+			# from frame duration, then restore 1x for the actual walking route.
+			var route_speed: int = Game.speed
+			Game.speed = 0
+			var cancel_before: Dictionary = Game.run.duplicate(true)
 			await key(KEY_ESCAPE)
-			check(not SiteJourney.state(Game.run).completed.has(id) and int(Game.run.t) <= before + 1, pid + " cancel cost or progress")
+			check(not main.has_modal("site_journey") and not SiteJourney.state(Game.run).completed.has(id)
+				and Game.run == cancel_before, pid + " cancel changed time, costs or progress")
 			await key(KEY_E)
+			Game.speed = route_speed
 		await click(journey_button("journey_choice", "careful"))
 		if not check(SiteJourney.state(Game.run).completed.has(id), "%s stage not completed %s: screen=%s pending=%s messages=%s" % [pid, id, Game.screen, Game.run.get("pending_event", ""), str(messages)]): return
 		check(int(Game.run.t) >= before + int(stage.choices[0].minutes), pid + " action did not consume listed time")

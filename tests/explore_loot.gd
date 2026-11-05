@@ -83,11 +83,21 @@ func _ready() -> void:
 	var late := fixture()
 	Post.act_explore(late, "rice_ruin")
 	late.explore["expedition"] = {"clues": [true, true], "unlocked": true, "attempts": 1}
-	late.t = 1440 + Post.CURFEW_AT - 10
-	var late_result := Post.search(late, 0)
-	check(int(late.t) == 1440 + Post.CURFEW_AT and late.explore.get("curfew_due", false), "search crossed curfew without persistent return marker")
-	var late_item := str(late_result.found.keys()[0])
+	# Keep genuine earlier loot for the transfer guards; an unfinished late
+	# search now correctly produces no loot of its own.
+	var earlier := Post.search(late, 0)
+	check(not earlier.get("found", {}).is_empty(), "curfew transfer setup did not discover real loot")
+	if earlier.get("found", {}).is_empty():
+		get_tree().quit(1)
+		return
+	var late_item := str(earlier.found.keys()[0])
 	var late_remaining := Inv.count(late.explore.spots[0].loot, late_item)
+	late.t = 1440 + Post.CURFEW_AT - 10
+	var search_xp := int(late.prof.search)
+	var late_result := Post.search(late, 1)
+	check(int(late.t) == 1440 + Post.CURFEW_AT and late.explore.get("curfew_due", false), "search crossed curfew without persistent return marker")
+	check(late_result.has("blocked") and not late.explore.spots[1].done and not late.explore.spots[1].has("loot")
+		and int(late.prof.search) == search_xp, "unfinished curfew search granted goods, completion or experience")
 	late.explore.bag[late_item] = 1
 	check(Explore.take(late, 0, late_item, 1) == 0 and Explore.put_back(late, 0, late_item, 1) == 0, "curfew allowed loot transfer")
 	check(Inv.count(late.explore.spots[0].loot, late_item) == late_remaining and Inv.count(late.explore.bag, late_item) == 1, "curfew transfer changed inventory")

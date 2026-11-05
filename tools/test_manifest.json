@@ -3,6 +3,24 @@
   "engine_version": "4.7.2",
   "cases": [
     {
+      "id": "field_time",
+      "entry": "tests/field_time.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[field_time\\] checks=[1-9][0-9]* completed=(?P<count>[1-9][0-9]*)/(?P=count) failures=0\\r?$"
+    },
+    {
+      "id": "field_time_ui",
+      "entry": "tests/field_time_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 240,
+      "success_regex": "(?m)^\\[field_time_ui\\] checks=[1-9][0-9]* completed=(?P<count>[1-9][0-9]*)/(?P=count) failures=0\\r?$"
+    },
+    {
       "id": "offline_events",
       "entry": "tests/offline_events.gd",
       "kind": "script",
