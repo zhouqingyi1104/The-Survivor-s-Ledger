@@ -14,13 +14,13 @@
   {
     "id": "harsh",
     "name": "荒年",
-    "desc": "米价先涨，人也先饿。火更难烧，尸潮三倍有余。",
-    "params": {"silver_mul": 0.75, "hp_mul": 0.95, "food_mul": 1.20, "water_mul": 1.10, "cold_add": 6, "wave_mul": 3.3}
+    "desc": "米价先涨，人也先饿。火更难烧，尸潮逾三倍半。",
+    "params": {"silver_mul": 0.75, "hp_mul": 0.95, "food_mul": 1.20, "water_mul": 1.10, "cold_add": 6, "wave_mul": 3.6}
   },
   {
     "id": "doom",
     "name": "永夜",
-    "desc": "冷到骨头里，尸潮近四倍，银子只够买半袋米。活过二十日算你赢。",
-    "params": {"silver_mul": 0.60, "hp_mul": 0.90, "food_mul": 1.35, "water_mul": 1.25, "cold_add": 14, "wave_mul": 3.8}
+    "desc": "冷到骨头里，尸潮逾四倍，银子只够买半袋米。活过二十日算你赢。",
+    "params": {"silver_mul": 0.60, "hp_mul": 0.90, "food_mul": 1.35, "water_mul": 1.25, "cold_add": 14, "wave_mul": 4.1}
   }
 ]

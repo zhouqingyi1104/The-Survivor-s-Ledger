@@ -1737,7 +1737,7 @@ func test_difficulty() -> void:
 	check(Post.cold_of(a) == 30, "寻常年景的寒冷被改了：%d" % Post.cold_of(a))
 	# B4 实测后的配置绑定：通过本世真实入口读取难度，不只测传入任意乘数的工具函数。
 	check(int(Defense.wave_for_day(11, 1.0).count) == 24, "第 11 夜基数不对")
-	var expected_waves := {"mild": [0.85, 20], "normal": [1.0, 24], "harsh": [3.3, 79], "doom": [3.8, 91]}
+	var expected_waves := {"mild": [0.85, 20], "normal": [1.0, 24], "harsh": [3.6, 86], "doom": [4.1, 98]}
 	for id in expected_waves:
 		var probe := State.new_run("scholar", meta, 77, str(id))
 		var expected: Array = expected_waves[id]

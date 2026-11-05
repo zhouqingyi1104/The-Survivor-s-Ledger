@@ -5,6 +5,7 @@ extends Node
 ##   tools/godot/Godot_v4.7.2-stable_win64_console.exe --path . --rendering-method gl_compatibility res://tests/difficulty_ui.tscn
 
 const State = preload("res://scripts/core/state.gd")
+const Data = preload("res://scripts/core/data.gd")
 
 var main: Control
 var checks := 0
@@ -41,6 +42,7 @@ func _ready() -> void:
 	var doom := card("doom")
 	check(mild != null and doom != null, "难度卡没都挂上 difficulty_pick（点不动的回归）")
 	check_card_widths("normal")
+	check_card_content()
 	# 鼠标路由自检：先把话说清楚，别让 headless 下的空结果冒充成界面坏了
 	await hover(mild)
 	if not check(get_viewport().gui_get_hovered_control() != null,
@@ -65,6 +67,12 @@ func _ready() -> void:
 	check(text_of("就这个").contains("永夜"), "底部确认按钮没跟着选中项变：" + text_of("就这个"))
 	check(card_id(tag_owner()) == "doom", "「已选中」标记没移到永夜卡上")
 	check_card_widths("doom")
+	check_card_content()
+	# Capture the real four-card view before confirming and leaving this screen.
+	await RenderingServer.frame_post_draw
+	check(DirAccess.make_dir_recursive_absolute("user://screenshots") == OK, "无法建立难度截图目录")
+	check(get_viewport().get_texture().get_image().save_png("user://screenshots/difficulty-calibration.png") == OK,
+		"难度选择卡截图失败")
 	# 「就这个」把选中的难度带给下一屏
 	await click(text_button("就这个"))
 	check(Game.screen == "challenge" and Game.pending_difficulty == "doom", "难度没带进立愿界面")
@@ -73,6 +81,26 @@ func _ready() -> void:
 
 
 # ---------- 工具 ----------
+
+func check_card_content() -> void:
+	for difficulty in Data.table("difficulty"):
+		var id := str(difficulty.id)
+		var current := card(id)
+		if not check(current != null, "无法检查难度卡正文：" + id): return
+		var text := ""
+		var description: Label = null
+		for label in current.find_children("*", "Label", true, false):
+			text += label.text + "\n"
+			if label.text == str(difficulty.desc): description = label
+		check(is_instance_valid(description) and description.is_visible_in_tree(), id + " 卡片缺少实际描述")
+		if is_instance_valid(description):
+			check(get_viewport().get_visible_rect().encloses(description.get_global_rect()), id + " 描述超出视口")
+		# Bind what the player reads to the actual new-run difficulty, not a second
+		# hard-coded percentage or the card renderer's private formatting function.
+		var multiplier: float = State.diff(State.new_run("scholar", State.new_meta(), 77, id)).wave_mul
+		if not is_equal_approx(multiplier, 1.0):
+			check(text.contains("尸潮") and text.contains("%d%%" % roundi(multiplier * 100.0)), id + " 显示尸潮强度与真实新局不符")
+
 
 func check_card_widths(selected: String) -> void:
 	var chosen := card(selected)

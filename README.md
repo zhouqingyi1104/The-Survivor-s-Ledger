@@ -37,7 +37,9 @@
 
 离线世情已扩为 60 条可抽事件（总表 72 条），每天 08:00 由邻居、可选导演或离线池占用同一事件时点，优先未见内容；新增 49 条原创事件及精力不足、零钱成本提示的验证见 [51-offline-events.md](docs/51-offline-events.md)。事件密度的规则验证不等于整局平衡或玩家试玩验收。
 
-外出途中遇事会保留剩余赶路时间，尚未完成的普通翻找不提前发物资；返回后仍在赶路时不能开始家务或再次出门，范围与定向验证见 [53](docs/53-interrupted-field-time.md)。C1 后已按真实耗时重采 120 局，难度目标仍未通过，参数保持原值，见 [52](docs/52-balance-after-offline-events.md)。
+外出途中遇事会保留剩余赶路时间，尚未完成的普通翻找不提前发物资；返回后仍在赶路时不能开始家务或再次出门，范围与定向验证见 [53](docs/53-interrupted-field-time.md)。修复后的 120 局整局基线见 [52](docs/52-balance-after-offline-events.md)。
+
+困难档已按原组和独立种子对照校准：荒年/永夜尸潮倍率为 3.6/4.1，暖冬和默认寻常年景保留原值；选择卡同步实际强度。荒年两组达到建议区间，永夜原组仍偏高，B4 整体未验收，详见 [54](docs/54-hard-difficulty-calibration.md)。
 
 截图在 [docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；夜战见 `night_policy.png` 与 `night_panel.png`；开局模式与同院见 `challenge_modes.png`、`challenge_mates.png`）。
 

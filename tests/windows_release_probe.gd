@@ -105,6 +105,8 @@ func _start() -> void:
 	for path in ["res://tests/windows_release_probe.gd", "res://tests/check_scripts.tscn", "res://tools/build_windows.ps1", "res://docs/50-windows-release.md"]:
 		if not _require(not FileAccess.file_exists(path), "development file leaked into package: " + path):
 			return
+	if not _difficulty_rules():
+		return
 	if _only == "headless":
 		game.speed = 0
 		if not _resources():
@@ -127,14 +129,29 @@ func _start() -> void:
 			return
 		if not _roundtrip(game, "post"):
 			return
-		print("[windows_release_probe] HEADLESS PASS: template/release/offline; 20 tables; 57 textures/55 atlas; 2 fonts actual 400/700; 2 OFL; 72 events/60 active/49 new; first-day 08:00 offline decision resolved; 07:30 departure/08:30 arrival/09:30 return; saved remaining travel; default save roundtrip; Memory=user://")
+		print("[windows_release_probe] HEADLESS PASS: template/release/offline; difficulty wave multipliers 0.85/1/3.6/4.1 and day11 counts 20/24/86/98; 20 tables; 57 textures/55 atlas; 2 fonts actual 400/700; 2 OFL; 72 events/60 active/49 new; first-day 08:00 offline decision resolved; 07:30 departure/08:30 arrival/09:30 return; saved remaining travel; default save roundtrip; Memory=user://")
 	else:
 		if not await _visual(game):
 			return
-		print("[windows_release_probe] VISUAL PASS: title mouse quick-start; first-day 08:00 offline event mouse choice; visible remaining travel/08:30 arrival/09:30 return; courtyard HUD/clock; 57 inventory cards; 5 screenshots; default save roundtrip")
+		print("[windows_release_probe] VISUAL PASS: four difficulty cards with real multipliers/descriptions; title mouse quick-start; first-day 08:00 offline event mouse choice; visible remaining travel/08:30 arrival/09:30 return; courtyard HUD/clock; 57 inventory cards; 6 screenshots; default save roundtrip")
 	_completed = true
 	print("[windows_release_probe] COMPLETE PASS only=%s checks=%d" % [_only, _checks])
 	quit(0)
+
+
+func _difficulty_rules() -> bool:
+	var state = load("res://scripts/core/state.gd")
+	var defense = load("res://scripts/core/defense.gd")
+	if not _require(state != null and defense != null, "packaged difficulty rules missing"):
+		return false
+	var expected := {"mild": [0.85, 20], "normal": [1.0, 24], "harsh": [3.6, 86], "doom": [4.1, 98]}
+	for id in expected:
+		var probe: Dictionary = state.new_run("scholar", state.new_meta(), 77, id)
+		if not _require(is_equal_approx(float(state.diff(probe).wave_mul), float(expected[id][0])), "packaged difficulty multiplier mismatch: " + id):
+			return false
+		if not _require(int(defense.wave_for_run(probe, 11).count) == int(expected[id][1]), "packaged actual day11 wave mismatch: " + id):
+			return false
+	return true
 
 
 func _resources() -> bool:
@@ -369,6 +386,40 @@ func _shot(name: String) -> bool:
 	return true
 
 
+func _difficulty_cards(game, main) -> bool:
+	var data = load("res://scripts/core/data.gd")
+	var state = load("res://scripts/core/state.gd")
+	game.pick_difficulty("scholar")
+	await _frames(8)
+	if not _require(game.screen == "difficulty", "packaged difficulty screen did not open"):
+		return false
+	for difficulty in data.table("difficulty"):
+		var card: Control = null
+		for control in main._screen.find_children("*", "Control", true, false):
+			if str(control.get_meta("difficulty_pick", "")) == str(difficulty.id):
+				card = control
+				break
+		if not _require(is_instance_valid(card) and card.is_visible_in_tree(), "packaged difficulty card missing: " + str(difficulty.id)):
+			return false
+		var text := ""
+		var description: Label = null
+		for label in card.find_children("*", "Label", true, false):
+			text += label.text + "\n"
+			if label.text == str(difficulty.desc): description = label
+		if not _require(is_instance_valid(description) and description.is_visible_in_tree()
+			and root.get_visible_rect().encloses(description.get_global_rect()), "packaged difficulty description missing/clipped: " + str(difficulty.id)):
+			return false
+		var multiplier: float = state.diff_params(str(difficulty.id)).wave_mul
+		if not is_equal_approx(multiplier, 1.0):
+			if not _require(text.contains("尸潮") and text.contains("%d%%" % roundi(multiplier * 100.0)), "packaged difficulty card contradicts real wave multiplier: " + str(difficulty.id)):
+				return false
+	if not await _shot("difficulty-cards"):
+		return false
+	game.go("title")
+	await _frames(8)
+	return _require(game.screen == "title", "difficulty probe did not restore title for real quick-start")
+
+
 func _visual(game) -> bool:
 	if not _require(DisplayServer.get_name() != "headless", "visual mode requires an actual rendered window"):
 		return false
@@ -391,6 +442,8 @@ func _visual(game) -> bool:
 	if not _require(game.screen == "title", "main scene did not display title"):
 		return false
 	if not await _shot("title"):
+		return false
+	if not await _difficulty_cards(game, main):
 		return false
 	if not await _click(_button(main._screen, "新开一卷")):
 		return false
