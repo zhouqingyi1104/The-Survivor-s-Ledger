@@ -1,0 +1,91 @@
+name: Offline rules
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      case:
+        description: Run the fast tier or retry one failed case
+        type: choice
+        default: all
+        options:
+          - all
+          - check_scripts
+          - brief
+          - pacing
+          - ending_report
+          - playtest_report
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-rules-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    # Standard public-repository runners are free. Do not enable paid/private runs.
+    if: ${{ github.event.repository.private == false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      C5_CASE: ${{ inputs.case || 'all' }}
+      GODOT_RELEASE: 4.7.2-stable
+      GODOT_SHA512: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
+    steps:
+      - name: Check out the event commit without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          git init .
+          git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git"
+          git -c protocol.file.allow=never fetch --no-tags --depth=1 origin "$GITHUB_SHA"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Verify the official matching Godot binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/Godot_v${GODOT_RELEASE}_linux.x86_64.zip"
+          engine_dir="$RUNNER_TEMP/ledger-godot"
+          curl --fail --location --retry 2 --connect-timeout 20 --max-time 240 \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_RELEASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip" \
+            --output "$archive"
+          printf '%s  %s\n' "$GODOT_SHA512" "$archive" | sha512sum --check --strict
+          mkdir -p "$engine_dir"
+          unzip -q "$archive" -d "$engine_dir"
+          engine="$engine_dir/Godot_v${GODOT_RELEASE}_linux.x86_64"
+          chmod +x "$engine"
+          printf 'GODOT_EXE=%s\n' "$engine" >> "$GITHUB_ENV"
+
+      - name: Test the runner and run offline fast checks
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python3 -m unittest discover -s tests -p test_run_tests.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($env:C5_CASE -eq 'all') {
+            & ./tools/run_tests.ps1 -Tier fast -GodotPath $env:GODOT_EXE
+          } else {
+            & ./tools/run_tests.ps1 -Tier fast -Case $env:C5_CASE -GodotPath $env:GODOT_EXE
+          }
+          exit $LASTEXITCODE
+
+      - name: Preserve results and raw logs in the job log
+        if: ${{ always() }}
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+          root = Path('build/test-runs')
+          if not root.is_dir():
+              print('NOT RUN: no test-run output was created; see earlier step failure.')
+          for report in sorted(root.glob('*/results.json')) if root.is_dir() else []:
+              print(f'--- {report} ---')
+              print(report.read_text(encoding='utf-8'))
+              for log in sorted(report.parent.rglob('*.log')):
+                  print(f'--- {log} ---')
+                  print(log.read_text(encoding='utf-8', errors='replace'))

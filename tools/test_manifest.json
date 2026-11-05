@@ -1,0 +1,1161 @@
+{
+  "schema_version": 1,
+  "engine_version": "4.7.2",
+  "cases": [
+    {
+      "id": "check_scripts",
+      "entry": "tests/check_scripts.tscn",
+      "kind": "scene",
+      "tier": "fast",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^共 [1-9][0-9]* 个脚本，失败 0 个\\r?$"
+    },
+    {
+      "id": "brief",
+      "entry": "tests/brief.gd",
+      "kind": "script",
+      "tier": "fast",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[brief\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "pacing",
+      "entry": "tests/pacing.gd",
+      "kind": "script",
+      "tier": "fast",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[pacing\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "ending_report",
+      "entry": "tests/ending_report.gd",
+      "kind": "script",
+      "tier": "fast",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[ending_report\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "playtest_report",
+      "entry": "tests/playtest_report.gd",
+      "kind": "script",
+      "tier": "fast",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[playtest_report\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "bundled_fonts",
+      "entry": "tests/bundled_fonts.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[bundled_fonts\\] [1-9][0-9]* 项检查，完成 3/3，失败 0；[1-9][0-9]* 个源码/数据文件，[1-9][0-9]* 个非控制字符\\r?$"
+    },
+    {
+      "id": "c2_processing",
+      "entry": "tests/c2_processing.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[C2_PROCESSING\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c4_furnish_interrupt",
+      "entry": "tests/c4_furnish_interrupt.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[FURNISH_INTERRUPT\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c4_rules",
+      "entry": "tests/c4_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[C4_RULES\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c5_floor_rules",
+      "entry": "tests/c5_floor_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[C5_FLOOR_RULES\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c5_floor_safety",
+      "entry": "tests/c5_floor_safety.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[C5_FLOOR_SAFETY\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c6_rules",
+      "entry": "tests/c6_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[C6_RULES\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "close_safety",
+      "entry": "tests/close_safety.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[close_safety\\] [1-9][0-9]* checks, 0 failures\\r?$",
+      "platforms": [
+        "Windows"
+      ]
+    },
+    {
+      "id": "continue_safety",
+      "entry": "tests/continue_safety.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[continue_safety\\] [1-9][0-9]* checks, 0 failed\\r?$"
+    },
+    {
+      "id": "copy_lint",
+      "entry": "tests/copy_lint.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[copy_lint\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "crisis_integration",
+      "entry": "tests/crisis_integration.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Crisis\\ integration:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "crisis_memory",
+      "entry": "tests/crisis_memory.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Crisis\\ memory:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "crisis_recorded",
+      "entry": "tests/crisis_recorded.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Crisis\\ recorded\\ replay:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures;\\ no\\ network\\r?$"
+    },
+    {
+      "id": "crisis_rules",
+      "entry": "tests/crisis_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Crisis\\ rules:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "cycle_integration",
+      "entry": "tests/cycle_integration.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Cycle\\ integration:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "cycle_memory",
+      "entry": "tests/cycle_memory.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Cycle\\ memory/AI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "cycle_recorded",
+      "entry": "tests/cycle_recorded.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Cycle\\ recorded\\ ARK\\ replay:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures;\\ zero\\ network/model\\ calls\\r?$"
+    },
+    {
+      "id": "cycle_rules",
+      "entry": "tests/cycle_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Cycle\\ rules:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "death_report",
+      "entry": "tests/death_report.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[death_report\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "director_rules",
+      "entry": "tests/director_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Director\\ rules:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "expedition_rules",
+      "entry": "tests/expedition_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Expedition\\ rules:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "explore_loot",
+      "entry": "tests/explore_loot.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^explore\\ loot:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "explore_site_rules",
+      "entry": "tests/explore_site_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Explore\\ sites:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "export_smoke",
+      "entry": "tests/export_smoke.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[export_smoke\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "identity_integration",
+      "entry": "tests/identity_integration.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Identity\\ integration:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "identity_memory",
+      "entry": "tests/identity_memory.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Identity\\ memory/AI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "identity_rules",
+      "entry": "tests/identity_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Identity\\ rules:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "import_safety",
+      "entry": "tests/import_safety.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[import_safety\\] [1-9][0-9]* checks, 0 failed\\r?$"
+    },
+    {
+      "id": "input_settings",
+      "entry": "tests/input_settings.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[input_settings\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "inventory_art",
+      "entry": "tests/inventory_art.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[inventory_art\\] [1-9][0-9]* 项检查，完成 3/3，失败 0 处\\r?$"
+    },
+    {
+      "id": "m2_targeted_defense",
+      "entry": "tests/m2_targeted_defense.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[M2_TARGETED_DEFENSE\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "mainline_integration",
+      "entry": "tests/mainline_integration.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Mainline\\ integration:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "mainline_memory",
+      "entry": "tests/mainline_memory.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Mainline\\ memory/endings:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "mainline_rules",
+      "entry": "tests/mainline_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Mainline\\ rules:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "manual",
+      "entry": "tests/manual.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[manual\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "memory_file_flow",
+      "entry": "tests/memory_file_flow.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Memory file flow: 9/9 completed, [1-9][0-9]* checks, 0 failures; no ARK calls; root archive unchanged\\r?$"
+    },
+    {
+      "id": "neighbor_story",
+      "entry": "tests/neighbor_story.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Neighbor story: 8/8 completed, [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
+      "id": "npc_dialogue",
+      "entry": "tests/npc_dialogue.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^NPC\\ dialogue:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures;\\ offline\\r?$"
+    },
+    {
+      "id": "npc_integration",
+      "entry": "tests/npc_integration.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^NPC\\ integration:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "npc_memory",
+      "entry": "tests/npc_memory.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^NPC\\ memory:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "npc_recorded",
+      "entry": "tests/npc_recorded.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^NPC\\ recorded\\ replay:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures;\\ no\\ network\\r?$"
+    },
+    {
+      "id": "npc_rules",
+      "entry": "tests/npc_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^NPC\\ rules:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "opening_integration",
+      "entry": "tests/opening_integration.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Opening\\ integration:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "opening_memory",
+      "entry": "tests/opening_memory.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Opening\\ memory/AI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "opening_rules",
+      "entry": "tests/opening_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Opening\\ rules:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "past_lives_rules",
+      "entry": "tests/past_lives_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Past lives rules: 8/8 completed, [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
+      "id": "playtest_export",
+      "entry": "tests/playtest_export.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[playtest_export\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "rewind_safety",
+      "entry": "tests/rewind_safety.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[rewind_safety\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
+      "id": "save_pack",
+      "entry": "tests/save_pack.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[save_pack\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "save_pack_io",
+      "entry": "tests/save_pack_io.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[save_pack_io\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "save_safety",
+      "entry": "tests/save_safety.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[save_safety\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "settlement_safety",
+      "entry": "tests/settlement_safety.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[settlement_safety\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
+      "id": "site_journey_rules",
+      "entry": "tests/site_journey_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Site\\ journey:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "social_trade_integration",
+      "entry": "tests/social_trade_integration.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Social\\ trade\\ integration:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "social_trade_memory",
+      "entry": "tests/social_trade_memory.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Social\\ trade\\ memory:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "social_trade_rules",
+      "entry": "tests/social_trade_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^Social\\ trade\\ rules:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "bundled_fonts_ui",
+      "entry": "tests/bundled_fonts_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^\\[bundled_fonts_ui\\] [1-9][0-9]* 项检查，完成 8/8，失败 0\\r?$"
+    },
+    {
+      "id": "c3_core_ui",
+      "entry": "tests/c3_core_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^C3\\ core\\ viewport:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "c3_decoration_ui",
+      "entry": "tests/c3_decoration_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^C3_UI\\ [1-9][0-9]*\\ checks\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "c3_fight_move_ui",
+      "entry": "tests/c3_fight_move_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[C3_FIGHT_MOVE_UI\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c4_ui",
+      "entry": "tests/c4_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^C4\\ viewport:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "c5_ui",
+      "entry": "tests/c5_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^C5\\ viewport:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "c6_ui",
+      "entry": "tests/c6_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^C6\\ viewport:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "courtyard_move_ui",
+      "entry": "tests/courtyard_move_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^C2\\ viewport:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "crisis_ui",
+      "entry": "tests/crisis_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Crisis\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "cycle_ui",
+      "entry": "tests/cycle_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Cycle\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "difficulty_ui",
+      "entry": "tests/difficulty_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^选难度界面鼠标验收：[1-9][0-9]*\\ 项检查，0\\ 处失败\\r?$"
+    },
+    {
+      "id": "director_offline",
+      "entry": "tests/director_offline.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[director_offline\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "director_recorded_ui",
+      "entry": "tests/director_recorded_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Recorded\\ ARK\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures;\\ 3\\ real\\ events\\ /\\ 9\\ choices\\ replayed\\ without\\ network\\r?$"
+    },
+    {
+      "id": "expedition_ui",
+      "entry": "tests/expedition_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 360,
+      "success_regex": "(?m)^Expedition\\ UI:\\ [1-9][0-9]*\\ checks,\\ PASS\\r?$"
+    },
+    {
+      "id": "explore_loot_ui",
+      "entry": "tests/explore_loot_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Explore\\ loot\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "explore_site_ui",
+      "entry": "tests/explore_site_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Site\\ choice\\ UI:\\ [1-9][0-9]*\\ checks,\\ PASS\\r?$"
+    },
+    {
+      "id": "identity_ui",
+      "entry": "tests/identity_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Identity\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "inventory_ui",
+      "entry": "tests/inventory_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[inventory_ui\\] [1-9][0-9]* 项检查，完成 5/5，失败 0 处\\r?$"
+    },
+    {
+      "id": "journal_tabs",
+      "entry": "tests/journal_tabs.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^劫余录分页：[1-9][0-9]* 项，失败 0\\r?$"
+    },
+    {
+      "id": "m2_targeted_ui",
+      "entry": "tests/m2_targeted_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[M2_TARGETED_UI\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "mainline_ui",
+      "entry": "tests/mainline_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Mainline\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "modal_escape",
+      "entry": "tests/modal_escape.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^弹窗\\ Esc\\ 验收：[1-9][0-9]*\\ 项检查，0\\ 处失败\\r?$"
+    },
+    {
+      "id": "neighbor_ui",
+      "entry": "tests/neighbor_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Neighbor\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "night_feedback",
+      "entry": "tests/night_feedback.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[night_feedback\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "npc_ui",
+      "entry": "tests/npc_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^NPC\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "opening_ui",
+      "entry": "tests/opening_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Opening\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "past_lives_ui",
+      "entry": "tests/past_lives_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Past\\ lives\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "playtest_feedback_ui",
+      "entry": "tests/playtest_feedback_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[playtest_feedback_ui\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "quick_start",
+      "entry": "tests/quick_start.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[quick_start\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "save_pack_ui",
+      "entry": "tests/save_pack_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[save_pack_ui\\] 失败 0 处\\r?$"
+    },
+    {
+      "id": "settings_ui",
+      "entry": "tests/settings_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^设置界面验收：[1-9][0-9]*\\ 项检查，0\\ 处失败\\r?$"
+    },
+    {
+      "id": "site_journey_ui",
+      "entry": "tests/site_journey_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 600,
+      "success_regex": "(?m)^Site\\ journey\\ UI:\\ [1-9][0-9]*\\ checks,\\ PASS\\r?$"
+    },
+    {
+      "id": "social_trade_ui",
+      "entry": "tests/social_trade_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Social\\ trade\\ UI:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "title_input",
+      "entry": "tests/title_input.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Title mouse click: PASS\\r?$"
+    },
+    {
+      "id": "toast_merge",
+      "entry": "tests/toast_merge.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^提示条合并验收：[1-9][0-9]*\\ 项检查，0\\ 处失败\\r?$"
+    },
+    {
+      "id": "ui_smoke",
+      "entry": "tests/ui_smoke.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 600,
+      "success_regex": "(?m)^界面冒烟测试：失败 0 处\\r?$"
+    },
+    {
+      "id": "agenda",
+      "entry": "tests/agenda.gd",
+      "kind": "script",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 1800,
+      "success_regex": "(?m)^\\[agenda\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "c2_navigation",
+      "entry": "tests/c2_navigation.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[C2_NAV\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c2_world",
+      "entry": "tests/c2_world.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[C2_WORLD\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c3_decoration",
+      "entry": "tests/c3_decoration.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^DECORATION (?P<count>[1-9][0-9]*)/(?P=count) FAIL 0\\r?$"
+    },
+    {
+      "id": "c3_fight_move",
+      "entry": "tests/c3_fight_move.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[C3_FIGHT_MOVE\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c3_stand",
+      "entry": "tests/c3_stand.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[C3_STAND\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c5_world",
+      "entry": "tests/c5_world.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[C5_WORLD\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "c6_world",
+      "entry": "tests/c6_world.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[C6_WORLD\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "city_routes",
+      "entry": "tests/city_routes.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^City routes: [1-9][0-9]* cases, 0 failures\\r?$"
+    },
+    {
+      "id": "courtyard_ambience",
+      "entry": "tests/courtyard_ambience.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^\\[COURTYARD_SCENERY\\] setup 4/4（节点：本场景子树 [1-9][0-9]*，world 子树 [1-9][0-9]*）\\r?\\n\\[COURTYARD_SCENERY\\] checks=(?P<count>[1-9][0-9]*) passed=(?P=count) failed=0\\r?\\n\\[COURTYARD_AMBIENCE\\] COMPLETE code=0\\r?$"
+    },
+    {
+      "id": "courtyard_ambience_structure",
+      "entry": "tests/courtyard_ambience_structure.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[COURTYARD_AMB_STRUCTURE\\] checks=(?P<count>[1-9][0-9]*) passed=(?P=count) failed=0\\r?\\n\\[COURTYARD_AMB_STRUCTURE\\] COMPLETE code=0\\r?$"
+    },
+    {
+      "id": "courtyard_rules",
+      "entry": "tests/courtyard_rules.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[COURTYARD_RULES\\] checks=(?P<count>[1-9][0-9]*) passed=(?P=count) failed=0\\r?\\n\\[COURTYARD_RULES\\] COMPLETE code=0\\r?$"
+    },
+    {
+      "id": "courtyard_scenery",
+      "entry": "tests/courtyard_scenery.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^\\[COURTYARD_SCENERY\\] setup 4/4（节点：本场景子树 [1-9][0-9]*，world 子树 [1-9][0-9]*）\\r?\\n\\[COURTYARD_SCENERY\\] checks=(?P<count>[1-9][0-9]*) passed=(?P=count) failed=0\\r?\\n\\[COURTYARD_SCENERY\\] COMPLETE code=0\\r?$"
+    },
+    {
+      "id": "expedition_world",
+      "entry": "tests/expedition_world.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^Expedition\\ world:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "explore_site_paths",
+      "entry": "tests/explore_site_paths.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^Explore\\ site\\ paths:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    },
+    {
+      "id": "longrun",
+      "entry": "tests/longrun.gd",
+      "kind": "script",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^\\[longrun\\]\\ [1-9][0-9]*\\ 项检查，失败\\ 0\\ 处\\r?$"
+    },
+    {
+      "id": "m2_defense_world",
+      "entry": "tests/m2_defense_world.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[M2_DEFENSE_WORLD\\] (?P<count>[1-9][0-9]*)/(?P=count) failed=0\\r?$"
+    },
+    {
+      "id": "night_music",
+      "entry": "tests/night_music.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[night_music\\] [1-9][0-9]* 项检查，完成 10/10，失败 0 处\\r?$"
+    },
+    {
+      "id": "player_animation",
+      "entry": "tests/player_animation.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^Player animation: 18 cases, 0 failures\\r?$"
+    },
+    {
+      "id": "sim_test",
+      "entry": "tests/sim_test.gd",
+      "kind": "script",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 7200,
+      "success_regex": "(?m)^测试完成 16 / 16 项\\r?\\n不变量失败：0\\r?$"
+    },
+    {
+      "id": "site_journey_world",
+      "entry": "tests/site_journey_world.tscn",
+      "kind": "scene",
+      "tier": "full",
+      "mode": "headless",
+      "timeout_seconds": 300,
+      "success_regex": "(?m)^Site\\ journey\\ world:\\ [1-9][0-9]*\\ checks,\\ 0\\ failures\\r?$"
+    }
+  ],
+  "excluded": [
+    {
+      "entry": "tests/anim_speed.gd",
+      "reason": "开发诊断：仅打印模型步速，没有自动测试汇总，须动画专项人工检查。"
+    },
+    {
+      "entry": "tests/check_hero.tscn",
+      "reason": "开发诊断：打印模型、挂件和尺寸，没有自动验收汇总。"
+    },
+    {
+      "entry": "tests/inspect_assets.gd",
+      "reason": "开发诊断：打印第三方节点与包围盒，涉及不入库的 cs-studio 铺面，没有自动验收汇总。"
+    },
+    {
+      "entry": "tests/inspect_model.gd",
+      "reason": "开发诊断：打印指定模型结构，缺资源可继续 quit(0)，没有自动验收汇总。"
+    },
+    {
+      "entry": "tests/city_shots.tscn",
+      "reason": "人工铺面截图工具：需目视比例与朝向，依赖不入库的 cs-studio 铺面。"
+    },
+    {
+      "entry": "tests/hero_shot.tscn",
+      "reason": "人工角色截图工具：仅保存图片，没有自动验收汇总。"
+    },
+    {
+      "entry": "tests/screen_shot.tscn",
+      "reason": "人工界面截图/布局诊断：需选择 --screen 并目视，没有自动验收汇总。"
+    },
+    {
+      "entry": "tests/sky_clarity.tscn",
+      "reason": "人工雾效截图工具：仅保存图片与打印雾参数，没有自动验收汇总。"
+    },
+    {
+      "entry": "tests/c3_decoration_visual.tscn",
+      "reason": "人工装修截图工具：仅输出 SAVED，缺少完整场景检查汇总，不以保存图片代替视觉验收。"
+    },
+    {
+      "entry": "tests/play_check.tscn",
+      "reason": "人工游玩、导航、相机、声音与性能诊断：打印观测/保存截图，没有统一断言汇总。"
+    },
+    {
+      "entry": "tests/director_async_ui.tscn",
+      "reason": "本地服务专项：需要预先启动 Node fixture server 和生成 ledger-director-fixture.json，不由离线默认层级启动服务或网络请求。"
+    },
+    {
+      "entry": "tests/crisis_export.tscn",
+      "reason": "开发用虚构 fixture 导出器：只导出 JSON，不是自动规则验收，不调用模型。"
+    },
+    {
+      "entry": "tests/npc_export.tscn",
+      "reason": "开发用虚构 fixture 导出器：只导出 JSON，不是自动规则验收，不调用模型。"
+    },
+    {
+      "entry": "tests/support/balance_runner.gd",
+      "reason": "sim_test.gd 的支持模块，不是独立 SceneTree 测试入口；B4 采样需显式参数，不能当整套 sim 通过。"
+    },
+    {
+      "entry": "tests/windows_build.ps1",
+      "reason": "Windows 构建脚本专项，可能触发打包；通过 PowerShell 单独运行，不在规则入口隐式构建。"
+    },
+    {
+      "entry": "tests/windows_build_clean.ps1",
+      "reason": "干净构建脚本专项，可能触发打包；发布候选显式运行，不在规则入口隐式构建。"
+    },
+    {
+      "entry": "tests/test_courtyard_runner.py",
+      "reason": "旧庭院专项 Python 启动器自测，绑定 tools/test_courtyard_scenery.py，不是 Godot 场景入口。"
+    },
+    {
+      "entry": "tests/test_courtyard_ambience_runner.py",
+      "reason": "旧氛围专项 Python 启动器自测，绑定 tools/test_courtyard_ambience.py，不是 Godot 场景入口。"
+    },
+    {
+      "entry": "tools/test_courtyard_scenery.py",
+      "reason": "庭院截图矩阵/像素证据专项，依赖 Pillow、before/after 资料和真实窗口；默认无头契约单独登记，不自动安装图像库或宣称矩阵通过。"
+    },
+    {
+      "entry": "tools/test_courtyard_ambience.py",
+      "reason": "氛围截图矩阵/像素证据专项，依赖 Pillow、before/after 资料和真实窗口；默认无头契约单独登记，不自动安装图像库。"
+    },
+    {
+      "entry": "tools/director/bridge.test.mjs",
+      "reason": "Node node:test 桥接器专项，含 localhost HTTP fixture 与模拟 provider；按原命令 node --test tools/director/bridge.test.mjs 独立运行。本清单 full 仅覆盖已登记 Godot 离线入口，不启动 Node 服务、不代表 Node 专项已验收。"
+    },
+    {
+      "entry": "tests/test_run_tests.py",
+      "reason": "C5 运行器自身的 Python 标准库 unittest，使用假引擎/子进程夹具；CI 以 python3 -m unittest discover -s tests -p test_run_tests.py 单独执行，不是 Godot full 的游戏用例，不能用其通过替代游戏验收。"
+    }
+  ]
+}

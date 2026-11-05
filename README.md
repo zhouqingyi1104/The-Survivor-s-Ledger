@@ -155,7 +155,20 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 
 ## 测试
 
-三个测试都在无界面模式下运行：
+日常用统一入口（现有 Python 3.10+ 和 Godot 4.7.2，无需安装新包）：
+
+```powershell
+./tools/run_tests.ps1 -Tier fast
+./tools/run_tests.ps1 -Tier core -List
+./tools/run_tests.ps1 -Case brief
+./tools/run_tests.ps1 -Tier ui -Case title_input
+```
+
+`fast` 是 5 项编译/小型规则，`core` 是 61 项无界面检查，`ui` 是 36 项窗口检查；`full` 为全部 118 项已登记 Godot 离线测试，只在发布候选手动执行。平台限制与 22 项专项/诊断排除理由见 [清单](tools/test_manifest.json)，登记不代表已跑过。失败立即停止，修复后只用 `-Case` 重跑失败项；未知用例、超时、脚本错误或缺完成标记都不会假绿。
+
+游戏进程在 `build/test-runs/<唯一ID>/project` 快照内运行，每项另有隔离用户目录，不在源码工作区写存档或测试图片。完整日志、快照哈希和 `results.json` 均保留在本轮目录。已知退出清理信息标成 `PASS_WITH_WARNINGS`，并未消除。公开仓库推送/PR 自动运行相同入口的 fast 与运行器负例；本地通过不等于远端 CI 通过，见 [49](docs/49-test-entry-ci.md)。
+
+以下保留旧的手工入口供定位；直接运行不会得到上述快照隔离。无头冒烟不能代替真实窗口验收：
 
 ```bash
 ./tools/godot/Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/sim_test.gd
@@ -174,7 +187,7 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 - `ui_smoke`：在 3D 场景里走完整流程：城里走路订货买货、熬过三日、宅院里寻路去打水、做饭吃饭、进废墟翻找回家、天黑就寝、天亮翻功过格、第二夜尸潮演出与战报、存读档、翻生死簿、合上此录。存档写到测试专用文件，不会碰你的存档。
 - `check_scripts`：把所有脚本加载一遍，确认都能编译。
 
-各系统的回归测试（`.tscn` 用 `res://tests/<名字>.tscn` 跑；都不碰玩家存档，也不调用真实的 ARK）：
+各系统原有回归测试用途如下；可运行范围、平台与专项限制以统一清单为准：
 
 | 测试 | 测什么 |
 |---|---|
