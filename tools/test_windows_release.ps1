@@ -54,16 +54,21 @@ $probePath = (Join-Path $repo 'tests/windows_release_probe.gd').Replace('\', '/'
 Assert-LedgerPlainPath $probePath
 if (-not (Test-Path -LiteralPath $probePath -PathType Leaf)) { throw 'External release probe script is missing.' }
 $entryPath = (Join-Path $copy 'release-probe-entry.tscn').Replace('\', '/')
-@"
+# Godot ConfigFile silently ignores a UTF-8 BOM-prefixed first section on 4.7.2.
+# PS5 Set-Content -Encoding UTF8 adds a BOM; write Godot inputs explicitly without it.
+$godotTextEncoding = New-Object System.Text.UTF8Encoding($false)
+$entryText = @"
 [gd_scene load_steps=2 format=3]
 [ext_resource type="Script" path="$probePath" id="1_probe"]
 [node name="ExternalWindowsReleaseProbe" type="Node"]
 script = ExtResource("1_probe")
-"@ | Set-Content -LiteralPath $entryPath -Encoding UTF8
-@"
+"@
+[IO.File]::WriteAllText($entryPath, $entryText, $godotTextEncoding)
+$overrideText = @"
 [application]
 run/main_scene="$entryPath"
-"@ | Set-Content -LiteralPath (Join-Path $copy 'override.cfg') -Encoding UTF8
+"@
+[IO.File]::WriteAllText((Join-Path $copy 'override.cfg'), $overrideText, $godotTextEncoding)
 $stdoutPath = Join-Path $run 'stdout.log'
 $stderrPath = Join-Path $run 'stderr.log'
 $saved = @{}

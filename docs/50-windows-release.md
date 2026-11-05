@@ -76,3 +76,11 @@ powershell.exe -NoProfile -File tools/test_windows_release.ps1 -PackageDir build
 两项合计减少 68.351 MiB（16.97%）；候选整个文件夹含说明/许可/来源共 350,767,680 B。字体、音频、纹理和 ICU 仍随包携带，不以缺资源换体积。最终包每项实际字节/哈希及源码 SHA 以 `package-provenance.json` 为准。旧文档「50–80 MB」「100 MB 上下」是历史预估，本批不沿用。随包读我还提供 [Godot 引擎及开源组件许可](https://godotengine.org/license) 链接。
 
 证据保留在本机 `build/c2-qa/`，不将个人路径、运行存档或生成的 shader cache 提交仓库。无头与窗口探针使用同一个正式模板二进制；完整一轮真人游玩、独立机器无楷体/SmartScreen/杀软、签名/安装器及正式公开分发仍为 NOT RUN。
+
+## 最终提交包及测试入口修正
+
+源码 `c546819ce37f9c6988d0efd7a89de2f393ab0712` 已正常推送并核对远端，从该提交干净生成 `build/windows-release/`：exe 109,170,176 B、PCK 241,580,032 B；PE 六档图标/版本、目录逐文件来源与引擎许可链接复核 PASS。该提交 [CI](https://github.com/zhouqingyi1104/The-Survivor-s-Ledger/actions/runs/41993933327) 成功：运行器 20 项，fast 5/5（5 项均含既有退出清理警告），不代表 Windows 实体机矩阵或全量 full 已运行。
+
+最终 WinPS5 测试入口第一次执行超时，没有完成标记，因此记 FAIL。已定位到旁置 `override.cfg` 使用 `Set-Content -Encoding UTF8` 在 WinPS5 产生 BOM（`EF BB BF`）；最小夹具证实 Godot 4.7.2 对该配置返回 OK 却忽略首节，造成 QA 场景未启动。改用 `.NET UTF8Encoding(false)` 显式写无 BOM 的 QA 配置/场景。修正只涉及 QA 启动器和此记录，不改正式 exe/PCK 或其已核对的来源。
+
+修复后仅重跑 headless 失败项：**323 checks / exit 0 / PASS_WITH_WARNINGS**（`build/c2-qa/d201f4d898594dfda659ef8d68f45029/results.json`）。随后首次运行最终 visual：**111 checks / exit 0 / PASS_WITH_WARNINGS**（`build/c2-qa/ab37821dbf5549f69cb3570d8f8bd505/results.json`），实际标题、宅院 HUD/时钟和存货截图逐张目视；两模式前后全部原包与副本文件哈希一致。未修改的最终包也以默认 Vulkan/Forward+ 启动、截图、exit 0。只保留已列明退出清理警告，最终试玩包仍来自 `c546819`，后续修正提交只修复测试入口。
