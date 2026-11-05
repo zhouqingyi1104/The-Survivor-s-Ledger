@@ -6,6 +6,7 @@ extends RefCounted
 ## 所以弹窗内容的代码不用管自己在哪种底色上。
 
 const IconView = preload("res://scripts/ui/icon_view.gd")
+const Fonts = preload("res://scripts/ui/fonts.gd")
 
 const PAPER_COLORS := {
 	"paper": Color("#efe6d2"), "paper_light": Color("#f7f0e1"), "paper_dark": Color("#e2d5b8"),
@@ -36,9 +37,6 @@ static var PANEL := Color("#f5eddc")
 static var dark := false
 static var _dark_theme: Theme
 
-const FONT_NAMES := ["KaiTi", "STKaiti", "楷体", "Kaiti SC", "SimSun", "Songti SC", "Microsoft YaHei",
-	"Noto Serif CJK SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei"]
-
 ## 主场景（main.gd）启动时把自己挂在这里，弹窗和提示都找它。
 static var host: Node = null
 
@@ -61,15 +59,13 @@ static func use_dark(on: bool) -> void:
 	PANEL = c.panel
 
 
-## 夜色主题：和 HUD 同样的深底、金边、雅黑正文。
+## 夜色主题：和 HUD 同样的深底、金边、内置黑体正文。
 static func dark_theme() -> Theme:
 	if _dark_theme != null:
 		return _dark_theme
 	var c := DARK_COLORS
 	var t := Theme.new()
-	var font := SystemFont.new()
-	font.font_names = PackedStringArray(["Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC"] + FONT_NAMES)
-	t.default_font = font
+	t.default_font = Fonts.body()
 	t.default_font_size = 17
 	t.set_color("font_color", "Label", c.ink)
 	t.set_color("font_shadow_color", "Label", Color(0, 0, 0, 0.5))
@@ -105,9 +101,7 @@ static func dark_theme() -> Theme:
 
 static func make_theme() -> Theme:
 	var t := Theme.new()
-	var font := SystemFont.new()
-	font.font_names = PackedStringArray(FONT_NAMES)
-	t.default_font = font
+	t.default_font = Fonts.book()
 	t.default_font_size = 19
 
 	t.set_color("font_color", "Label", INK)

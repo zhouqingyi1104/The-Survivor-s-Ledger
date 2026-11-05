@@ -28,7 +28,7 @@ const Brief = preload("res://scripts/core/brief.gd")
 const Agenda = preload("res://scripts/core/agenda.gd")
 
 ## 流速数值在 core（Post.SPEEDS），界面只负责显示与切换
-const SPEED_LABELS := ["❚❚", "▶", "▶▶", "▶▶▶"]
+const SPEED_LABELS := ["Ⅱ", "▶", "▶▶", "▶▶▶"]
 ## 忙什么就放什么动作
 const WORK_ANIMS := {"cook": "Interact", "garden": "Crouch_Idle", "build": "Fixing_Kneeling", "repair": "Fixing_Kneeling",
 	"neighbor_wall": "Fixing_Kneeling", "read": "Sitting_Idle", "craft": "Spell_Simple_Idle", "water": "PickUp_Table"}

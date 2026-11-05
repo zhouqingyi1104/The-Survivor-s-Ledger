@@ -2,7 +2,7 @@ extends Control
 ## 时辰表盘：一圈十二时辰（子在顶、午在底），上半圈是夜、下半圈是昼，金针指着当前时刻。
 ## 对应原版右上角的 24 小时表盘。
 
-const UI = preload("res://scripts/ui/ui_kit.gd")
+const Fonts = preload("res://scripts/ui/fonts.gd")
 
 const BRANCHES := ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
 const NIGHT := Color("#18223a")
@@ -20,9 +20,7 @@ var _font: Font
 
 
 func _ready() -> void:
-	var f := SystemFont.new()
-	f.font_names = PackedStringArray(UI.FONT_NAMES)
-	_font = f
+	_font = Fonts.book()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 

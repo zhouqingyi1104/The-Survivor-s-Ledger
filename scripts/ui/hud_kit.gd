@@ -20,27 +20,14 @@ const BAR_COLORS := {
 	"energy": Color("#9a86c4"), "warmth": Color("#d07a3a"), "hp": Color("#c0463b"),
 }
 const BAR_ICONS := {"food": "饱", "water": "水", "mood": "神", "energy": "力", "warmth": "温", "hp": "血"}
-const BODY_FONTS := ["Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "WenQuanYi Micro Hei"]
-
-static var _body_font: Font
-static var _bold_font: Font
 
 
 static func body_font() -> Font:
-	if _body_font == null:
-		var f := SystemFont.new()
-		f.font_names = PackedStringArray(BODY_FONTS)
-		_body_font = f
-	return _body_font
+	return UI.Fonts.body()
 
 
 static func bold_font() -> Font:
-	if _bold_font == null:
-		var f := SystemFont.new()
-		f.font_names = PackedStringArray(BODY_FONTS)
-		f.font_weight = 700
-		_bold_font = f
-	return _bold_font
+	return UI.Fonts.bold()
 
 
 static func box(bg := BG, border := BORDER, radius := 6, mx := 12, my := 8) -> StyleBoxFlat:

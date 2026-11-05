@@ -150,8 +150,16 @@ $modeText
 存档与设置位置：%APPDATA%\Godot\app_userdata\劫余录\
 存档 save.json（另有上一版的 save.json.bak）、跨轮回底稿 meta.json，设置 input.cfg / video.cfg。
 $memoryText
+
+【内置字体】
+中文字体随包携带，无需安装系统楷体。字体来源和完整 OFL 许可见同目录「字体许可.txt」。
 "@
 	Set-Content -LiteralPath (Join-Path $stage "读我.txt") -Value $readme -Encoding UTF8
+	$fontLicenses = Join-Path $root 'assets/fonts/LICENSES.txt'
+	if (-not (Test-Path -LiteralPath $fontLicenses -PathType Leaf) -or (Get-Item -LiteralPath $fontLicenses).Length -eq 0) {
+		throw '缺少字体许可；原输出未替换。'
+	}
+	Copy-Item -LiteralPath $fontLicenses -Destination (Join-Path $stage '字体许可.txt')
 
 	# Keep the previous directory intact; a new package never mixes old files or modes.
 	if (Test-Path -LiteralPath $out) {

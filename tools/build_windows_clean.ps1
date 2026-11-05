@@ -83,7 +83,7 @@ try {
     & powershell.exe -NoProfile -File $builder -Mode portable
     if ($LASTEXITCODE -ne 0) { throw "便携包构建失败（退出码 $LASTEXITCODE）。" }
     $package = Join-Path $source 'build/windows'
-    foreach ($name in @('劫余录.exe', '劫余录.pck', '读我.txt')) {
+    foreach ($name in @('劫余录.exe', '劫余录.pck', '读我.txt', '字体许可.txt')) {
         $item = Join-Path $package $name
         if (-not (Test-Path -LiteralPath $item -PathType Leaf) -or (Get-Item -LiteralPath $item).Length -eq 0) { throw "包文件缺失或为空：$name" }
         Copy-Item -LiteralPath $item -Destination $stage

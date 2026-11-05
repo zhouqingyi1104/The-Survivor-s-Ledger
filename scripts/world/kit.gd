@@ -2,7 +2,7 @@ extends RefCounted
 ## 3D 搭建工具：材质色板 + 基本几何体（盒、柱、棱柱、球）+ 碰撞 + 3D 文字。
 ## 场景里没有美术资源，全部用这些基本体拼出来，走低多边形风格。
 
-const UI = preload("res://scripts/ui/ui_kit.gd")
+const Fonts = preload("res://scripts/ui/fonts.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 
 # 徽派色板：粉墙黛瓦、朱漆木作、青石地、雪
@@ -199,9 +199,7 @@ static func solid(parent: Node3D, size: Vector3, color, pos: Vector3) -> MeshIns
 
 
 static func font() -> Font:
-	var f := SystemFont.new()
-	f.font_names = PackedStringArray(UI.FONT_NAMES)
-	return f
+	return Fonts.book()
 
 
 static func text3d(parent: Node3D, text: String, pos: Vector3, size := 64, color := Color.WHITE, billboard := true, pixel := 0.006) -> Label3D:
