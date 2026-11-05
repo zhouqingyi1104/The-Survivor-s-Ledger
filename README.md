@@ -138,7 +138,7 @@ scripts/autoload/game.gd   全局单例：当前一局、存读档、界面切�
 scripts/autoload/audio.gd  声音（Sfx）：音效、环境声、配乐，三条总线
 scripts/autoload/story_director.gd  世情导演的异步预取客户端，从不阻塞操作和游戏时间
 scripts/ui/                界面（全部用代码搭）：ui_kit.gd 纸本主题，hud_kit.gd 场景 HUD 主题，widgets/ 时辰表盘，
-                           icon_art.gd + icon_view.gd 物品与家具的图标（纯代码画的墨线淡彩，不用图片），
+                           inventory_art.gd 家中存货插画；icon_art.gd + icon_view.gd 其它入口及家具的代码图标，
                            main.gd 弹窗层，dialogs.gd 各种弹窗，
                            screens/ 各界面（pre / post / explore 是 3D 场景 + HUD；difficulty 定难度、challenge 立愿与同院，其余是 2D 页面）
 scripts/dev/demo.gd        截图演示场景
@@ -233,7 +233,7 @@ Memory.md                  前世记忆的运行档案，每轮结算自动改�
 ## 原型的边界
 
 - 美术是公开素材和代码模型混搭：写实家具、低多边形铺面、程序构件放在一起，风格还不够统一；人物底模是"超级英雄"体型，袍服是从身体网格派生的，近看偏紧身。
-- 物品和家具的图标是**代码画的**（`scripts/ui/icon_art.gd`，57 件物品 + 18 件家具），是简笔墨线淡彩，不是手绘美术；认得出是什么，但没有笔触和质感。要换成手绘图，把这个文件换成贴图查表即可。
+- 家中存货使用统一方向的物资插画（`scripts/ui/inventory_art.gd`）：米与铁钉保留原图，其余 55 件使用内置 imagegen 生成的透明图集，详见 [存货插画验收](docs/47-inventory-art.md)。其它物品入口和家具仍用既有代码图标；新插画不代表玩家辨识体验已验收。
 - 配乐有平静 / 激战和本项目程序合成的守夜曲；夜曲听感仍待真人试玩。音效是通用素材加合成的中式声音，没有人声。
 - 米行、铁匠铺、药铺和家宅还是代码拼的厅堂（免费素材包里没有合适的）。
 - 宅院只有一层；原版是多层（二楼 / 家 / 地下室）带楼层切换。

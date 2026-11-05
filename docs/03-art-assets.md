@@ -194,6 +194,8 @@ python -I tools/pipeline/synth_night_music.py build/night-music-qa --asset-path 
 
 游戏里没有"制作名单"页（2026-10-24 删掉了）。CC0 不要求署名；本作在尖帽和仙气装束上的改动只记在本文。
 
-## 九、图标（代码绘制，没有第三方素材）
+## 九、物品与家具图标
 
-57 件物品和 18 件家具的图标全部由 `scripts/ui/icon_art.gd` 用 CanvasItem 现画（墨线 + 淡彩），不用任何图片；`icon_view.gd` 负责显示。背包、灶房、添置家具三处在用。要换成手绘图，把 `icon_art.gd` 换成贴图查表即可。
+家中存货通过 `scripts/ui/inventory_art.gd` 使用物资插画：米、铁钉沿用 `8836c3c` 中的独立 PNG；其余 55 件由内置 imagegen 生成四张透明图集，用 `AtlasTexture` 读取，不能称为人工手绘。保留旧纸、深木框、墨字和朱砂分类按钮，来源、范围与本批验证见 [47](47-inventory-art.md)。
+
+其它物品入口与 18 件家具继续由 `scripts/ui/icon_art.gd` 用 CanvasItem 现画（墨线 + 淡彩），`icon_view.gd` 负责显示；本批没有替换这些入口或 3D 素材。未知未来物品仍可用代码图标兜底，当前 57 件存货则要求插画完整覆盖。

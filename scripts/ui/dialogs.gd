@@ -31,11 +31,8 @@ const Brief = preload("res://scripts/core/brief.gd")
 const Manual = preload("res://scripts/core/manual.gd")
 const Agenda = preload("res://scripts/core/agenda.gd")
 const PlaytestFeedback = preload("res://scripts/ui/playtest_feedback.gd")
+const InventoryArt = preload("res://scripts/ui/inventory_art.gd")
 const INVENTORY_PAPER = preload("res://assets/ui/inventory/paper.png")
-const INVENTORY_ART := {
-	"rice": preload("res://assets/ui/inventory/rice.png"),
-	"nails": preload("res://assets/ui/inventory/nails.png"),
-}
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -950,9 +947,11 @@ func _item_card(run: Dictionary, id: String) -> Control:
 	UI.expand(v)
 	var image_row := CenterContainer.new()
 	image_row.custom_minimum_size.y = 72
-	if INVENTORY_ART.has(id):
+	var artwork := InventoryArt.texture(id)
+	if artwork != null:
 		var illustration := TextureRect.new()
-		illustration.texture = INVENTORY_ART[id]
+		illustration.texture = artwork
+		illustration.set_meta("inventory_art", id)
 		illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		illustration.custom_minimum_size = Vector2(72, 72)
@@ -979,6 +978,7 @@ func _item_card(run: Dictionary, id: String) -> Control:
 		action.add_theme_color_override("font_pressed_color", Color("#44352d"))
 		v.add_child(action)
 	var card := PanelContainer.new()
+	card.set_meta("inventory_item", id)
 	card.add_theme_stylebox_override("panel", UI._box(Color(0.94, 0.90, 0.82, 0.68), Color("#ab9b80"), 1, 0, 9, 8))
 	card.add_child(v)
 	card.tooltip_text = it.desc
