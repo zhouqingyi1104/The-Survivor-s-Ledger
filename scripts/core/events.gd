@@ -16,14 +16,14 @@ static func entry(run: Dictionary) -> Dictionary:
 	if str(run.pending_event).begins_with("world:"): return Director.entry(run)
 	return Data.table("events").get(run.pending_event, {})
 
-const DAILY_CHANCE := 0.6
 const SEEDS := ["seed_cabbage", "seed_radish", "seed_chive"]
 
 
 static func roll(run: Dictionary) -> String:
-	if int(run.pday) <= 1 or not Rng.chance(run, DAILY_CHANCE):
+	if int(run.pday) < 1:
 		return ""
 	var pool := []
+	var unseen := []
 	var events: Dictionary = Data.table("events")
 	for id in events:
 		var e: Dictionary = events[id]
@@ -41,32 +41,44 @@ static func roll(run: Dictionary) -> String:
 			continue
 		if id == "deserters" and run.raid_tonight:
 			continue
-		pool.append([id, int(e.get("weight", 1))])
+		var candidate := [id, int(e.get("weight", 1))]
+		pool.append(candidate)
+		if id not in run.seen_events:
+			unseen.append(candidate)
 	if pool.is_empty():
 		return ""
-	return Rng.weighted(run, pool)[0]
+	# Offer a fresh eligible decision before replaying an already answered one.
+	return Rng.weighted(run, unseen if not unseen.is_empty() else pool)[0]
 
 
 static func choice_ok(run: Dictionary, choice: Dictionary) -> bool:
+	return choice_block(run, choice) == ""
+
+
+static func choice_block(run: Dictionary, choice: Dictionary) -> String:
 	if str(run.get("pending_event", "")).begins_with("n_"):
-		return Neighbor.choice_block(run, choice) == ""
+		return Neighbor.choice_block(run, choice)
 	var req: Dictionary = choice.get("req", {})
 	for k in req:
 		var n := int(req[k])
 		match k:
 			"any_food":
 				if Inv.total(run.home, Inv.food_ids(run.home)) < n:
-					return false
+					return "吃食不足"
 			"any_grain":
 				if Inv.total(run.home, Inv.GRAINS) < n:
-					return false
+					return "粮食不足"
 			"silver":
 				if int(run.silver) < n:
-					return false
+					return "银钱不足"
 			_:
 				if Inv.count(run.home, k) < n:
-					return false
-	return true
+					return "物资不足"
+	# This is an upfront effort cost. Check the actual amount, not rounded HUD stats.
+	var energy_cost := -float(choice.get("fx", {}).get("energy", 0))
+	if energy_cost > 0.0 and float(run.attrs.energy) < energy_cost:
+		return "精力不足（需 %d）" % int(energy_cost)
+	return ""
 
 
 static func choose(run: Dictionary, idx: int) -> String:

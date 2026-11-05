@@ -3,6 +3,24 @@
   "engine_version": "4.7.2",
   "cases": [
     {
+      "id": "offline_events",
+      "entry": "tests/offline_events.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[offline_events\\] checks=[1-9][0-9]* completed=(?P<count>[1-9][0-9]*)/(?P=count) failures=0\\r?$"
+    },
+    {
+      "id": "offline_events_ui",
+      "entry": "tests/offline_events_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 240,
+      "success_regex": "(?m)^\\[offline_events_ui\\] checks=[1-9][0-9]* completed=(?P<count>[1-9][0-9]*)/(?P=count) failures=0\\r?$"
+    },
+    {
       "id": "check_scripts",
       "entry": "tests/check_scripts.tscn",
       "kind": "scene",

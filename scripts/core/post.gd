@@ -267,6 +267,8 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 		return "wave_round"
 	match m:
 		EVENT_AT:
+			if run.pending_event != "":
+				return "event"
 			if Neighbor.poll(run) == "":
 				if Director.poll(run) == "":
 					run.pending_event = Events.roll(run)

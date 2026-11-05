@@ -1,6 +1,6 @@
 # 劫余录 · The Survivor's Ledger（原型 v0.10）
 
-> 文档更新于 2026-10-24，内容以当前代码为准。版本号只在 `project.godot` 的 `application/config/version` 里维护，标题页角落直接读它。
+> 文档更新于 2026-11-05，内容以当前代码为准。版本号只在 `project.godot` 的 `application/config/version` 里维护，标题页角落直接读它。
 
 古风尸变 + 写实灾荒 + 一点东方仙侠的生存模拟。玩法结构、界面布局和交互方式参考《Survival Log / 生存日志》（灾前囤货 → 灾后经营 → 轮回），文本、数值、图标都是原创——没有从原版提取或复用任何美术资产。模型和贴图一部分是公开的免费素材（Poly Haven、cs-studio、Quaternius），其余用代码拼；来源和许可证见 [docs/03-art-assets.md](docs/03-art-assets.md)（游戏里不再有"制作名单"页）。
 
@@ -34,6 +34,8 @@
 | [21-identity-paths.md](docs/21-identity-paths.md) | 四身份八种专法、真实旧世经验、专属配方/路线/敌情 | M4首批已实现，本地规则288/接入372/Memory127/窗口253检查通过 |
 | [22-variable-openings.md](docs/22-variable-openings.md) | 身份与前世选择改变开局资源、人情和首场危机 | 已实现15项互斥筹备，规则664/接入61/Memory275/窗口609检查本地通过 |
 | [23-cycle-inquiry.md](docs/23-cycle-inquiry.md) | 跨轮回旧诺、失约、救助与今世调查、新约后果 | 首版已实现，规则266/接入73/Memory90/窗口599；真实ARK low 1次及离线回放19检查通过 |
+
+离线世情已扩为 60 条可抽事件（总表 72 条），每天 08:00 由邻居、可选导演或离线池占用同一事件时点，优先未见内容；新增 49 条原创事件及精力不足、零钱成本提示的验证见 [51-offline-events.md](docs/51-offline-events.md)。事件密度的规则验证不等于整局平衡或玩家试玩验收。
 
 截图在 [docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；夜战见 `night_policy.png` 与 `night_panel.png`；开局模式与同院见 `challenge_modes.png`、`challenge_mates.png`）。
 
@@ -166,7 +168,7 @@ Windows 独立试玩包：先按授权启用固定版本模板 `powershell.exe -
 ./tools/run_tests.ps1 -Tier ui -Case title_input
 ```
 
-`fast` 是 5 项编译/小型规则，`core` 是 61 项无界面检查，`ui` 是 36 项窗口检查；`full` 为全部 118 项已登记 Godot 离线测试，只在发布候选手动执行。平台限制与 23 项专项/诊断排除理由见 [清单](tools/test_manifest.json)，登记不代表已跑过。失败立即停止，修复后只用 `-Case` 重跑失败项；未知用例、超时、脚本错误或缺完成标记都不会假绿。
+`fast` 是 5 项编译/小型规则，`core` 是 62 项无界面检查，`ui` 是 37 项窗口检查；`full` 为全部 120 项已登记 Godot 离线测试，只在发布候选手动执行。平台限制与 23 项专项/诊断排除理由见 [清单](tools/test_manifest.json)，登记不代表已跑过。失败立即停止，修复后只用 `-Case` 重跑失败项；未知用例、超时、脚本错误或缺完成标记都不会假绿。
 
 游戏进程在 `build/test-runs/<唯一ID>/project` 快照内运行，每项另有隔离用户目录，不在源码工作区写存档或测试图片。完整日志、快照哈希和 `results.json` 均保留在本轮目录。已知退出清理信息标成 `PASS_WITH_WARNINGS`，并未消除。公开仓库推送/PR 自动运行相同入口的 fast 与运行器负例；本地通过不等于远端 CI 通过，见 [49](docs/49-test-entry-ci.md)。
 

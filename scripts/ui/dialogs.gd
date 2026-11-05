@@ -1326,11 +1326,12 @@ func _event(body: VBoxContainer) -> void:
 	body.add_child(UI.sep())
 	for k in e.choices.size():
 		var c: Dictionary = e.choices[k]
-		var ok := Events.choice_ok(run, c)
+		var block := Events.choice_block(run, c)
+		var ok := block == ""
 		var text: String = c.text
 		if not c.get("req", {}).is_empty():
 			text += "　［需：%s］" % _event_req_text(c.req)
-		var b := UI.button(text, func(): _act(func(): return Events.choose(Game.run, k)), not ok, "" if ok else "东西不够")
+		var b := UI.button(text, func(): _act(func(): return Events.choose(Game.run, k)), not ok, block)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		body.add_child(b)
 		if c.get("hint", "") != "":
@@ -1350,7 +1351,10 @@ static func _event_req_text(req: Dictionary) -> String:
 			"any_grain":
 				parts.append("粮 %d 斗" % req[k])
 			"silver":
-				parts.append("银 %d 两" % (int(req[k]) / 1000))
+				var wen := int(req[k])
+				var liang := wen / 1000
+				var remainder := wen % 1000
+				parts.append("%d 文" % wen if liang == 0 else ("%d 两" % liang if remainder == 0 else "%d 两 %d 文" % [liang, remainder]))
 			_:
 				parts.append("%s %d" % [Data.item_name(k), req[k]])
 	return "、".join(parts)
@@ -2092,7 +2096,7 @@ func _playtest_report(body: VBoxContainer, result: Dictionary) -> void:
 	if not "Memory.md" in files:
 		body.add_child(UI.para("没有可附的前世档案。", 15, UI.INK_FAINT))
 	body.add_child(UI.sep())
-	body.add_child(UI.para("报告末尾附有三问的玩家自述，空答会标为未填写。回答不会改变上面的局面数据。", 15, UI.INK_FAINT))
+	body.add_child(UI.para("报告末尾附有你对三问的回答，空答会标为未填写。回答不会改变上面的局面数据。", 15, UI.INK_FAINT))
 
 
 ## 设置：画面、按键、音量；在游戏里打开时还能回标题（进度已自动存档）。

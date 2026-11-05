@@ -232,14 +232,17 @@ func run_route(pid: String, item: String, count: int, answer: String) -> void:
 	Game.run.flags["temple_open"] = true
 	Neighbor.state(Game.run).stage = "closed"
 	Director.state(Game.run).enabled = false
-	if not check(Post.act_explore(Game.run, pid) == "", "Departure " + pid): return
-	# 真实时钟从出发后运行；选择一个不会在 8:00 抽到随机剧情的确定性种子。
-	for seed in range(100):
-		var probe: Dictionary = Game.run.duplicate(true)
-		probe.rng_n = seed
-		if Events.roll(probe) == "":
-			Game.run.rng_n = seed
+	# Resolve the normal morning decision before measuring the site's own route.
+	# The offline pool now fills every morning; searching for an empty draw is invalid.
+	if not check(Post.advance(Game.run, Post.EVENT_AT) == "event", "Morning event missing before departure"): return
+	var morning: Dictionary = Events.entry(Game.run)
+	for index in morning.choices.size():
+		if morning.choices[index].get("req", {}).is_empty():
+			if not check(Events.choose(Game.run, index) == "", "Morning choice before departure"): return
 			break
+	if not check(Game.run.pending_event == "", "Morning event not resolved before departure"): return
+	Game.run.event_result = ""
+	if not check(Post.act_explore(Game.run, pid) == "", "Departure " + pid): return
 	Game.go("explore")
 	await frames(12)
 	var profile := SiteJourney.profile(pid)

@@ -110,13 +110,21 @@ func _start() -> void:
 			return
 		if not _require(game.quick_start() == "", "new game could not persist to default save path"):
 			return
-		if not _roundtrip(game, "pre"):
+		var first_event := _first_offline_event(game)
+		if first_event.is_empty():
 			return
-		print("[windows_release_probe] HEADLESS PASS: template/release/offline; 20 tables; 57 textures/55 atlas; 2 fonts actual 400/700; 2 OFL; default save roundtrip; Memory=user://")
+		var events = load("res://scripts/core/events.gd")
+		if not _require(events != null and game.act(func(): return events.choose(game.run, int(first_event.choice))) == "", "packaged offline fallback choice failed"):
+			return
+		if not _offline_receipt(game, first_event):
+			return
+		if not _roundtrip(game, "post"):
+			return
+		print("[windows_release_probe] HEADLESS PASS: template/release/offline; 20 tables; 57 textures/55 atlas; 2 fonts actual 400/700; 2 OFL; 72 events/60 active/49 new; first-day 08:00 offline decision resolved; default save roundtrip; Memory=user://")
 	else:
 		if not await _visual(game):
 			return
-		print("[windows_release_probe] VISUAL PASS: title mouse quick-start; courtyard HUD/clock; 57 inventory cards; 3 screenshots; default save roundtrip")
+		print("[windows_release_probe] VISUAL PASS: title mouse quick-start; first-day 08:00 offline event mouse choice; courtyard HUD/clock; 57 inventory cards; 4 screenshots; default save roundtrip")
 	_completed = true
 	print("[windows_release_probe] COMPLETE PASS only=%s checks=%d" % [_only, _checks])
 	quit(0)
@@ -164,6 +172,20 @@ func _resources() -> bool:
 		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 		if not _require((parsed is Dictionary or parsed is Array) and not parsed.is_empty() and not data.table(table_name).is_empty(), "invalid or empty data table: " + path):
 			return false
+	var entries: Dictionary = data.table("events")
+	var active_events := 0
+	var new_events := 0
+	for id in entries:
+		var entry: Dictionary = entries[id]
+		var active: bool = str(entry.get("story", "")) == "" and not id in ["neighbor_girl", "girl_gift", "paper_crane", "paper_crane_wood", "taoist"]
+		if active:
+			active_events += 1
+		if str(id).begins_with("oe_") or str(id).begins_with("os_"):
+			if not _require(active, "new offline event cannot be selected: " + id):
+				return false
+			new_events += 1
+	if not _require(entries.size() == 72 and active_events == 60 and new_events == 49, "packaged event pool must contain 72 total, 60 active, 49 new offline decisions"):
+		return false
 	var expected: Array = data.table("items").keys()
 	var actual: Array = art.ids()
 	expected.sort()
@@ -180,6 +202,42 @@ func _resources() -> bool:
 				return false
 			atlases += 1
 	if not _require(atlases == 55, "55 atlas regions required"):
+		return false
+	return true
+
+
+func _first_offline_event(game) -> Dictionary:
+	var pre = load("res://scripts/core/pre.gd")
+	var post = load("res://scripts/core/post.gd")
+	var events = load("res://scripts/core/events.gd")
+	if not _require(pre != null and post != null and events != null, "packaged first-day event rules missing"):
+		return {}
+	if str(game.run.get("phase", "")) == "pre":
+		pre.start_disaster(game.run)
+	if not _require(game.run.get("phase", "") == "post" and int(game.run.get("pday", -1)) == 1 and int(game.run.get("t", -1)) == 0 and game.run.get("pending_event", "") == "", "offline decision must begin at the real first-day dawn"):
+		return {}
+	var stop: String = str(post.advance(game.run, 120))
+	game.refresh()
+	var id: String = str(game.run.get("pending_event", ""))
+	if not _require(stop == "event" and int(game.run.get("pday", -1)) == 1 and int(game.run.get("t", -1)) == 120 and id.begins_with("oe_"), "real first-day 08:00 did not present a new offline event"):
+		return {}
+	var entry: Dictionary = events.entry(game.run)
+	if not _require(not str(entry.get("title", "")).is_empty() and not str(entry.get("text", "")).is_empty() and entry.get("choices", []).size() >= 2, "packaged offline event presentation is incomplete"):
+		return {}
+	var fallback := -1
+	for index in entry.choices.size():
+		var choice: Dictionary = entry.choices[index]
+		if choice.get("req", {}).is_empty() and events.choice_ok(game.run, choice):
+			fallback = index
+	if not _require(fallback >= 0, "first-day event has no affordable choice without material requirements"):
+		return {}
+	return {"id": id, "title": str(entry.title), "text": str(entry.text), "choice": fallback, "choice_text": str(entry.choices[fallback].text), "result": str(entry.choices[fallback].get("result", ""))}
+
+
+func _offline_receipt(game, event: Dictionary) -> bool:
+	if not _require(str(game.run.get("pending_event", "")) == "" and event.id in game.run.get("seen_events", []) and not str(game.run.get("event_result", "")).is_empty(), "offline choice did not resolve, record its result, and enter seen events"):
+		return false
+	if not _require(str(game.run.event_result) == str(event.result), "offline fallback result differs from its packaged choice receipt"):
 		return false
 	return true
 
@@ -206,6 +264,8 @@ func _roundtrip(game, expected_phase: String) -> bool:
 		return false
 	if not _require(str(game.run.get("phase", "")) == expected_phase and str(game.run.get("role", "")) == str(before.role) and int(game.run.get("t", -1)) == int(before.t) and game.run.get("flags", {}).get("windows_release_probe", "") == "default-path-roundtrip", "reloaded run differs from saved phase/role/time/marker"):
 		return false
+	if not _require(game.run.get("seen_events", []) == before.get("seen_events", []) and str(game.run.get("event_result", "")) == str(before.get("event_result", "")), "resolved offline event receipt did not survive the default save roundtrip"):
+		return false
 	return true
 
 
@@ -217,10 +277,10 @@ func _button(parent: Node, text: String) -> Button:
 
 
 func _click(target: Button) -> bool:
-	if not _require(target != null and not target.disabled, "quick-start button missing or disabled"):
+	if not _require(target != null and not target.disabled, "mouse target button missing or disabled"):
 		return false
 	var point := target.get_global_rect().get_center()
-	if not _require(root.get_visible_rect().has_point(point), "quick-start mouse target is outside viewport"):
+	if not _require(root.get_visible_rect().has_point(point), "mouse target is outside viewport"):
 		return false
 	var motion := InputEventMouseMotion.new()
 	motion.position = point
@@ -281,6 +341,30 @@ func _visual(game) -> bool:
 	game.refresh()
 	await _frames(16)
 	if not _require(game.screen == "post" and game.run.get("phase", "") == "post", "disaster transition did not build courtyard HUD"):
+		return false
+	var first_event := _first_offline_event(game)
+	if first_event.is_empty():
+		return false
+	await _frames(8)
+	if not _require(main.has_modal("event"), "first-day offline event modal did not open"):
+		return false
+	var body_visible := false
+	for label in main._modals["event"].find_children("*", "Label", true, false):
+		if label.is_visible_in_tree() and label.text == first_event.text:
+			body_visible = true
+	if not _require(body_visible, "actual offline event text was not presented in the rendered modal"):
+		return false
+	if not await _shot("offline-event"):
+		return false
+	if not await _click(_button(main._modals["event"], str(first_event.choice_text))):
+		return false
+	if not _offline_receipt(game, first_event):
+		return false
+	if not _require(main.has_modal("event"), "offline event result modal disappeared before acknowledgement"):
+		return false
+	if not await _click(_button(main._modals["event"], "知道了")):
+		return false
+	if not _require(not main.has_modal("event"), "offline event result did not close through real mouse input"):
 		return false
 	var clocks := 0
 	for control in main._screen.find_children("*", "Control", true, false):
