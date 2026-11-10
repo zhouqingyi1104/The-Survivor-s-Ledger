@@ -42,6 +42,8 @@ var hold_screen := false
 ## 重定向会把两边拆开。隔离只做一件事：把**默认**路径挪走，见 _isolate_test_storage。
 var save_path := SAVE_PATH
 var meta_path := META_PATH
+## 测试存储隔离已经生效（只做一次，见 _isolate_test_storage）。
+var _test_isolated := false
 ## 存档/前世档案出了事要告诉玩家的话（标题界面第一屏显示，不静默吞掉）。
 var save_notice := ""
 ## 写盘失败只提示一次，别每次行动都弹。
@@ -75,6 +77,10 @@ var pending_opening_setup: Dictionary = {}
 ## 把备份也算数，标题界面会以为还有旧卷，卡在「另起一卷」。
 ## 统一测试入口 tools/run_tests.ps1 本来就隔离 APPDATA；这里补的是裸跑那一条路。
 func _isolate_test_storage() -> void:
+	# 只做一次。有测试会手动再调一次 _ready() 来模拟"重启进程"（rewind_safety），
+	# 那时它已经把自己的存档路径设好了，这里再改一次会把两边拆开。
+	if _test_isolated:
+		return
 	# 打包版里的探针要用真实默认路径，不能隔离。
 	if OS.has_feature("template"):
 		return
@@ -91,6 +97,7 @@ func _isolate_test_storage() -> void:
 	save_path = dir + "/save.json"
 	meta_path = dir + "/meta.json"
 	memory_path = dir + "/Memory.md"
+	_test_isolated = true
 
 
 func _ready() -> void:

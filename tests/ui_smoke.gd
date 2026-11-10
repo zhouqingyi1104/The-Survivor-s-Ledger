@@ -278,11 +278,14 @@ func run_flow() -> void:
 	Game.act(func(): return Post.toggle_gate(Game.run))
 	await _frames()
 	check(not bool(Game.run.door_open), "门没关上")
-	# 第一轮之后到第二轮
+	# 第一轮之后到第二轮。B3 起每轮结算会先放一段演出，headless 里等不到它自己演完，
+	# 见到「跳过」就点掉，让轮间结算继续往下走。
 	screen().advance(Post.WAVE_AT + 40 - Post.day_minute(Game.run) + 1)
 	await _frames()
+	await skip_show()
 	screen().advance(Post.WAVE_AT + 80 - Post.day_minute(Game.run) + 1)
 	await _frames()
+	await skip_show()
 	await wait_until(func(): return UI_has("接着守夜"), 3.0)
 	check(int(Game.run.wave_day) == 2, "尸潮没结算")
 	await press("接着守夜")
@@ -449,6 +452,12 @@ func _walk(node: Node, prefix: String, out: Array) -> void:
 		out.append(node)
 	for c in node.get_children():
 		_walk(c, prefix, out)
+
+
+## 夜战演出的「跳过」：headless 下演不出画面，也等不到 finished，见到就点掉。
+func skip_show() -> void:
+	if UI_has("跳过"):
+		await press("跳过")
 
 
 func wait_until(cond: Callable, timeout: float) -> void:
