@@ -37,6 +37,9 @@ var speed := 1
 ## 演出（夜袭、走路）期间为 true：照常存档、广播，但先不切界面，演完再 refresh()。
 var hold_screen := false
 ## 存档位置（测试时会改到别的文件）。
+## 注意：不能在这里把测试进程的 user:// 路径统一重定向到临时目录——有些测试
+## 会先用 `user://xxx` 造文件、再让 Game 读同一个路径（close_safety 就是这样），
+## 重定向会把两边拆开。隔离只做一件事：把**默认**路径挪走，见 _isolate_test_storage。
 var save_path := SAVE_PATH
 var meta_path := META_PATH
 ## 存档/前世档案出了事要告诉玩家的话（标题界面第一屏显示，不静默吞掉）。
@@ -67,10 +70,34 @@ var pending_daily := false
 var pending_opening_setup: Dictionary = {}
 
 
+## 直接拉起一个测试（`godot res://tests/xxx.tscn` 或 `--script res://tests/xxx.gd`）时，
+## 没人设 APPDATA，存档会写进玩家真实目录。曾经因此留下 `save.json.bak`——而 `has_save()`
+## 把备份也算数，标题界面会以为还有旧卷，卡在「另起一卷」。
+## 统一测试入口 tools/run_tests.ps1 本来就隔离 APPDATA；这里补的是裸跑那一条路。
+func _isolate_test_storage() -> void:
+	# 打包版里的探针要用真实默认路径，不能隔离。
+	if OS.has_feature("template"):
+		return
+	var is_test := false
+	for arg in OS.get_cmdline_args():
+		if "res://tests/" in arg:
+			is_test = true
+			break
+	if not is_test:
+		return
+	var dir := OS.get_temp_dir().path_join("ledger_test_%d" % OS.get_process_id())
+	if DirAccess.make_dir_recursive_absolute(dir) != OK:
+		return
+	save_path = dir + "/save.json"
+	meta_path = dir + "/meta.json"
+	memory_path = dir + "/Memory.md"
+
+
 func _ready() -> void:
 	# Demo mode is declared before autoload startup, not after main scene loads.
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--demo=") and arg.trim_prefix("--demo=") != "": no_save = true
+	_isolate_test_storage()
 	Data.ensure()
 	# Recover a durable rewind before reading or renaming either constituent file.
 	if _rewind_pending() and not _ensure_rewind_resolved():
