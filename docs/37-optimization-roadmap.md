@@ -154,7 +154,7 @@ M3 以后的所有功能——身份专法、可变开局、轮回调查、差�
 
 ### 并行：工程债（每周最多一批，不挤占 A、B）
 
-1. 按系统把 `dialogs.gd` 拆成 `scripts/ui/dialogs/*.gd`，`post_screen.gd` 的 HUD 拆成组件；
+1. 按系统把 `dialogs.gd` 拆成 `scripts/ui/dialogs/*.gd`，`post_screen.gd` 的 HUD 拆成组件；**第一批已做**：灶房/菜畦/营造/读书搬进 `scripts/ui/dialogs/house.gd`，公共小工具抽成 `kit.gd`，2280→2128 行，四个面板控件树对照完全相同，见 [58](58-dialogs-split-house.md)；
 2. 测试残留不再落到玩家数据目录根下：统一用一个临时子目录，跑完清掉；
 3. ~~查掉退出时的 RID / ObjectDB 泄漏警告~~ **已查明，不改**：四组最小探针（[57](57-playtest-gate-check.md) 第 2 节）证明只在无头 Dummy 音频驱动下"播放中退出"才报，窗口模式一次都不报；消掉它要改所有退出路径为"先停音频、等一帧、再退"，玩家零感知，风险大于收益；
 4. [10](10-roadmap.md) 只保留往后看的部分，批次流水挪到 CHANGELOG。

@@ -32,6 +32,8 @@ const Manual = preload("res://scripts/core/manual.gd")
 const Agenda = preload("res://scripts/core/agenda.gd")
 const PlaytestFeedback = preload("res://scripts/ui/playtest_feedback.gd")
 const InventoryArt = preload("res://scripts/ui/inventory_art.gd")
+const Kit = preload("res://scripts/ui/dialogs/kit.gd")
+const House = preload("res://scripts/ui/dialogs/house.gd")
 const INVENTORY_PAPER = preload("res://assets/ui/inventory/paper.png")
 
 var _trade_actor := "ning"
@@ -51,7 +53,6 @@ const WHERE_TEXT := {"indoor": "摆屋里", "outdoor": "摆院里"}
 static var GRADE_COLORS := {"不足": UI.CINNABAR, "适当": UI.GOLD, "宽裕": UI.JADE}
 static var STATUS_COLORS := {"正常": UI.JADE, "拥挤": UI.GOLD, "哄抢": UI.CINNABAR, "关门": UI.INK_FAINT}
 const CAT_ORDER := ["食", "菜", "水", "药", "粮", "柴炭", "守具", "材", "种", "器", "书", "杂"]
-const FX_NAMES := {"food": "饱腹", "water": "饮水", "hp": "气血", "mood": "心神", "energy": "精力"}
 
 
 func _run() -> Dictionary:
@@ -59,7 +60,7 @@ func _run() -> Dictionary:
 
 
 func _act(fn: Callable) -> void:
-	Game.act(fn)
+	Kit.act(fn)
 
 
 ## 做成了才出声（买卖的钱币声、吃喝声……）。
@@ -71,33 +72,20 @@ func _act_sfx(fn: Callable, sound: String) -> void:
 
 ## 开工类动作：成功了就把弹窗关掉，好看见人在干活。
 func _start(key: String, fn: Callable) -> void:
-	var res = Game.act(fn)
-	if typeof(res) == TYPE_STRING and res == "":
-		UI.close_modal(key)
+	Kit.start(key, fn)
 
 
 static func fx_text(fx: Dictionary) -> String:
-	var parts := []
-	for k in FX_NAMES:
-		if fx.has(k):
-			parts.append("%s%+d" % [FX_NAMES[k], int(fx[k])])
-	if fx.has("cure"):
-		parts.append("祛尸瘟" if float(fx.cure) >= 1.0 else "或可祛尸瘟")
-	return " ".join(parts)
+	return Kit.fx_text(fx)
 
 
 ## 一行末尾的操作按钮；做不了时把原因直接写在按钮左边（只放在 tooltip 里不容易看到）。
 func _action(row: HBoxContainer, text: String, cb: Callable, block: String) -> void:
-	if block != "":
-		row.add_child(UI.label(block, 15, UI.CINNABAR))
-	row.add_child(UI.button(text, cb, block != "", block))
+	Kit.action(row, text, cb, block)
 
 
 static func req_text(store: Dictionary, req: Dictionary) -> String:
-	var parts := []
-	for id in req:
-		parts.append("%s %d（有 %d）" % [Data.item_name(id), int(req[id]), Inv.count(store, id)])
-	return "、".join(parts)
+	return Kit.req_text(store, req)
 
 
 # ---------- 劫余录 ----------
@@ -994,167 +982,27 @@ func _use(id: String) -> void:
 
 # ---------- 灶房 ----------
 
+## 面板已搬到 scripts/ui/dialogs/house.gd；这里只留入口，调用点不必改。
 func cook() -> void:
-	UI.open_modal("cook", "灶房", _cook, true, 860)
-
-
-func _cook(body: VBoxContainer) -> void:
-	var run := _run()
-	body.add_child(UI.para("柴 %d 捆 · 木炭 %d 筐（没柴时一筐炭顶两捆）　庖厨 %d 级　每锅另加 %d 份" % [
-		Inv.count(run.home, "firewood"), Inv.count(run.home, "charcoal"), State.prof_level(run, "cook"),
-		Post.cook_servings(run, "congee") - int(Data.table("recipes").congee.out)], 16))
-	var recipes: Dictionary = Data.table("recipes")
-	for rid in recipes:
-		var r: Dictionary = recipes[rid]
-		var h := UI.hbox(10)
-		h.add_child(UI.icon(rid, 44))
-		var info := UI.vbox(2)
-		UI.expand(info)
-		var dish := Data.item(rid)
-		info.add_child(UI.label("%s　得 %d 份　%s" % [r.name, Post.cook_servings(run, rid), fx_text(dish.get("eat", {}))], 19))
-		info.add_child(UI.para("用料：%s　柴火 %d" % [req_text(run.home, Post.recipe_inputs(run, rid)), r.fuel], 15))
-		h.add_child(info)
-		var block := Post.recipe_block(run, rid)
-		if block == "":
-			block = Post.can_act(run)
-		_action(h, "下锅（一个时辰）", func(): _start("cook", func(): return Post.act_cook(Game.run, rid)), block)
-		body.add_child(h)
+	House.cook()
 
 
 # ---------- 菜畦 ----------
 
 func garden() -> void:
-	UI.open_modal("garden", "菜畦", _garden, true, 820)
-
-
-func _garden(body: VBoxContainer) -> void:
-	var run := _run()
-	var crops: Dictionary = Data.table("crops")
-	body.add_child(UI.para("下种随手就行。一天之内浇过水的作物才长；打理一次要四十五分钟、一瓢清水，熟了的顺手收。", 16))
-	for k in run.plots.size():
-		var plot: Dictionary = run.plots[k]
-		if not Post.plot_on_floor(run, plot):
-			continue
-		var h := UI.hbox(10)
-		var plot_name := "第 %d 畦" % (k + 1)
-		if plot.has("pot"):
-			var pot := Home.find(run, int(plot.pot))
-			plot_name = "花盆 #%d" % int(plot.pot)
-			if not pot.is_empty():
-				plot_name += "（%.1f, %.1f）" % [float(pot.x), float(pot.z)]
-		h.add_child(UI.label(plot_name, 18, UI.INK_SOFT))
-		if plot.crop == "":
-			h.add_child(UI.label("空着", 18, UI.INK_FAINT))
-			h.add_child(UI.spacer())
-			for cid in crops:
-				var n := Inv.count(run.home, crops[cid].seed)
-				if n > 0:
-					h.add_child(UI.button("种%s（%d）" % [crops[cid].name, n], func(): _act(func(): return Post.plant(Game.run, k, cid))))
-		else:
-			var c: Dictionary = crops[plot.crop]
-			h.add_child(UI.label(c.name, 18))
-			h.add_child(UI.bar(minf(float(plot.days), float(c.days)), float(c.days), UI.JADE, 160))
-			var ripe := Post.crop_ripe(plot)
-			h.add_child(UI.label("可收" if ripe else "%.1f / %d 日" % [float(plot.days), int(c.days)], 16, UI.JADE if ripe else UI.INK_SOFT))
-			var dry := Post.plot_dry(run, plot)
-			h.add_child(UI.tag("缺水" if dry else "已浇水", UI.CINNABAR if dry else UI.DAI))
-		body.add_child(h)
-	body.add_child(UI.sep())
-	var block := Post.can_act(run)
-	body.add_child(UI.seal_button("浇水收成（四十五分钟）", func(): _start("garden", func(): return Post.act_garden(Game.run)), block != "", block))
+	House.garden()
 
 
 # ---------- 营造 ----------
 
 func build() -> void:
-	UI.open_modal("build", "营造守具", _build, true, 900)
-
-
-func _build(body: VBoxContainer) -> void:
-	var run := _run()
-	var v := UI.vbox(6)
-	v.add_child(UI.label("守具", 20, UI.CINNABAR))
-	var devices: Dictionary = Data.table("devices").devices
-	for did in devices:
-		var d: Dictionary = devices[did]
-		var h := UI.hbox(10)
-		var info := UI.vbox(2)
-		UI.expand(info)
-		var lasts := "一直管用" if int(d.dur) >= 99 else "管 %d 夜" % int(d.dur)
-		var build_time := "（一个半时辰）" if int(d.time) > 0 else "（随手布下）"
-		if str(d.get("bonus_mod", "")) != "":
-			lasts = "基础管 %d 夜" % int(d.dur)
-			build_time = "（90 分钟 · 精力 10）"
-		info.add_child(UI.label("%s　守力 %d · %s　%s" % [d.name, d.power, lasts, build_time], 18))
-		info.add_child(UI.para("%s　用料：%s" % [d.desc, req_text(run.home, d.cost)], 15))
-		var bonus_mod := str(d.get("bonus_mod", ""))
-		if bonus_mod != "":
-			var mod: Dictionary = Data.table("waves").mods.get(bonus_mod, {})
-			var target_line := UI.para("守%s；遇上%s，这一面守力再 +%d，开门迎战时不算。营造到 2 级，做出来的多管 1 夜。做到一半被打断，料退回，精力不退。" % [Defense.surface_name(str(d.surface)), str(mod.get("name", bonus_mod)), int(d.get("bonus_power", 0))], 15, UI.DAI)
-			target_line.set_meta("defense_target", str(did))
-			info.add_child(target_line)
-		h.add_child(info)
-		var block := Post.device_block(run, did)
-		if int(d.time) > 0:
-			_action(h, "动手做", func(): _start("build", func(): return Post.act_build(Game.run, did)), block)
-		else:
-			_action(h, "布置", func(): _act(func(): return Post.act_build(Game.run, did)), block)
-		if bonus_mod != "":
-			h.get_child(-1).set_meta("defense_device", str(did))
-		v.add_child(h)
-	# 加工：画符要先学会，其余几条谁都能做。不会的也列出来（标"还不会"），
-	# 省得玩家猜有没有这回事——藏着的选项等于不存在的选项。
-	v.add_child(UI.sep())
-	v.add_child(UI.label("加工", 20, UI.CINNABAR))
-	var crafts: Dictionary = Data.table("devices").crafts
-	for cid in crafts:
-		var c: Dictionary = crafts[cid]
-		var h := UI.hbox(10)
-		var info := UI.vbox(3)
-		UI.expand(info)
-		info.add_child(UI.para("%s：%s\n用料：%s　产出：%s" % [c.name, c.desc, req_text(run.home, c["in"]), Data.describe_items(c.out)], 16, UI.INK))
-		var block := Post.craft_block(run, cid)
-		if block != "": info.add_child(UI.para(block, 15, UI.CINNABAR))
-		h.add_child(info)
-		var craft_button := UI.button("%s（60 分钟 · 精力 6）" % str(c.get("verb", "做")), func(): _start("build", func(): return Post.act_craft(Game.run, cid)), block != "", block)
-		craft_button.set_meta("identity_craft", str(cid))
-		h.add_child(craft_button)
-		v.add_child(h)
-	v.add_child(UI.sep())
-	v.add_child(UI.label("修缮　用木料 1 根（有 %d），没木料时拆 2 捆柴顶上（有 %d），耐久 +%d" % [
-		Inv.count(run.home, "wood"), Inv.count(run.home, "firewood"), 35 + 5 * State.prof_level(run, "build")], 20, UI.CINNABAR))
-	for part in [["door", "门"], ["window", "窗"], ["wall", "墙"]]:
-		var h := UI.hbox(10)
-		var p: Dictionary = run[part[0]]
-		h.add_child(UI.fixed_width(UI.label(part[1], 18), 40))
-		h.add_child(UI.bar(int(p.cur), int(p.max), UI.GOLD))
-		h.add_child(UI.label("%d / %d" % [p.cur, p.max], 16, UI.INK_SOFT))
-		var key: String = part[0]
-		var block := "完好" if int(p.cur) >= int(p.max) else Post.can_act(run)
-		_action(h, "修（一个时辰）", func(): _start("build", func(): return Post.act_repair(Game.run, key)), block)
-		v.add_child(h)
-	body.add_child(UI.scroll(v, 480))
+	House.build()
 
 
 # ---------- 读书 ----------
 
 func read() -> void:
-	UI.open_modal("read", "读书", _read, true, 760)
-
-
-func _read(body: VBoxContainer) -> void:
-	var run := _run()
-	var books := Inv.ids_in_cat(run.home, "书")
-	if books.is_empty():
-		body.add_child(UI.para("家里一本书也没有。县学里兴许能翻到。", 17))
-	for bid in books:
-		var h := UI.hbox(10)
-		var it := Data.item(bid)
-		var done: bool = bid in run.read
-		h.add_child(UI.expand(UI.para("%s　%s" % [it.name, it.desc], 17, UI.INK_FAINT if done else UI.INK)))
-		var block := "读熟了" if done else Post.can_act(run)
-		_action(h, "读（两个时辰）", func(): _start("read", func(): return Post.act_read(Game.run, bid)), block)
-		body.add_child(h)
+	House.read()
 
 
 # ---------- 今日差事 ----------
