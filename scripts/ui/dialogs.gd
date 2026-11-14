@@ -34,7 +34,9 @@ const PlaytestFeedback = preload("res://scripts/ui/playtest_feedback.gd")
 const InventoryArt = preload("res://scripts/ui/inventory_art.gd")
 const Kit = preload("res://scripts/ui/dialogs/kit.gd")
 const House = preload("res://scripts/ui/dialogs/house.gd")
-const INVENTORY_PAPER = preload("res://assets/ui/inventory/paper.png")
+const Stock = preload("res://scripts/ui/dialogs/stock.gd")
+const Shrine = preload("res://scripts/ui/dialogs/shrine.gd")
+const EventPanel = preload("res://scripts/ui/dialogs/event_panel.gd")
 
 var _trade_actor := "ning"
 var _npc_actor := "ning"
@@ -52,7 +54,6 @@ const WHERE_TEXT := {"indoor": "摆屋里", "outdoor": "摆院里"}
 
 static var GRADE_COLORS := {"不足": UI.CINNABAR, "适当": UI.GOLD, "宽裕": UI.JADE}
 static var STATUS_COLORS := {"正常": UI.JADE, "拥挤": UI.GOLD, "哄抢": UI.CINNABAR, "关门": UI.INK_FAINT}
-const CAT_ORDER := ["食", "菜", "水", "药", "粮", "柴炭", "守具", "材", "种", "器", "书", "杂"]
 
 
 func _run() -> Dictionary:
@@ -862,122 +863,18 @@ func _neighbor_depart(target: String) -> void:
 
 # ---------- 吃喝用药 ----------
 
-var _inventory_filter := "全部"
-
+## 面板已搬到 scripts/ui/dialogs/stock.gd；这里只留入口，以及两处还在直接调它的地方
+## （post_screen 的速饮速食、tests/inventory_ui 直接造格子），都只是转发。
 func inventory() -> void:
-	if Floors.current(_run()) == "guest_zhou":
-		Game.toast.emit("先回宅院再使用家中存货。")
-		return
-	_inventory_filter = "全部"
-	UI.open_modal("inventory", "家中存货", _inventory, true, 900)
+	Stock.open()
 
 
-func _inventory(body: VBoxContainer) -> void:
-	var run := _run()
-	var ledger := UI.vbox(12)
-	ledger.add_child(_inventory_label("物资簿  ·  家中收藏", 16, Color("#765044")))
-	var categories: Array[String] = ["全部"]
-	var all_ids: Array = []
-	for cat in CAT_ORDER:
-		var ids := Inv.ids_in_cat(run.home, cat)
-		if not ids.is_empty():
-			categories.append(cat)
-			all_ids.append_array(ids)
-	if not _inventory_filter in categories:
-		_inventory_filter = "全部"
-	var tabs := HFlowContainer.new()
-	tabs.add_theme_constant_override("h_separation", 6)
-	for cat in categories:
-		var tab := UI.button(cat, func():
-			_inventory_filter = cat
-			UI.clear(body)
-			_inventory(body))
-		var chosen: bool = cat == _inventory_filter
-		tab.add_theme_stylebox_override("normal", UI._box(Color("#8d4035") if chosen else Color("#e6d8bf"), Color("#9a7962"), 1, 0, 12, 5))
-		tab.add_theme_stylebox_override("hover", UI._box(Color("#a25446"), Color("#843e33"), 1, 0, 12, 5))
-		tab.add_theme_color_override("font_color", Color("#f2e6cd") if chosen else Color("#44352d"))
-		tab.add_theme_color_override("font_hover_color", Color("#fff0d6"))
-		tab.button_pressed = chosen
-		tabs.add_child(tab)
-	ledger.add_child(tabs)
-	var grid := UI.grid(4, 9, 9)
-	var visible_ids: Array = all_ids if _inventory_filter == "全部" else Inv.ids_in_cat(run.home, _inventory_filter)
-	for id in visible_ids:
-		grid.add_child(_item_card(run, id))
-	ledger.add_child(grid)
-	if all_ids.is_empty():
-		ledger.add_child(_inventory_label("家中暂无存货。", 17, Color("#675b4d")))
-	var paper := PanelContainer.new()
-	var paper_style := StyleBoxTexture.new()
-	paper_style.texture = INVENTORY_PAPER
-	paper_style.content_margin_left = 14
-	paper_style.content_margin_right = 14
-	paper_style.content_margin_top = 12
-	paper_style.content_margin_bottom = 12
-	paper.add_theme_stylebox_override("panel", paper_style)
-	paper.add_child(ledger)
-	body.add_child(UI.scroll(paper, mini(470, maxi(180, int(get_viewport().get_visible_rect().size.y) - 230))))
-
-
-## 在深色弹窗主题下也保持纸上的墨色，不继承夜色主题的浅色文字与阴影。
-func _inventory_label(text: String, size: int, ink: Color, wrap := false) -> Label:
-	var label := UI.label(text, size, ink, wrap)
-	label.add_theme_color_override("font_color", ink)
-	label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
-	return label
-
-
-## 物资格仍保留名称、数量、效果和原来的直接使用按钮。
 func _item_card(run: Dictionary, id: String) -> Control:
-	var it := Data.item(id)
-	var n := Inv.count(run.home, id)
-	var v := UI.vbox(4)
-	UI.expand(v)
-	var image_row := CenterContainer.new()
-	image_row.custom_minimum_size.y = 72
-	var artwork := InventoryArt.texture(id)
-	if artwork != null:
-		var illustration := TextureRect.new()
-		illustration.texture = artwork
-		illustration.set_meta("inventory_art", id)
-		illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		illustration.custom_minimum_size = Vector2(72, 72)
-		illustration.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		image_row.add_child(illustration)
-	else:
-		image_row.add_child(UI.icon(id, 72))
-	v.add_child(image_row)
-	var title := UI.hbox(4)
-	title.add_child(_inventory_label(it.name, 17, Color("#302921")))
-	title.add_child(UI.spacer())
-	title.add_child(_inventory_label("×%d" % n, 15, Color("#765b49")))
-	v.add_child(title)
-	var fx: Dictionary = it.get("eat", it.get("use", {}))
-	v.add_child(_inventory_label("%s · %s" % [it.cat, fx_text(fx)] if not fx.is_empty() else it.cat, 13, Color("#675b4d"), true))
-	if not fx.is_empty():
-		var verb := "喝" if id == "water" else ("吃" if it.has("eat") else "用")
-		var action := UI.button(verb, func(): _use(id))
-		action.add_theme_stylebox_override("normal", UI._box(Color("#e3d1b6"), Color("#9a7962"), 1, 1, 8, 3))
-		action.add_theme_stylebox_override("hover", UI._box(Color("#f0e2cc"), Color("#98483a"), 1, 1, 8, 3))
-		action.add_theme_stylebox_override("pressed", UI._box(Color("#d3b99c"), Color("#843e33"), 1, 1, 8, 3))
-		action.add_theme_color_override("font_color", Color("#44352d"))
-		action.add_theme_color_override("font_hover_color", Color("#8d4035"))
-		action.add_theme_color_override("font_pressed_color", Color("#44352d"))
-		v.add_child(action)
-	var card := PanelContainer.new()
-	card.set_meta("inventory_item", id)
-	card.add_theme_stylebox_override("panel", UI._box(Color(0.94, 0.90, 0.82, 0.68), Color("#ab9b80"), 1, 0, 9, 8))
-	card.add_child(v)
-	card.tooltip_text = it.desc
-	card.mouse_filter = Control.MOUSE_FILTER_PASS
-	return UI.fixed_width(card, 190)
+	return Stock.item_card(run, id)
 
 
 func _use(id: String) -> void:
-	var res = Game.act(func(): return Post.use_item(Game.run, id))
-	if typeof(res) == TYPE_STRING and res == "":
-		Sfx.use_item(id)
+	Stock.use_item(id)
 
 
 # ---------- 灶房 ----------
@@ -1153,59 +1050,14 @@ func _go_explore(pid: String) -> void:
 
 # ---------- 事件 ----------
 
+## 面板已搬到 scripts/ui/dialogs/event_panel.gd；_event_req_text 留转发，
+## tests/offline_events_ui.gd 在核「几两几文」的写法。
 func event() -> void:
-	var id: String = _run().pending_event
-	UI.open_modal("event", Events.entry(_run()).get("title", "邻里来信"), _event, false, 720)
-
-
-func _event(body: VBoxContainer) -> void:
-	var run := _run()
-	if run.pending_event == "":
-		body.add_child(UI.para(run.event_result, 19, UI.INK))
-		var row := UI.hbox()
-		row.add_child(UI.spacer())
-		row.add_child(UI.seal_button("知道了", func(): UI.close_modal("event")))
-		body.add_child(row)
-		return
-	var e: Dictionary = Events.entry(run)
-	if e.get("story", "") == "neighbor" and Neighbor.state(run).resolution != "":
-		body.add_child(UI.para("前情：" + Neighbor.resolution_text(Neighbor.state(run)), 16, UI.GOLD))
-	body.add_child(UI.para(e.text, 19, UI.INK))
-	body.add_child(UI.sep())
-	for k in e.choices.size():
-		var c: Dictionary = e.choices[k]
-		var block := Events.choice_block(run, c)
-		var ok := block == ""
-		var text: String = c.text
-		if not c.get("req", {}).is_empty():
-			text += "　［需：%s］" % _event_req_text(c.req)
-		var b := UI.button(text, func(): _act(func(): return Events.choose(Game.run, k)), not ok, block)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		body.add_child(b)
-		if c.get("hint", "") != "":
-			body.add_child(UI.para(c.hint, 15, UI.INK_SOFT))
-		if str(run.pending_event).begins_with("world:"):
-			body.add_child(UI.para(Director.effect_hint(c), 15, UI.INK_SOFT))
-		if c.get("pry", false) and not Neighbor.state(run).pry:
-			body.add_child(UI.para("未准备撬杆：须在家中打开劫余录 → 邻里事务，用木料 1 制作。", 15, UI.CINNABAR))
+	EventPanel.open()
 
 
 static func _event_req_text(req: Dictionary) -> String:
-	var parts := []
-	for k in req:
-		match k:
-			"any_food":
-				parts.append("吃食 %d 份" % req[k])
-			"any_grain":
-				parts.append("粮 %d 斗" % req[k])
-			"silver":
-				var wen := int(req[k])
-				var liang := wen / 1000
-				var remainder := wen % 1000
-				parts.append("%d 文" % wen if liang == 0 else ("%d 两" % liang if remainder == 0 else "%d 两 %d 文" % [liang, remainder]))
-			_:
-				parts.append("%s %d" % [Data.item_name(k), req[k]])
-	return "、".join(parts)
+	return EventPanel.req_text(req)
 
 
 # ---------- 守夜方针（21:00） ----------
@@ -1618,46 +1470,9 @@ func _ack_dawn() -> String:
 
 # ---------- 神龛求签 ----------
 
+## 面板已搬到 scripts/ui/dialogs/shrine.gd；这里只留入口。
 func omens() -> void:
-	UI.open_modal("omens", "神龛求签", _omens, true, 900)
-
-
-func _omens(body: VBoxContainer) -> void:
-	var run := _run()
-	body.add_child(UI.para("功德 %d。签筒里每日三支签，可以花功德求，也可以留一支到明日；同一天求得越多越贵。" % int(run.merit), 17))
-	var row := UI.hbox(12)
-	for id in run.omens.offer:
-		var o: Dictionary = Data.table("omens")[id]
-		var v := UI.vbox(6)
-		var taken: bool = id in run.omens.taken
-		var cost := Ledger.omen_cost(run, id)
-		v.add_child(UI.tag(o.tier, UI.CINNABAR if o.tier.begins_with("上") else UI.GOLD))
-		v.add_child(UI.heading(o.name, 24, UI.INK_FAINT if taken else UI.INK))
-		v.add_child(UI.para("「%s」" % o.verse, 16, UI.DAI))
-		v.add_child(UI.para(o.desc, 16))
-		v.add_child(UI.label("功德 %d" % cost, 17, UI.CINNABAR))
-		var gap := Control.new()
-		gap.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		v.add_child(gap)
-		if taken:
-			v.add_child(UI.tag("已求得", UI.JADE))
-		else:
-			v.add_child(UI.seal_button("求此签", func(): _act(func(): return Ledger.take_omen(Game.run, id)), int(run.merit) < cost))
-			var locked: bool = run.omens.locked == id
-			v.add_child(UI.button("不留了" if locked else "留到明日", func(): _act(func(): return _toggle_lock(id))))
-		var p := UI.panel(v, UI.PAPER)
-		UI.expand(p)
-		row.add_child(p)
-	body.add_child(row)
-	var foot := UI.hbox()
-	foot.add_child(UI.spacer())
-	foot.add_child(UI.button("摇签筒（%d 功德）" % Ledger.REROLL_COST, func(): _act(func(): return Ledger.reroll_omens(Game.run)), int(run.merit) < Ledger.REROLL_COST))
-	body.add_child(foot)
-
-
-func _toggle_lock(id: String) -> String:
-	Ledger.toggle_lock(Game.run, id)
-	return ""
+	Shrine.open()
 
 
 # ---------- 通用确认 ----------
