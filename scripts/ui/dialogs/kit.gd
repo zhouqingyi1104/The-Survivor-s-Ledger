@@ -45,3 +45,10 @@ static func req_text(store: Dictionary, req: Dictionary) -> String:
 	for id in req:
 		parts.append("%s %d（有 %d）" % [Data.item_name(id), int(req[id]), Inv.count(store, id)])
 	return "、".join(parts)
+
+
+## 局内时刻的「几点几分」写法（t 从子时三刻起算）。原本是 dialogs.gd 的 _trade_clock，
+## 第三批之后主人线和危机的面板也搬出去了，两边都要用，所以放到这里共用。
+static func clock_text(t: int) -> String:
+	var minute := (t + 360) % 1440
+	return "%02d:%02d" % [minute / 60, minute % 60]
