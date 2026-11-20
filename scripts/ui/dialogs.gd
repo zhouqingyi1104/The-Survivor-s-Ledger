@@ -13,6 +13,7 @@ const Ledger = preload("res://scripts/core/ledger.gd")
 const Defense = preload("res://scripts/core/defense.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const PrepWork = preload("res://scripts/ui/dialogs/prep_work.gd")
+const RiceStory = preload("res://scripts/ui/dialogs/rice_story.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
@@ -1193,6 +1194,8 @@ func _shop(body: VBoxContainer) -> void:
 	if id == "rice_shop":
 		PrepWork.add_row(body, id)
 		body.add_child(UI.sep())
+	elif id == "bookshop":
+		RiceStory.add_book_entry(body)
 	match s.kind:
 		"goods":
 			_goods(body, run, id)

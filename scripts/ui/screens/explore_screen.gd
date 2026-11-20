@@ -13,6 +13,7 @@ const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
 const Expedition = preload("res://scripts/core/expedition.gd")
+const RiceStory = preload("res://scripts/ui/dialogs/rice_story.gd")
 const SiteJourney = preload("res://scripts/core/site_journey.gd")
 
 ## 这个界面上弹的窗用夜色（main.gd 看这个）
@@ -220,6 +221,8 @@ func _expedition_panel(body: VBoxContainer, mode: String, idx: int) -> void:
 		if i < found.size() and bool(found[i]):
 			contents.add_child(UI.heading(str(clues[i].get("title", "线索")), 19, UI.GOLD))
 			contents.add_child(UI.para(str(clues[i].get("text", "")), 16))
+			if mode == "clue" and i == 0 and ex.point == "rice_ruin":
+				RiceStory.add_ledger_page(contents)
 		elif mode != "clue":
 			contents.add_child(UI.para("线索 %d：尚未查探。" % (i + 1), 16, UI.INK_SOFT))
 	if mode == "gate":

@@ -2,6 +2,7 @@ extends RefCounted
 
 const UI = preload("res://scripts/ui/ui_kit.gd")
 const Pre = preload("res://scripts/core/pre.gd")
+const RiceStory = preload("res://scripts/ui/dialogs/rice_story.gd")
 
 
 static func open(travel: Callable) -> void:
@@ -31,6 +32,8 @@ static func add_row(body: VBoxContainer, place: String, travel := Callable()) ->
 	body.add_child(row)
 	if done:
 		row.add_child(UI.tag("已做过", UI.JADE))
+		if place == "rice_shop":
+			RiceStory.add_rice_entry(body)
 		return
 	var reason := Pre.prep_work_trip_block(run, place)
 	var caption := str(work.name)

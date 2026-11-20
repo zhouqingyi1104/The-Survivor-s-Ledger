@@ -3,6 +3,24 @@
   "engine_version": "4.7.2",
   "cases": [
     {
+      "id": "rice_story",
+      "entry": "tests/rice_story.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[rice_story\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
+      "id": "rice_story_ui",
+      "entry": "tests/rice_story_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[rice_story_ui\\] checks=[1-9][0-9]* failures=0\\r?$"
+    },
+    {
       "id": "prep_work",
       "entry": "tests/prep_work.gd",
       "kind": "script",
