@@ -3,7 +3,13 @@
 # 导出预设要入库：发布件的参数属于工程，不是本机状态
 # 导出时临时探 res:// 可写性的探针文件
 .write_probe
-/build/
+/.write_probe_*
+/build/*
+!/build/.gdignore
+
+# 未选用的美术稿和独立试验工程只保留在本机；标记阻止 Godot 扫描、导出。
+/art-previews/*
+!/art-previews/.gdignore
 
 # 本地引擎（太大，不入库；下载地址见 README）
 /tools/godot/
