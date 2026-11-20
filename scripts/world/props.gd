@@ -6,17 +6,64 @@ const K = preload("res://scripts/world/kit.gd")
 
 static func well(parent: Node3D, pos: Vector3) -> Node3D:
 	var n := K.node(parent, pos)
-	K.cyl(n, 0.75, 0.8, 0.7, K.STONE, Vector3(0, 0.35, 0), Vector3.ZERO, 10)
-	K.cyl(n, 0.58, 0.58, 0.72, K.mat(Color("#1c1f22")), Vector3(0, 0.37, 0), Vector3.ZERO, 10)
-	K.cyl(n, 0.56, 0.56, 0.02, K.mat(K.WATER, 0.2), Vector3(0, 0.55, 0), Vector3.ZERO, 10)
+	var masonry := SurfaceTool.new()
+	masonry.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for course in 3:
+		_well_course(masonry, course)
+	var ring := MeshInstance3D.new()
+	ring.mesh = masonry.commit()
+	var stone := StandardMaterial3D.new()
+	stone.vertex_color_use_as_albedo = true
+	stone.vertex_color_is_srgb = true
+	ring.material_override = stone
+	n.add_child(ring)
+	K.cyl(n, 0.53, 0.53, 0.045, K.mat(Color("#2b5655"), 0.24), Vector3(0, 0.22, 0), Vector3.ZERO, 24)
 	K.collider(n, Vector3(1.6, 1.0, 1.6), Vector3(0, 0.5, 0))
+	# 露天井架让人从院中也看得见井口、水和辘轳。
 	for sx in [-1, 1]:
-		K.box(n, Vector3(0.12, 1.9, 0.12), K.WOOD, Vector3(sx * 0.75, 0.95, 0))
-	K.cyl(n, 0.08, 0.08, 1.5, K.WOOD_LIGHT, Vector3(0, 1.6, 0), Vector3(0, 0, 90))
-	K.prism(n, Vector3(1.3, 0.45, 2.0), K.ROOF, Vector3(0, 2.1, 0), Vector3(0, 90, 0))
-	K.cyl(n, 0.16, 0.13, 0.22, K.WOOD_LIGHT, Vector3(0.25, 1.05, 0))
-	K.box(n, Vector3(0.01, 0.55, 0.01), K.ROOF_EDGE, Vector3(0.25, 1.4, 0))
+		K.box(n, Vector3(0.15, 1.75, 0.18), K.WOOD, Vector3(sx * 0.73, 0.88, -0.07))
+		K.box(n, Vector3(0.20, 0.10, 0.23), K.WOOD_LIGHT, Vector3(sx * 0.73, 1.75, -0.07))
+	var axle := Vector3(0, 1.49, -0.07)
+	K.cyl(n, 0.12, 0.12, 1.9, K.WOOD_LIGHT, axle, Vector3(0, 0, 90))
+	var hemp := K.mat(Color("#ae9470"))
+	for turn in 7:
+		K.cyl(n, 0.15, 0.15, 0.042, hemp, axle + Vector3(-0.16 + 0.047 * turn, 0, 0), Vector3(0, 0, 90))
+	K.box(n, Vector3(0.024, 0.65, 0.024), hemp, Vector3(0.12, 1.16, 0.065))
+	K.box(n, Vector3(0.10, 0.34, 0.075), K.WOOD, axle + Vector3(0.93, -0.15, 0))
+	K.cyl(n, 0.045, 0.045, 0.22, K.WOOD_LIGHT, axle + Vector3(1.0, -0.30, 0), Vector3(0, 0, 90))
+	var pail := Vector3(0.12, 0.78, 0.065)
+	K.cyl(n, 0.17, 0.13, 0.27, K.WOOD_LIGHT, pail)
+	K.cyl(n, 0.145, 0.145, 0.012, K.mat(Color("#403a31")), pail + Vector3.UP * 0.14)
+	K.cyl(n, 0.159, 0.153, 0.035, K.ROOF_EDGE, pail + Vector3.UP * 0.018)
 	return n
+
+
+static func _well_course(surface: SurfaceTool, course: int) -> void:
+	var blocks := 12
+	var outer := 0.84 if course == 2 else 0.79
+	var palette := [Color("#96998d"), Color("#878d83"), Color("#a9a89a"), Color("#999889")]
+	for i in blocks:
+		var start := TAU * (i + 0.5 * (course % 2)) / blocks + 0.009
+		var end := start + TAU / blocks - 0.018
+		var a := Vector3(cos(start), 0, sin(start))
+		var b := Vector3(cos(end), 0, sin(end))
+		var base := Vector3.UP * (0.05 + course * 0.245)
+		var lift := Vector3.UP * 0.237
+		var corners := PackedVector3Array([a * outer + base, b * outer + base, b * 0.53 + base, a * 0.53 + base])
+		var color: Color = palette[(i * 3 + course) % palette.size()]
+		_well_face(surface, corners[0] + lift, corners[1] + lift, corners[2] + lift, corners[3] + lift, color)
+		for j in 4:
+			var p := corners[j]
+			var q := corners[(j + 1) % 4]
+			_well_face(surface, p, q, q + lift, p + lift, color)
+
+
+static func _well_face(surface: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, color: Color) -> void:
+	var normal := (c - a).cross(b - a).normalized()
+	for p in [a, b, c, a, c, d]:
+		surface.set_color(color)
+		surface.set_normal(normal)
+		surface.add_vertex(p)
 
 
 static func stove(parent: Node3D, pos: Vector3, rot_y: float, double: bool) -> Node3D:
@@ -73,15 +120,27 @@ static func water_vat(parent: Node3D, pos: Vector3) -> Node3D:
 static func bed(parent: Node3D, pos: Vector3) -> Node3D:
 	var n := K.node(parent, pos)
 	K.solid(n, Vector3(2.2, 0.5, 1.3), K.WOOD, Vector3(0, 0.25, 0))
-	K.box(n, Vector3(2.0, 0.12, 1.1), K.mat(Color("#b8ab92")), Vector3(0, 0.56, 0))
-	K.box(n, Vector3(1.3, 0.16, 1.05), K.CLOTH_BLUE, Vector3(0.3, 0.68, 0))
-	K.box(n, Vector3(0.35, 0.14, 0.6), K.mat(Color("#d8cdb5")), Vector3(-0.75, 0.68, 0))
+	bedding(n, Vector3(0, 0.50, 0), 1.10)
 	for sx in [-1, 1]:
 		for sz in [-1, 1]:
 			K.box(n, Vector3(0.08, 1.9, 0.08), K.WOOD, Vector3(sx * 1.05, 0.95, sz * 0.6))
-	K.box(n, Vector3(2.2, 0.08, 1.3), K.WOOD, Vector3(0, 1.9, 0))
+		K.box(n, Vector3(0.10, 0.08, 1.3), K.WOOD, Vector3(sx * 1.05, 1.9, 0))
+	K.box(n, Vector3(2.2, 0.08, 0.10), K.WOOD, Vector3(0, 1.9, -0.60))
 	K.box(n, Vector3(2.15, 1.2, 0.02), K.mat(Color("#c8b48a"), 0.9, 0.0, 0.75), Vector3(0, 1.3, -0.62))
 	return n
+
+
+## 席、枕与折好的夹被随床一起搬。榻靠墙的一侧留出扶手。
+static func bedding(parent: Node3D, pos: Vector3, depth: float) -> void:
+	var n := K.node(parent, pos)
+	K.box(n, Vector3(1.97, 0.05, depth), Color("#c6ad84"), Vector3(0, 0.028, 0))
+	K.sphere(n, 0.22, Color("#d4bd91"), Vector3(-0.71, 0.13, 0),
+		Vector3(0.90, 0.60, depth * 1.75))
+	var quilt := Color("#587979")
+	K.box(n, Vector3(1.14, 0.11, depth * 0.96), quilt, Vector3(0.37, 0.11, 0))
+	K.box(n, Vector3(0.24, 0.075, depth * 0.96), Color("#78918a"), Vector3(-0.15, 0.15, 0))
+	for x in [0.64, 0.71]:
+		K.box(n, Vector3(0.028, 0.008, depth * 0.96), Color("#bbb28f"), Vector3(x, 0.169, 0))
 
 
 static func desk(parent: Node3D, pos: Vector3) -> Node3D:
@@ -142,8 +201,13 @@ static func garden_plot(parent: Node3D, pos: Vector3, crop: String, growth: floa
 	K.box(n, Vector3(1.6, 0.18, 1.6), K.WOOD, Vector3(0, 0.09, 0))
 	K.box(n, Vector3(1.45, 0.2, 1.45), K.mat(K.EARTH.darkened(0.25 if not dry else 0.0)), Vector3(0, 0.12, 0))
 	if crop == "":
+		# 空畦留出翻过的土垄。薄霜只落在一侧垄肩，仍能看清土色。
+		var soil := K.mat(Color("#74614e") if dry else Color("#534740"))
 		for k in 3:
-			K.box(n, Vector3(1.3, 0.04, 0.12), K.SNOW, Vector3(0, 0.23, -0.45 + k * 0.45))
+			var z := (k - 1) * 0.42
+			K.sphere(n, 0.5, soil, Vector3(0, 0.22, z), Vector3(1.37, 0.12, 0.24), true)
+			K.sphere(n, 0.28, Color("#bab7a7"), Vector3(0.26 - k * 0.18, 0.254, z - 0.045),
+				Vector3(1.3 - k * 0.18, 0.066, 0.20), true)
 		return n
 	var g := clampf(growth, 0.15, 1.0)
 	for ix in 3:
@@ -343,12 +407,20 @@ static func scroll_painting(parent: Node3D, pos: Vector3) -> Node3D:
 
 static func bookshelf(parent: Node3D, pos: Vector3) -> Node3D:
 	var n := K.node(parent, pos)
-	K.solid(n, Vector3(1.2, 2.0, 0.4), K.WOOD, Vector3(0, 1.0, 0))
-	var colors := [Color("#b9a27a"), Color("#8a6a4a"), Color("#c9b48a"), Color("#6e5a44")]
-	for r in 4:
-		K.box(n, Vector3(1.1, 0.04, 0.38), K.WOOD_LIGHT, Vector3(0, 0.3 + r * 0.45, 0.02))
-		for c in 6:
-			K.box(n, Vector3(0.14, 0.28, 0.28), K.mat(colors[(r + c) % 4]), Vector3(-0.42 + c * 0.17, 0.46 + r * 0.45, 0.04))
+	K.box(n, Vector3(1.16, 1.76, 0.055), Color("#69533f"), Vector3(0, 0.94, -0.18))
+	for x in [-0.56, 0.56]:
+		K.box(n, Vector3(0.075, 1.85, 0.43), K.WOOD, Vector3(x, 0.925, 0))
+	for y in [0.22, 0.74, 1.27, 1.82]:
+		K.box(n, Vector3(1.18, 0.06, 0.45), K.WOOD_LIGHT, Vector3(0, y, 0))
+	var cloth := [Color("#495d63"), Color("#89624d"), Color("#777d62")]
+	for level in 3:
+		var bottom := 0.25 + level * 0.525
+		var side := 1.0 if level == 1 else -1.0
+		for i in 3:
+			var at := Vector3(side * (0.16 + i * 0.011), bottom + 0.038 + i * 0.076, 0.035)
+			K.box(n, Vector3(0.52, 0.067, 0.31), cloth[(i + level) % 3], at)
+			K.box(n, Vector3(0.47, 0.041, 0.019), Color("#cabb94"), at + Vector3(0, 0, 0.153))
+		K.cyl(n, 0.056, 0.058, 0.35, Color("#bca47e"), Vector3(-side * 0.31, bottom + 0.18, 0.01), Vector3(0, 0, side * 12))
 	return n
 
 

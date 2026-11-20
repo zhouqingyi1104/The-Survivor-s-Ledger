@@ -88,6 +88,10 @@ func build_world() -> void:
 	player.arrived.connect(_on_arrived)
 	rig = CamRig.new()
 	rig.target = player
+	# 入院先看见正屋和两厢，走近后仍可用滚轮检查家具。
+	rig.yaw = deg_to_rad(12.0)
+	rig.pitch = -48.0
+	rig.dist = 20.5
 	world.add_child(rig)
 	rig.snap()
 
@@ -1283,6 +1287,7 @@ func _left_top(run: Dictionary) -> void:
 	v.add_child(quest_panel)
 	_live["quest_panel"] = quest_panel
 	hud.add_child(v)
+	_live["yard_cards"] = v
 	Hud.pin(v, Control.PRESET_TOP_LEFT, 14)
 
 
@@ -1512,6 +1517,8 @@ func _update_live() -> void:
 	var run: Dictionary = Game.run
 	if _live.is_empty() or run.phase != "post":
 		return
+	# 挪位时露出左侧地面；确认或取消后恢复日常卡片。
+	_live.yard_cards.visible = Game.placing == ""
 	# 18:00 可能只更新时钟，按当前状态显隐，避免等下一次重画才收起。
 	for key in ["garden_panel", "quest_panel", "agenda_row"]:
 		if _live.has(key):

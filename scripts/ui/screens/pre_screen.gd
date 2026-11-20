@@ -16,10 +16,12 @@ var _framed_loc := ""
 
 ## 不同地点要不同的机位，原因见 _frame()。
 func _frame(loc: String) -> void:
-	# 屋子都建在站位北侧 4 米。站在家门前时，正南机位（yaw 0）的视线正好从自家屋脊穿过，
-	# 角色永远在屏幕正中、被屋顶盖住；改成从东侧看（yaw 90），射线全程不进屋子所在的 z 段。
-	# 铺子却是沿 x 一字排开的，侧看会顺着屋脊望过去，所以街上仍用正南机位。
-	rig.yaw = 90.0 if loc == "home" else 0.0
+	# 从桥侧斜看自家门庭，开着的院门和屋内陈设同时入画；沿街的铺子仍正面取景。
+	rig.yaw = deg_to_rad(135.0) if loc == "home" else 0.0
+	if loc == "home" and is_equal_approx(rig.dist, 30.0):
+		rig.dist = 23.5
+	elif _framed_loc == "home" and is_equal_approx(rig.dist, 23.5):
+		rig.dist = 30.0
 	rig.snap()
 
 
@@ -41,8 +43,8 @@ func sync_world() -> void:
 	if not world.walking:
 		# 只在换地点时重新取景，玩家自己转过的角度不会被每帧重置
 		if _framed_loc != str(Game.run.loc):
+			_frame(str(Game.run.loc))
 			_framed_loc = str(Game.run.loc)
-			_frame(_framed_loc)
 		rig.snap()
 
 

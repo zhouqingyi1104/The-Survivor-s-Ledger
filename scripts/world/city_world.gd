@@ -7,6 +7,7 @@ signal arrived(place: String)
 
 const K = preload("res://scripts/world/kit.gd")
 const Arch = preload("res://scripts/world/arch.gd")
+const HomeHouse = preload("res://scripts/world/home_house.gd")
 const Props = preload("res://scripts/world/props.gd")
 const SkyKit = preload("res://scripts/world/sky.gd")
 const Figure = preload("res://scripts/world/character.gd")
@@ -100,12 +101,12 @@ func _building(id: String) -> void:
 	var d := 4.5
 	var h := 3.4
 	var root := K.node(self, center, Vector3(0, facing, 0))
-	var name_text := "家"
+	_crowds[id] = K.node(self, spot - dir * 0.6, Vector3(0, facing, 0))
 	if id == "home":
-		w = 6.0
-		Arch.wall(root, Vector3(-4, 0, -2.5), Vector3(4, 0, -2.5), 2.6)
-	else:
-		name_text = Pre.shop(id).name
+		_residence(root)
+		_place_label(id, center + Vector3(0, 4.8, -0.4))
+		return
+	var name_text: String = Pre.shop(id).name
 	if id == "temple":
 		w = 9.0
 		h = 4.2
@@ -142,12 +143,50 @@ func _building(id: String) -> void:
 		K.box(boards, Vector3(w - 0.4, 0.3, 0.08), K.WOOD_LIGHT, Vector3(0, 0.4 + k * 0.55, 0), Vector3(0, 0, -6 + (k % 2) * 12))
 	boards.visible = false
 	_boards[id] = boards
-	_labels[id] = K.text3d(self, "", center + Vector3(0, h + 3.2, 0), 44, Color.WHITE, true, 0.009)
+	_place_label(id, center + Vector3(0, h + 3.2, 0))
+
+
+func _place_label(id: String, pos: Vector3) -> void:
+	_labels[id] = K.text3d(self, "", pos, 44, Color.WHITE, true, 0.009)
 	# 卯时的天光本来就发白，淡色字压在上面几乎看不清：描边加粗到不透明，字再亮一点
 	var lab: Label3D = _labels[id]
 	lab.outline_size = 16
 	lab.outline_modulate = Color(0.06, 0.05, 0.04, 1.0)
-	_crowds[id] = K.node(self, spot - dir * 0.6, Vector3(0, facing, 0))
+
+
+## 自家与灾后共用正屋剖面。门朝桥头，开着的院门和压低的侧墙让玩家能看进屋。
+func _residence(root: Node3D) -> void:
+	var hall := K.node(root, Vector3(0, 0.07, -1.4))
+	hall.scale = Vector3.ONE * 0.65
+	HomeHouse.build(hall, Vector3.ZERO, 0, 12.0, 4.5, 3.6, "hall")
+	Props.bed(hall, Vector3(-3.8, 0.18, -0.8))
+	Props.shrine(hall, Vector3(0, 0.14, -1.3))
+	Props.desk(hall, Vector3(3.8, 0.18, -0.85))
+	var yard_width := 8.4
+	var half_width := yard_width / 2.0
+	var gate_z := 3.35
+	K.box(root, Vector3(yard_width, 0.1, 6.45), K.STONE_DARK, Vector3(0, 0.04, 0.16))
+	K.box(root, Vector3(yard_width - 0.24, 0.07, 6.2), K.mat(Color("#9b9684")), Vector3(0, 0.1, 0.16))
+	for side in [-1, 1]:
+		var x: float = side * half_width
+		Arch.wall(root, Vector3(x, 0, -2.95), Vector3(x, 0, gate_z), 0.72)
+		Arch.wall(root, Vector3(x, 0, gate_z), Vector3(side * 1.02, 0, gate_z), 0.93)
+		K.box(root, Vector3(0.46, 1.45, 0.46), K.WALL, Vector3(side * 1.02, 0.73, gate_z))
+		K.prism(root, Vector3(0.75, 0.28, 0.72), K.ROOF, Vector3(side * 1.02, 1.57, gate_z))
+		K.box(root, Vector3(0.12, 1.05, 0.78), K.WOOD, Vector3(side * 0.98, 0.7, gate_z - 0.53))
+	var slab := K.mat(Color("#a19e90"), 0.92)
+	for step in 5:
+		K.box(root, Vector3(1.65, 0.08, 0.59), slab, Vector3(0, 0.16, gate_z + 0.2 - step * 0.69))
+	var well := Props.well(root, Vector3(-2.65, 0.15, 1.45))
+	well.scale = Vector3.ONE * 0.78
+	var plum := Props.plum_tree(root, Vector3(2.85, 0.15, 1.72))
+	plum.scale = Vector3.ONE * 0.65
+	Props.clay_jar(root, Vector3(1.9, 0.15, 0.7), 0.68)
+	# 整座宅院共用原来的回家入口，点到窗墙、家具或空院都算回家。
+	K.collider(root, Vector3(yard_width, 0.24, 6.45), Vector3(0, 0.12, 0.16))
+	K.collider(root, Vector3(6.0, 4.9, 6.5), Vector3(0, 2.45, 0.6))
+	for collider in root.find_children("*", "StaticBody3D", true, false):
+		collider.set_meta("place", "home")
 
 
 func _decor(id: String, root: Node3D, w: float, d: float) -> void:
@@ -186,8 +225,6 @@ func _decor(id: String, root: Node3D, w: float, d: float) -> void:
 		"builder":
 			Props.wood_pile(root, Vector3(-2.0, 0, front + 0.6), 10)
 			Props.wood_pile(root, Vector3(2.0, 0, front + 0.6), 7)
-		"home":
-			Props.plum_tree(root, Vector3(2.4, 0, 1.0))
 
 
 # ---------- 按局面重画 ----------

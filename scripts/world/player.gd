@@ -73,7 +73,9 @@ func _physics_process(delta: float) -> void:
 		_auto = false
 	elif _auto and enabled:
 		_walk_time += delta
-		while _idx < _path.size() - 1 and _flat_dist(_path[_idx]) < 0.3:
+		# 拐角要走到一个物理步长内再转向，否则会抄进家具的碰撞角。
+		var waypoint_tolerance := maxf(0.075, SPEED * delta)
+		while _idx < _path.size() - 1 and _flat_dist(_path[_idx]) < waypoint_tolerance:
 			_idx += 1
 		# 到了；或者被挡住一秒多没挪窝、走了太久，就地算到
 		if _flat_dist(_goal) < 0.55 or _stuck_time > 1.2 or _walk_time > 10.0:

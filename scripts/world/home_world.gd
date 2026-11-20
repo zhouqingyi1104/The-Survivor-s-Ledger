@@ -5,7 +5,9 @@ extends Node3D
 ## 可交互的物件都登记在 spot_nodes 里（碰撞体带 "spot" 标记），界面靠它做悬停描边、点击菜单和头顶标签。
 
 const K = preload("res://scripts/world/kit.gd")
+const COURTYARD_GROUND = preload("res://scripts/world/courtyard_ground.gdshader")
 const Arch = preload("res://scripts/world/arch.gd")
+const HomeHouse = preload("res://scripts/world/home_house.gd")
 const Props = preload("res://scripts/world/props.gd")
 const SkyKit = preload("res://scripts/world/sky.gd")
 const Data = preload("res://scripts/core/data.gd")
@@ -112,42 +114,45 @@ func _ground() -> void:
 	floor_body.position.y = -0.1
 	floor_body.add_child(cs)
 	add_child(floor_body)
-	# 院内青石板：一块块颜色略有不同
-	K.box(self, Vector3(19.4, 0.04, 14.4), K.STONE_DARK, Vector3(0, 0.02, -0.5))
-	var stone := BoxMesh.new()
-	stone.size = Vector3(1.42, 0.06, 1.42)
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.mesh = stone
-	var cols := 13
-	var rows := 10
-	mm.instance_count = cols * rows
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 11
-	for i in cols:
-		for j in rows:
-			var k := i * rows + j
-			mm.set_instance_transform(k, Transform3D(Basis().rotated(Vector3.UP, rng.randf_range(-0.03, 0.03)), Vector3(-9.0 + i * 1.5, 0.045, -7.25 + j * 1.5)))
-			var v := rng.randf_range(-0.08, 0.06)
-			mm.set_instance_color(k, Color(0.92 + v, 0.92 + v, 0.9 + v * 0.8))
-	var mi := MultiMeshInstance3D.new()
-	mi.multimesh = mm
-	var base: BaseMaterial3D = Assets.pbr("cobblestone_floor_08", 1.5)
-	var sm: BaseMaterial3D = base.duplicate() if base != null else StandardMaterial3D.new()
-	sm.vertex_color_use_as_albedo = true
-	sm.roughness = 0.9
-	mi.material_override = sm
-	add_child(mi)
+	# 夯土留给日常劳作；大块青石铺在门、厅堂和两厢之间常走的路上。
+	var packed_earth := ShaderMaterial.new()
+	packed_earth.shader = COURTYARD_GROUND
+	K.box(self, Vector3(20.0, 0.04, 14.9), packed_earth, Vector3(0, 0.015, -0.45))
+	var flagstones: Array[Material] = []
+	for tint in [Color("#9c9e94"), Color("#a8a99c"), Color("#969b94"), Color("#b1afa2")]:
+		var stone := ShaderMaterial.new()
+		stone.shader = COURTYARD_GROUND
+		stone.set_shader_parameter("flagstone", true)
+		stone.set_shader_parameter("base_color", tint)
+		flagstones.append(stone)
+	_pave(Rect2(-1.15, -3.55, 2.3, 10.6), 2, 14, flagstones)
+	_pave(Rect2(-6.24, -1.8, 5.09, 1.55), 5, 2, flagstones)
+	_pave(Rect2(1.15, -1.8, 5.09, 1.55), 5, 2, flagstones)
+	# 井台四周留落脚的干地，踏石通向中路。石面低于可购买的装修地砖。
+	_pave(Rect2(-4.46, 0.1, 2.9, 2.9), 3, 4, flagstones)
+	K.box(self, Vector3(0.51, 0.032, 0.65), flagstones[2], Vector3(-1.4, 0.056, 1.44))
 	# 门外街道（青石）；街对面人家、后巷邻院、城墙山脊等四周景物统一由 home_surroundings 构建
 	K.box(self, Vector3(60, 0.04, 6), K.mat(Color("#8f8b84"), 0.95), Vector3(0, 0.02, 11))
 	K.box(self, Vector3(60, 0.045, 1.2), K.SNOW, Vector3(0, 0.025, 13.6))
 
 
+func _pave(rect: Rect2, columns: int, rows: int, stones: Array[Material]) -> void:
+	var row_depth := rect.size.y / rows
+	var width := rect.size.x / columns
+	for row in rows:
+		var stagger := width * 0.5 * (row % 2)
+		for col in range(columns + row % 2):
+			var left := maxf(rect.position.x, rect.position.x + col * width - stagger)
+			var right := minf(rect.end.x, rect.position.x + (col + 1) * width - stagger)
+			var material := stones[posmod(row * 7 + col * 3 + floori(rect.position.x), stones.size())]
+			var center := Vector3((left + right) * 0.5, 0.052, rect.position.y + (row + 0.5) * row_depth)
+			K.box(self, Vector3(right - left - 0.018, 0.036, row_depth - 0.018), material, center)
+
+
 func _buildings() -> void:
-	halls.append(Arch.hall(self, Vector3(0, 0, -5.75), 0, 12.0, 4.5, 3.6, ["back", "left", "right"]))
-	halls.append(Arch.hall(self, Vector3(-8.0, 0, -0.5), 90, 6.0, 3.6, 3.2, ["back"], false))
-	halls.append(Arch.hall(self, Vector3(8.0, 0, -0.5), -90, 6.0, 3.6, 3.2, ["back"], false))
+	halls.append(HomeHouse.build(self, Vector3(0, 0, -5.75), 0, 12.0, 4.5, 3.6, "hall"))
+	halls.append(HomeHouse.build(self, Vector3(-8.0, 0, -0.5), 90, 6.0, 3.6, 3.2, "kitchen"))
+	halls.append(HomeHouse.build(self, Vector3(8.0, 0, -0.5), -90, 6.0, 3.6, 3.2, "workshop"))
 	Arch.wall(self, Vector3(-10.2, 0, -8.2), Vector3(10.2, 0, -8.2), 3.4)
 	Arch.wall(self, Vector3(-10.2, 0, -8.2), Vector3(-10.2, 0, 7.0), 3.0)
 	Arch.wall(self, Vector3(-10.2, 0, GATE_Z), Vector3(-1.9, 0, GATE_Z), 3.0)
@@ -156,8 +161,8 @@ func _buildings() -> void:
 	_register("gate", gate.node)
 	lanterns.append_array(gate.lanterns)
 	_window = Arch.lattice_window(self, WINDOW_POS)
-	for x in [-6.0, -2.0, 2.0, 6.0]:
-		lanterns.append(Arch.lantern(self, Vector3(x, 3.0, -2.9)))
+	for x in [-5.7, -3.4, 3.4, 5.7]:
+		lanterns.append(Arch.lantern(self, Vector3(x, 3.0, -3.70)))
 
 
 ## 只开放西邻隔墙交谈口；巷道和背景建筑仍不参与导航或拾取。
@@ -568,6 +573,8 @@ func _core_mesh(root: Node3D, id: String, run: Dictionary) -> void:
 		"bed":
 			if Assets.prop(root, "chinese_sofa", Vector3.ZERO) == null:
 				Props.bed(root, Vector3.ZERO)
+			else:
+				Props.bedding(root, Vector3(0, 0.49, 0), 0.82)
 		"desk":
 			if Assets.prop(root, "chinese_tea_table", Vector3.ZERO) != null:
 				Assets.prop(root, "chinese_stool", Vector3(0, 0, 0.75), 180.0)
@@ -587,12 +594,7 @@ func _core_mesh(root: Node3D, id: String, run: Dictionary) -> void:
 func _furn_mesh(root: Node3D, id: String) -> void:
 	match id:
 		"bookshelf":
-			K.box(root, Vector3(1.2, 1.8, 0.42), K.WOOD, Vector3(0, 0.9, 0))
-			for y in [0.55, 0.95, 1.35, 1.72]:
-				K.box(root, Vector3(1.1, 0.06, 0.4), K.WOOD_LIGHT, Vector3(0, y, 0))
-			for i in 3:
-				K.box(root, Vector3(0.28, 0.24, 0.3), K.CLOTH_BLUE if i % 2 else K.PAPER,
-					Vector3(-0.38 + i * 0.36, 0.68 + (i % 2) * 0.4, 0))
+			Props.bookshelf(root, Vector3.ZERO)
 		"rice_jar":
 			K.box(root, Vector3(0.72, 0.7, 0.72), K.EARTH, Vector3(0, 0.35, 0))
 			K.box(root, Vector3(0.8, 0.08, 0.8), K.STONE_DARK, Vector3(0, 0.72, 0))
