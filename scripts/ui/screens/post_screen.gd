@@ -629,10 +629,19 @@ func _hotkey_text(action: String) -> String:
 
 ## 改键后刷新 HUD 上的快捷键提示，不然提示还写着旧键、骗人。
 func refresh_key_hints() -> void:
+	if not is_instance_valid(_live.get("wait_button")):
+		return
 	for action in _key_hints:
 		(_key_hints[action] as Label).text = _hotkey_text(action)
-	if _live.get("agenda_button") is Button:
-		(_live.agenda_button as Button).text = "差事 · %s" % _hotkey_text("agenda")
+	_live.journal_key = _hotkey_text("journal")
+	_live.rotate_key = _hotkey_text("rotate")
+	_live.cancel_key = _hotkey_text("cancel")
+	_live.pause_key = _hotkey_text("speed_pause")
+	(_live.inventory_seal as Button).tooltip_text = "存货（%s）" % _hotkey_text("inventory")
+	(_live.wait_button as Button).tooltip_text = "把时间推到下一个节点（天黑/烧炭/尸潮/溃兵/天亮）。快捷键 %s。" % _hotkey_text("wait")
+	(_live.agenda_button as Button).text = "差事 · %s" % _hotkey_text("agenda")
+	if _live.has("guard_hint"):
+		(_live.guard_hint as Label).text = "%s / 右键：架刀%s" % [_hotkey_text("guard"), _live.guard_status]
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -836,7 +845,7 @@ func _start_move(uid: int) -> void:
 	Game.placing = str(f.id)
 	Game.moving_uid = uid
 	Game.placing_rot = int(f.rot)
-	Game.toast.emit("点地面挪动%s（R 转方向，Esc 取消）" % Home.data(str(f.id)).get("name", "家具"))
+	Game.toast.emit("点地面挪动%s（%s 转方向，%s 取消）" % [Home.data(str(f.id)).get("name", "家具"), _hotkey_text("rotate"), _hotkey_text("cancel")])
 
 
 ## 动态家具按当前位置提供交互名称与站位，固定物沿用原场景定义。
@@ -1087,6 +1096,7 @@ func build_hud() -> void:
 	_left_bottom(run)
 	_center_bottom(run)
 	_crisis_hud(run)
+	refresh_key_hints()
 	_update_live()
 	_update_crops()
 	_scene_audio(run)
@@ -1190,14 +1200,17 @@ func _left_top(run: Dictionary) -> void:
 			"开着" if bool(run.door_open) else "关着", maxi(0, outside), NightFight.inside_count(fight)],
 			13, Hud.RED if NightFight.alive(fight) > 0 else Hud.GREEN))
 		# 架刀：亮着就是能架，暗着是还在收刀
-		var guard_line := "K / 右键：架刀"
+		var guard_status: String
 		if NightFight.can_guard(fight):
-			guard_line += "（就绪）"
+			guard_status = "（就绪）"
 		else:
-			guard_line += "（收刀 %.1f 秒）" % NightFight.block_wait(fight)
+			guard_status = "（收刀 %.1f 秒）" % NightFight.block_wait(fight)
 		if int(fight.get("parries", 0)) > 0:
-			guard_line += "　已架住 %d" % int(fight.parries)
-		f.add_child(Hud.text(guard_line, 13, Hud.GOLD if NightFight.can_guard(fight) else Hud.SUB))
+			guard_status += "　已架住 %d" % int(fight.parries)
+		var guard_hint := Hud.text("", 13, Hud.GOLD if NightFight.can_guard(fight) else Hud.SUB)
+		f.add_child(guard_hint)
+		_live.guard_hint = guard_hint
+		_live.guard_status = guard_status
 	elif Post.in_night(run):
 		f.add_child(Hud.text("院门%s" % ("开着" if bool(run.door_open) else "闩着"), 13, Hud.GOLD if bool(run.door_open) else Hud.SUB))
 	# 摆放家具：这一行常驻，进摆放模式后才显示（面板是建界面时搭的，之后改不了内容）
@@ -1303,7 +1316,7 @@ func _right_top(run: Dictionary) -> void:
 	_live.dial = dial
 	col.add_child(Hud.panel(top, Color(0.05, 0.045, 0.04, 0.72)))
 	# 印章功能按钮
-	var journal_row := Hud.func_row("劫余录", "J", "录", Dialogs.journal)
+	var journal_row := Hud.func_row("劫余录", _hotkey_text("journal"), "录", Dialogs.journal)
 	var journal_subtitle: Label = journal_row.get_child(0).get_child(1)
 	journal_subtitle.name = "NpcPendingSubtitle"
 	_live["npc_pending"] = journal_subtitle
@@ -1397,7 +1410,9 @@ func _quick_actions(run: Dictionary) -> Array:
 func _left_bottom(run: Dictionary) -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
-	h.add_child(Hud.seal("囊", Dialogs.inventory, "存货（I）", 58))
+	var inventory_seal := Hud.seal("囊", Dialogs.inventory, "", 58)
+	h.add_child(inventory_seal)
+	_live.inventory_seal = inventory_seal
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	# 今日差事的账：还有多少事、天色还剩多久。常驻在这里，玩家一抬眼就知道"还有的忙"
@@ -1435,7 +1450,9 @@ func _left_bottom(run: Dictionary) -> void:
 	# 等一刻与空档提示另起一行：挤在速度按钮右边会撞上底下居中的心腹条
 	var wr := HBoxContainer.new()
 	wr.add_theme_constant_override("separation", 6)
-	wr.add_child(Hud.button("等一刻", _wait_turn, false, "把时间推到下一个节点（天黑/烧炭/尸潮/溃兵/天亮）。快捷键 Q。", 12))
+	var wait_button := Hud.button("等一刻", _wait_turn, false, "", 12)
+	wr.add_child(wait_button)
+	_live.wait_button = wait_button
 	var status := Hud.text("", 13, Hud.SUB)
 	wr.add_child(status)
 	_live.speed_status = status
@@ -1506,7 +1523,8 @@ func _update_live() -> void:
 		(_live.mainline as Label).tooltip_text = Mainline.summary(run)
 	if _live.has("npc_pending"):
 		var count: int = Dialogs.npc_pending_count(run)
-		(_live.npc_pending as Label).text = "邻人待回话 %d · J" % count if count > 0 else "J"
+		var journal_hint: String = _live.journal_key if run.fight.is_empty() else "点印翻阅"
+		(_live.npc_pending as Label).text = "邻人待回话 %d · %s" % [count, journal_hint] if count > 0 else journal_hint
 	if _live.has("crisis_countdown"):
 		var crisis_view := Crisis.view(run)
 		(_live.crisis_countdown as Label).text = Dialogs.crisis_clock_text(crisis_view)
@@ -1533,8 +1551,9 @@ func _update_live() -> void:
 		pl.visible = Game.placing != ""
 		if pl.visible:
 			var fd: Dictionary = Home.data(Game.placing)
-			pl.text = "%s %s · %s · 左键确认 · R 转向 · Esc 取消" % [
-				"挪动" if Game.moving_uid >= 0 else "摆放", fd.get("name", ""), "可放下" if _place_reason == "" else _place_reason]
+			pl.text = "%s %s · %s · 左键确认 · %s 转向 · %s 取消" % [
+				"挪动" if Game.moving_uid >= 0 else "摆放", fd.get("name", ""), "可放下" if _place_reason == "" else _place_reason,
+				_live.rotate_key, _live.cancel_key]
 	if _live.has("agenda_status"):
 		var sm := Agenda.summary(run)
 		var line := "待办 %s 小时 · 到 22:00 余 %s 小时" % [Agenda.hours_text(int(sm.need)), Agenda.hours_text(int(sm.left))]
@@ -1544,7 +1563,7 @@ func _update_live() -> void:
 	if _live.has("speed_status"):
 		var s := ""
 		if Game.speed == 0:
-			s = "已暂停（空格继续）"
+			s = "已暂停（按 %s 继续）" % _live.pause_key
 		elif run.sleeping:
 			s = "睡眠加速中"
 		elif Post.is_busy(run):
