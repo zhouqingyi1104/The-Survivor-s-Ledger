@@ -47,6 +47,17 @@ func _ready() -> void:
 		check(hero._path.size() > 1 and (hero._path[0] as Vector3).distance_to(start) < 1.0, floor_id + ": player path did not start in room")
 		await get_tree().create_timer(0.3).timeout
 		check(hero.position.distance_to(start) > 0.1, floor_id + ": player did not begin walking")
+		if floor_id == "attic":
+			var bay := origin + Vector3(3.1, 0, -4.12)
+			check(world._inside_pick_bounds(bay), "attic window bay not clickable")
+			check(not world._inside_pick_bounds(origin + Vector3(-3.8, 0, 2.6)), "cut corner still accepts a ground click")
+			var to_bay := NavigationServer3D.map_get_path(map, start, bay, true)
+			check(to_bay.size() >= 2 and Vector2(to_bay[-1].x - bay.x, to_bay[-1].z - bay.z).length() < 0.35, "attic window bay not reachable from stairs")
+			hero.walk_to(bay)
+			for frame in 300:
+				await get_tree().physics_frame
+				if not hero.is_walking(): break
+			check(hero.position.distance_to(bay) < 0.56 and hero.position.z < origin.z - 3.5, "player did not enter the window bay: " + str(hero.position))
 		hero.queue_free()
 		await get_tree().physics_frame
 		check(world.build_spot_block(run, "rice_jar", origin.x, 0.0, 0) != "", floor_id + ": corridor can be blocked")

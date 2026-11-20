@@ -78,6 +78,9 @@ var _night_sfx_in := 6.0
 
 # ---------- 世界 ----------
 
+const COURTYARD_DISTANCE := 25.0
+const ROOM_DISTANCE := 20.5
+
 func build_world() -> void:
 	world = HomeWorld.new()
 	add_child(world)
@@ -90,8 +93,8 @@ func build_world() -> void:
 	rig.target = player
 	# 入院先看见正屋和两厢，走近后仍可用滚轮检查家具。
 	rig.yaw = deg_to_rad(12.0)
-	rig.pitch = -48.0
-	rig.dist = 20.5
+	rig.pitch = -44.0
+	rig.dist = COURTYARD_DISTANCE
 	world.add_child(rig)
 	rig.snap()
 
@@ -138,6 +141,10 @@ func _sync_floor() -> void:
 	_close_menu()
 	Game.placing = ""
 	Game.moving_uid = -1
+	if world._floor == "courtyard" and target != "courtyard" and is_equal_approx(rig.dist, COURTYARD_DISTANCE):
+		rig.dist = ROOM_DISTANCE
+	elif target == "courtyard" and world._floor != "courtyard" and is_equal_approx(rig.dist, ROOM_DISTANCE):
+		rig.dist = COURTYARD_DISTANCE
 	world.set_floor(target)
 	player.global_position = world.floor_spawn(target)
 	player.velocity = Vector3.ZERO

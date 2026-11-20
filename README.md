@@ -8,7 +8,7 @@
 
 | 你手上有什么 | 从哪里开始 |
 |---|---|
-| Windows 试玩包 | 本机的 `build/home-remodel-20261120/windows/` 可体验新宅院和米行旧事「燕尾担」。保留目录内的文件，双击「劫余录.exe」即可离线玩。报告里的「本次运行的构建提交」可用来核对版本。 |
+| Windows 试玩包 | 本机的 `build/villa-estate-20261120/windows/` 可体验桥头别院、折廊和阁楼，也可寻访米行旧事「燕尾担」。保留目录内的文件，双击「劫余录.exe」即可离线玩。报告里的「本次运行的构建提交」可用来核对版本。 |
 | 仓库源码 | 用 Godot 4.7.2 打开 [project.godot](project.godot)，首次导入完成后按 F5 运行项目。默认渲染器为 Forward+。 |
 | 已按项目目录放好 Windows 引擎 | 双击 [启动游戏.bat](启动游戏.bat)。它使用 `tools/godot/Godot_v4.7.2-stable_win64.exe` 并尝试启动本地世情桥接器。 |
 

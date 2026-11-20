@@ -17,7 +17,7 @@ var _framed_loc := ""
 ## 不同地点要不同的机位，原因见 _frame()。
 func _frame(loc: String) -> void:
 	# 从桥侧斜看自家门庭，开着的院门和屋内陈设同时入画；沿街的铺子仍正面取景。
-	rig.yaw = deg_to_rad(135.0) if loc == "home" else 0.0
+	rig.yaw = deg_to_rad(152.0) if loc == "home" else 0.0
 	if loc == "home" and is_equal_approx(rig.dist, 30.0):
 		rig.dist = 23.5
 	elif _framed_loc == "home" and is_equal_approx(rig.dist, 23.5):

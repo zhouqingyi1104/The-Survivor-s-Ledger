@@ -125,12 +125,18 @@ func _ground() -> void:
 		stone.set_shader_parameter("flagstone", true)
 		stone.set_shader_parameter("base_color", tint)
 		flagstones.append(stone)
-	_pave(Rect2(-1.15, -3.55, 2.3, 10.6), 2, 14, flagstones)
+	_pave(Rect2(-1.15, -4.7, 2.3, 11.75), 2, 16, flagstones)
 	_pave(Rect2(-6.24, -1.8, 5.09, 1.55), 5, 2, flagstones)
 	_pave(Rect2(1.15, -1.8, 5.09, 1.55), 5, 2, flagstones)
 	# 井台四周留落脚的干地，踏石通向中路。石面低于可购买的装修地砖。
 	_pave(Rect2(-4.46, 0.1, 2.9, 2.9), 3, 4, flagstones)
 	K.box(self, Vector3(0.51, 0.032, 0.65), flagstones[2], Vector3(-1.4, 0.056, 1.44))
+	# 梅下茶台取八角，斜踏步从中路分出。坪面低于装修面层。
+	var tea_pad := K.node(self, Vector3(-4.6, 0, 4.4), Vector3(0, 22.5, 0))
+	K.cyl(tea_pad, 2.0, 2.0, 0.052, Color("#686b62"), Vector3(0, 0.055, 0), Vector3.ZERO, 8)
+	K.cyl(tea_pad, 1.84, 1.84, 0.024, flagstones[1], Vector3(0, 0.07, 0), Vector3.ZERO, 8)
+	for step in [Vector3(-1.65, 0.056, 3.1), Vector3(-2.30, 0.056, 3.46)]:
+		K.box(self, Vector3(0.58, 0.038, 0.85), flagstones[0], step, Vector3(0, 29, 0))
 	# 门外街道（青石）；街对面人家、后巷邻院、城墙山脊等四周景物统一由 home_surroundings 构建
 	K.box(self, Vector3(60, 0.04, 6), K.mat(Color("#8f8b84"), 0.95), Vector3(0, 0.02, 11))
 	K.box(self, Vector3(60, 0.045, 1.2), K.SNOW, Vector3(0, 0.025, 13.6))
@@ -150,9 +156,13 @@ func _pave(rect: Rect2, columns: int, rows: int, stones: Array[Material]) -> voi
 
 
 func _buildings() -> void:
-	halls.append(HomeHouse.build(self, Vector3(0, 0, -5.75), 0, 12.0, 4.5, 3.6, "hall"))
-	halls.append(HomeHouse.build(self, Vector3(-8.0, 0, -0.5), 90, 6.0, 3.6, 3.2, "kitchen"))
-	halls.append(HomeHouse.build(self, Vector3(8.0, 0, -0.5), -90, 6.0, 3.6, 3.2, "workshop"))
+	for room in Home.COURTYARD_ROOMS:
+		var pos := Vector3(room.center.x, 0, room.center.y)
+		var hall := HomeHouse.build(self, pos, room.yaw, room.w, room.d, room.h, room.kind, room.kind == "hall")
+		# 檐口比台基宽半步，沿同一折线扩出淡顶范围。
+		hall["eaves"] = Geometry2D.offset_polygon(hall.footprint, 0.7, Geometry2D.JOIN_MITER)[0]
+		halls.append(hall)
+	_west_gallery()
 	Arch.wall(self, Vector3(-10.2, 0, -8.2), Vector3(10.2, 0, -8.2), 3.4)
 	Arch.wall(self, Vector3(-10.2, 0, -8.2), Vector3(-10.2, 0, 7.0), 3.0)
 	Arch.wall(self, Vector3(-10.2, 0, GATE_Z), Vector3(-1.9, 0, GATE_Z), 3.0)
@@ -161,8 +171,31 @@ func _buildings() -> void:
 	_register("gate", gate.node)
 	lanterns.append_array(gate.lanterns)
 	_window = Arch.lattice_window(self, WINDOW_POS)
-	for x in [-5.7, -3.4, 3.4, 5.7]:
-		lanterns.append(Arch.lantern(self, Vector3(x, 3.0, -3.70)))
+	for hook in [Vector3(-5.35, 2.70, -2.15), Vector3(5.02, 2.54, -2.97)]:
+		lanterns.append(Arch.lantern(self, hook))
+
+
+## 正屋和灶间之间的转角留作抄手游廊。瓦面裁到外圈，内侧可见人物经过。
+func _west_gallery() -> void:
+	var path := PackedVector2Array([Vector2(-5.96, -5.35), Vector2(-7.4, -5.35),
+		Vector2(-8.25, -4.5), Vector2(-8.25, -3.46)])
+	var width := 1.22
+	var walkway := Geometry2D.offset_polyline(path, width * 0.5, Geometry2D.JOIN_MITER, Geometry2D.END_BUTT)[0]
+	K.floor_slab(self, walkway, 0.122, 0.045, K.WOOD_LIGHT)
+	# 取外边三个折段的交点，让檐线连续；落柱仅在原先不能摆放家具的房角。
+	var eaves := PackedVector2Array([Vector2(-5.96, -5.96), Vector2(-7.65, -5.96),
+		Vector2(-8.86, -4.75), Vector2(-8.86, -3.46)])
+	for i in eaves.size() - 1:
+		var a := eaves[i]
+		var b := eaves[i + 1]
+		var middle := (a + b) * 0.5
+		var n := K.node(self, Vector3(middle.x, 2.35, middle.y), Vector3(0, -rad_to_deg((b - a).angle()), 0))
+		K.box(n, Vector3(a.distance_to(b) + 0.09, 0.16, 0.18), K.WOOD, Vector3.ZERO)
+		K.box(n, Vector3(a.distance_to(b) + 0.09, 0.12, 0.58), K.ROOF, Vector3(0, 0.15, 0), Vector3(-11, 0, 0))
+	for i in [1, 2]:
+		var foot := Vector3(eaves[i].x, 0, eaves[i].y)
+		K.cyl(self, 0.11, 0.12, 2.36, K.WOOD, foot + Vector3.UP * 1.18, Vector3.ZERO, 8)
+		K.collider(self, Vector3(0.22, 2.36, 0.22), foot + Vector3.UP * 1.18)
 
 
 ## 只开放西邻隔墙交谈口；巷道和背景建筑仍不参与导航或拾取。
@@ -270,7 +303,6 @@ func set_floor(id: String) -> void:
 func prepare_navigation() -> void:
 	if is_inside_tree():
 		NavigationServer3D.map_force_update(get_world_3d().navigation_map)
-		NavigationServer3D.map_force_update(get_world_3d().navigation_map)
 
 
 func floor_origin() -> Vector3:
@@ -343,6 +375,11 @@ func _spot_on_floor(id: String) -> bool:
 
 ## 导航网格：按院里的静态碰撞烘焙，点哪儿走哪儿。
 func _bake_nav() -> void:
+	# 点选工作台会在同一帧查路。地图与区域都使用同步迭代，才能在烘焙后立即发布。
+	var map := get_world_3d().navigation_map
+	if NavigationServer3D.map_get_use_async_iterations(map):
+		NavigationServer3D.map_set_use_async_iterations(map, false)
+		tree_exiting.connect(NavigationServer3D.map_set_use_async_iterations.bind(map, true), CONNECT_ONE_SHOT)
 	nav_region = _new_nav_region("courtyard")
 	for floor_id in ["cellar", "attic", "guest_zhou"]:
 		_room_nav[floor_id] = _new_nav_region(floor_id)
@@ -351,6 +388,8 @@ func _bake_nav() -> void:
 
 
 func _finish_initial_navigation() -> void:
+	if not is_inside_tree():
+		return
 	await get_tree().physics_frame
 	if not is_inside_tree():
 		return
@@ -373,6 +412,7 @@ func _new_nav_region(floor_id: String) -> NavigationRegion3D:
 	nm.agent_max_climb = 0.25
 	nm.filter_baking_aabb = _nav_bounds_for(floor_id)
 	var region := NavigationRegion3D.new()
+	NavigationServer3D.region_set_use_async_iterations(region.get_rid(), false)
 	region.navigation_mesh = nm
 	add_child(region)
 	region.bake_navigation_mesh(false)
@@ -414,6 +454,12 @@ func _sync_side_yard(run: Dictionary) -> bool:
 func _nav_bounds_for(floor_id: String) -> AABB:
 	if floor_id != "courtyard":
 		var p: Vector3 = FloorWorld.ORIGINS[floor_id]
+		if floor_id == "attic":
+			var bounds := Rect2(FloorWorld.ATTIC_OUTLINE[0], Vector2.ZERO)
+			for point in FloorWorld.ATTIC_OUTLINE:
+				bounds = bounds.expand(point)
+			bounds = bounds.grow(0.2)
+			return AABB(p + Vector3(bounds.position.x, -1, bounds.position.y), Vector3(bounds.size.x, 6, bounds.size.y))
 		return AABB(p + Vector3(-4.2, -1, -3.7), Vector3(8.4, 6, 7.4))
 	return AABB(Vector3(-10.5, -1, -8.5), Vector3(27.5, 6, 16)) if Expansion.complete(_current_run) else AABB(Vector3(-10.5, -1, -8.5), Vector3(21, 6, 16))
 
@@ -1170,7 +1216,7 @@ func indoors(pos: Vector3) -> bool:
 		return true
 	for h in halls:
 		var local: Vector3 = (h.node as Node3D).to_local(pos)
-		if absf(local.x) < h.w / 2.0 and absf(local.z) < h.d / 2.0:
+		if Geometry2D.is_point_in_polygon(Vector2(local.x, local.z), h.footprint):
 			return true
 	return false
 
@@ -1180,7 +1226,7 @@ func update_roofs(player_pos: Vector3) -> void:
 	for h in halls:
 		var n: Node3D = h.node
 		var local := n.to_local(player_pos)
-		var inside: bool = absf(local.x) < h.w / 2.0 + 0.6 and local.z > -h.d / 2.0 - 0.2 and local.z < h.d / 2.0 + 0.9
+		var inside := Geometry2D.is_point_in_polygon(Vector2(local.x, local.z), h.eaves)
 		var target := 0.15 if inside else 1.0
 		for m in h.fade_mats:
 			_fade(m, target)

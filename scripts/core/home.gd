@@ -12,15 +12,20 @@ const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 const Expansion = preload("res://scripts/core/home_expansion.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
+const HomePlan = preload("res://scripts/core/home_plan.gd")
 
 const CORE_IDS := ["bed", "desk", "storage", "stove", "bench"]
 
 const DAY := 1440
 ## 摆放吸附的格子（米）
 const GRID := 0.25
-## 能摆的区域：屋里（正屋、西厢灶房、东厢工坊）和院子
-const INDOOR := [Rect2(-5.8, -7.9, 11.6, 4.2), Rect2(-9.9, -3.3, 3.6, 5.6), Rect2(6.3, -3.3, 3.6, 5.6)]
-const OUTDOOR := [Rect2(-9.9, 2.6, 19.8, 4.1), Rect2(-6.1, -3.3, 12.2, 5.9)]
+## 模型和摆放判定共用房间的朝向、跨度和台基轮廓。
+const COURTYARD_ROOMS := [
+	{"kind": "hall", "center": Vector2(0, -5.75), "yaw": 0.0, "w": 12.0, "d": 4.5, "h": 3.6},
+	{"kind": "kitchen", "center": Vector2(-8.0, -0.5), "yaw": 90.0, "w": 6.0, "d": 3.6, "h": 3.2},
+	{"kind": "workshop", "center": Vector2(8.0, -0.5), "yaw": -90.0, "w": 6.0, "d": 3.6, "h": 3.2},
+]
+const OUTDOOR := [Rect2(-9.9, 2.6, 19.8, 4.1), Rect2(-6.1, -4.65, 12.2, 7.25)]
 ## 不许摆的：大门到正屋的中路、米袋 / 柴垛 / 木料堆（这几堆按存货画，没有碰撞）
 const ROOM_AREA := Rect2(-3.0, -2.5, 6.0, 5.0)
 const ROOM_EXIT := Rect2(-0.8, -2.5, 1.6, 5.0)
@@ -37,6 +42,8 @@ const PICKLE_VEG := ["cabbage", "radish", "mustard", "chive", "spinach"]
 const PICKLE_DAYS := 2.0
 const SMOKE_DAYS := 1.0
 const TRAP_CHANCE := 0.4
+
+static var _room_outlines: Array[PackedVector2Array] = []
 
 
 static func table() -> Dictionary:
@@ -142,8 +149,16 @@ static func _inside(r: Rect2, areas: Array) -> bool:
 static func area_of(r: Rect2, run: Dictionary = {}) -> String:
 	if Floors.current(run) != "courtyard":
 		return "indoor" if _inside(r, [ROOM_AREA]) else ""
-	if _inside(r, INDOOR):
-		return "indoor"
+	if _room_outlines.is_empty():
+		for room in COURTYARD_ROOMS:
+			var transform := Transform2D(-deg_to_rad(float(room.yaw)), room.center)
+			_room_outlines.append(transform * HomePlan.footprint(room.kind, room.w, room.d))
+	var corners := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+	for outline in _room_outlines:
+		if Geometry2D.clip_polygons(corners, outline).is_empty():
+			return "indoor"
+		if not Geometry2D.intersect_polygons(corners, outline).is_empty():
+			return ""
 	var outdoor := OUTDOOR.duplicate()
 	if Expansion.complete(run):
 		outdoor.append(SIDE_YARD)

@@ -60,6 +60,21 @@ func _ready() -> void:
 	player.setup("scholar")
 	player.position = World.SPAWN
 	for i in 5: await get_tree().physics_frame
+	# 同一深度上，西侧挑廊已是屋里，中间仍是露天入口。
+	for sample in [[Vector2(-4.0, -2.8), true], [Vector2(0.0, -3.95), false], [Vector2(4.0, -3.18), true]]:
+		var pt: Vector2 = sample[0]
+		var indoor: bool = sample[1]
+		check(world.indoors(Vector3(pt.x, 0, pt.y)) == indoor, "footsteps do not follow room at " + str(pt))
+		var area := Home.area_of(Rect2(pt - Vector2(0.05, 0.05), Vector2(0.1, 0.1)), run)
+		check(area == ("indoor" if indoor else "outdoor"), "furniture zone differs from floor at " + str(pt))
+	check(Home.area_of(Rect2(-2.6, -4.3, 0.5, 0.3), run) == "", "furniture can straddle the notch in the hall")
+	var gallery_start := Vector3(-5.0, 0, -5.35)
+	var gallery_end := Vector3(-7.13, 0, -5.35)
+	var gallery_path := NavigationServer3D.map_get_path(world.get_world_3d().navigation_map, gallery_start, gallery_end, true)
+	var walk_length := 0.0
+	for i in range(1, gallery_path.size()):
+		walk_length += _flat(gallery_path[i - 1], gallery_path[i])
+	check(gallery_path.size() >= 2 and _flat(gallery_path[0], gallery_start) < 0.35 and _flat(gallery_path[-1], gallery_end) < 0.35 and walk_length < 2.8, "west gallery requires a detour around the side wall")
 	_paths(world, "before")
 	await _go(world, player, World.SPOTS.well.stand, "before")
 	player.position = World.SPAWN

@@ -138,6 +138,31 @@ static func box(parent: Node3D, size: Vector3, color, pos: Vector3, rot_deg := V
 	return _mesh(parent, m, color if color is Material else mat(color), pos, rot_deg)
 
 
+## 沿 XZ 平面轮廓做台基。上表面可凹，立边沿轮廓收口，底面埋地。
+static func floor_slab(parent: Node3D, outline: PackedVector2Array, top_y: float, bottom_y: float, color) -> MeshInstance3D:
+	var rim := outline.duplicate()
+	if Geometry2D.is_polygon_clockwise(rim):
+		rim.reverse()
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in Geometry2D.triangulate_polygon(rim):
+		var pt := rim[index]
+		surface.set_normal(Vector3.UP)
+		surface.set_uv(pt)
+		surface.add_vertex(Vector3(pt.x, top_y, pt.y))
+	for i in rim.size():
+		var a := rim[i]
+		var b := rim[(i + 1) % rim.size()]
+		var normal := Vector3(b.y - a.y, 0, a.x - b.x).normalized()
+		var width := a.distance_to(b)
+		for uv: Vector2 in [Vector2.ZERO, Vector2(1, 0), Vector2.ONE, Vector2.ZERO, Vector2.ONE, Vector2(0, 1)]:
+			var pt := a.lerp(b, uv.x)
+			surface.set_normal(normal)
+			surface.set_uv(Vector2(width * uv.x, (top_y - bottom_y) * uv.y))
+			surface.add_vertex(Vector3(pt.x, lerpf(bottom_y, top_y, uv.y), pt.y))
+	return _mesh(parent, surface.commit(), color if color is Material else mat(color), Vector3.ZERO)
+
+
 static func cyl(parent: Node3D, r_top: float, r_bottom: float, h: float, color, pos: Vector3, rot_deg := Vector3.ZERO, sides := 12) -> MeshInstance3D:
 	var m := CylinderMesh.new()
 	m.top_radius = r_top

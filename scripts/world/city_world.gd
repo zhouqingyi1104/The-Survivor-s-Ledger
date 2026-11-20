@@ -154,39 +154,82 @@ func _place_label(id: String, pos: Vector3) -> void:
 	lab.outline_modulate = Color(0.06, 0.05, 0.04, 1.0)
 
 
-## 自家与灾后共用正屋剖面。门朝桥头，开着的院门和压低的侧墙让玩家能看进屋。
+## 从桥头进侧门，折上石阶是抬高的正屋，转过一侧的短灶房便是井院。
 func _residence(root: Node3D) -> void:
-	var hall := K.node(root, Vector3(0, 0.07, -1.4))
-	hall.scale = Vector3.ONE * 0.65
-	HomeHouse.build(hall, Vector3.ZERO, 0, 12.0, 4.5, 3.6, "hall")
+	_residence_terrace(root, Vector2(-1.35, -0.82), Vector2(2.22, 1.84), 0.50, Color("#a39986"))
+	_residence_terrace(root, Vector2(-0.55, 1.75), Vector2(8.76, 3.5), 0.16, Color("#a89c86"))
+	_residence_terrace(root, Vector2(4.65, -0.34), Vector2(3.68, 5.11), 0.30, Color("#92917e"))
+	var hall := K.node(root, Vector3(-1.35, 0.50, -2.40))
+	hall.scale = Vector3.ONE * 0.69
+	var rooms := HomeHouse.build(hall, Vector3.ZERO, 0, 12.0, 4.5, 3.6, "hall")
+	var base_outline := PackedVector2Array()
+	for corner: Vector2 in rooms.footprint:
+		base_outline.append(corner * 1.05)
+	# 台基逐间随外墙进退，石阶只接到中厅。西卧与东窗向院里伸出的轮廓都留在外面。
+	var plinth := K.floor_slab(hall, base_outline, 0.0, -hall.position.y / hall.scale.y, Color("#8e8677"))
+	plinth.create_trimesh_collision()
 	Props.bed(hall, Vector3(-3.8, 0.18, -0.8))
 	Props.shrine(hall, Vector3(0, 0.14, -1.3))
 	Props.desk(hall, Vector3(3.8, 0.18, -0.85))
-	var yard_width := 8.4
-	var half_width := yard_width / 2.0
-	var gate_z := 3.35
-	K.box(root, Vector3(yard_width, 0.1, 6.45), K.STONE_DARK, Vector3(0, 0.04, 0.16))
-	K.box(root, Vector3(yard_width - 0.24, 0.07, 6.2), K.mat(Color("#9b9684")), Vector3(0, 0.1, 0.16))
+	# 灶间的屋脊垂直于正屋，两栋之间留一条穿到水井的巷子。
+	var kitchen := K.node(root, Vector3(4.95, 0.30, -0.43), Vector3(0, -90, 0))
+	kitchen.scale = Vector3.ONE * 0.65
+	HomeHouse.build(kitchen, Vector3.ZERO, 0, 6.0, 3.6, 2.75, "kitchen")
+	Props.stove(kitchen, Vector3(-1.20, 0.14, -0.65), 0, false)
+	Props.firewood(kitchen, Vector3(1.4, 0.14, -0.70), 5)
+	var well := Props.well(root, Vector3(1.85, 0.16, 1.36))
+	well.scale = Vector3.ONE * 0.72
+	_plum_terrace(root)
+	# 保留桥上可见的门洞，围墙在灶翼一侧退两折，另一侧让出临河的赏梅台。
+	var gate_z := 3.5
+	Arch.wall(root, Vector3(-3.0, 0, gate_z), Vector3(-1.02, 0, gate_z), 0.72)
+	Arch.wall(root, Vector3(1.02, 0, gate_z), Vector3(3.82, 0, gate_z), 0.72)
+	Arch.wall(root, Vector3(3.82, 0, gate_z), Vector3(3.82, 0, 2.22), 0.72)
+	Arch.wall(root, Vector3(3.82, 0, 2.22), Vector3(6.49, 0, 2.22), 0.75)
+	Arch.wall(root, Vector3(6.49, 0, 2.22), Vector3(6.49, 0, -2.8), 0.75)
 	for side in [-1, 1]:
-		var x: float = side * half_width
-		Arch.wall(root, Vector3(x, 0, -2.95), Vector3(x, 0, gate_z), 0.72)
-		Arch.wall(root, Vector3(x, 0, gate_z), Vector3(side * 1.02, 0, gate_z), 0.93)
-		K.box(root, Vector3(0.46, 1.45, 0.46), K.WALL, Vector3(side * 1.02, 0.73, gate_z))
-		K.prism(root, Vector3(0.75, 0.28, 0.72), K.ROOF, Vector3(side * 1.02, 1.57, gate_z))
-		K.box(root, Vector3(0.12, 1.05, 0.78), K.WOOD, Vector3(side * 0.98, 0.7, gate_z - 0.53))
-	var slab := K.mat(Color("#a19e90"), 0.92)
-	for step in 5:
-		K.box(root, Vector3(1.65, 0.08, 0.59), slab, Vector3(0, 0.16, gate_z + 0.2 - step * 0.69))
-	var well := Props.well(root, Vector3(-2.65, 0.15, 1.45))
-	well.scale = Vector3.ONE * 0.78
-	var plum := Props.plum_tree(root, Vector3(2.85, 0.15, 1.72))
-	plum.scale = Vector3.ONE * 0.65
-	Props.clay_jar(root, Vector3(1.9, 0.15, 0.7), 0.68)
-	# 整座宅院共用原来的回家入口，点到窗墙、家具或空院都算回家。
-	K.collider(root, Vector3(yard_width, 0.24, 6.45), Vector3(0, 0.12, 0.16))
-	K.collider(root, Vector3(6.0, 4.9, 6.5), Vector3(0, 2.45, 0.6))
+		K.box(root, Vector3(0.40, 1.28, 0.40), K.WALL, Vector3(side * 1.02, 0.64, gate_z))
+		K.prism(root, Vector3(0.65, 0.25, 0.63), K.ROOF, Vector3(side * 1.02, 1.39, gate_z))
+		K.box(root, Vector3(0.11, 1.02, 0.68), K.WOOD, Vector3(side * 1.02, 0.69, gate_z - 0.44))
+	var slab := K.mat(Color("#aba89a"), 0.92)
+	for z in [3.72, 3.10, 2.48, 1.86]:
+		K.box(root, Vector3(1.42, 0.085, 0.55), slab, Vector3(0, 0.17, z))
+	K.box(root, Vector3(1.66, 0.085, 0.55), slab, Vector3(-1.58, 0.17, 1.86))
+	for i in 3:
+		var top := 0.23 + i * 0.09
+		K.box(root, Vector3(2.10, top, 0.54), slab, Vector3(-1.35, top * 0.5, 1.32 - i * 0.50))
+	# 展开的宅院仍是一处地点。两栋上部也可点击；凹进的空地和桥面在碰撞盒之外。
+	K.collider(hall, Vector3(12.0, 3.8, 4.5), Vector3(0, 1.9, 0))
+	K.collider(kitchen, Vector3(6.0, 2.75, 3.6), Vector3(0, 1.375, 0))
 	for collider in root.find_children("*", "StaticBody3D", true, false):
 		collider.set_meta("place", "home")
+
+
+func _residence_terrace(root: Node3D, center: Vector2, size: Vector2, height: float, surface: Color) -> void:
+	var box := Vector3(size.x, height, size.y)
+	var mid := Vector3(center.x, height * 0.5, center.y)
+	K.solid(root, box, Color("#726d63"), mid)
+	K.box(root, Vector3(size.x + 0.10, 0.075, size.y + 0.10), surface, Vector3(center.x, height - 0.0375, center.y))
+
+
+func _plum_terrace(root: Node3D) -> void:
+	# 八角台挑出卧房一角。临水三面只设坐凳与矮栏，从桥头仍能看到屋内。
+	var terrace := K.node(root, Vector3(-4.95, 0, 1.74))
+	var base := K.cyl(terrace, 2.15, 2.25, 0.38, K.STONE_DARK, Vector3(0, 0.19, 0), Vector3.ZERO, 8)
+	base.scale.z = 0.90
+	var paving := K.cyl(terrace, 2.18, 2.18, 0.085, Color("#a8a294"), Vector3(0, 0.41, 0), Vector3.ZERO, 8)
+	paving.scale.z = 0.90
+	paving.create_convex_collision()
+	var plum := Props.plum_tree(terrace, Vector3(-0.68, 0.45, 0.04))
+	plum.scale = Vector3.ONE * 0.77
+	for i in range(3, 7):
+		var angle := PI * i / 4.0
+		var leg := Vector3(2.0 * cos(angle), 0.45, 1.8 * sin(angle))
+		K.box(terrace, Vector3(0.14, 0.6, 0.14), K.WOOD, leg + Vector3.UP * 0.30)
+		if i < 6:
+			var next := Vector3(2.0 * cos(angle + PI / 4.0), 0.45, 1.8 * sin(angle + PI / 4.0))
+			K.box(terrace, Vector3(0.32, 0.12, leg.distance_to(next)), K.WOOD_LIGHT,
+				(leg + next) * 0.5 + Vector3.UP * 0.34, Vector3(0, rad_to_deg(atan2(next.x - leg.x, next.z - leg.z)), 0))
 
 
 func _decor(id: String, root: Node3D, w: float, d: float) -> void:
