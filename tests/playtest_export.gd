@@ -25,6 +25,8 @@ func _ready() -> void:
 	var empty := Game.export_playtest()
 	check(bool(empty.get("ok", false)), "空档导出失败：%s" % str(empty.get("note", "")))
 	check(str(empty.get("dir", "")) != "", "空档导出没给路径")
+	var empty_report := FileAccess.get_file_as_string(str(empty.dir).path_join("report.md"))
+	check(empty_report.contains("本次运行的构建提交：未记录"), "未嵌入构建提交时，导出报告应明确标为未记录")
 	_cleanup(str(empty.get("dir", "")))
 	var reports_before := _report_dirs()
 	for bad in [{"annoying": "中".repeat(4001)}, {"unclear": 123}]:

@@ -27,13 +27,16 @@ const RULE := "----"
 
 
 ## 生成报告的全文。ctx 见 Game.export_playtest() 的组装处：
-##   version / engine / os / resolution / save_bytes / bindings / director / feedback
+##   version / source_commit / engine / os / resolution / save_bytes / bindings / director / feedback
 static func build(run: Dictionary, meta: Dictionary, ctx: Dictionary = {}) -> String:
 	var out := []
 	out.append("# 劫余录 试玩报告")
 	out.append("")
 	out.append("生成：%s　版本：%s　引擎：%s" % [
 		str(ctx.get("now", State.today_text())), str(ctx.get("version", "?")), str(ctx.get("engine", "?"))])
+	var source_commit = ctx.get("source_commit")
+	var known_build := source_commit is String and RegEx.create_from_string("\\A[0-9a-f]{40}\\z").search(source_commit) != null
+	out.append("本次运行的构建提交：%s" % (source_commit if known_build else "未记录"))
 	out.append("系统：%s　分辨率：%s　存档：%s" % [
 		str(ctx.get("os", "?")), str(ctx.get("resolution", "?")), str(ctx.get("save_bytes", "无"))])
 	out.append("")

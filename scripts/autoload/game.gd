@@ -992,6 +992,7 @@ func _report_ctx(report_run: Dictionary, report_snapshots: Dictionary) -> Dictio
 	return {
 		"now": "%s %s" % [State.today_text(), Time.get_time_string_from_system().left(5)],
 		"version": str(ProjectSettings.get_setting("application/config/version", "?")),
+		"source_commit": ProjectSettings.get_setting("playtest_build/source_commit", ""),
 		"engine": str(Engine.get_version_info().get("string", "?")),
 		"os": "%s %s" % [OS.get_name(), OS.get_version()],
 		"resolution": "%d×%d" % [window.x, window.y],

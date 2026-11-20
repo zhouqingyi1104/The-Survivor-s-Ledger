@@ -89,6 +89,7 @@ if (-not $env:APPDATA.StartsWith([IO.Path]::GetDirectoryName($root), [StringComp
 $out = Join-Path $root 'build/windows'
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 foreach ($name in @('劫余录.exe', '劫余录.pck', '读我.txt', '字体许可.txt')) { [IO.File]::WriteAllText((Join-Path $out $name), $Mode) }
+Copy-Item -LiteralPath (Join-Path $root 'project.godot') -Destination (Join-Path $out '劫余录.pck') -Force
 $template = $null
 if ($Mode -eq 'release') {
     if (-not $TemplatesDir -or -not $TemplatesDir.StartsWith([IO.Path]::GetDirectoryName($root), [StringComparison]::OrdinalIgnoreCase)) { exit 12 }
@@ -106,8 +107,9 @@ $files = @(Get-ChildItem -LiteralPath $out -File | ForEach-Object {
 '@
     [IO.File]::WriteAllText((Join-Path $fixture 'tools/build_windows.ps1'), $builder, [Text.UTF8Encoding]::new($true))
     [IO.File]::WriteAllText((Join-Path $fixture 'tracked-data.txt'), 'COMMITTED')
+    [IO.File]::WriteAllText((Join-Path $fixture 'project.godot'), "config_version=5")
     & git -C $fixture init -q
-    & git -C $fixture add tools/build_windows.ps1 tools/windows_templates.ps1 tracked-data.txt
+    & git -C $fixture add tools/build_windows.ps1 tools/windows_templates.ps1 tracked-data.txt project.godot
     Commit-Fixture 'fixture'
     $sha = & git -C $fixture rev-parse HEAD
     [IO.File]::WriteAllText((Join-Path $fixture 'tracked-data.txt'), 'DIRTY_WORKTREE')
@@ -142,6 +144,9 @@ $files = @(Get-ChildItem -LiteralPath $out -File | ForEach-Object {
                 Check ($source.Contains('.gitignore 排除的素材')) 'provenance omits ignored assets'
                 $packageManifest = Get-Content -LiteralPath (Join-Path $script:out 'package-provenance.json') -Raw -Encoding UTF8 | ConvertFrom-Json
                 Check ($packageManifest.source_commit -eq $sha -and $packageManifest.mode -eq 'portable') 'JSON provenance lost source SHA/portable mode'
+                $packedSettings = [IO.File]::ReadAllLines((Join-Path $script:out '劫余录.pck'))
+                Check ($packedSettings[0] -ceq 'config_version=5' -and $packedSettings[1] -ceq '[playtest_build]' -and $packedSettings[2] -ceq ('source_commit="' + $sha + '"')) 'archived project settings lost their original contents or source commit'
+                Check ([IO.File]::ReadAllText((Join-Path $fixture 'project.godot')) -ceq 'config_version=5') 'build stamp leaked into the worktree'
                 $backup = @(Get-ChildItem -LiteralPath (Split-Path $script:out) -Directory -Filter "$activeCase.previous-*")
                 Check ($backup.Count -eq 1 -and [IO.File]::ReadAllText((Join-Path $backup[0].FullName 'old.txt')) -eq 'KEEP') 'old output not retained'
             }

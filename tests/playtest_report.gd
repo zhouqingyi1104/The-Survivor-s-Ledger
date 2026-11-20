@@ -19,6 +19,7 @@ var failures := 0
 func _initialize() -> void:
 	Data.ensure()
 	test_empty_run()
+	test_build_source()
 	test_dead_run()
 	test_log_tail()
 	test_legacy_no_ledger()
@@ -40,6 +41,14 @@ func test_empty_run() -> void:
 	check(text.contains("0.10.0"), "版本没写进报告")
 	check(text.contains("跨轮回底稿"), "空档时少了底稿段")
 	check(text.contains("请顺手回答三句"), "空档时少了问题段")
+
+
+func test_build_source() -> void:
+	var sha := "0123456789abcdef0123456789abcdef01234567"
+	for value in [sha, "", sha.left(7), "../private-path", sha + "\n", 42, null]:
+		var text := Report.build({}, {}, {"source_commit": value})
+		var expected := sha if value is String and value == sha else "未记录"
+		check(text.split("\n").has("本次运行的构建提交：" + expected), "报告的构建提交或缺省标记不正确")
 
 
 # ---------- 二、一局死掉的 ----------

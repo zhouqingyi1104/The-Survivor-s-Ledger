@@ -82,6 +82,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw '提取提交失败。' }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [IO.Compression.ZipFile]::ExtractToDirectory($archive, $source)
+    # Bake the archived revision into the PCK, so reports follow the running game
+    # even when the adjacent build manifest is missing or belongs to another copy.
+    $buildSetting = @('', '[playtest_build]', ('source_commit="' + $sha + '"'), '') -join [Environment]::NewLine
+    [IO.File]::AppendAllText((Join-Path $source 'project.godot'), $buildSetting, [Text.UTF8Encoding]::new($false))
     $sourceTools = Join-Path $source 'tools/godot'
     New-Item -ItemType Directory -Force -Path $sourceTools | Out-Null
     Copy-Item -LiteralPath $engine,$console -Destination $sourceTools
