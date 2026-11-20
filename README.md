@@ -2,13 +2,13 @@
 
 在临川城用三天备荒，再回宅院熬过二十日尸劫。一次出城能多带一袋米，也可能错过交药或补门的时辰。熬不下去时，生死簿会记下死因与尚有的余地，下一世还能遇见记得旧事的邻人。
 
-第一次玩可从[一局怎么玩](docs/player-guide.md)开始。查项目进度请看[本轮审核报告](docs/62-project-audit.md)、[内容路线图](docs/10-roadmap.md)和[优化路线图](docs/37-optimization-roadmap.md)。设计、专题与历次验证按用途收在[文档索引](docs/README.md)。
+第一次玩可从[一局怎么玩](docs/player-guide.md)开始。当前进度见[内容路线图](docs/10-roadmap.md)和[优化路线图](docs/37-optimization-roadmap.md)。此前的[项目审查记录](docs/62-project-audit.md)与各批验证可从[文档索引](docs/README.md)查阅。
 
 ## 运行游戏
 
 | 你手上有什么 | 从哪里开始 |
 |---|---|
-| Windows 试玩包 | 保留解压目录中的全部文件，双击 `劫余录.exe`。程序和同名 PCK 放在一起即可离线玩。本机现存包位于 `build/windows-release/`，来源见包内 `package-provenance.json`。 |
+| Windows 试玩包 | 本轮试玩用 `build/a4-playtest-20261120/windows/`。保留目录内的文件，双击「劫余录.exe」即可离线玩。报告里的「本次运行的构建提交」可用来核对版本。 |
 | 仓库源码 | 用 Godot 4.7.2 打开 [project.godot](project.godot)，首次导入完成后按 F5 运行项目。默认渲染器为 Forward+。 |
 | 已按项目目录放好 Windows 引擎 | 双击 [启动游戏.bat](启动游戏.bat)。它使用 `tools/godot/Godot_v4.7.2-stable_win64.exe` 并尝试启动本地世情桥接器。 |
 
@@ -51,4 +51,4 @@ $sourceCommit = git rev-parse HEAD
 powershell.exe -NoProfile -File tools/build_windows_clean.ps1 -Commit $sourceCommit -Mode release -OutDir build/windows-release-candidate
 ```
 
-模板校验、导出模式与原包验证步骤见[Windows 构建](docs/28-windows-build.md)和[独立程序验收](docs/50-windows-release.md)。本机现有试玩包来源为 `2bca5ee`，晚于该包的四批弹窗重构已记录在[分拆记录](docs/61-dialogs-split-inquiry.md)。
+模板校验与导出步骤见[Windows 构建](docs/28-windows-build.md)。本机各试玩包的源码提交、已测范围与后续验收见[优化路线图 A3/A4](docs/37-optimization-roadmap.md#阶段-a--试玩与反馈)。

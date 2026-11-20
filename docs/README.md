@@ -79,7 +79,7 @@
 
 ## 弹窗模块拆分记录
 
-- [58 · 灶房、菜畦、营造、读书](58-dialogs-split-house.md)记录第一批控件树对照及阁楼入口复测失败。
+- [58 · 灶房、菜畦、营造、读书](58-dialogs-split-house.md)记录第一批控件树对照，以及阁楼施工遇到晨间事件后的入口复测。
 - [59 · 存货、神龛与事件卡](59-dialogs-split-stock-shrine-event.md)记录含随机内容面板的对照方法。
 - [60 · 劫余录](60-dialogs-split-journal.md)记录三页切换、面板高度和日志滚动状态的迁移。
 - [61 · 三条调查线](61-dialogs-split-inquiry.md)记录主线、危机、轮回调查窗口及旧入口转发。
