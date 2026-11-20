@@ -136,6 +136,24 @@ class RunnerTests(unittest.TestCase):
 
 
 class ClassificationTests(RunnerTests):
+    def test_recovery_requires_one_matching_failure_inside_the_fixture(self):
+        recovery = case("continue_safety")
+        marker = "[fixture] complete: 0 failures\n"
+        begin = "[continue_safety] blocked write begins (12)\n"
+        error = "ERROR: 存档写入失败：write（错误 12）\n"
+        end = "[continue_safety] blocked write ends\n"
+        block = begin + error + "   at: push_error (engine.cpp:1)\n" + end
+        for transcript in (block + marker, (block + marker).replace("\n", "\r\n")):
+            self.assertEqual(self.runner.classify_result(recovery, 0, False, transcript)[0], "PASS")
+        for transcript in (
+            marker, error + marker, begin + end + marker, block.replace("错误 12", "错误 13") + marker,
+            error + block + marker, block + error + marker, block * 2 + marker, marker + block,
+            block.replace(end, "    SCRIPT ERROR: unexpected\n" + end) + marker,
+        ):
+            with self.subTest(transcript=transcript):
+                self.assertEqual(self.runner.classify_result(recovery, 0, False, transcript)[0], "FAIL")
+        self.assertEqual(self.runner.classify_result(case(), 0, False, block + marker)[0], "FAIL")
+
     def test_only_clean_completion_passes(self):
         status, _, warnings = self.runner.classify_result(
             case(), 0, False, "[fixture] complete: 0 failures\n")

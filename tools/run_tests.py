@@ -38,6 +38,14 @@ CLEANUP_ERRORS = (
     re.compile(r"^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$"),
 )
 ERROR_LINE = re.compile(r"\b(?:SCRIPT ERROR|ParseError|Parse Error|ERROR)\b", re.I)
+# The recovery fixture brackets one intentionally failed write. Match its precise
+# diagnostic and host error code without exempting any other line from inspection.
+BLOCKED_RECOVERY_WRITE = re.compile(
+    r"^\[continue_safety\] blocked write begins \(([1-9][0-9]*)\)\r?\n"
+    r"(?P<diagnostic>ERROR: 存档写入失败：write（错误 \1）)\r?\n"
+    r"(?:[ \t]+[^\r\n]*\r?\n)*"
+    r"^\[continue_safety\] blocked write ends\r?$", re.M
+)
 
 
 class RunnerError(ValueError):
@@ -164,6 +172,11 @@ def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: 
     marker = re.search(case["success_regex"], output, re.M) if case.get("success_regex") else None
     warnings = []
     failure = None
+    expected_offset = None
+    if case.get("id") == "continue_safety":
+        matches = list(BLOCKED_RECOVERY_WRITE.finditer(output))
+        if len(matches) == 1 and marker and matches[0].end() < marker.start():
+            expected_offset = matches[0].start("diagnostic")
     offset = 0
     for raw in output.splitlines(keepends=True):
         line = raw.strip()
@@ -172,7 +185,7 @@ def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: 
         allowed = cleanup and marker is not None and offset >= marker.end()
         if allowed or re.match(r"^WARNING:", line):
             warnings.append(line)
-        if ERROR_LINE.search(line) and not allowed and failure is None:
+        if ERROR_LINE.search(line) and not allowed and offset != expected_offset and failure is None:
             failure = line
         offset += len(raw)
     if timed_out:
@@ -183,6 +196,8 @@ def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: 
         return "FAIL", f"Process exited with code {exit_code}", warnings
     if case.get("success_regex") and marker is None:
         return "FAIL", "Required completion marker was not printed", warnings
+    if case.get("id") == "continue_safety" and expected_offset is None:
+        return "FAIL", "Missing or ambiguous diagnostic for the blocked recovery write", warnings
     return ("PASS_WITH_WARNINGS" if warnings else "PASS"), "", warnings
 
 

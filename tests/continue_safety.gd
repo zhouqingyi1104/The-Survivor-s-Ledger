@@ -47,7 +47,13 @@ func _ready() -> void:
 	put(backup, valid)
 	var tmp := ProjectSettings.globalize_path(path + SaveFile.TMP)
 	check(DirAccess.make_dir_absolute(tmp) == OK, "未能创建写入失败夹具")
+	# 记录当前平台对此目录的实际写入错误，供运行器核对下一次恢复的诊断。
+	var probe := FileAccess.open(tmp, FileAccess.WRITE)
+	var open_error := FileAccess.get_open_error()
+	check(probe == null and open_error != OK, "临时目录必须拒绝作为存档打开")
+	print("[continue_safety] blocked write begins (%d)" % open_error)
 	check(Game.continue_game(), "写入失败不应阻止读取备份")
+	print("[continue_safety] blocked write ends")
 	check(FileAccess.get_file_as_string(path) == bad and FileAccess.get_file_as_string(backup) == valid, "恢复写入失败更改了原档")
 	check(Game._recovering_backup, "写入失败后未保留恢复状态")
 	DirAccess.remove_absolute(tmp)
