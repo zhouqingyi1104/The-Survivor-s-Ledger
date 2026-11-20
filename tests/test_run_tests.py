@@ -160,6 +160,37 @@ class ClassificationTests(RunnerTests):
         self.assertEqual(status, "PASS")
         self.assertEqual(warnings, [])
 
+    def test_report_copy_faults_match_both_targets_in_order_in_the_isolated_fixture(self):
+        export = case("playtest_export")
+        marker = "[fixture] complete: 0 failures\n"
+        data_home = Path.cwd() / "isolated-data"
+        directory = (data_home / "godot/app_userdata/game/reports/copy-fail-test").as_posix()
+
+        def blocked_copy(filename):
+            target = f"{directory}/{filename}"
+            return (f"[playtest_export] blocked copy begins: {target}\n"
+                    f"ERROR: Failed to open '{target}'.\n"
+                    "   at: copy (core/io/dir_access.cpp:429)\n"
+                    "[playtest_export] blocked copy ends\n")
+
+        backup, memory = map(blocked_copy, ("report_test_save.json.bak", "Memory.md"))
+        both = backup + memory
+        for transcript in (both + marker, (both + marker).replace("\n", "\r\n")):
+            self.assertEqual(self.runner.classify_result(export, 0, False, transcript, data_home)[0], "PASS")
+        for transcript in (
+            marker, backup + marker, memory + marker, memory + backup + marker, both + backup + marker,
+            backup + marker + memory, both.replace("Memory.md", "other.md") + marker,
+            both.replace("ERROR: Failed to open '", "ERROR: Failed to open 'other/") + marker,
+            both.replace("at: copy", "at: rename") + marker, both + memory.splitlines()[1] + "\n" + marker,
+            both.replace("   at: copy", "  SCRIPT ERROR: unrelated\n   at: copy") + marker,
+            both.replace(data_home.as_posix(), data_home.as_posix() + "-other") + marker,
+            both.replace("/reports/", "/../reports/") + marker,
+            backup + memory.replace("/game/", "/other-game/") + marker,
+        ):
+            with self.subTest(transcript=transcript):
+                self.assertEqual(self.runner.classify_result(export, 0, False, transcript, data_home)[0], "FAIL")
+        self.assertEqual(self.runner.classify_result(case(), 0, False, both + marker, data_home)[0], "FAIL")
+
     def test_exit_zero_with_errors_or_no_completion_fails(self):
         marker = "[fixture] complete: 0 failures\n"
         for output in (

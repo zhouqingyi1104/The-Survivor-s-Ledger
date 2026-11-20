@@ -46,6 +46,14 @@ BLOCKED_RECOVERY_WRITE = re.compile(
     r"(?:[ \t]+[^\r\n]*\r?\n)*"
     r"^\[continue_safety\] blocked write ends\r?$", re.M
 )
+BLOCKED_REPORT_COPY = re.compile(
+    r"^\[playtest_export\] blocked copy begins: (?P<target>(?P<directory>[^\r\n]+/reports/copy-fail-test)/"
+    r"(?P<filename>report_test_save\.json\.bak|Memory\.md))\r?\n"
+    r"(?P<diagnostic>ERROR: Failed to open '(?P=target)'\.)\r?\n"
+    r"[ \t]+at: copy \(core/io/dir_access\.cpp:\d+\)\r?\n"
+    r"(?:[ \t]+[^\r\n]*\r?\n)*"
+    r"^\[playtest_export\] blocked copy ends\r?$", re.M
+)
 
 
 class RunnerError(ValueError):
@@ -168,15 +176,23 @@ def select_cases(manifest: dict, tier: str, requested_ids: list[str], system: st
     return selected
 
 
-def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: str) -> tuple[str, str, list[str]]:
+def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: str,
+                    data_home: Path | None = None) -> tuple[str, str, list[str]]:
     marker = re.search(case["success_regex"], output, re.M) if case.get("success_regex") else None
     warnings = []
     failure = None
-    expected_offset = None
+    expected_offsets = set()
     if case.get("id") == "continue_safety":
         matches = list(BLOCKED_RECOVERY_WRITE.finditer(output))
         if len(matches) == 1 and marker and matches[0].end() < marker.start():
-            expected_offset = matches[0].start("diagnostic")
+            expected_offsets.add(matches[0].start("diagnostic"))
+    elif case.get("id") == "playtest_export" and marker and data_home is not None:
+        matches = list(BLOCKED_REPORT_COPY.finditer(output))
+        if ([m["filename"] for m in matches] == ["report_test_save.json.bak", "Memory.md"]
+                and matches[0]["directory"] == matches[1]["directory"] and matches[-1].end() < marker.start()):
+            fixture_dir = Path(matches[0]["directory"])
+            if fixture_dir.is_relative_to(data_home) and ".." not in fixture_dir.parts:
+                expected_offsets.update(m.start("diagnostic") for m in matches)
     offset = 0
     for raw in output.splitlines(keepends=True):
         line = raw.strip()
@@ -185,7 +201,7 @@ def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: 
         allowed = cleanup and marker is not None and offset >= marker.end()
         if allowed or re.match(r"^WARNING:", line):
             warnings.append(line)
-        if ERROR_LINE.search(line) and not allowed and offset != expected_offset and failure is None:
+        if ERROR_LINE.search(line) and not allowed and offset not in expected_offsets and failure is None:
             failure = line
         offset += len(raw)
     if timed_out:
@@ -196,8 +212,10 @@ def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: 
         return "FAIL", f"Process exited with code {exit_code}", warnings
     if case.get("success_regex") and marker is None:
         return "FAIL", "Required completion marker was not printed", warnings
-    if case.get("id") == "continue_safety" and expected_offset is None:
+    if case.get("id") == "continue_safety" and not expected_offsets:
         return "FAIL", "Missing or ambiguous diagnostic for the blocked recovery write", warnings
+    if case.get("id") == "playtest_export" and not expected_offsets:
+        return "FAIL", "Missing or ambiguous diagnostics for the two blocked report copies", warnings
     return ("PASS_WITH_WARNINGS" if warnings else "PASS"), "", warnings
 
 
@@ -407,8 +425,11 @@ def main(argv: list[str] | None = None) -> int:
             if result["kind"] == "script":
                 command.append("--script")
             command.append("res://" + result["entry"])
-            process = run_process(command, project, isolated_environment(project, result["id"]), result["timeout_seconds"], run_root / "logs" / (result["id"] + ".log"))
-            status, reason, warnings = classify_result(result, process["exit_code"], process["timed_out"], process["output"])
+            case_env = isolated_environment(project, result["id"])
+            process = run_process(command, project, case_env, result["timeout_seconds"], run_root / "logs" / (result["id"] + ".log"))
+            data_root_key = {"Windows": "APPDATA", "Linux": "XDG_DATA_HOME"}.get(system, "HOME")
+            data_home = Path(case_env[data_root_key])
+            status, reason, warnings = classify_result(result, process["exit_code"], process["timed_out"], process["output"], data_home)
             if process["cleanup_error"]:
                 status, reason = "FAIL", "Process cleanup: " + process["cleanup_error"]
             result.update({**process, "status": status, "reason": reason, "warnings": warnings})
