@@ -13,6 +13,14 @@ const STATUS := ["正常", "拥挤", "哄抢"]
 const DEPLETE := {2: 0.7, 3: 0.4}
 const PAWN_RATE := 0.6
 const HEIRLOOM_RATE := 0.9
+const PREP_WORK := {
+	"rice_shop": {"name": "帮米行卸粮", "item": "flatbread", "count": 1,
+		"description": "花 1 时辰把粮袋搬进仓。掌柜给一张炊饼作工钱，托伙计送到你家。",
+		"result": "粮袋搬进了仓，伙计顺路把一张炊饼送到了家。"},
+	"home": {"name": "劈柴备冬", "item": "firewood", "count": 2,
+		"description": "花 1 时辰劈开院里的枯枝，能在灶边码好两捆柴。",
+		"result": "院里的枯枝劈好了，两捆柴已码在灶边。"},
+}
 
 const CHECKLIST := [
 	{"name": "口粮", "ids": {"rice": 3, "millet": 3, "glutinous": 2, "flatbread": 1, "jerky": 1}, "levels": [24, 45], "unit": "顿"},
@@ -100,6 +108,56 @@ static func travel_cost(run: Dictionary, dest: String) -> int:
 
 static func hours_left(run: Dictionary) -> int:
 	return State.CURFEW_HOUR - int(run.hour)
+
+
+static func prep_work_done(run: Dictionary, place: String) -> bool:
+	var flags = run.get("flags", {})
+	return flags is Dictionary and bool(flags.get("prep_work_" + place, false))
+
+
+static func prep_work_block(run: Dictionary, place: String) -> String:
+	if run.get("phase") != "pre":
+		return "只有备劫时才能做这桩活。"
+	if place not in PREP_WORK:
+		return "这里没有这桩活。"
+	if not run.get("flags", {}) is Dictionary:
+		return "这局的杂事记录有误。"
+	if prep_work_done(run, place):
+		return "这桩活已经做过了。"
+	if run.loc != place:
+		return "得先回家。" if place == "home" else "得先到米行。"
+	if place == "rice_shop" and status(run, place) == "关门":
+		return "米行已经关门了。"
+	if hours_left(run) < 1:
+		return "宵禁前已经凑不出一个时辰了。"
+	return ""
+
+
+## 只估算路程；拥挤造成的耽搁须到店后按实际时辰重查。
+static func prep_work_trip_block(run: Dictionary, place: String) -> String:
+	if run.get("phase") != "pre" or place not in PREP_WORK or prep_work_done(run, place) or run.loc == place:
+		return prep_work_block(run, place)
+	var reason := travel_block(run, place)
+	if reason != "":
+		return reason
+	var arrival := run.duplicate()
+	arrival.hour = int(run.hour) + travel_cost(run, place)
+	arrival.loc = place
+	return prep_work_block(arrival, place)
+
+
+static func do_prep_work(run: Dictionary, place: String) -> String:
+	var reason := prep_work_block(run, place)
+	if reason != "":
+		return reason
+	var work: Dictionary = PREP_WORK[place]
+	var flags: Dictionary = run.get("flags", {})
+	flags["prep_work_" + place] = true
+	run.flags = flags
+	run.hour = int(run.hour) + 1
+	Inv.add(run.home, work.item, work.count)
+	State.note(run, work.result)
+	return ""
 
 
 static func travel_block(run: Dictionary, dest: String) -> String:

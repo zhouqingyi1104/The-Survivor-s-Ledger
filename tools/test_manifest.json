@@ -3,6 +3,24 @@
   "engine_version": "4.7.2",
   "cases": [
     {
+      "id": "prep_work",
+      "entry": "tests/prep_work.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[prep_work\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
+      "id": "prep_errands_ui",
+      "entry": "tests/prep_errands_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[prep_errands_ui\\] checks=[1-9][0-9]* failures=0\\r?$"
+    },
+    {
       "id": "field_time",
       "entry": "tests/field_time.gd",
       "kind": "script",

@@ -2,12 +2,14 @@ extends "res://scripts/ui/screens/world_screen.gd"
 ## 备劫三日（3D 临川城）：点铺子（或左边的地名）走过去，到了自动打开铺子。对应原版 PreDisasterMap。
 
 const Pre = preload("res://scripts/core/pre.gd")
+const PrepWork = preload("res://scripts/ui/dialogs/prep_work.gd")
 const CityWorld = preload("res://scripts/world/city_world.gd")
 const CamRig = preload("res://scripts/world/cam_rig.gd")
 
 static var STATUS_COLORS := {"正常": UI.JADE, "拥挤": UI.GOLD, "哄抢": UI.CINNABAR, "关门": UI.INK_FAINT}
 
 var rig: Node3D
+var _work_destination := ""
 ## 上一次按地点摆好的机位（用来判断"换地方了，该重新取景"）
 var _framed_loc := ""
 
@@ -61,12 +63,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## 去某地（点建筑、点地名、测试都走这里）。
-func go_to(id: String) -> void:
+func go_to(id: String, for_work := false) -> void:
 	var run: Dictionary = Game.run
 	if run.phase != "pre" or world.walking:
 		return
 	if id == run.loc:
-		if id != "home":
+		if id == "home":
+			_open_work()
+		else:
 			Dialogs.shop()
 		return
 	var block := Pre.travel_block(run, id)
@@ -74,14 +78,36 @@ func go_to(id: String) -> void:
 		Game.toast.emit(block)
 		return
 	var from: String = run.loc
-	Game.act(func(): return Pre.travel(Game.run, id))
+	if Game.act(func(): return Pre.travel(Game.run, id)) != "":
+		return
+	_work_destination = id if for_work else ""
 	world.walk(from, id)
 
 
 func _on_arrived(_place: String) -> void:
 	Game.changed.emit()
+	if _work_destination != "":
+		var arrived_for_work: bool = Game.run.loc == _work_destination
+		_work_destination = ""
+		if arrived_for_work and Game.run.phase == "pre" and not modal_open():
+			_open_work()
+		return
 	if Game.run.phase == "pre" and Game.run.loc != "home":
 		Dialogs.shop()
+
+
+func _open_work() -> void:
+	if not world.walking:
+		PrepWork.open(_walk_to_work)
+
+
+func _walk_to_work(place: String) -> void:
+	var block := Pre.prep_work_trip_block(Game.run, place)
+	if block != "":
+		Game.toast.emit(block)
+		return
+	UI.close_modal("prep_work")
+	go_to(place, true)
 
 
 ## 结束这一日。还剩不少时辰、或者今夜就是尸劫，先确认一下。
@@ -101,6 +127,7 @@ func end_day() -> void:
 
 
 func _do_end_day() -> void:
+	_work_destination = ""
 	Game.act(func(): return Pre.end_day(Game.run))
 
 
@@ -124,7 +151,10 @@ func build_hud() -> void:
 	var last: bool = int(run.day) >= State.PRE_DAYS
 	var end := UI.seal_button("熬到天黑 · 尸劫降临" if last else "回家歇息，明日再说", end_day)
 	end.custom_minimum_size = Vector2(260, 52)
-	var p := corner_panel(end, Control.PRESET_BOTTOM_RIGHT, 14, 0.0)
+	var evening := UI.vbox(6)
+	evening.add_child(UI.button("备荒杂事", _open_work, world.walking))
+	evening.add_child(end)
+	var p := corner_panel(evening, Control.PRESET_BOTTOM_RIGHT, 14, 0.0)
 	p.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var help := UI.label("点铺子走过去 · 右键拖动转视角 · 滚轮缩放", 15, Color(UI.PAPER_LIGHT, 0.95))
 	help.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))

@@ -12,6 +12,7 @@ const Events = preload("res://scripts/core/events.gd")
 const Ledger = preload("res://scripts/core/ledger.gd")
 const Defense = preload("res://scripts/core/defense.gd")
 const Pre = preload("res://scripts/core/pre.gd")
+const PrepWork = preload("res://scripts/ui/dialogs/prep_work.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
@@ -1189,6 +1190,9 @@ func _shop(body: VBoxContainer) -> void:
 	body.add_child(head)
 	body.add_child(UI.para(s.desc, 16))
 	body.add_child(UI.sep())
+	if id == "rice_shop":
+		PrepWork.add_row(body, id)
+		body.add_child(UI.sep())
 	match s.kind:
 		"goods":
 			_goods(body, run, id)
