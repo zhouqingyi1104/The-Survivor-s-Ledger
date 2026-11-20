@@ -1,0 +1,19 @@
+"AppBuild"
+{
+    "AppID" "__APP_ID__"
+    "Desc" "Windows x64 offline candidate __SOURCE_COMMIT__"
+    "ContentRoot" "../windows"
+    "BuildOutput" "steampipe-output"
+    "Depots"
+    {
+        "__WINDOWS_DEPOT_ID__"
+        {
+            "FileMapping"
+            {
+                "LocalPath" "*"
+                "DepotPath" "."
+                "Recursive" "1"
+            }
+        }
+    }
+}
