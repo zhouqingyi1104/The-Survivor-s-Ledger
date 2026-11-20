@@ -27,19 +27,19 @@
 | 选择 | 内容 |
 |---|---|
 | `-Tier fast` | 5 项：check_scripts、brief、pacing、ending_report、playtest_report |
-| `-Tier core` | fast + 56 项 core，共 61 项无界面检查 |
-| `-Tier ui` | 36 项真实窗口检查 |
-| `-Tier full` | 全部 118 项已登记 Godot 离线检查，含 21 项慢/专项自动检查；仅发布候选 |
+| `-Tier core` | 包含 fast 及已登记的 core 无界面检查 |
+| `-Tier ui` | 已登记的真实窗口检查 |
+| `-Tier full` | 全部已登记 Godot 离线检查，含慢测与专项；发布候选使用 |
 | `-Case brief` | 只执行该 ID，不会顺带跑 fast；可多项，未知/重复/空 ID 明确失败 |
 | `-List` | 只展示选中清单，不启动引擎或导入资源 |
 
-131 个 Godot 入口均已有分类；118 项可执行，另有 22 项诊断、人工截图、本地服务及 PS/Python/Node 专项排除说明。运行器自身 unittest 在 CI 单独执行，不冒充游戏用例。`full` 不代表这些被排除专项通过，也不代表跨平台或真人整局通过。
+2026-11-20 核对[测试清单](../tools/test_manifest.json)与各档 `-List` 输出，fast 为 5 项，core 含 fast 共 63 项，ui 为 38 项，full 共 122 项。另有 23 个排除条目，逐条列明诊断、人工截图、本地服务及其它专项原因。核对清单未运行游戏。运行器自身 unittest 在 CI 单独执行，不冒充游戏用例。`full` 不代表这些被排除专项通过，也不代表跨平台或真人整局通过。
 
 每轮保存每文件 SHA256 与快照摘要、来源 HEAD/dirty 状态、实际命令、退出码、超时、各项状态及首失败的单项重跑命令；原日志按字节保留。它是当前工作区可测试文件的快照，包含合格的未提交代码，不是干净提交构建，也不承诺对并行写入的工作区作原子拍照。所有平台不适用的选择保留 SKIP 并非零退出；部分平台限制单列 SKIP。
 
 CI 文件 `.github/workflows/tests.yml` 不引入第三方 action，按事件 SHA 拉取并核对提交，使用只读权限。固定 Godot 4.7.2 官方 Linux zip 的 SHA512 已在线与原有同版本校验清单比对；使用预装 Python/PowerShell，不安装软件包。每项 JSON 和原始日志写入 job log，不上传缓存或附件。公开仓库标准 runner 的费用边界见 [GitHub 官方说明](https://docs.github.com/en/billing/concepts/product-billing/github-actions)；仓库状态已读回为 public，工作流仍保留 private=false 的运行条件。手动 dispatch 可只选择一个 fast 用例重跑。
 
-## 本地实际验证
+## 首批本地实际验证（2026-11-05）
 
 | 实际执行 | 结果 |
 |---|---|

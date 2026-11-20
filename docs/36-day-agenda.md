@@ -58,9 +58,9 @@
 - 同一种效用不重复给（已求到六丁六甲就不能再磨刀叠守力）。
 - 井口冻裂时挑水也挑不上来，跟打水同一个规矩。
 
-![今日差事弹窗](36-day-agenda.png)
+![今日差事弹窗](screenshots/36-day-agenda.png)
 
-![HUD 上的账](36-day-agenda-hud.png)
+![HUD 上的账](screenshots/36-day-agenda-hud.png)
 
 ## 数值是怎么定的（改过一轮）
 

@@ -185,7 +185,7 @@ python -I tools/pipeline/synth_night_music.py build/night-music-qa --asset-path 
 | 项 | 内容 |
 |---|---|
 | 来源 | [Anime Maid Character by 413 Games](https://413games.itch.io/maid-character)，CC0 1.0；许可证原文和获取记录在 `assets/third_party/413games/SOURCE-LICENSE.txt`、`NOTICE.txt` |
-| 文件 | `assets/third_party/413games/`：`base-motion-v7.glb`（女仆装）和 moon 一套（戴尖帽、换配色） |
+| 运行资源 | [角色资源目录](../assets/third_party/413games/)保留 `base-motion-v7.glb`（女仆装）、`moon-motion-v7.glb`（月，尖帽与新配色）及各自同前缀纹理。两套包含角色使用的动画。旧静态 `base.glb`、`moon.glb` 已从当前目录清理。 |
 | 改动 | 只重绑贴图、转 GLB，几何体保持原样。moon 的配色和尖帽是本项目自己做的，**尖帽不属于第三方素材，也不以 CC0 再发布** |
 | 用在哪 | 主角（`character.gd` 里 `hero = true`）一律用女身 moon 那套，再加本项目的"仙气"装束：披帛、腰绦、步摇、灵光，配色月白 / 青灰。想换回女仆装只改 `character.gd` 里一个值 |
 | 动画 | 这套是 Mixamo 骨架，用模型自带的 `Camp_*` 动作；Quaternius 那套照旧用 UAL 动画库（`character.gd` 的 `RIGS` 表分开处理） |

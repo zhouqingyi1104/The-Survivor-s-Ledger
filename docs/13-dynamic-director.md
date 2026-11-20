@@ -20,7 +20,7 @@
 
 ## 首版执行结构
 
-新增跨轮回输入：游戏每轮完结更新根 `Memory.md`，后续规划实际读回文件，通过 `state.archive` 提供正文与 SHA-256，作为 AI 编剧的前世背景。`state.recollections` 仍只包含最多两位本世已觉醒角色的事实与回应，限定 NPC 知情；编剧可以从完整档案埋伏笔，不能让未觉醒 NPC 全知。规则本地安排觉醒并兑现选项效果；完整机制见 [14-past-lives.md](14-past-lives.md)。
+可写的开发工程每轮完结后更新根 `Memory.md`，独立试玩包写入 `user://Memory.md` 并使用离线事件。开发环境开启动态世情时，后续规划实际读回文件，通过 `state.archive` 提供正文与 SHA-256，作为 AI 编剧的前世背景。`state.recollections` 仍只包含最多两位本世已觉醒角色的事实与回应，限定 NPC 知情；编剧可以从完整档案埋伏笔，不能让未觉醒 NPC 全知。规则本地安排觉醒并兑现选项效果；完整机制见 [14-past-lives.md](14-past-lives.md)。
 
 1. Godot 内异步客户端每秒做轻量检查，不在点击、物理帧、存档函数中等模型。
 2. 本地后台桥接器独占一个生成任务，调用已认证 ARK Agent Plan CLI，固定 low reasoning；API 凭据不进入游戏或仓库。

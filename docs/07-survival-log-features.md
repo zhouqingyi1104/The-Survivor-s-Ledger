@@ -4,7 +4,7 @@
 > 用来对照《劫余录》缺什么。分析方法和架构推断见 `docs/01-survival-log-analysis.md`。
 >
 > **"劫余录现状"一栏更新于 2026-10-24**，逐条按当时的代码核对过（读代码 + 查数据表，没有实际试玩）。
-> 缺口汇总见文末第 11 节。
+> 第 11 节保留 10 月 24 日的缺口。后来已有[主线与多结局](20-mainline-endings.md)、[按键与画面设置](24-input-and-display-settings.md)和[家具挪位、装修与多层宅院](31-courtyard-construction.md)。今天排期请查[内容路线图](10-roadmap.md)。
 
 ## 0. 证据与口径
 

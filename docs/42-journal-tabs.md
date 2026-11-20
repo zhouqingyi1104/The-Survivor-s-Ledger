@@ -47,6 +47,8 @@
 
 ## 4. 实现要点
 
+三页实现现位于 [journal.gd](../scripts/ui/dialogs/journal.gd)。模块拆分和切页、滚动、转发入口的验证记录见 [60](60-dialogs-split-journal.md)。
+
 ### 4.1 切页不重建弹窗
 
 三页在打开时全部构建好，切换只改 `visible`。重建 modal 会丢掉滚动位置、闪一下、还多一声开合音。

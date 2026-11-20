@@ -90,7 +90,7 @@ ERROR: 断言失败：翻回后不在清晨
 `ui_smoke.gd:330` 是死亡 → 「翻回去」之后断言 `Post.day_minute(Game.run) == 0`。
 同一环境里本批改动与 HEAD 各跑一次，**报错文本与行号完全相同**，所以与劫余录搬家无关。
 这一处前几批文档（[58](58-dialogs-split-house.md)、[59](59-dialogs-split-stock-shrine-event.md)）里记的是
-「失败 0 处」，现在在 HEAD 上就是红的——**既有的红，本批没修，也不该记在劫余录账上**。
+「失败 0 处」。此次拆分前后各复现一次；下一批又连跑三次通过，最新复核将它归为偶发，详见 [61](61-dialogs-split-inquiry.md)。
 
 ### 4.2 `npc_ui`：停在等一帧画完，HEAD 上一样
 

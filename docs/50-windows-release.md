@@ -20,17 +20,18 @@
 
 无签名程序、独立机器的 SmartScreen/杀软表现、安装器、系统兼容矩阵、正式公开分发、真人整局与其它路线图的玩家验收均单列 NOT RUN。A4/A5、B4/B5、C3 无楷体实体环境不因本批打包自动变成通过。
 
-模板来源：[官方 4.7.2 发布](https://github.com/godotengine/godot-builds/releases/tag/4.7.2-stable)；图标/导出依据：[Godot Windows 导出](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_windows.html)。实际下载、文件校验与验收结果将在执行后补充。
+模板来源：[官方 4.7.2 发布](https://github.com/godotengine/godot-builds/releases/tag/4.7.2-stable)；图标/导出依据：[Godot Windows 导出](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_windows.html)。下节记录当次下载与文件校验结果。
 
 ## 已执行的依赖准备
 
 `powershell.exe -NoProfile -File tools/install_windows_templates.ps1`：PASS。官方 TPZ 实际 1,281,349,702 B，SHA256 `f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011`，SHA512 `ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e5f40980c9adc28d23e1b92e732ee7bf3461997aa804af74ec2fcd7a93ccb84079`，均匹配官方发布记录。仅提取 `version.txt`、`windows_release_x86_64.exe`（109,268,480 B）、`icudt_godot.dat` 到忽略目录 `tools/godot/export-templates/4.7.2.stable/`；未安装到用户全局模板目录。该发行包没有 accesskit DLL，不凭源码中可选复制逻辑虚构实际依赖。
 
-重现方式（新增依赖下载仍须遵守相应授权）：
+从项目根目录构建时，先锁定要交付的提交。示例取当前已提交的 HEAD，输出到后续探针使用的 `build/windows-release`。只在首次准备模板并取得下载授权后执行第一行；已有模板可直接执行后两行。
 
 ```powershell
 powershell.exe -NoProfile -File tools/install_windows_templates.ps1 -Download
-powershell.exe -NoProfile -File tools/build_windows_clean.ps1 -Commit <40位提交SHA> -Mode release
+$sourceCommit = git rev-parse HEAD
+powershell.exe -NoProfile -File tools/build_windows_clean.ps1 -Commit $sourceCommit -Mode release -OutDir build/windows-release
 ```
 
 安装器校验完整下载的大小、两个官方摘要，再固定提取文件并生成逐文件 SHA256 来源记录。构建器拒绝缺失、错版、损坏或非 x64 模板，不自动下载，不在显式 release 失败时降为 portable。
@@ -83,4 +84,4 @@ powershell.exe -NoProfile -File tools/test_windows_release.ps1 -PackageDir build
 
 最终 WinPS5 测试入口第一次执行超时，没有完成标记，因此记 FAIL。已定位到旁置 `override.cfg` 使用 `Set-Content -Encoding UTF8` 在 WinPS5 产生 BOM（`EF BB BF`）；最小夹具证实 Godot 4.7.2 对该配置返回 OK 却忽略首节，造成 QA 场景未启动。改用 `.NET UTF8Encoding(false)` 显式写无 BOM 的 QA 配置/场景。修正只涉及 QA 启动器和此记录，不改正式 exe/PCK 或其已核对的来源。
 
-修复后仅重跑 headless 失败项：**323 checks / exit 0 / PASS_WITH_WARNINGS**（`build/c2-qa/d201f4d898594dfda659ef8d68f45029/results.json`）。随后首次运行最终 visual：**111 checks / exit 0 / PASS_WITH_WARNINGS**（`build/c2-qa/ab37821dbf5549f69cb3570d8f8bd505/results.json`），实际标题、宅院 HUD/时钟和存货截图逐张目视；两模式前后全部原包与副本文件哈希一致。未修改的最终包也以默认 Vulkan/Forward+ 启动、截图、exit 0。只保留已列明退出清理警告，最终试玩包仍来自 `c546819`，后续修正提交只修复测试入口。
+修复后仅重跑 headless 失败项：**323 checks / exit 0 / PASS_WITH_WARNINGS**（`build/c2-qa/d201f4d898594dfda659ef8d68f45029/results.json`）。随后首次运行最终 visual：**111 checks / exit 0 / PASS_WITH_WARNINGS**（`build/c2-qa/ab37821dbf5549f69cb3570d8f8bd505/results.json`），实际标题、宅院 HUD/时钟和存货截图逐张目视；两模式前后全部原包与副本文件哈希一致。未修改的最终包也以默认 Vulkan/Forward+ 启动、截图、exit 0。只保留已列明退出清理警告，本次记录的试玩包来自 `c546819`，随后修正的是测试入口。后续试玩包的实际来源须查看其 `package-provenance.json`；11 月 14 日核对见 [57](57-playtest-gate-check.md)。

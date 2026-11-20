@@ -1,7 +1,7 @@
 # 同院的人：备劫带谁回来搭伙
 
 2026-10-24。补 `docs/07` 记的那半条缺——原版 `SelectPeople`「选择带走谁」。
-**原作这一步的具体规则没进证据**（`docs/rea-webui-evidence-slim.json` 里
+**原作这一步的具体规则没进证据**（[WebUI 分析摘录](evidence/rea-webui-evidence-slim.json)里
 `SelectPeople.html` 的两段内联 JS 都标着"未分析"），所以下面是照本作的窟窿设计的，
 不是照抄。本作的窟窿是：什么都得自己干，没有"少量日常自动化"（M2 原文）。
 

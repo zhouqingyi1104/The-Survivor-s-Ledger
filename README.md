@@ -1,270 +1,54 @@
-# 劫余录 · The Survivor's Ledger（原型 v0.10）
+# 劫余录 · The Survivor's Ledger
 
-> 文档更新于 2026-11-05，内容以当前代码为准。版本号只在 `project.godot` 的 `application/config/version` 里维护，标题页角落直接读它。
+在临川城用三天备荒，再回宅院熬过二十日尸劫。一次出城能多带一袋米，也可能错过交药或补门的时辰。熬不下去时，生死簿会记下死因与尚有的余地，下一世还能遇见记得旧事的邻人。
 
-古风尸变 + 写实灾荒 + 一点东方仙侠的生存模拟。玩法结构、界面布局和交互方式参考《Survival Log / 生存日志》（灾前囤货 → 灾后经营 → 轮回），文本、数值、图标都是原创——没有从原版提取或复用任何美术资产。模型和贴图一部分是公开的免费素材（Poly Haven、cs-studio、Quaternius），其余用代码拼；来源和许可证见 [docs/03-art-assets.md](docs/03-art-assets.md)（游戏里不再有"制作名单"页）。
+第一次玩可从[一局怎么玩](docs/player-guide.md)开始。查项目进度请看[本轮审核报告](docs/62-project-audit.md)、[内容路线图](docs/10-roadmap.md)和[优化路线图](docs/37-optimization-roadmap.md)。设计、专题与历次验证按用途收在[文档索引](docs/README.md)。
 
-**先看这三篇**（描述的是现状）：
+## 运行游戏
 
-- **当前内容路线图**：[10-roadmap.md](docs/10-roadmap.md)
-- **对照原版的功能清单（有什么、缺什么）**：[07-survival-log-features.md](docs/07-survival-log-features.md)
-- 中国风设计（世界观、系统映射、数值、迭代路线）：[02-chinese-style-design.md](docs/02-chinese-style-design.md)
-
-**分系统的设计与验证记录**：
-
-| 文档 | 内容 | 状态 |
-|---|---|---|
-| [01-survival-log-analysis.md](docs/01-survival-log-analysis.md) | 原版逆向分析（静态证据） | 参考资料 |
-| [03-art-assets.md](docs/03-art-assets.md) | 美术与声音素材清单、许可证、接入方式 | 已接入 |
-| [04-gameplay-diagnosis.md](docs/04-gameplay-diagnosis.md) | v0.4 玩法诊断（实测曲线） | 历史记录 |
-| [05-gameplay-plan-v0.5.md](docs/05-gameplay-plan-v0.5.md) | v0.5 体温、尸潮曲线、事件、功德 | 已实现；守夜一章被 06 取代 |
-| [06-night-defense-v0.6.md](docs/06-night-defense-v0.6.md) | 夜战：三面 × 三轮、守夜方针、开门迎敌、架刀 | 已实现 |
-| [08-difficulty-balance-v0.8.md](docs/08-difficulty-balance-v0.8.md) | 四档难度预设与平衡验收 | 已实现 |
-| [09-challenge-mode-design.md](docs/09-challenge-mode-design.md) | 挑战自选（誓约 / 凭仗 / 了愿）、无尽、守到死、每日一局与记分板 | 已实现 |
-| [11-neighbor-medicine.md](docs/11-neighbor-medicine.md) | 邻居求药支线 | 已实现，未经玩家验收 |
-| [12-neighbor-ai-review.md](docs/12-neighbor-ai-review.md) | 邻居支线的 ARK 离线策划记录 | 历史记录 |
-| [13-dynamic-director.md](docs/13-dynamic-director.md) | 运行时 AI 世情导演（滚动规划三日） | 已实现首版 |
-| [14-past-lives.md](docs/14-past-lives.md) | 前世记忆与 `Memory.md` 运行档案 | 已实现 |
-| [15-companions.md](docs/15-companions.md) | 同院的人（带帮手搭伙） | 已实现 |
-| [16-craft-tradeoffs.md](docs/16-craft-tradeoffs.md) | 工作台加工：烧炭 / 配避瘟散 / 压干粮 | 已实现 |
-| [17-relationship-trade.md](docs/17-relationship-trade.md) | 纸鹤往来：信用报价、人情、赊欠、互助与失约补救 | 已实现，本地验证通过 |
-| [18-crisis-clocks.md](docs/18-crisis-clocks.md) | 风声与危机：预兆、调查、筹备、人情求助与事后补救 | 已实现，本地及真实AI提案回放验证 |
-| [19-npc-autonomy.md](docs/19-npc-autonomy.md) | NPC自主周转、每日目标与介入、受约束AI对话 | 已实现，本地窗口与真实AI回放验证 |
-| [20-mainline-endings.md](docs/20-mainline-endings.md) | 道士—义庄—青云观取证、实际减潮与坚守/撤离/破阵 | 首条完整链已实现，规则/接入/归档本地验证；窗口349检查通过 |
-| [21-identity-paths.md](docs/21-identity-paths.md) | 四身份八种专法、真实旧世经验、专属配方/路线/敌情 | M4首批已实现，本地规则288/接入372/Memory127/窗口253检查通过 |
-| [22-variable-openings.md](docs/22-variable-openings.md) | 身份与前世选择改变开局资源、人情和首场危机 | 已实现15项互斥筹备，规则664/接入61/Memory275/窗口609检查本地通过 |
-| [23-cycle-inquiry.md](docs/23-cycle-inquiry.md) | 跨轮回旧诺、失约、救助与今世调查、新约后果 | 首版已实现，规则266/接入73/Memory90/窗口599；真实ARK low 1次及离线回放19检查通过 |
-
-离线世情已扩为 60 条可抽事件（总表 72 条），每天 08:00 由邻居、可选导演或离线池占用同一事件时点，优先未见内容；新增 49 条原创事件及精力不足、零钱成本提示的验证见 [51-offline-events.md](docs/51-offline-events.md)。事件密度的规则验证不等于整局平衡或玩家试玩验收。
-
-外出途中遇事会保留剩余赶路时间，尚未完成的普通翻找不提前发物资；返回后仍在赶路时不能开始家务或再次出门，范围与定向验证见 [53](docs/53-interrupted-field-time.md)。修复后的 120 局整局基线见 [52](docs/52-balance-after-offline-events.md)。
-
-困难档已按原组和独立种子对照校准：荒年/永夜尸潮倍率为 3.6/4.1，暖冬和默认寻常年景保留原值；选择卡同步实际强度。荒年两组达到建议区间，永夜原组仍偏高，B4 整体未验收，详见 [54](docs/54-hard-difficulty-calibration.md)。
-
-截图在 [docs/screenshots/](docs/screenshots/)（v0.4 的是 `*_v4.png`；夜战见 `night_policy.png` 与 `night_panel.png`；开局模式与同院见 `challenge_modes.png`、`challenge_mates.png`）。
-
-## 运行
-
-引擎是 Godot 4.7.2（Forward+ 渲染器，需要支持 Vulkan 的显卡）。本地开发时放在 `tools/godot/`；这个目录 255 MB，**不在仓库里**，克隆后要自己下一份（[godotengine.org](https://godotengine.org/download) 的 4.7.2 stable，Windows 版解开后把可执行文件放进 `tools/godot/`），或者直接用你装好的 Godot 打开 `project.godot`。
-
-用编辑器打开：
-
-```bash
-./tools/godot/Godot_v4.7.2-stable_win64.exe --editor --path .
-```
-
-直接运行游戏：
-
-```bash
-./tools/godot/Godot_v4.7.2-stable_win64.exe --path .
-```
-
-存档在 `user://save.json`，跨轮回的记忆（道心、心法、残卷、每日一局记分、前世事实）在 `user://meta.json`。旧版本的存档读档时会自动升级（`scripts/core/migrate.gd`）。Windows 上的位置是 `%APPDATA%\Godot\app_userdata\劫余录\`。
-
-**动态世情**：双击 `启动游戏.bat` 会同时启动本地后台桥接器；用 Godot 打开工程也会尝试自动启动。当前开发机使用已经认证的 ARK Agent Plan（`agent-plan_cn-beijing_personal`）、默认 `auto` 路由、low reasoning；需要本机 Node.js 与 ARK CLI，游戏不保存 ARK 密钥。后台提前规划未来三日，选择会影响之后的人情与事件，已经答应的隔日回报会写入存档。设置中可以关闭「动态世情」。未配置、断网或请求失败时仍可玩原有内容；每日一局保持固定事件以保证同日条件一致。预取频率与实测记录见文档 13。
-
-## 一局怎么玩
-
-**前尘回响**：完成一世后，阿宁、老周或过路客偶尔会在之后的轮回记起你曾给药、拒绝或交易的片段，可能来自上一世，也可能来自更早的某一世。承认、送米回应或视作旧梦，会改变今世的人情与心神，并交给动态导演规划后续。每世最多两人觉醒；读档不重新抽取，翻回昨日不会凭空增加一世。劫余录 →「前世记忆」可查看真实留痕和已觉醒片段；这个机制离线也可玩，每日局不启用。
-
-**Memory.md**：每轮最终合卷或轮回结算后，游戏自动更新项目根目录的 `Memory.md`，写入实际结局、关键选择、已确认人物往事，以及交易、危机、NPC、主线、身份专法、开局投入与轮回调查七系统结算；未完工和待送回礼不写成已生效。后续 AI 实际读取文件正文作为前世背景，旧证据和旧路线不会直接完成新世调查。资格与旧案只读取已封存结构化真实经历，手改Markdown不能发放配方、路线或资源，旧债和待回礼不会转世。编剧可知道旧世档案，NPC 仍须按已觉醒片段知情。每日局也记结局摘要，但不触发前世觉醒、前世专法或轮回调查，固定普通开局。文件属于本机玩家，不提交到 Git；`meta.json` 保留恢复用的结构化记录。
-
-**新增 · 隔墙求药**：灾后第 2 日早间，阿宁来求药。你可以答应、直接赠出家中药或拒绝；接下后去药铺检视封存药柜，选择砸锁或提前备好撬杆。第 4 日 18:00 前交药，返程也耗时。交药、自留、失约都会接到不同后续；获得的义庄路线可继续调查到药账处置，也可选择守宅。左侧「邻里事务」与「劫余录」可查看目标及选择记录。剧情已提前准备，游戏中不等待 AI 或网络。
-
-**新增 · 二十日主线**：第 3 日 08:00 起，道士留下义庄与七盏灯的线索；拒绝或错过也有第 5 日起的自查路线。通过宅院「调查 / 出路」或「劫余录 → 尸劫来历 · 调查与出路」查看专属目标、成本和期限。义庄、青云观各需现场调查 20 分钟，携证后再完成真实返程 60 分钟才算本世取证；旧世残卷不能抵扣。可以断运减轻铜甲尸潮、备物撤离，或去青云观现场封阵 90 分钟，完工即改变第 20 夜残潮。开始施工扣料，完成才生效，中断不退料。具体规则见 [20](docs/20-mainline-endings.md)。
-
-**新增 · 身份与旧世**：交回今世义庄证物后，在「劫余录 → 身份与旧世 · 专属解法」中选择本身份的方法。四身份各有一条基础解法和一条需真实前世经历的替代法：书生省纸符/纸阵、趟子手截运/早行、药徒导尸配药/药墨、更夫轻装/辨潮。每世只能择一，材料、工时和放弃的机会写在选项中；完成工作才获得配方、情报或后续筹备。3种新配方在工作台加工，轻装/早行/纸阵仍须今世青云观取证与后续行动。新世开场固定旧世来源，旧档不追授后来经历；每日局禁用前世替代法。具体取舍见 [21](docs/21-identity-paths.md)。
-
-**新增 · 可变开局**：选完身份与难度，在挑战页「这世带着什么回来」单选筹备。普通开局、四身份各三项与两种通用旧世备选合计15项；银钱、初始物资、备劫时辰和今世人情实际改变，影响后续报价、赊欠及NPC行动。真实失约或防住/补救危机会解锁「现款留信用」或「复查旧患」，资格随出生固定。非普通筹备锁定首场预兆的类型、线人与第2/3日，真假仍要今世调查，防护仍要材料与施工；之后AI继续后台滚动规划。备劫「本世开局」或劫余录可查看实际结果；死亡/结局页「另选下一世开局」结算后回选择页，原重走沿用已选筹备。每日和空手固定普通，旧存档及快照不补发。详见 [22](docs/22-variable-openings.md)。
-
-**新增 · 轮回调查**：从宅院任务栏、劫余录或前世记忆页进入「轮回调查 · 旧诺与今证」。已封存的真实承诺、逾期和给药会在下一世形成最多两位人物的旧案，默认第3/6日浮现；AI可提前选择合法日期与线索形式，接受一次后冻结，离线仍有完整默认链。先宅院查访30分钟，再花米1、45分钟核对本世账页；若本人已觉醒世次与事实一致的片段，可改用水1、30分钟互证。查明后选择续约、小额新约、赠物修补、现款重识、再助眼前或互助，实际耗材耗时，改变信用、人情和NPC周转，未来回礼按新约兑现一次。也可放下旧事，承担今世关系与机会取舍。旧世线索不代替今世证据、NPC不因玩家私人残梦自动觉醒；旧v19本局及快照不追授新案。详见 [23](docs/23-cycle-inquiry.md)。
-
-有声音：古筝与守夜配乐、风雪、脚步、打更（更鼓 + 梆子）、赶尸铃、尸潮的铜锣与低吼，标题页和游戏里的"设置"可以调三路音量（宅院里按 Esc）。
-
-三个 3D 场景，徽派风格（粉墙黛瓦、马头墙）。宅院的家具是 Poly Haven 的写实中式家具，墙、地、瓦、雪是 PBR 贴图；临川城的大半铺面是 cs-studio 的中式建筑；人物是 Quaternius 的骨骼人物换上袍服、配上走路 / 干活 / 坐卧 / 倒地等动作，僵尸平举双臂蹦着走。其余构件（屋架、马头墙、守具、冠帽黄符）还是代码拼的。
-
-| 场景 | 操作 |
+| 你手上有什么 | 从哪里开始 |
 |---|---|
-| **临川城**（备劫） | 点铺子（或左边的地名）走过去，到了自动打开货架。右键拖动转视角，滚轮缩放 |
-| **宅院**（劫中） | 鼠标移到物件上会描边、显示名字；**左键点物件**弹出动作菜单，人自己走过去做；左键点地面走过去；也可以 WASD 走、E 对最近的物件弹菜单。右键（或中键）拖动转视角：左右转向、上下调俯仰；滚轮缩放。人被墙或屋顶挡住时会透出金色剪影。空格暂停 / 继续，1 2 3 切倍速，N 就寝，I 存货，J 劫余录；**院门口有活人时左键 / J 挥刀、K 或右键单击架刀** |
-| **废墟**（外出） | 提灯笼走到发金光的地方按 E 翻找，回门口按 E 回家 |
+| Windows 试玩包 | 保留解压目录中的全部文件，双击 `劫余录.exe`。程序和同名 PCK 放在一起即可离线玩。本机现存包位于 `build/windows-release/`，来源见包内 `package-provenance.json`。 |
+| 仓库源码 | 用 Godot 4.7.2 打开 [project.godot](project.godot)，首次导入完成后按 F5 运行项目。默认渲染器为 Forward+。 |
+| 已按项目目录放好 Windows 引擎 | 双击 [启动游戏.bat](启动游戏.bat)。它使用 `tools/godot/Godot_v4.7.2-stable_win64.exe` 并尝试启动本地世情桥接器。 |
 
-1. **备劫三日**：在临川城里跑铺子囤货。走动耗时辰，独轮车有负重上限，酉时宵禁。铺子会从"正常"变成"拥挤"再到"哄抢"，门口人越来越多，米行第三日午时关门。营造坊（★）的活计要在第二日前订。时辰还多时歇下、或最后一天入夜前，都会先确认。
-   - **载具在杂货铺买**：板车 600 文（+20 斤）、独轮车 1200 文（+40 斤）、驴车 3200 文（+70 斤，且远路只要一个时辰）。一趟只推一辆，**按载重最大的那辆算**，不叠加。灾后载具全部清掉。
-   - **开局先定难度**：选完身份进「这一劫，有多难？」，四档预设（暖冬 / 寻常年景 / 荒年 / 永夜），参数全在 `data/difficulty.json`。乘数管六件事：开局银两、气血上限、每小时食量、每小时水量、天气寒冷、尸潮规模。带记忆重开沿用上一档，不再问。定完难度进「立什么愿，带什么家伙」——誓约 / 凭仗 / 了愿都能空着，顶上还有两个**开局模式**开关：**守到死**（第二十日天亮不进结局，尸潮照来，守到死为止）和**每日一局**（种子按本地日期给，同一天所有人同一副牌；记分用结算道心，今日最好 / 历来最好，守到死与寻常分开记）。再往下是**同院的人**：最多带 2 个帮手（厨子蒸干粮、木匠修最破的门窗墙、孩子打水浇畦），每人每天天亮先收 12 饱腹 + 1 瓢水，吃得上才干活。
-2. **尸劫降临**：之后是**连续时间**，右上角有时辰表盘，左下角调倍速（❚❚ ▶ ▶▶ ▶▶▶）。做事要花时间：做饭一个时辰、打理菜畦四十五分钟、读书两个时辰……忙的时候时间自动加速，睡觉更快。一天的节奏：8:00 可能来事件，18:00 天黑，20:00 自动取暖，21:00 外出的必须回家、有尸潮的夜里同时要**布防**，22:00 尸潮，次日 6:00 天亮结算**功过格**。
-   - **20:00 取暖怎么取**：装了**柴油发电机**且库里有柴油，就烧一桶油转一整夜（再装上**暖气**的话屋里整夜往上回暖、睡觉也睡得沉）；不然照旧烧炭 / 柴。**只有冷夜才值得烧油**，暖夜开机器是白烧。油在杂货铺有卖，一桶三百文。
-   - HUD 参考原版布局：左上菜畦清单（带倒计时）、今夜预警和**布防守力预测**，右上第几日 / 时刻 / 表盘 + 印章按钮 + 院子温度，右下状态条，左下背包 + 常用行为 + 倍速，底部正中心愿。
-   - 场景里：菜苗头顶挂长势和剩余时间，忙的时候头顶有进度条，门受损时挂耐久；米袋、柴垛、木料按存货多少摆，守具摆在门外街上；干活时手上有动作，睡觉时人躺在床榻上。
-3. **入夜**：有尸潮的夜里，僵尸分三轮（22:00 / 22:40 / 23:20）撞**院门、窗、院墙**三个面，每个面独立算守力和耐久，破了就从那儿进院子。
-   - **21:00 定守夜方针**：**稳守**（亲守院门，间隙自动修最破的一面，不碰面板也能活）/ **亲战**（亲守最吃紧的一面，每到间隙提刀出门砍会漏的那一路，用气血换安全）/ **亲自调度**（全手动）。夜里随时按 `F` 或点右上「夜战」接管。
-   - **轮间只够做一件事**：修缮（木料 1，耐久 +40）/ 贴符（符、狗血、糯米换这一面守力 +8/+6/+4）/ 布守具（按守具归属挂到对应面）/ **开门迎敌**（不换场景，就在院里）。
-   - **院门是开关**：关着，僵尸只能砸门（每 1.25 秒 −2 耐久）；开着，这一轮本该撞门的最多 5 只直接走进院子，啃菜畦、扯米袋、踢柴垛、砸家具。你可以出门迎上去，左键 / J 挥刀，铜甲两刀，被咬一口 5 气血。**开门是用院子里的东西换门的耐久。**
-   - **架刀**：`K` 或右键单击（右键拖动仍是转视角）。抬起后 0.35 秒内咬进来的那一口被架住——不掉血、把僵尸推开 1.4 米并让它趔趄；收刀 1.15 秒，架成功只算 0.6 秒。一次只挡一口，被四五只围住时只能救自己一回。
-   - 被啃过的院子**看得见**：原地留碎屑和暗渍，砸掉的家具当场塌成一堆木料，米袋、柴垛、菜畦按新数量重画。
-   - **砸烂的家具要重做**：灶台 / 工作台塌了会一直塌着（存档也带着），点它只剩「重修」——木料 2 + 铁钉 1、一个半时辰。修好之前做不了饭、也修不了门窗。**开门放僵尸进来，代价能延续到第二天。**
-   - **添置家具**：工作台 →「添置家具…」，18 件里挑一件，回到院里**点地面放下**（`R` 转向、`Esc` 取消）。屋里院里的空地都能摆，只是不能堵住门口到正屋的中路、不能和已有家具挤在一起；料不够或已到上限的会直接写出来。点附加家具或在家具列表选**挪位**，可看占地和失败原因、旋转后放下，也可取消；拆掉会退一半料（向下取整）。花盆作物和加工状态随家具保留；床榻、书案、储物柜、灶台和工作台也可挪位，工作位置、睡姿与夜袭目标随之改变。夜袭时不能挪位，坏掉的核心家具先修好。工作台的「宅院装修」可付材料更换院墙、铺地、灯饰和花木，均为外观效果。 工作台的「东侧院扩建」需先清理、备料再施工；完工后可进入新院并摆放家具。工程中断时已备材料保留，未完成工时需要重新投入。
-   - **工作台加工**（各一个时辰、6 点精力）：**烧炭**（柴 2 → 木炭 1，更轻，且不会"后半夜弱火"）、**配避瘟散**（艾草 3 → 避瘟散 1）、**压干粮**（米 1 → 炊饼 4，不占灶、省柴水）、**画符**（符纸 2 + 朱砂 1 → 镇尸符 2，要先在事件里学会）。取舍见 [16-craft-tradeoffs.md](docs/16-craft-tradeoffs.md)。
-   - 演出仍是「先算后演」：第一轮有 3D 演出（可以跳过），后两轮以面板和战报呈现。功德可以在**神龛求签**（同一天求得越多越贵）。
-4. **死亡**：翻**生死簿残页**——翻回昨日（折寿元）、翻回扉页（结算道心重来），或者合上此录。
-5. **三种结局**：坚守与破阵都须熬过第二十夜，享原劫满 10 分奖励；提前撤离无需再守第 20 夜，也不领该奖励、不满足守满了愿。只有坚守能直接转无尽；撤离、破阵可再入轮回或合上此录。道心用来参悟**心法**（永久能力）。
+标题页「新开一卷」直接进城。「自选开局」可选身份、难度、誓约和同行者。已有旧卷时会先确认。源码版可选接入本机 Node.js 与已认证的 ARK CLI，让后台导演预排三日世情。独立 Windows 试玩包使用离线事件。[动态世情](docs/13-dynamic-director.md) · [Windows 试玩包](docs/50-windows-release.md)
 
-## 目录
+Windows 默认玩家目录为 `%APPDATA%\Godot\app_userdata\劫余录\`。其中 `save.json` 记录当前一局，`meta.json` 保存跨轮回进度。可写源码工程在项目根更新 `Memory.md`。release 模板或只读项目写入玩家目录。搬到另一台机器时可使用游戏内的 `.jyz` 导出与导入。[存档安全](docs/25-save-safety.md) · [存档搬运](docs/32-save-pack.md)
 
-```
-data/                 配置表（JSON），对应原版的 124 张 Config_* 表，改数值只改这里
-scripts/core/         纯逻辑，不依赖界面，可以无界面测试
-  data.gd  rng.gd  inv.gd  state.gd       读表、可存档随机数、物品仓、局面状态
-  pre.gd                                   备劫：走动、买卖、当铺、营造订制、载具、囤货清单
-  post.gd                                  劫中：连续时间、每日流程、各项行动、取暖、加工
-  home.gd                                  宅院家具：摆放、造价、拆除，捕鼠笼 / 炭盆 / 香炉等每日功用
-  defense.gd  night_fight.gd               尸潮三面三轮结算、院门前开门迎敌与架刀
-  explore.gd  events.gd                    外出搜寻（暴露、沦陷）、事件
-  companion.gd                             同院的人（帮手每天干一件事、吃一份口粮）
-  neighbor.gd                              邻居求药支线（预先写好的确定性剧情）
-  mainline.gd                              本世取证、断运/封阵、撤离/坚守/破阵与期限
-  identity_paths.gd                        身份专法、固定旧世来源、专属配方/路线/实际敌情
-  opening.gd                               互斥开局筹备、实际成本与关系、第一危机锁定
-  cycle_inquiry.gd                         轮回旧案、真实查访互证、新约和一次后台排期
-  director.gd                              世情导演的规则校验：AI 输出只当数据，越权、超预算一律拒收
-  past_lives.gd  life_memory_file.gd       前世记忆：只归档真实做过的选择；读写根目录 Memory.md
-  ledger.gd                                功过格、求签、心愿、道心、挑战结算、每日记分、生死簿快照
-  migrate.gd                               旧存档逐版升级
-scripts/world/              3D 场景
-  assets.gd                                第三方素材：PBR 材质、家具模型、铺面模型
-  kit.gd  arch.gd  props.gd                色板与基本体、徽派建筑构件、家具 / 物资堆 / 作物 / 守具
-  character.gd                             骨骼人物与僵尸（换色、冠帽、动作状态机）
-  figure.gd                                旧的程序拼的人物（已不用，留作参考）
-  player.gd  cam_rig.gd  sky.gd            主角移动与寻路、跟随镜头、天光雾雪
-  outline.gd                               悬停描边
-  home_world.gd  wave_show.gd              宅院、入夜尸潮演出
-  city_world.gd  ruin_world.gd             临川城、外出废墟
-  title_vignette.gd                        标题页背后的雪夜院门远景
-scripts/autoload/game.gd   全局单例：当前一局、存读档、界面切换
-scripts/autoload/audio.gd  声音（Sfx）：音效、环境声、配乐，三条总线
-scripts/autoload/story_director.gd  世情导演的异步预取客户端，从不阻塞操作和游戏时间
-scripts/ui/                界面（全部用代码搭）：ui_kit.gd 纸本主题，hud_kit.gd 场景 HUD 主题，widgets/ 时辰表盘，
-                           inventory_art.gd 家中存货插画；icon_art.gd + icon_view.gd 其它入口及家具的代码图标，
-                           main.gd 弹窗层，dialogs.gd 各种弹窗，
-                           screens/ 各界面（pre / post / explore 是 3D 场景 + HUD；difficulty 定难度、challenge 立愿与同院，其余是 2D 页面）
-scripts/dev/demo.gd        截图演示场景
-assets/third_party/        下载的原始素材包（Poly Haven 模型贴图、cs-studio、Quaternius、声音）
-assets/models/             转换后的模型：buildings/（cs-studio 铺面 GLB）、characters/（换好衣服的人物 GLB）
-assets/audio/              挑选并转好的 OGG：sfx / amb / music
-tools/pipeline/            素材下载、Blender 转换、声音合成与整理脚本
-tools/director/            世情导演的本地桥接器（Node.js），调 ARK CLI；start.ps1 由启动脚本拉起
-tests/                     整局模拟、界面冒烟、脚本编译检查，以及各系统的回归测试（见下）
-Memory.md                  前世记忆的运行档案，每轮结算自动改写，属于本机玩家
-```
+## 开发目录
 
-一局的全部状态是一个 Dictionary（`Game.run`），所以存档就是 JSON，翻生死簿就是深拷贝快照。
+| 位置 | 内容 |
+|---|---|
+| [scenes](scenes) · [scripts/autoload](scripts/autoload) | 主场景、全局局面与存读档、设置、声音、异步导演 |
+| [data](data) · [scripts/core](scripts/core) | JSON 配置和规则，包括备劫、时钟、外出、守夜、人情、结局与轮回 |
+| [scripts/world](scripts/world) · [scripts/ui](scripts/ui) | 城镇、宅院、废墟、人物及镜头。界面入口在 screens，分拆的弹窗实现在 dialogs |
+| [assets](assets) | 模型、材质、音频、中文字体和物资插画。发布所需的导入设置与许可随资源入库 |
+| [tests](tests) · [tools](tools) · [.github/workflows](.github/workflows) | Godot 用例与夹具、离线运行器、导出、素材管线、可选导演桥接器与 CI |
+| [docs](docs) | 玩法、路线图、专题记录；screenshots 收截图，evidence 收历史检查和素材证据 |
+| 本机目录 | `build/` 保存当前构建与测试输出，`tools/godot/` 保存引擎和模板，`art-previews/` 保存本机美术稿。根目录 `Memory.md` 是玩家数据。 |
 
-## 测试
+## 素材与仓库
 
-Windows 独立试玩包：先按授权启用固定版本模板 `powershell.exe -NoProfile -File tools/install_windows_templates.ps1 -Download`，再运行 `powershell.exe -NoProfile -File tools/build_windows_clean.ps1 -Commit <40位SHA> -Mode release`。只从该提交构建，保留 exe、PCK、字体许可及逐文件来源；不含本机私有素材。下载校验、图标和真实导出程序的验收边界见 [50](docs/50-windows-release.md)。省略模式时干净构建仍使用 portable。
+部分铺面使用本机 cs-studio 素材，干净源码缺少该素材时会显示程序生成的厅堂。人物、家具、贴图、音乐和字体的来源分别记录在[素材清单](docs/03-art-assets.md)、[角色许可说明](assets/third_party/413games/NOTICE.txt)和[字体来源](assets/fonts/SOURCES.md)。
 
-日常用统一入口（现有 Python 3.10+ 和 Godot 4.7.2，无需安装新包）：
+## 验证与构建
+
+在仓库根目录运行。离线测试入口使用 Python 3.10+ 和 Godot 4.7.2，每次运行建立一个工程快照，同一次运行的各用例使用独立用户目录。先列用例，再运行本次改动涉及的项目。
 
 ```powershell
-./tools/run_tests.ps1 -Tier fast
 ./tools/run_tests.ps1 -Tier core -List
 ./tools/run_tests.ps1 -Case brief
 ./tools/run_tests.ps1 -Tier ui -Case title_input
 ```
 
-`fast` 是 5 项编译/小型规则，`core` 是 63 项无界面检查，`ui` 是 38 项窗口检查；`full` 为全部 122 项已登记 Godot 离线测试，只在发布候选手动执行。平台限制与 23 项专项/诊断排除理由见 [清单](tools/test_manifest.json)，登记不代表已跑过。失败立即停止，修复后只用 `-Case` 重跑失败项；未知用例、超时、脚本错误或缺完成标记都不会假绿。
+`tools/test_manifest.json` 列出各档实际覆盖与排除原因。日志和 `results.json` 位于 `build/test-runs/<运行ID>/`。全量测试留给发布候选。桥接器另有本地 Node 测试 `node --test tools/director/bridge.test.mjs`。[测试清单](tools/test_manifest.json) · [运行器与 CI](docs/49-test-entry-ci.md)
 
-游戏进程在 `build/test-runs/<唯一ID>/project` 快照内运行，每项另有隔离用户目录，不在源码工作区写存档或测试图片。完整日志、快照哈希和 `results.json` 均保留在本轮目录。已知退出清理信息标成 `PASS_WITH_WARNINGS`，并未消除。公开仓库推送/PR 自动运行相同入口的 fast 与运行器负例；本地通过不等于远端 CI 通过，见 [49](docs/49-test-entry-ci.md)。
+已有匹配的导出模板时，可从指定提交生成独立程序。下面的命令输出至本机候选目录。构建所用源码、引擎、模板与成品指纹随包记录。
 
-以下保留旧的手工入口供定位；直接运行不会得到上述快照隔离。无头冒烟不能代替真实窗口验收：
-
-```bash
-./tools/godot/Godot_v4.7.2-stable_win64_console.exe --headless --path . --script res://tests/sim_test.gd
+```powershell
+$sourceCommit = git rev-parse HEAD
+powershell.exe -NoProfile -File tools/build_windows_clean.ps1 -Commit $sourceCommit -Mode release -OutDir build/windows-release-candidate
 ```
 
-```bash
-./tools/godot/Godot_v4.7.2-stable_win64_console.exe --headless --path . res://tests/ui_smoke.tscn
-```
-
-```bash
-./tools/godot/Godot_v4.7.2-stable_win64_console.exe --headless --path . res://tests/check_scripts.tscn
-```
-
-- `sim_test`：两种机器人策略各跑多局，检查属性、库存、耐久等不变量，并打印平衡数据；另测翻生死簿、旧存档迁移、挑战自选、无尽模式。主动策略应该大多能劫满，偷懒策略（不出门不布防）应该在中后期死掉。
-  - **末尾那行「测试完成 N / N 项」必须出现且两边相等**：它跟 `_test_list()` 对账，缺哪个就是那个测试中途崩了。GDScript 里脚本错误只中止当前函数、`_init` 照样往下跑，最后还会打印「失败 0」——所以这个对账是必要的（真的发生过：一句 `a < b < c` 被解析成 `(a < b) < c`，抛错后整条断言从来没执行过）。
-- `ui_smoke`：在 3D 场景里走完整流程：城里走路订货买货、熬过三日、宅院里寻路去打水、做饭吃饭、进废墟翻找回家、天黑就寝、天亮翻功过格、第二夜尸潮演出与战报、存读档、翻生死簿、合上此录。存档写到测试专用文件，不会碰你的存档。
-- `check_scripts`：把所有脚本加载一遍，确认都能编译。
-
-各系统原有回归测试用途如下；可运行范围、平台与专项限制以统一清单为准：
-
-| 测试 | 测什么 |
-|---|---|
-| `neighbor_story` / `neighbor_ui` | 邻居求药各分支的规则，以及窗口里的完整交互 |
-| `director_rules` | 世情导演的校验：越权物品、超预算、旧响应、重复发奖都要被拒 |
-| `director_async_ui` | 真实套接字 + 故意变慢的模拟服务，确认等待时人照样能走、时间照样走 |
-| `director_recorded_ui` | 离线重放一次已授权的 ARK 真实回答，不再生成、不重试 |
-| `past_lives_rules` / `past_lives_ui` | 前世事实只来自真实选择、觉醒抽取和界面展示 |
-| `memory_file_flow` | 结算 → 写 Memory.md → 下一世规划读取的整条流程（隔离的临时文件） |
-| `social_trade_rules` / `social_trade_integration` / `social_trade_ui` / `social_trade_memory` | 人情交易规则、剧情与时钟接线、真实窗口点击及旧世交易结算；入口为宅院劫余录 → 纸鹤往来，第2日起08:00–18:00 |
-| `crisis_rules` / `crisis_integration` / `crisis_ui` / `crisis_memory` / `crisis_recorded` | 三类危机、真实时间与供给后果、HUD/窗口操作、前世档案及真实ARK答案离线回放；宅院顶部「查验 / 筹备」或劫余录 → 风声与危机 |
-| `npc_rules` / `npc_integration` / `npc_dialogue` / `npc_ui` / `npc_memory` / `npc_recorded` | 三人资源与自主决定、时钟/交易、受控对话、真实鼠标、旧世归档及真实ARK答案回放；劫余录 → 邻人与商情，第2日起08:00公开、16:00执行 |
-| `mainline_rules` / `mainline_integration` / `mainline_memory` / `mainline_ui` | 本世专点、真实调查/返程工作、减潮与三结局、奖励去重、公开AI事实和最终Memory；M3交付时分别253/207/83/349检查通过，窗口使用真实鼠标与E键；本轮回归见下行 |
-| `identity_rules` / `identity_integration` / `identity_memory` / `identity_ui` | M4首批四身份八法、3配方/3筹备、真实波次与离城、固定前世来源/每日公平、真实Memory和受限AI；本批分别288/372/127/253检查通过；新增Node身份4项、实际Godot快照9/9通过，主线窗口本轮回归351检查通过 |
-| `opening_rules` / `opening_integration` / `opening_memory` / `opening_ui` | M4可变开局15项，真实钱物/时辰/信用/NPC/首危机、固定旧世来源、每日空手/旧档/跨世边界；分别664/61/275/609检查通过，新增Node开局4项及实际Godot快照15/15通过；受影响主线窗口本批354检查通过，相关回归见[22](docs/22-variable-openings.md) |
-| `cycle_rules` / `cycle_integration` / `cycle_memory` / `cycle_ui` / `cycle_recorded` | 旧诺/失约/救助、今世计时查证、匹配NPC碎片、互斥后果和固定新约；本批266/73/90/599/19检查通过，Node轮回5项、实际Godot快照8/8，前世窗口回归51检查；真实ARK low 1次及无网络回放，慢请求边界见[23](docs/23-cycle-inquiry.md) |
-| `player_animation` / `title_input` | 真实输入能驱动移动与动画；标题页按钮能被鼠标点到 |
-| `copy_lint` | 玩家看得到的字句里没有给开发看的词（禁用词表随文案改写逐批加，规范见 [38](docs/38-copy-style.md)）；`--script` 无界面运行 |
-| `quick_start` | 标题「新开一卷」一次点击进城（默认身份/寻常/不立愿/普通开局）、有旧卷时确认合卷、「自选开局」走选身份、第一世身份卡不提身份解法与旧世、菜单不被题名盖住（窗口模式，真实鼠标，临时目录） |
-| `input_settings` / `settings_ui` | 按键重绑与画面选项：默认绑定合同、改绑/冲突/取消/恢复默认、cfg 往返与脏数据；设置弹窗的真实鼠标 + 捕获键全流程（`settings_ui` 要窗口模式跑，画面选项会真的改窗口） |
-| `difficulty_ui` | 选难度界面整张卡点得中、切得动、不叠层（窗口模式，真实鼠标路由） |
-| `city_routes` | 城里任意两地之间的走法 |
-| `sky_clarity` | 新旧雾浓度在同一机位下的对比图 |
-
-`tools/director/` 下的桥接器另有 Node 测试：`node --test tools/director/bridge.test.mjs`。
-
-开发用的体检工具（会弹窗口）：
-
-- `tests/play_check.tscn`：在真实界面里体检宅院——导航网格覆盖图、点地面走路、打水后能否接着走、真实鼠标的点击 / 右键拖动 / 滚轮、遮挡截图、不锁帧的帧时间和绘制调用。可以读一份存档的副本（只读不回写）：`-- --save=<路径> --shots=<截图目录>`。
-- `tests/anim_speed.gd`：量走 / 跑动作原本的步速，人物按实际速度挑步态、调播放速度就靠它量的数。
-- `tests/city_shots.tscn`：逐个拍城里的铺子，检查模型朝向和比例。
-- `tests/screen_shot.tscn`：把某个 2D 界面摆出来拍一张，检查排版和文案。`--screen=` 支持 difficulty / roles / pre / post / settings / title；`settings` 会在标题上开设置弹窗，并滚到底再拍一张按键区。
-- `tests/hero_shot.tscn` / `check_hero.tscn`：从几个角度拍主角，逐项报挂件在不在、挂在哪。
-- `tests/inspect_assets.gd` / `inspect_model.gd`：打印导入后素材的节点、骨骼、尺寸和自带动作。
-
-截图（会弹出一个游戏窗口，截完自动关闭）：
-
-```bash
-./tools/godot/Godot_v4.7.2-stable_win64_console.exe --path . --resolution 1280x720 -- --demo=post --shot=res://docs/screenshots/post.png
-```
-
-可用的 demo：`title roles talents pre crowd post closeup hall kitchen menu settings night sleep wave wave_blood dawn cook garden build omens inventory explore_pick explore plan night_panel gate_fight wreck furnish placing event dead ending`。演出类的加 `--delay=6` 截到中途。
-
-## 导出注意
-
-`data/*.json` 不是 Godot 资源。导出时要在导出预设的"资源 → 非资源文件过滤"里加上 `*.json`，否则发布包里读不到配置表。
-
-## 素材与仓库
-
-- cs-studio 的铺面**不得再分发素材本身**：打包进游戏可以，但 `assets/third_party/cs_studio/` 和由它转换的 `assets/models/buildings/` 不能放进公开仓库，`.gitignore` 已经排除。别人拿到代码后要自己去 itch.io 领一份（免费），按 docs/03-art-assets.md 里的步骤转换；缺了这些文件时，城里的铺子会自动退回代码拼的厅堂。
-- Poly Haven、Quaternius 是 CC0，可以入库；但原始压缩包很大（约 200 MB），`.gitignore` 只排除了压缩包和解包目录，保留游戏实际用到的文件。
-- 人物贴图原图是 2048，导入时限制到 1024（`.import` 里的 `process/size_limit`），屏幕上看不出差别，显存省四分之三。所以 `.import` 文件要跟着入库，不能忽略。
-- 引擎（`tools/godot/`，255 MB）和 `.workbuddy/`（本地工作记忆）不入库。
-- 仓库：[github.com/zhouqingyi1104/The-Survivor-s-Ledger](https://github.com/zhouqingyi1104/The-Survivor-s-Ledger)
-
-## 原型的边界
-
-- 美术是公开素材和代码模型混搭：写实家具、低多边形铺面、程序构件放在一起，风格还不够统一；人物底模是"超级英雄"体型，袍服是从身体网格派生的，近看偏紧身。
-- 家中存货使用统一方向的物资插画（`scripts/ui/inventory_art.gd`）：米与铁钉保留原图，其余 55 件使用内置 imagegen 生成的透明图集，详见 [存货插画验收](docs/47-inventory-art.md)。其它物品入口和家具仍用既有代码图标；新插画不代表玩家辨识体验已验收。
-- 配乐有平静 / 激战和本项目程序合成的守夜曲；夜曲听感仍待真人试玩。音效是通用素材加合成的中式声音，没有人声。
-- 米行、铁匠铺、药铺和家宅还是代码拼的厅堂（免费素材包里没有合适的）。
-- 宅院只有一层；原版是多层（二楼 / 家 / 地下室）带楼层切换。
-- 备劫（临川城）的 HUD 和弹窗还是宣纸风格；宅院、废墟上的弹窗已经换成和 HUD 一致的夜色。
-- 尸潮是"先算结果、再演出来"。v0.6 把一夜拆成三轮，轮间可以修墙、贴符、布守具、出门迎战，但每一轮本身仍是结算，不是实时砍杀。
-- 体温在 v0.5 才真正咬人：柴炭断供后第 3 夜起每晚固定掉血，白天最多回暖到 60；想更硬就调 `scripts/core/post.gd` 顶部的 `RATE`。
-- 取暖只有"烧炭 / 烧柴 / 发电机带暖气"三条路，没有原作那么多的电器（原作有发电机、暖气、无人机、机器人一整套能源和自动化）。减负目前只有"同院的人"（最多 2 个帮手，各干一件固定的活），没有可配置的自动化。
-- 经营的深度还浅：物品没有保质期和霉变，烹饪只有 8 道固定菜谱（不能自由配料），作物只有 4 种，没有施肥和温室，没有酿造 / 染色等加工面板。缺口逐条见 [07-survival-log-features.md](docs/07-survival-log-features.md)。
-- 备劫三日还是按时辰的回合制（走一趟扣几个时辰），只有劫中是连续时间。
-- 中文字体已随包携带：纸面/时钟/招牌用霞鹜文楷，HUD/深色正文用 Noto Sans SC；不再依赖系统楷体或雅黑。完整来源与 OFL 在 [assets/fonts](assets/fonts/SOURCES.md)，Windows 包附「字体许可.txt」。独立无楷体环境及跨平台截图一致性仍待验收，见 [48](docs/48-bundled-fonts.md)。
-- 数值只用机器人策略调过（挑战、难度有多局实测），还没经过真人试玩。
-- 叙事：已有邻居求药支线和首条道士—义庄—青云观主线，取证/施工影响尸潮并通向三结局；世情导演提前规划有限事件。M4四身份八法、15项可变开局与旧诺/失约/救助轮回调查已接入（[21](docs/21-identity-paths.md)、[22](docs/22-variable-openings.md)、[23](docs/23-cycle-inquiry.md)），本地定向验证通过，新增真实ARK low 1次及离线回放。整局玩家试玩、长期平衡、CI与导出发行NOT RUN。更广地图轮回调查、开放通信、图鉴及成就仍未实现。
-- 世情导演依赖本机的 Node.js 和已认证的 ARK CLI；没有它们时只玩固定内容，游戏照常能玩。
+模板校验、导出模式与原包验证步骤见[Windows 构建](docs/28-windows-build.md)和[独立程序验收](docs/50-windows-release.md)。本机现有试玩包来源为 `2bca5ee`，晚于该包的四批弹窗重构已记录在[分拆记录](docs/61-dialogs-split-inquiry.md)。

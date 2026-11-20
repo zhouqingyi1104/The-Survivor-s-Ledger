@@ -1,6 +1,6 @@
 # Windows 打包
 
-2026-11-05 C2 后续实施见 [50](50-windows-release.md)：用户已授权同版本官方模板，构建改为可显式选择独立 release；以下 2026-10-26 的下载速度、预估体积和未完成项是历史记录，当前状态与实际体积以 50 的验收表为准。复现入口改用 `tools/install_windows_templates.ps1`（固定摘要、仅启用 Windows x64）及 `tools/build_windows_clean.ps1 -Commit <SHA> -Mode release`，不要沿用文末整包安装到用户目录的旧步骤。
+本页保存 2026-10-26 首个便携包的设计和实测。当前 Windows x64 独立包使用固定版本官方模板；从明确提交构建和验证的命令见 [50](50-windows-release.md)。下载速度、估算体积及未完成项均为首批记录。
 
 2026-11-05 字体补充：两种打包模式及干净提交构建均须把 `assets/fonts/LICENSES.txt` 作为「字体许可.txt」放在 exe 旁，缺失或为空即停止替换旧包。中文与界面符号字体作为资源进入 PCK；字体原始版本、哈希及 C3 实际验收见 [48](48-bundled-fonts.md)。历史体积只代表各批当时的包，当前以构建输出为准。
 
@@ -8,13 +8,13 @@
 
 ## 问题（第一性原理）
 
-现在能玩的唯一方式是 `启动游戏.bat` —— 它指向 `tools/godot/` 里那台引擎（255 MB，**不入库**）。也就是说：仓库本身跑不起来，别人拿到代码也玩不了；没有可分发的东西，就谈不上试玩反馈。
+当时能玩的唯一方式是 `启动游戏.bat` —— 它指向 `tools/godot/` 里那台引擎（255 MB，**不入库**）。也就是说：仓库本身跑不起来，别人拿到代码也玩不了；没有可分发的东西，就谈不上试玩反馈。
 
 ## 前置条件（这批最硬的一堵墙）
 
-Godot 出独立 exe 必须有**导出模板**（`%APPDATA%\Godot\export_templates\<版本>.stable\`）。当前机器上是空的。
+Godot 出独立 exe 必须有**导出模板**（`%APPDATA%\Godot\export_templates\<版本>.stable\`）。当时开发机的模板目录为空。
 
-实测下载速度：`Godot_v4.7.2-stable_export_templates.tpz` 约 **47 KB/s**，7 分钟只下到 20 MB，而这个包是 GB 级 —— 按这个速度要几小时。**本批没有等它**，改为交付「不需要模板也能出可玩产物」的路径，并把装模板的步骤写成一行命令（见文末）。
+实测下载速度：`Godot_v4.7.2-stable_export_templates.tpz` 约 **47 KB/s**，7 分钟只下到 20 MB，而这个包是 GB 级 —— 按这个速度要几小时。**本批没有等它**，改为交付「不需要模板也能出可玩产物」的路径，后续在 [50](50-windows-release.md) 完成固定版本模板校验与独立包验证。
 
 ## 方案：两种产物，一个脚本
 
@@ -47,7 +47,7 @@ static func res_is_readonly() -> bool:
 	return not res_writable()        # 开发时探一下磁盘（项目放在只读盘上也该退）
 ```
 
-`res_writable()` 往 `res://.write_probe` 写一次再删掉，结果缓存一次进程只探一次（探针文件也进了 .gitignore）。两道都留着是因为单靠任何一道都会漏：`OS.has_feature("template")` 在"编辑器二进制加载 pck"这种模拟里是 false，而探针在真 pck 里本该失败、实际上编辑器二进制却能写成功。
+首版 `res_writable()` 使用固定探针名。当前实现先创建随机命名的 `.write_probe_<随机串>` 目录，只在创建成功的目录内写入并清理自己的探针；结果缓存在进程内。两道都留着是因为单靠任何一道都会漏：`OS.has_feature("template")` 在"编辑器二进制加载 pck"这种模拟里是 false，而探针在真 pck 里本该失败、实际上编辑器二进制却能写成功。
 
 只读时档案落 `user://Memory.md`（打包后就是 `%APPDATA%\Godot\app_userdata\劫余录\Memory.md`）。
 
@@ -59,14 +59,14 @@ static func res_is_readonly() -> bool:
 | 同一个场景，在**验证包**（含 tests 的 pck）里跑 | **9 项检查，0 处失败**（数据表进包、`user://` 存档可写、`res://.write_probe` 探完即删） |
 | 发布包不该带测试（负例） | `劫余录.exe --main-pack 劫余录.pck res://tests/export_smoke.tscn` → `Cannot open file 'res://tests/export_smoke.tscn'` ✔ |
 | 便携包启动 | `劫余录.exe --headless --quit-after 90` → 0 条 script error / 资源加载失败 |
-| 便携包渲染 | 在 pck 里实例化 `main.tscn` 出一帧标题图，3D 远景、灯笼、人物、中文字体全在（`docs/28-export-title.png`） |
+| 便携包渲染 | 在 pck 里实例化 `main.tscn` 出一帧标题图，3D 远景、灯笼、人物、中文字体全在（`docs/screenshots/28-export-title.png`） |
 | `tools/build_windows.ps1 -Mode portable` | 出 `build/windows/劫余录.exe`（172.5 MB）+ `劫余录.pck`（201 MB）+ `读我.txt` |
 
 脚本本身踩过一个坑：PowerShell 5.1 按 ANSI 读脚本，UTF-8 无 BOM 的中文会乱码到解析失败 —— **这个 .ps1 必须存成 UTF-8 with BOM**（已改）。
 
-![打包版标题](28-export-title.png)
+![打包版标题](screenshots/28-export-title.png)
 
-## 未做范围
+## 首批未做范围（2026-10-26）
 
 - **真正的 `release` exe 没有产出**：导出模板没装齐（下载太慢）。这是本批最大的缺口，`-Mode release` 会在模板到位后直接可用，但**没有实跑过**。
 - **安装器**（Inno Setup / NSIS）、开始菜单快捷方式、卸载项：都没做。现在交付的是"便携文件夹"，不是带安装流程的安装包。
@@ -76,13 +76,6 @@ static func res_is_readonly() -> bool:
 - **Steam / 云存档 / 崩溃上报**：没做。
 - 打包后的**完整一轮试玩**（存档、读档、轮回、结局）没有在便携包里人工走过；只验到"能启动、能渲染、数据表在、存档可写"。
 
-## 装模板的命令（下次接上）
+## 今天构建独立包
 
-```powershell
-# 1. 下载（GB 级，慢）
-curl -L -o templates.tpz https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz
-# 2. 解压，把里面的 templates\*.* 放进（脚本会打印这一路径）
-#    %APPDATA%\Godot\export_templates\4.7.2.stable\
-# 3. 出正式件
-powershell -File tools\build_windows.ps1 -Mode release
-```
+按 [50 的模板校验、干净提交导出与探针步骤](50-windows-release.md)操作。历史便携截图只说明 10 月 26 日的包能显示标题。
