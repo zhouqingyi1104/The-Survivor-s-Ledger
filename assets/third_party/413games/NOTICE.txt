@@ -6,6 +6,8 @@ Archive SHA-256: 4c8c04d3122ac7510e961e36f5dd768c15ba34856aaacd544142a07f5dff2ad
 Base conversion: texture rebinding and GLB conversion, original geometry retained.
 Moon modification: project-authored material colors and witch hat. The hat is
 project-owned, not a third-party asset and not newly released under CC0.
-Both GLBs are static pose previews; no validated walking/facial animation.
+The game uses base-motion-v7.glb and moon-motion-v7.glb. Each GLB
+contains the Camp_* clips used by the character controller. The earlier
+static previews and their textures are preserved in Git commit 26da01f.
 The downloaded MMD archives in output/character-library are NOT these assets
 and are NOT included or cleared for commercial game distribution.
