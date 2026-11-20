@@ -1,6 +1,8 @@
 extends RefCounted
 ## 天光：天空、日月光、雾、环境光、下雪。晨 / 午 / 暮 / 夜四档，备劫时按时辰插值。
 
+static var _snowflake: GradientTexture2D
+
 const PRESETS := {
 	"dawn":  {"elev": 18.0, "az": 70.0,  "sun": Color(1.0, 0.82, 0.66), "energy": 0.95, "top": Color("#8ea4bb"), "horizon": Color("#e9d3bb"), "ambient": Color("#b9b2a8"), "amb_e": 0.38, "fog": Color("#d9d2c7"), "fog_d": 0.010},
 	"noon":  {"elev": 52.0, "az": 15.0,  "sun": Color(1.0, 0.97, 0.92), "energy": 1.05, "top": Color("#86a6c4"), "horizon": Color("#dfe4e6"), "ambient": Color("#c4c8cc"), "amb_e": 0.4, "fog": Color("#dfe3e5"), "fog_d": 0.008},
@@ -12,7 +14,7 @@ const PRESETS := {
 
 
 ## 建好天空、光、雾、雪，挂在 parent 下。返回句柄字典。
-static func make(parent: Node3D, snow_extent := 24.0) -> Dictionary:
+static func make(parent: Node3D, snow_extent := 24.0, residential := false) -> Dictionary:
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
 	var sky_mat := ProceduralSkyMaterial.new()
@@ -33,12 +35,22 @@ static func make(parent: Node3D, snow_extent := 24.0) -> Dictionary:
 	env.ssao_enabled = true
 	env.ssao_radius = 1.2
 	env.ssao_intensity = 1.6
+	if residential:
+		# 檐下保留天空的冷色反射，短半径接触阴影勾出柱脚和器物的落点。
+		env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+		env.ssao_radius = 0.72
+		env.ssao_intensity = 2.0
+		env.ssao_light_affect = 0.23
+		env.glow_bloom = 0.0
 	we.environment = env
 	parent.add_child(we)
 
 	var sun := DirectionalLight3D.new()
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 60.0
+	if residential:
+		sun.shadow_blur = 1.45
+		sun.directional_shadow_blend_splits = true
 	parent.add_child(sun)
 
 	var snow := GPUParticles3D.new()
@@ -57,6 +69,19 @@ static func make(parent: Node3D, snow_extent := 24.0) -> Dictionary:
 	flake.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	flake.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	flake.albedo_color = Color(1, 1, 1, 0.9)
+	if residential:
+		if _snowflake == null:
+			var falloff := Gradient.new()
+			falloff.offsets = PackedFloat32Array([0.0, 0.32, 0.72, 1.0])
+			falloff.colors = PackedColorArray([Color.WHITE, Color(1, 1, 1, 0.79), Color(1, 1, 1, 0.25), Color(1, 1, 1, 0.0)])
+			_snowflake = GradientTexture2D.new()
+			_snowflake.width = 32
+			_snowflake.height = 32
+			_snowflake.gradient = falloff
+			_snowflake.fill = GradientTexture2D.FILL_RADIAL
+			_snowflake.fill_from = Vector2(0.5, 0.5)
+			_snowflake.fill_to = Vector2(0.5, 0)
+		flake.albedo_texture = _snowflake
 	flake.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	# 贴着镜头的雪片会变成大白块，近处淡掉
 	flake.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
@@ -69,7 +94,7 @@ static func make(parent: Node3D, snow_extent := 24.0) -> Dictionary:
 	snow.position = Vector3(0, 14, 0)
 	snow.visibility_aabb = AABB(Vector3(-snow_extent - 5, -20, -snow_extent - 5), Vector3(snow_extent * 2 + 10, 25, snow_extent * 2 + 10))
 	parent.add_child(snow)
-	return {"env": env, "sky": sky_mat, "sun": sun, "snow": snow}
+	return {"env": env, "sky": sky_mat, "sun": sun, "snow": snow, "residential": residential}
 
 
 static func apply(h: Dictionary, preset: String, snow_amount := 0) -> void:
@@ -99,8 +124,10 @@ static func _set_snow(h: Dictionary, snow_amount: int) -> void:
 
 static func set_values(h: Dictionary, p: Dictionary) -> void:
 	var sun: DirectionalLight3D = h.sun
-	sun.rotation_degrees = Vector3(-float(p.elev), float(p.az), 0)
-	sun.light_color = p.sun
+	# 冬日的阳光从侧面落到院中，给木梁、石面和瓦口留下可读的阴面。夜景沿用月光。
+	var daylight := smoothstep(0.50, 0.95, float(p.energy)) if h.get("residential", false) else 0.0
+	sun.rotation_degrees = Vector3(-float(p.elev) + 6.0 * daylight, float(p.az) - 66.0 * daylight, 0)
+	sun.light_color = Color(p.sun).lerp(Color("#ffe5c6"), 0.22 * daylight)
 	sun.light_energy = p.energy
 	var sky: ProceduralSkyMaterial = h.sky
 	sky.sky_top_color = p.top
@@ -108,7 +135,7 @@ static func set_values(h: Dictionary, p: Dictionary) -> void:
 	sky.ground_horizon_color = p.horizon
 	sky.ground_bottom_color = Color(p.top).darkened(0.4)
 	var env: Environment = h.env
-	env.ambient_light_color = p.ambient
-	env.ambient_light_energy = p.amb_e
+	env.ambient_light_color = Color(p.ambient).lerp(Color("#aabccd"), 0.37 * daylight)
+	env.ambient_light_energy = float(p.amb_e) * (1.0 - 0.15 * daylight)
 	env.fog_light_color = p.fog
 	env.fog_density = float(p.fog_d) * float(h.get("fog_mul", 1.0))

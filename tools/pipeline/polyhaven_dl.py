@@ -5,7 +5,7 @@ MODELS = ["chinese_cabinet", "chinese_sofa", "chinese_tea_table", "chinese_scree
           "chinese_armchair", "chinese_console_table", "chinese_commode", "chinese_chandelier",
           "ceramic_vase_01", "ceramic_vase_02", "ceramic_vase_03", "ceramic_pot", "folding_wooden_stool", "dead_tree_trunk"]
 TEXTURES = ["grey_roof_tiles", "roof_09", "white_stucco", "beige_wall_001", "cobblestone_floor_08",
-            "square_cobblestone", "snow_02", "brown_planks_09"]
+            "square_cobblestone", "snow_02", "brown_planks_09", "rock_face_03", "brown_mud_dry"]
 
 def get_json(url):
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:

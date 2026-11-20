@@ -4,30 +4,34 @@ extends RefCounted
 const K = preload("res://scripts/world/kit.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const Plan = preload("res://scripts/core/home_plan.gd")
+const LIMEWASH = preload("res://scripts/world/home_limewash.gdshader")
+const RUSH_WEAVE = preload("res://scripts/world/home_rush_weave.gdshader")
+const WINDOW_PAPER = preload("res://scripts/world/window_paper.gdshader")
 
-const PLANKS := [Color("#997655"), Color("#a08060"), Color("#a58664")]
-const PAVERS := [Color("#736f64"), Color("#79776c"), Color("#838075")]
+const PLANKS := [Color("#d2ad87"), Color("#cba681"), Color("#d9b58f"), Color("#d0ad85")]
+const PAVERS := [Color("#acaeab"), Color("#a4a8a6"), Color("#bbbab1")]
+## brown_planks_09 中七条实木的中心线。只取各条板芯，接缝由模型的实际边缘决定。
+const BOARD_CENTERS := [0.135, 0.272, 0.411, 0.558, 0.716, 0.853, 0.988]
 const TIMBER := Color("#654833")
 const TRIM := Color("#89694d")
 const PLASTER := Color("#d1c3a7")
-const PAPER := Color("#e3cba1")
-const ROOF := Color("#465356")
+const PAPER := Color("#e6dac4")
+static var _finishes := {}
 
 
 static func build(parent: Node3D, pos: Vector3, rot_y: float, w: float, d: float, h: float, kind: String, gallery_door := false) -> Dictionary:
 	var room := K.node(parent, pos, Vector3(0, rot_y, 0), "house_" + kind)
 	var outline := Plan.footprint(kind, w, d)
 	var roof := K.node(room, Vector3.ZERO, Vector3.ZERO, "retained_eaves")
-	var base := K.unique_mat(ROOF, 0.90)
-	var tiles := K.unique_mat(Color.WHITE, 0.88)
-	tiles.vertex_color_use_as_albedo = true
-	tiles.vertex_color_is_srgb = true
+	var base := K.unique_mat(Color("#394447"), 0.86)
+	var tiles: BaseMaterial3D = _mapped("grey_roof_tiles").duplicate()
 	build_platform(room, outline, kind == "kitchen")
 	K.collider(room, Vector3(w, h, 0.30), Vector3(0, h * 0.5, -d * 0.5))
 	if kind == "hall":
 		_main_rooms(room, roof, outline, h, base, tiles, gallery_door)
 	else:
 		_service_wing(room, roof, outline, h, kind, base, tiles)
+	finish_joinery(room)
 	return {"node": room, "roof": roof, "fade_mats": [base, tiles], "w": w, "d": d, "footprint": outline}
 
 
@@ -84,7 +88,7 @@ static func _main_rooms(room: Node3D, roof: Node3D, plan: PackedVector2Array, h:
 	for step in 2:
 		var edge := plan[7].y + (step + 1) * 0.33
 		var stone_h := 0.105 - step * 0.034
-		K.box(room, Vector3(hall_width * 0.75 + 0.24 * step, stone_h, 0.35), Color("#9e9c88"), Vector3(hall_x, stone_h * 0.5, edge - 0.165))
+		K.box(room, Vector3(hall_width * 0.75 + 0.24 * step, stone_h, 0.35), _dressed_stone(), Vector3(hall_x, stone_h * 0.5, edge - 0.165))
 	# 东书斋三面转角撑起挂落，瓦口贴着挑台折转；俯视仍能看见里侧的书案。
 	_slope(roof, Vector3(study_x, study_h - 0.12, back - 0.28), study_width + 0.40, 0.80, -21, base, tiles)
 	_rail(room, study_outer, plan[2], study_h, 0.16, 0.16, TIMBER)
@@ -103,7 +107,7 @@ static func _service_wing(room: Node3D, roof: Node3D, plan: PackedVector2Array, 
 	var width := right - left
 	var depth := -2.0 * back
 	var kitchen := kind == "kitchen"
-	_wall_bay(room, left, right, back, h, true, width * 0.18)
+	_wall_bay(room, left, right, back, h, true, width * 0.18, kitchen)
 	if kitchen:
 		_kitchen_wall(room, width, depth, h)
 	else:
@@ -128,13 +132,13 @@ static func _service_wing(room: Node3D, roof: Node3D, plan: PackedVector2Array, 
 
 
 static func build_platform(room: Node3D, plan: PackedVector2Array, kitchen: bool) -> void:
-	K.floor_slab(room, plan, 0.107, 0.01, Color("#737164"))
+	K.floor_slab(room, plan, 0.107, 0.01, Color("#504e45"))
 	var bounds := Rect2(plan[0], Vector2.ZERO)
 	for point in plan:
 		bounds = bounds.expand(point)
 	var palette := PAVERS if kitchen else PLANKS
-	var row_depth := 0.64 if kitchen else 0.39
-	var board_width := 1.02 if kitchen else 2.28
+	var row_depth := 0.56 if kitchen else 0.30
+	var board_width := 0.96 if kitchen else 2.32
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for row in ceili(bounds.size.y / row_depth):
@@ -142,39 +146,142 @@ static func build_platform(room: Node3D, plan: PackedVector2Array, kitchen: bool
 		var x := bounds.position.x - board_width * 0.5 * (row % 2)
 		var col := 0
 		while x < bounds.end.x:
+			var variation := posmod(row * 41 + col * 13 + row * col, 73)
+			var band: float = BOARD_CENTERS[variation % BOARD_CENTERS.size()]
 			var tile := PackedVector2Array([Vector2(x + 0.009, z + 0.009), Vector2(x + board_width - 0.009, z + 0.009),
 				Vector2(x + board_width - 0.009, z + row_depth - 0.009), Vector2(x + 0.009, z + row_depth - 0.009)])
 			for clipped in Geometry2D.intersect_polygons(plan, tile):
 				for index in Geometry2D.triangulate_polygon(clipped):
 					var p: Vector2 = clipped[index]
-					surface.set_color(palette[(row * 2 + col) % palette.size()])
+					var along := (p.x - x) / board_width
+					var across := (p.y - z) / row_depth
+					# 灶间取同一块石料的内部，避开扫描图里的灰缝。
+					var uv := Vector2(0.213 + 0.095 * along, 0.438 + 0.056 * across)
+					if not kitchen:
+						uv = Vector2(float(variation) * 0.173 + along * 0.84, band + (across - 0.5) * 0.084)
+					var contact := 0.84 + 0.16 * smoothstep(0.0, 0.7, p.y - bounds.position.y)
+					surface.set_color((palette[variation % palette.size()] as Color).darkened(1.0 - contact))
+					surface.set_uv(uv)
 					surface.set_normal(Vector3.UP)
 					surface.add_vertex(Vector3(p.x, 0.131, p.y))
 			x += board_width
 			col += 1
 	var boards := MeshInstance3D.new()
+	surface.generate_tangents()
 	boards.mesh = surface.commit()
-	var finish := K.unique_mat(Color.WHITE, 0.90)
-	finish.vertex_color_use_as_albedo = true
-	finish.vertex_color_is_srgb = true
-	boards.material_override = finish
+	boards.material_override = _mapped("cobblestone_floor_08" if kitchen else "brown_planks_09")
 	room.add_child(boards)
 	for i in range(2, plan.size() - 1):
 		_rail(room, plan[i], plan[i + 1], 0.11, 0.085, 0.12, TRIM)
 
 
-static func _wall_bay(room: Node3D, left: float, right: float, back: float, h: float, has_window: bool, offset := 0.0) -> void:
+## 木板、门框与灰瓦有各自的裁片 UV；共用已有的扫描色图、切线法线与粗糙度。
+static func _mapped(id: String) -> BaseMaterial3D:
+	if not _finishes.has(id):
+		var m := Assets.pbr_unique(id)
+		if m == null:
+			m = K.unique_mat(Color.WHITE)
+		m.uv1_triplanar = false
+		m.uv1_world_triplanar = false
+		m.uv1_scale = Vector3.ONE
+		m.vertex_color_use_as_albedo = true
+		m.vertex_color_is_srgb = true
+		m.normal_scale = 0.55
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		_finishes[id] = m
+	return _finishes[id]
+
+
+## 按每根料自己的长轴展开木纹，斜梁和转角也沿顺纹。合并成一个网格，避免每根单独绘制。
+static func finish_joinery(root: Node3D) -> MeshInstance3D:
+	var stains := {K.mat(TIMBER): Color("#a88164"), K.mat(TRIM): Color("#cba783"),
+		K.mat(K.WOOD): Color("#9a795f"), K.mat(K.WOOD_LIGHT): Color("#c8ac8a")}
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pieces := 0
+	for item in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := item as MeshInstance3D
+		if not mi.mesh is BoxMesh or mi.get_child_count() != 0 or not stains.has(mi.material_override):
+			continue
+		var xf := mi.transform
+		var anchor := mi.get_parent_node_3d()
+		while anchor != root:
+			xf = anchor.transform * xf
+			anchor = anchor.get_parent_node_3d()
+		_timber(surface, mi.mesh.size, xf, stains[mi.material_override], pieces)
+		mi.get_parent().remove_child(mi)
+		mi.queue_free()
+		pieces += 1
+	if pieces:
+		surface.generate_tangents()
+		surface.index()
+		var joinery := MeshInstance3D.new()
+		joinery.name = "Joinery"
+		joinery.mesh = surface.commit()
+		joinery.material_override = _mapped("brown_planks_09")
+		root.add_child(joinery)
+		return joinery
+	return null
+
+
+static func _timber(surface: SurfaceTool, size: Vector3, xf: Transform3D, tint: Color, piece: int) -> void:
+	var axis := size.max_axis_index()
+	var long_axis := Vector3.ZERO
+	var u := Vector3.ZERO
+	var v := Vector3.ZERO
+	long_axis[axis] = 1.0
+	u[(axis + 1) % 3] = 1.0
+	v[(axis + 2) % 3] = 1.0
+	var half := size[axis] * 0.5
+	var a := size[(axis + 1) % 3] * 0.5
+	var b := size[(axis + 2) % 3] * 0.5
+	var bevel := minf(0.014, minf(a, b) * 0.21)
+	var rim := PackedVector2Array([Vector2(-a + bevel, -b), Vector2(a - bevel, -b), Vector2(a, -b + bevel), Vector2(a, b - bevel),
+		Vector2(a - bevel, b), Vector2(-a + bevel, b), Vector2(-a, b - bevel), Vector2(-a, -b + bevel)])
+	var phase := fposmod(piece * 0.371, 1.0)
+	var band: float = BOARD_CENTERS[(piece * 3) % BOARD_CENTERS.size()]
+	for i in rim.size():
+		var p := rim[i]
+		var q := rim[(i + 1) % rim.size()]
+		var edge := (q - p).normalized()
+		var normal := (xf.basis * (u * edge.y - v * edge.x)).normalized()
+		for corner: Vector2 in [Vector2.ZERO, Vector2(1, 0), Vector2.ONE, Vector2.ZERO, Vector2.ONE, Vector2(0, 1)]:
+			var section := p.lerp(q, corner.y)
+			var along := lerpf(-half, half, corner.x)
+			surface.set_normal(normal)
+			surface.set_color(tint)
+			surface.set_uv(Vector2(phase + along * 0.36, band + (corner.y - 0.5) * p.distance_to(q) * 0.16))
+			surface.add_vertex(xf * (long_axis * along + u * section.x + v * section.y))
+		for sign_x in [-1.0, 1.0]:
+			var face := [Vector2.ZERO, q, p] if sign_x > 0.0 else [Vector2.ZERO, p, q]
+			for section: Vector2 in face:
+				surface.set_normal((xf.basis * long_axis * sign_x).normalized())
+				surface.set_color(tint.darkened(0.07))
+				surface.set_uv(Vector2(phase + section.x * 0.43, band + section.y * 0.20))
+				surface.add_vertex(xf * (long_axis * half * sign_x + u * section.x + v * section.y))
+
+
+static func plaster() -> Material:
+	if not _finishes.has("lime"):
+		var lime := ShaderMaterial.new()
+		lime.shader = LIMEWASH
+		lime.set_shader_parameter("lime", PLASTER)
+		lime.set_shader_parameter("plaster_normal", preload("res://assets/third_party/polyhaven/textures/white_stucco/white_stucco_nor.jpg"))
+		lime.set_shader_parameter("plaster_arm", preload("res://assets/third_party/polyhaven/textures/white_stucco/white_stucco_arm.jpg"))
+		_finishes["lime"] = lime
+	return _finishes["lime"]
+
+
+static func _wall_bay(room: Node3D, left: float, right: float, back: float, h: float, has_window: bool, offset := 0.0, masonry := false) -> void:
 	var width := right - left
 	var root := K.node(room, Vector3((left + right) * 0.5, 0, back))
 	var sill := h * 0.33
 	var top := h * 0.79
 	var pane := width * 0.57
-	var lime: Material = Assets.pbr("white_stucco", 2.8, PLASTER)
-	if lime == null:
-		lime = K.mat(PLASTER)
+	var lime := plaster()
 	K.box(root, Vector3(width, sill, 0.27), lime, Vector3.UP * sill * 0.5)
 	K.box(root, Vector3(width, h - top, 0.27), lime, Vector3.UP * (h + top) * 0.5)
-	K.box(root, Vector3(width, sill * 0.58, 0.33), Color("#978873"), Vector3.UP * sill * 0.29)
+	wall_base(root, width, sill * 0.80, masonry)
 	if has_window:
 		_wall_span(root, -width * 0.5, offset - pane * 0.5, sill, top, 0, lime)
 		_window(root, Vector3(offset, (sill + top) * 0.5, 0), pane, top - sill)
@@ -186,12 +293,48 @@ static func _wall_bay(room: Node3D, left: float, right: float, back: float, h: f
 		K.box(root, Vector3(0.17, h, 0.34), TIMBER, Vector3(x, h * 0.5, 0))
 
 
+static func wall_base(root: Node3D, width: float, height: float, masonry: bool) -> void:
+	K.box(root, Vector3(width, height, 0.30), Color("#49443a"), Vector3.UP * height * 0.5)
+	if masonry:
+		var clay := [Color("#70736c"), Color("#7b7b71"), Color("#656c67")]
+		for row in 4:
+			var bricks := maxi(2, roundi(width / 0.54))
+			var span := width / bricks
+			var offset := 0.5 * span * (row % 2)
+			for col in range(bricks + row % 2):
+				var a := maxf(0.0, span * col - offset)
+				var b := minf(width, span * (col + 1) - offset)
+				var finish := Assets.pbr("white_stucco", 1.1, clay[(row + 2 * col) % clay.size()])
+				K.box(root, Vector3(b - a - 0.014, height / 4.0 - 0.012, 0.025), finish if finish != null else clay[(row + 2 * col) % clay.size()],
+					Vector3((a + b - width) * 0.5, (row + 0.5) * height / 4.0, 0.15))
+	else:
+		var panels := maxi(2, roundi(width / 0.31))
+		var span := width / panels
+		for i in panels:
+			K.box(root, Vector3(span - 0.012, height, 0.035), TIMBER,
+				Vector3((i + 0.5) * span - width * 0.5, height * 0.5, 0.15))
+	K.box(root, Vector3(width, 0.07, 0.38), TRIM, Vector3.UP * (height + 0.025))
+	K.box(root, Vector3(width, 0.13, 0.38), TIMBER, Vector3.UP * 0.14)
+
+
 static func _post(room: Node3D, point: Vector2, h: float) -> void:
 	var foot := Vector3(point.x, 0.0, point.y)
-	K.box(room, Vector3(0.35, 0.21, 0.35), K.STONE, foot + Vector3.UP * 0.105)
+	K.box(room, Vector3(0.37, 0.10, 0.37), _dressed_stone(), foot + Vector3.UP * 0.05)
+	K.cyl(room, 0.145, 0.18, 0.12, _dressed_stone(), foot + Vector3.UP * 0.15, Vector3(0, 22.5, 0), 8)
 	K.box(room, Vector3(0.18, h - 0.20, 0.18), K.WOOD, foot + Vector3.UP * (h + 0.20) * 0.5)
 	K.box(room, Vector3(0.42, 0.13, 0.28), TRIM, foot + Vector3.UP * (h - 0.12))
 	K.collider(room, Vector3(0.30, h, 0.30), foot + Vector3.UP * h * 0.5)
+
+
+static func _dressed_stone() -> Material:
+	if not _finishes.has("stone"):
+		var tint := Color("#b8b9ab")
+		var stone := Assets.pbr_unique("rock_face_03", 3.6, tint)
+		if stone == null:
+			stone = K.unique_mat(Color("#888a81"))
+		stone.normal_scale = 0.34
+		_finishes["stone"] = stone
+	return _finishes["stone"]
 
 
 ## 横枋、门槛与折檐都沿平面两端点搭建，不把斜边填成方台。
@@ -279,7 +422,13 @@ static func _wall_span(room: Node3D, left: float, right: float, low: float, high
 static func _window(room: Node3D, mid: Vector3, width: float, height: float) -> void:
 	# 纸窗缩进墙体，深窗台和透木疏格在侧视、俯视下均有厚度。
 	K.box(room, Vector3(width, height, 0.075), TIMBER, mid)
-	K.box(room, Vector3(width - 0.14, height - 0.13, 0.088), K.mat(PAPER, 0.92, 0.12), mid)
+	if not _finishes.has("window_paper"):
+		var sheet := ShaderMaterial.new()
+		sheet.shader = WINDOW_PAPER
+		sheet.set_shader_parameter("paper", PAPER)
+		sheet.set_shader_parameter("fiber_relief", preload("res://assets/third_party/polyhaven/textures/white_stucco/white_stucco_nor.jpg"))
+		_finishes["window_paper"] = sheet
+	K.box(room, Vector3(width - 0.14, height - 0.13, 0.088), _finishes["window_paper"], mid)
 	for x in [-0.25, 0.0, 0.25]:
 		K.box(room, Vector3(0.045, height - 0.05, 0.115), TIMBER, mid + Vector3.RIGHT * x * width)
 	K.box(room, Vector3(width, 0.05, 0.12), TIMBER, mid + Vector3.UP * height * 0.16)
@@ -315,14 +464,23 @@ static func _gable_wall_piece(room: Node3D, x: float, a: float, b: float, top: f
 	if b <= a:
 		return
 	var z := (a + b) * 0.5
-	K.box(room, Vector3(0.30, top, b - a), PLASTER, Vector3(x, top * 0.5, z))
+	K.box(room, Vector3(0.30, top, b - a), plaster(), Vector3(x, top * 0.5, z))
 	K.box(room, Vector3(0.39, 0.10, b - a + 0.035), Color("#56605f"), Vector3(x, top + 0.05, z))
 
 
 static func _woven_mat(room: Node3D, at: Vector3, width: float) -> void:
-	K.box(room, Vector3(width, 0.024, 1.15), Color("#a69267"), at)
-	for z in [-0.49, 0.49]:
-		K.box(room, Vector3(width, 0.009, 0.07), Color("#536c66"), at + Vector3(0, 0.016, z))
+	if not _finishes.has("rush"):
+		var weave := ShaderMaterial.new()
+		weave.shader = RUSH_WEAVE
+		_finishes["rush"] = weave
+	K.box(room, Vector3(width, 0.023, 1.15), Color("#6d6046"), at)
+	var weave_top := PlaneMesh.new()
+	weave_top.size = Vector2(width, 1.15)
+	var face := MeshInstance3D.new()
+	face.mesh = weave_top
+	face.position = at + Vector3.UP * 0.014
+	face.material_override = _finishes["rush"]
+	room.add_child(face)
 
 
 static func _kitchen_wall(room: Node3D, w: float, d: float, h: float) -> void:
@@ -350,31 +508,66 @@ static func _tool_board(room: Node3D, w: float, d: float, h: float) -> void:
 	K.box(room, Vector3(0.61, 0.05, 0.05), TRIM, mid + Vector3(0.35, 0.17, 0.10))
 
 
+## 院墙也用正屋的弧面瓦，墙帽在两边滴水。
+static func wall_cap(crown: Node3D, length: float) -> void:
+	var clay := K.mat(Color("#44494b"), 0.87)
+	var tiles := _mapped("grey_roof_tiles")
+	for angle in [0.0, 180.0]:
+		var side := K.node(crown, Vector3.UP * 0.13, Vector3(0, angle, 0))
+		_slope(side, Vector3.ZERO, length + 0.14, 0.38, 21.0, clay, tiles)
+	K.box(crown, Vector3(length + 0.18, 0.075, 0.13), clay, Vector3.UP * 0.26)
+
+
 static func _slope(parent: Node3D, start: Vector3, width: float, run_z: float, pitch: float, base: Material, tiles: Material) -> void:
 	var roof := K.node(parent, start, Vector3(pitch, 0, 0))
 	var depth := run_z / cos(deg_to_rad(pitch))
 	K.box(roof, Vector3(width, 0.13, depth), base, Vector3(0, 0, depth * 0.5))
-	K.box(roof, Vector3(width + 0.1, 0.10, 0.18), base, Vector3(0, 0.10, depth))
-	var mesh := BoxMesh.new()
-	var cols := ceili(width / 0.38)
-	var rows := ceili(depth / 0.46)
+	K.box(roof, Vector3(width + 0.04, 0.08, 0.15), base, Vector3(0, 0.01, depth - 0.05))
+	var cols := ceili(width / 0.29)
+	var rows := ceili(depth / 0.34)
 	var tile_w := width / cols
 	var tile_d := depth / rows
-	mesh.size = Vector3(tile_w - 0.016, 0.065, tile_d + 0.06)
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
-	mm.mesh = mesh
+	mm.mesh = _clay_tile(tile_w, tile_d)
 	mm.instance_count = rows * cols
 	var index := 0
-	var slates := [Color("#556269"), Color("#667373"), Color("#5e6a6e"), Color("#637078")]
+	var slates := [Color("#9baec1"), Color("#a7b8c4"), Color("#b1bdc8"), Color("#a5b4bf")]
 	for j in rows:
 		for i in cols:
-			var center := Vector3((i + 0.5) * tile_w - width * 0.5, 0.092, (j + 0.5) * tile_d)
-			mm.set_instance_transform(index, Transform3D(Basis(Vector3.RIGHT, deg_to_rad(5.5)), center))
+			var center := Vector3((i + 0.5) * tile_w - width * 0.5, 0.108, (j + 0.5) * tile_d)
+			mm.set_instance_transform(index, Transform3D(Basis(Vector3.RIGHT, deg_to_rad(-4.5)), center))
 			mm.set_instance_color(index, slates[(i * 7 + j * 3 + i * j) % slates.size()])
 			index += 1
 	var batch := MultiMeshInstance3D.new()
 	batch.multimesh = mm
 	batch.material_override = tiles
 	roof.add_child(batch)
+
+
+## 凹形板瓦上搭一道筒瓦，顺坡壓茬；端口可见胎厚。整个坡面实例化同一块瓦。
+static func _clay_tile(width: float, depth: float) -> ArrayMesh:
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var profile := PackedVector2Array([Vector2(0, 0.21), Vector2(0.10, 0.16), Vector2(0.18, 0.045),
+		Vector2(0.33, 0), Vector2(0.63, 0), Vector2(0.78, 0.045), Vector2(0.86, 0.16), Vector2(1, 0.21)])
+	for i in profile.size() - 1:
+		var a := profile[i]
+		var b := profile[i + 1]
+		var edge := b - a
+		var normal := Vector3(-edge.y, edge.x, 0).normalized()
+		for corner: Vector2 in [Vector2.ZERO, Vector2(1, 0), Vector2.ONE, Vector2.ZERO, Vector2.ONE, Vector2(0, 1)]:
+			var p := a.lerp(b, corner.x)
+			surface.set_normal(normal)
+			surface.set_uv(Vector2(0.039 + p.x * 0.044, 0.870 + corner.y * 0.060))
+			surface.add_vertex(Vector3((p.x - 0.5) * width, p.y * width, (corner.y - 0.5) * (depth + 0.060)))
+		# 朝院的滴水露出暗色瓦口。
+		for corner: Vector2 in [Vector2.ZERO, Vector2(1, 0), Vector2.ONE, Vector2.ZERO, Vector2.ONE, Vector2(0, 1)]:
+			var p := a.lerp(b, corner.x)
+			surface.set_normal(Vector3.BACK)
+			surface.set_uv(Vector2(0.039 + p.x * 0.044, 0.930 + corner.y * 0.01))
+			surface.add_vertex(Vector3((p.x - 0.5) * width, p.y * width - corner.y * 0.035, (depth + 0.060) * 0.5))
+	surface.generate_tangents()
+	surface.index()
+	return surface.commit()

@@ -265,7 +265,7 @@ static func _make_plan(cfg: Dictionary) -> Dictionary:
 # ---------- 街巷 ----------
 
 static func _build_streets(near: Node3D) -> void:
-	var stone := K.mat(Color("#8f8b84"), 0.95)
+	var stone := preload("res://scripts/world/yard_materials.gd").street()
 	var ditch := K.mat(Color("#6a665f"), 0.97)
 	# 门前石板路：只在中央通道，z 7.2..24，纯平面不挡迎战。
 	K.box(near, Vector3(6.4, 0.05, 17.0), stone, Vector3(0, 0.015, 15.6))

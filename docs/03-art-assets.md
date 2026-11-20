@@ -28,17 +28,19 @@
 | `folding_wooden_stool` 木折凳 | 院中 | 约 1.5 MB（未核实） |
 | `dead_tree_trunk` 枯树干 | 柴垛、院外 | 约 3 MB（未核实） |
 
-贴图（JPG 1K：颜色 + 法线 + ARM，每套约 1.3 MB）：
+每套贴图包含 1K JPG 的颜色、法线和 ARM 三张图，合计约 0.27–2.87 MB。
 
 | 资源 id | 用在哪 |
 |---|---|
 | `grey_roof_tiles`、`roof_09`（弧形陶瓦） | 黛瓦屋顶 |
 | `white_stucco`、`beige_wall_001` | 粉墙 |
-| `cobblestone_floor_08`、`square_cobblestone` | 院内青石板、街道 |
+| `cobblestone_floor_08`、`square_cobblestone` | 灶间铺石、门前石街 |
+| [`rock_face_03`](https://polyhaven.com/a/rock_face_03) | 井栏、石桌、铺路石和墙脚，各自按石作加工方式取色、打磨 |
+| [`brown_mud_dry`](https://polyhaven.com/a/brown_mud_dry) | 冬院裸土，与薄霜、井边水迹混合 |
 | `snow_02` | 雪地 |
 | `brown_planks_09` | 木作、门板 |
 
-小计：约 30 MB（模型）+ 约 12 MB（贴图）。
+小计：约 30 MB（模型）+ 约 18 MB（贴图）。
 
 ### 2. cs-studio「Low Poly Chinese Style Building Set 1 [FREE]」—— 临川城的铺子
 
@@ -102,7 +104,7 @@ CC-BY 的资源用上以后，必须在游戏里写明模型名、作者、许�
 | 素材 | 用在哪 | 代码 |
 |---|---|---|
 | Poly Haven 家具 | 正屋：条案作神龛供桌、屏风、两把圈椅、宫灯；罗汉榻作床（睡觉、小憩时人躺上去）；书案用茶几 + 方凳；储物柜；院里折凳、枯树干，各处瓷瓶瓷罐 | `home_world.gd` 的 `_furniture()` / `_decor()`，经 `assets.gd` 的 `prop()` 加载并按包围盒加碰撞 |
-| Poly Haven 贴图 | 粉墙 `white_stucco`、雪地 `snow_02`、青石板 `cobblestone_floor_08` / `square_cobblestone`、木作 `brown_planks_09`、屋顶 `grey_roof_tiles` | `kit.gd` 的 `PBR` 表 → `assets.gd` 的 `pbr()`（世界坐标三面投影，不用 UV） |
+| Poly Haven 贴图 | 灰泥、积雪、街道、院土、石作、木作、屋瓦 | 通用构件经 `assets.gd` 的 `pbr()` 作三面投影。宅院木梁和瓦面在 `home_house.gd` 中按构件展开，铺路石与裸土的湿痕、薄霜由 `courtyard_ground.gdshader` 混合。 |
 | cs-studio 铺面 | 书肆、菜市、当铺、杂货铺、营造坊、青云观（同一批模型换配色、转朝向），南岸河边的凉亭 | `city_world.gd` 的 `MODEL_SHOPS`；缺文件时退回代码拼的厅堂 |
 | Quaternius 人物 | 街上百姓（男女）、僵尸；v0.4 时也用作主角（2026-10-23 起主角改用第八节的女身）。同一副骨骼，四个体型（男 / 女 × 短褂 / 长袍） | `character.gd`（换色、冠帽黄符灯笼挂骨骼、动作状态机、僵尸平举双臂的骨骼修改器） |
 | Quaternius 动画库 | 走、正式步、待机、提灯、干活（蹲、跪修、捡拾、施法）、坐、倒地 | 所有人物共用一份 `AnimationLibrary`，不做重定向 |
@@ -112,7 +114,7 @@ CC-BY 的资源用上以后，必须在游戏里写明模型名、作者、许�
 ### 怎么重新生成（脚本在 `tools/pipeline/`）
 
 ```bash
-# 1. Poly Haven：15 个模型 + 8 套贴图（1K），写到 assets/third_party/polyhaven/
+# 1. Poly Haven：15 个模型 + 10 套贴图（1K），写到 assets/third_party/polyhaven/
 python -I tools/pipeline/polyhaven_dl.py assets/third_party/polyhaven
 
 # 2. cs-studio：itch.io 领取（免费）→ 解包 → FBX 转 GLB（"FBX|贴图编号|输出名"）

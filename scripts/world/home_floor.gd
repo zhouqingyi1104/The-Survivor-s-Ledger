@@ -26,12 +26,25 @@ static func build(parent: Node3D, floor_id: String) -> Dictionary:
 	backdrop.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	backdrop.albedo_color = Color("#181b1e") if is_cellar else Color("#28211c")
 	K.box(root, Vector3(52, 0.02, 52), backdrop, Vector3(0, 0.005, 0))
-	var lamp := OmniLight3D.new()
-	lamp.position = Vector3(0, 3.0, 0)
+	var lamp: Light3D
+	if is_cellar:
+		var ceiling := OmniLight3D.new()
+		ceiling.position = Vector3(0, 3, 0)
+		ceiling.omni_range = 12.0
+		lamp = ceiling
+	else:
+		# 从纸窗朝木地板投一片宽光，一张影图即可留住窗边、梁下的明暗。
+		var window_light := SpotLight3D.new()
+		window_light.position = Vector3(2.86, 2.75, -4.40)
+		window_light.basis = Basis.looking_at(Vector3(-2.5, -2.75, 4.0), Vector3.UP)
+		window_light.spot_range = 12.0
+		window_light.spot_angle = 72.0
+		window_light.spot_angle_attenuation = 0.55
+		window_light.shadow_enabled = true
+		window_light.shadow_blur = 1.7
+		lamp = window_light
 	lamp.light_color = Color("#ffe0aa")
-	lamp.light_energy = 1.7
-	lamp.omni_range = 12.0
-	lamp.shadow_enabled = false
+	lamp.light_energy = 1.7 if is_cellar else 2.4
 	root.add_child(lamp)
 	if is_cellar:
 		K.box(root, Vector3(8, 0.07, 7), K.STONE, Vector3(0, 0.04, 0))
@@ -72,7 +85,9 @@ static func _attic_shell(root: Node3D) -> void:
 		var wall := K.node(root, Vector3(mid.x, 0, mid.y), Vector3(0, -rad_to_deg((b - a).angle()), 0))
 		var window_bay := i >= 1 and i <= 3
 		var height := 1.85 if i == 0 or i == ATTIC_OUTLINE.size() - 1 else 0.78
-		K.solid(wall, Vector3(width, height, 0.18), Color("#987859"), Vector3(0, height * 0.5, 0))
+		K.solid(wall, Vector3(width, height, 0.18), HomeHouse.plaster(), Vector3(0, height * 0.5, 0))
+		if height > 1.0 or window_bay:
+			HomeHouse.wall_base(wall, width, 0.62, false)
 		K.box(wall, Vector3(width, 0.09, 0.25), K.WOOD, Vector3(0, height + 0.04, 0))
 		if window_bay:
 			# 三扇纸窗沿折面接合，窗台包住窗龛，人在楼梯口就能辨出坐向。
@@ -87,7 +102,7 @@ static func _attic_shell(root: Node3D) -> void:
 		K.box(root, Vector3(0.18, 2.48, 0.18), K.WOOD, Vector3(x, 1.24, -3.43))
 	var ridge_y := 3.55
 	var rise := ridge_y - 2.48
-	K.prism(root, Vector3(4.73, rise, 0.16), Color("#caba98"), Vector3(-1.375, 2.48 + rise * 0.5, -3.49))
+	K.prism(root, Vector3(4.73, rise, 0.16), HomeHouse.plaster(), Vector3(-1.375, 2.48 + rise * 0.5, -3.49))
 	for z in [-3.51, -2.75]:
 		K.box(root, Vector3(4.94, 0.15, 0.16), K.WOOD, Vector3(-1.375, 2.48, z))
 		K.box(root, Vector3(0.13, rise, 0.14), K.WOOD, Vector3(-1.375, 2.48 + rise * 0.5, z))
@@ -104,6 +119,7 @@ static func _attic_shell(root: Node3D) -> void:
 	K.box(seat, Vector3(1.44, 0.08, 0.43), Color("#72877b"), Vector3(0, 0.63, 0.02))
 	K.box(seat, Vector3(0.35, 0.075, 0.25), K.CLOTH_BLUE, Vector3(0.45, 0.71, 0.03), Vector3(0, 12, 0))
 	K.collider(seat, Vector3(1.54, 0.60, 0.50), Vector3(0, 0.34, 0))
+	HomeHouse.finish_joinery(root)
 	K.merge_static(root, [])
 
 

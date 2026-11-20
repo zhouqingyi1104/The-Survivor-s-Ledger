@@ -4,6 +4,7 @@ extends RefCounted
 
 const K = preload("res://scripts/world/kit.gd")
 const Assets = preload("res://scripts/world/assets.gd")
+const HomeHouse = preload("res://scripts/world/home_house.gd")
 
 const EAVE := 0.8
 
@@ -107,12 +108,18 @@ static func wall(parent: Node3D, a: Vector3, b: Vector3, h := 3.0) -> void:
 	var length := a.distance_to(b)
 	var along_x: bool = absf(b.x - a.x) > absf(b.z - a.z)
 	var size := Vector3(length, h, 0.36) if along_x else Vector3(0.36, h, length)
-	K.solid(parent, size, K.WALL, Vector3(mid.x, h / 2.0, mid.z))
-	K.box(parent, Vector3(size.x, 0.5, size.z) + Vector3(0.04, 0, 0.04), K.WALL_SHADE, Vector3(mid.x, 0.25, mid.z))
-	var cap := Vector3(length + 0.2, 0.16, 0.7) if along_x else Vector3(0.7, 0.16, length + 0.2)
-	K.box(parent, cap, K.ROOF, Vector3(mid.x, h + 0.08, mid.z))
-	var ridge := Vector3(length + 0.2, 0.12, 0.22) if along_x else Vector3(0.22, 0.12, length + 0.2)
-	K.box(parent, ridge, K.ROOF_EDGE, Vector3(mid.x, h + 0.2, mid.z))
+	K.solid(parent, size, HomeHouse.plaster(), Vector3(mid.x, h / 2.0, mid.z))
+	var trim := K.node(parent, mid, Vector3(0, 0 if along_x else 90, 0))
+	var plinth := minf(0.48, h * 0.28)
+	var block := Assets.pbr("rock_face_03", 2.8, Color("#a5acaa"))
+	var count := maxi(1, roundi(length / 0.94))
+	for row in 2:
+		for i in range(count + row):
+			var x0 := maxf(0, (i - row * 0.5) * length / count)
+			var x1 := minf(length, (i + 1.0 - row * 0.5) * length / count)
+			K.box(trim, Vector3(x1 - x0 - 0.013, plinth * 0.5 - 0.012, 0.407), block,
+				Vector3((x0 + x1 - length) * 0.5, (row + 0.5) * plinth * 0.5, 0))
+	HomeHouse.wall_cap(K.node(trim, Vector3.UP * h), length)
 
 
 ## 门楼：两扇可动的门（做破损、撞门的动画），门钉、春联、灯笼。返回各部件。
@@ -128,12 +135,35 @@ static func gate(parent: Node3D, pos: Vector3, width := 2.6, h := 3.0) -> Dictio
 	var leaf_mats := []
 	for sx in [-1, 1]:
 		var pivot := K.node(n, Vector3(sx * width / 2.0, 0, 0))
-		var m := K.unique_mat(K.LACQUER, 0.6)
-		K.box(pivot, Vector3(width / 2.0 - 0.04, h - 0.1, 0.16), m, Vector3(-sx * width / 4.0, (h - 0.1) / 2.0, 0))
+		var m := K.unique_mat(K.LACQUER, 0.47)
+		m.albedo_texture = preload("res://assets/third_party/polyhaven/textures/brown_planks_09/brown_planks_09_diff.jpg")
+		m.normal_enabled = true
+		m.normal_texture = preload("res://assets/third_party/polyhaven/textures/brown_planks_09/brown_planks_09_nor.jpg")
+		m.normal_scale = 0.25
+		m.uv1_triplanar = true
+		m.uv1_scale = Vector3.ONE * 0.36
+		# 木纹随门板一起转动；三块漆板留有窄缝，破损时仍共用该门扇的染色。
+		var board_w := (width * 0.5 - 0.04) / 3.0
+		for i in 3:
+			K.box(pivot, Vector3(h - 0.1, board_w - 0.009, 0.16), m,
+				Vector3(-sx * (0.02 + (i + 0.5) * board_w), (h - 0.1) * 0.5, 0), Vector3(0, 0, 90))
 		for row in 4:
 			for col in 3:
 				K.sphere(pivot, 0.04, K.mat(K.GOLD, 0.4), Vector3(-sx * (0.25 + col * 0.35), 0.6 + row * 0.55, 0.09))
-		K.box(pivot, Vector3(0.12, 0.12, 0.05), K.mat(K.GOLD, 0.4), Vector3(-sx * (width / 2.0 - 0.18), 1.4, 0.1))
+		var bronze := _aged_brass()
+		var latch := K.node(pivot, Vector3(-sx * (width / 2.0 - 0.21), 1.40, 0.105))
+		K.box(latch, Vector3(0.16, 0.16, 0.045), bronze, Vector3.ZERO, Vector3(0, 0, 45))
+		var ring := TorusMesh.new()
+		ring.outer_radius = 0.089
+		ring.inner_radius = 0.058
+		ring.rings = 16
+		ring.ring_segments = 8
+		var knocker := MeshInstance3D.new()
+		knocker.mesh = ring
+		knocker.material_override = bronze
+		knocker.position = Vector3(0, -0.078, 0.055)
+		knocker.rotation.x = PI * 0.5
+		latch.add_child(knocker)
 		leaves.append(pivot)
 		leaf_mats.append(m)
 	var door_body := K.collider(n, Vector3(width, h, 0.3), Vector3(0, h / 2.0, 0))
@@ -144,23 +174,85 @@ static func gate(parent: Node3D, pos: Vector3, width := 2.6, h := 3.0) -> Dictio
 
 
 ## 灯笼：红纱 + 内光。返回 {node, light, mat} 以便夜里点亮。
+static var _silk_mesh: ArrayMesh
+static var _silk_light: ImageTexture
+static var _brass: StandardMaterial3D
+
+static func _aged_brass() -> StandardMaterial3D:
+	if _brass == null:
+		_brass = K.unique_mat(Color("#aa8653"), 0.44)
+		_brass.metallic = 0.66
+	return _brass
+
 static func lantern(parent: Node3D, pos: Vector3) -> Dictionary:
 	var n := K.node(parent, pos)
 	K.box(n, Vector3(0.03, 0.3, 0.03), K.WOOD, Vector3(0, 0.35, 0))
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color("#c23b2a")
+	m.vertex_color_use_as_albedo = true
+	m.roughness = 0.85
 	m.emission_enabled = true
-	m.emission = Color("#ff7a3d")
+	m.emission = Color("#ff955c")
 	m.emission_energy_multiplier = 0.0
-	K.sphere(n, 0.24, m, Vector3.ZERO, Vector3(1, 1.2, 1))
-	K.cyl(n, 0.12, 0.12, 0.06, K.ROOF_EDGE, Vector3(0, 0.29, 0))
-	K.cyl(n, 0.12, 0.12, 0.06, K.ROOF_EDGE, Vector3(0, -0.29, 0))
+	if _silk_mesh == null:
+		_silk_mesh = _lantern_shade()
+		_silk_light = _lantern_transmission()
+	m.emission_texture = _silk_light
+	m.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
+	var shade := MeshInstance3D.new()
+	shade.mesh = _silk_mesh
+	shade.material_override = m
+	n.add_child(shade)
+	for y in [-0.233, 0.233]:
+		K.cyl(n, 0.145, 0.145, 0.036, Color("#554337"), Vector3.UP * y)
+		K.cyl(n, 0.144, 0.144, 0.013, _aged_brass(), Vector3.UP * (y * 1.09))
+	K.cyl(n, 0.017, 0.032, 0.13, Color("#97462f"), Vector3(0, -0.31, 0))
 	var l := K.light(n, Color("#ffae6b"), 0.0, 7.0, Vector3(0, -0.1, 0))
 	return {"node": n, "light": l, "mat": m}
 
 
+static func _lantern_shade() -> ArrayMesh:
+	var profile := PackedVector2Array([Vector2(0.125, -0.225), Vector2(0.224, -0.167), Vector2(0.25, -0.05),
+		Vector2(0.25, 0.05), Vector2(0.224, 0.167), Vector2(0.125, 0.225)])
+	var skin := SurfaceTool.new()
+	skin.begin(Mesh.PRIMITIVE_TRIANGLES)
+	const SIDES := 36
+	for row in profile.size():
+		var dr := profile[mini(row + 1, profile.size() - 1)] - profile[maxi(row - 1, 0)]
+		for i in SIDES + 1:
+			var a := TAU * i / SIDES
+			var rib := i % 3 == 0
+			var radius := profile[row].x - (0.012 if rib else 0.0)
+			var silk := Color("#a73e2b") if rib else Color("#d06641")
+			skin.set_color(silk.darkened(0.26 * absf(profile[row].y) / 0.225).srgb_to_linear())
+			skin.set_uv(Vector2(float(i) / SIDES, (profile[row].y + 0.225) / 0.45))
+			skin.set_normal(Vector3(cos(a) * dr.y, -dr.x, sin(a) * dr.y).normalized())
+			skin.add_vertex(Vector3(cos(a) * radius, profile[row].y, sin(a) * radius))
+	for row in profile.size() - 1:
+		for i in SIDES:
+			var a := row * (SIDES + 1) + i
+			var b := a + 1
+			for index in [a, b, b + SIDES + 1, a, b + SIDES + 1, a + SIDES + 1]:
+				skin.add_index(index)
+	return skin.commit()
+
+
+## 灯芯从罩子中段透光，十二道竹骨和上下铜箍留在暗处。
+static func _lantern_transmission() -> ImageTexture:
+	var mask := Image.create_empty(192, 64, false, Image.FORMAT_RGBA8)
+	for y in mask.get_height():
+		var height_ratio := (y + 0.5) / mask.get_height()
+		var center := sin(PI * height_ratio)
+		for x in mask.get_width():
+			var phase := fposmod((x + 0.5) / 16.0, 1.0)
+			var rib := smoothstep(0.02, 0.20, minf(phase, 1.0 - phase))
+			var brightness := 0.19 + 0.81 * center * (0.33 + 0.67 * rib)
+			mask.set_pixel(x, y, Color(brightness, brightness, brightness))
+	mask.generate_mipmaps()
+	return ImageTexture.create_from_image(mask)
+
+
 static func set_lantern(lan: Dictionary, lit: bool) -> void:
-	lan.mat.emission_energy_multiplier = 2.5 if lit else 0.0
+	lan.mat.emission_energy_multiplier = 1.6 if lit else 0.0
 	lan.light.light_energy = 1.6 if lit else 0.0
 
 

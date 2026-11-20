@@ -5,7 +5,7 @@ extends Node3D
 ## 可交互的物件都登记在 spot_nodes 里（碰撞体带 "spot" 标记），界面靠它做悬停描边、点击菜单和头顶标签。
 
 const K = preload("res://scripts/world/kit.gd")
-const COURTYARD_GROUND = preload("res://scripts/world/courtyard_ground.gdshader")
+const YardMaterials = preload("res://scripts/world/yard_materials.gd")
 const Arch = preload("res://scripts/world/arch.gd")
 const HomeHouse = preload("res://scripts/world/home_house.gd")
 const Props = preload("res://scripts/world/props.gd")
@@ -73,7 +73,7 @@ var _amb_ctx := {"phase": "post", "pday": 1, "heavy": false}
 
 func _ready() -> void:
 	add_to_group("navsrc")
-	sky = SkyKit.make(self, 26.0)
+	sky = SkyKit.make(self, 26.0, true)
 	# The overhead camera looks through many metres of fog even at nearby props.
 	# Keep the courtyard legible instead of tinting the entire scene grey.
 	sky.fog_mul = 0.12
@@ -115,34 +115,32 @@ func _ground() -> void:
 	floor_body.add_child(cs)
 	add_child(floor_body)
 	# 夯土留给日常劳作；大块青石铺在门、厅堂和两厢之间常走的路上。
-	var packed_earth := ShaderMaterial.new()
-	packed_earth.shader = COURTYARD_GROUND
-	K.box(self, Vector3(20.0, 0.04, 14.9), packed_earth, Vector3(0, 0.015, -0.45))
-	var flagstones: Array[Material] = []
-	for tint in [Color("#9c9e94"), Color("#a8a99c"), Color("#969b94"), Color("#b1afa2")]:
-		var stone := ShaderMaterial.new()
-		stone.shader = COURTYARD_GROUND
-		stone.set_shader_parameter("flagstone", true)
-		stone.set_shader_parameter("base_color", tint)
-		flagstones.append(stone)
-	_pave(Rect2(-1.15, -4.7, 2.3, 11.75), 2, 16, flagstones)
-	_pave(Rect2(-6.24, -1.8, 5.09, 1.55), 5, 2, flagstones)
-	_pave(Rect2(1.15, -1.8, 5.09, 1.55), 5, 2, flagstones)
+	K.box(self, Vector3(20.0, 0.04, 14.9), YardMaterials.ground(false), Vector3(0, 0.015, -0.45))
+	var paving := SurfaceTool.new()
+	paving.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_pave(paving, Rect2(-1.15, -4.7, 2.3, 11.75), 2, 16)
+	_pave(paving, Rect2(-6.24, -1.8, 5.09, 1.55), 5, 2)
+	_pave(paving, Rect2(1.15, -1.8, 5.09, 1.55), 5, 2)
 	# 井台四周留落脚的干地，踏石通向中路。石面低于可购买的装修地砖。
-	_pave(Rect2(-4.46, 0.1, 2.9, 2.9), 3, 4, flagstones)
-	K.box(self, Vector3(0.51, 0.032, 0.65), flagstones[2], Vector3(-1.4, 0.056, 1.44))
+	_pave(paving, Rect2(-4.46, 0.1, 2.9, 2.9), 3, 4)
+	var slab := YardMaterials.ground(true)
+	var paths := MeshInstance3D.new()
+	paths.mesh = paving.commit()
+	paths.material_override = slab
+	add_child(paths)
+	K.box(self, Vector3(0.51, 0.032, 0.65), slab, Vector3(-1.4, 0.056, 1.44))
 	# 梅下茶台取八角，斜踏步从中路分出。坪面低于装修面层。
 	var tea_pad := K.node(self, Vector3(-4.6, 0, 4.4), Vector3(0, 22.5, 0))
 	K.cyl(tea_pad, 2.0, 2.0, 0.052, Color("#686b62"), Vector3(0, 0.055, 0), Vector3.ZERO, 8)
-	K.cyl(tea_pad, 1.84, 1.84, 0.024, flagstones[1], Vector3(0, 0.07, 0), Vector3.ZERO, 8)
+	K.cyl(tea_pad, 1.84, 1.84, 0.024, slab, Vector3(0, 0.07, 0), Vector3.ZERO, 8)
 	for step in [Vector3(-1.65, 0.056, 3.1), Vector3(-2.30, 0.056, 3.46)]:
-		K.box(self, Vector3(0.58, 0.038, 0.85), flagstones[0], step, Vector3(0, 29, 0))
+		K.box(self, Vector3(0.58, 0.038, 0.85), slab, step, Vector3(0, 29, 0))
 	# 门外街道（青石）；街对面人家、后巷邻院、城墙山脊等四周景物统一由 home_surroundings 构建
-	K.box(self, Vector3(60, 0.04, 6), K.mat(Color("#8f8b84"), 0.95), Vector3(0, 0.02, 11))
+	K.box(self, Vector3(60, 0.04, 6), YardMaterials.street(), Vector3(0, 0.012, 11))
 	K.box(self, Vector3(60, 0.045, 1.2), K.SNOW, Vector3(0, 0.025, 13.6))
 
 
-func _pave(rect: Rect2, columns: int, rows: int, stones: Array[Material]) -> void:
+func _pave(surface: SurfaceTool, rect: Rect2, columns: int, rows: int) -> void:
 	var row_depth := rect.size.y / rows
 	var width := rect.size.x / columns
 	for row in rows:
@@ -150,9 +148,28 @@ func _pave(rect: Rect2, columns: int, rows: int, stones: Array[Material]) -> voi
 		for col in range(columns + row % 2):
 			var left := maxf(rect.position.x, rect.position.x + col * width - stagger)
 			var right := minf(rect.end.x, rect.position.x + (col + 1) * width - stagger)
-			var material := stones[posmod(row * 7 + col * 3 + floori(rect.position.x), stones.size())]
-			var center := Vector3((left + right) * 0.5, 0.052, rect.position.y + (row + 0.5) * row_depth)
-			K.box(self, Vector3(right - left - 0.018, 0.036, row_depth - 0.018), material, center)
+			var stone := Rect2(left, rect.position.y + row * row_depth, right - left, row_depth).grow(-0.012)
+			var tone := 0.84 + 0.04 * posmod(row * 7 + col * 3 + floori(left), 5)
+			var sample_id := posmod(row * 37 + col * 17 + floori(left * 21.0), 251)
+			surface.set_color(Color(tone, tone, tone, sample_id / 255.0))
+			# 单次绘制整条路。窄斜面接住侧光，缝口露出下方泥土。
+			var rim := PackedVector2Array([stone.position, Vector2(stone.end.x, stone.position.y), stone.end, Vector2(stone.position.x, stone.end.y)])
+			var inner := stone.grow(-0.029)
+			var top := PackedVector2Array([inner.position, Vector2(inner.end.x, inner.position.y), inner.end, Vector2(inner.position.x, inner.end.y)])
+			surface.set_normal(Vector3.UP)
+			for k in [0, 1, 2, 0, 2, 3]:
+				surface.add_vertex(Vector3(top[k].x, 0.078, top[k].y))
+			for k in 4:
+				var j := (k + 1) % 4
+				var edge := rim[j] - rim[k]
+				var outward := Vector2(edge.y, -edge.x).normalized()
+				surface.set_normal(Vector3(outward.x, 1.0, outward.y).normalized())
+				var a := Vector3(rim[k].x, 0.043, rim[k].y)
+				var b := Vector3(rim[j].x, 0.043, rim[j].y)
+				var c := Vector3(top[j].x, 0.078, top[j].y)
+				var d := Vector3(top[k].x, 0.078, top[k].y)
+				for point: Vector3 in [a, b, c, a, c, d]:
+					surface.add_vertex(point)
 
 
 func _buildings() -> void:
@@ -229,7 +246,6 @@ func _furniture() -> void:
 func _decor() -> void:
 	Assets.prop(self, "folding_wooden_stool", Vector3(-1.8, 0, 0.6), 25.0)
 	Assets.prop(self, "dead_tree_trunk", Vector3(8.7, 0, 3.4), 90.0)
-	Assets.prop(self, "ceramic_vase_03", Vector3(-4.7, 0.84, 4.3), 0.0, 1.0, false)
 	Assets.prop(self, "ceramic_vase_01", Vector3(5.2, 0, -7.6))
 	Props.plum_tree(self, Vector3(-7.6, 0, 5.3))
 	Props.stone_table(self, Vector3(-4.6, 0, 4.4))

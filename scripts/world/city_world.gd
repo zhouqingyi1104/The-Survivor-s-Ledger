@@ -7,6 +7,7 @@ signal arrived(place: String)
 
 const K = preload("res://scripts/world/kit.gd")
 const Arch = preload("res://scripts/world/arch.gd")
+const YardMaterials = preload("res://scripts/world/yard_materials.gd")
 const HomeHouse = preload("res://scripts/world/home_house.gd")
 const Props = preload("res://scripts/world/props.gd")
 const SkyKit = preload("res://scripts/world/sky.gd")
@@ -49,7 +50,7 @@ var _path: Array = []
 
 
 func _ready() -> void:
-	sky = SkyKit.make(self, 40.0)
+	sky = SkyKit.make(self, 40.0, true)
 	sky.fog_mul = 0.18
 	_ground()
 	for id in PLACES:
@@ -63,7 +64,7 @@ func _ready() -> void:
 
 
 func _ground() -> void:
-	K.box(self, Vector3(160, 0.2, 120), K.mat(K.SNOW.darkened(0.08), 0.95), Vector3(0, -0.1, -10))
+	K.box(self, Vector3(160, 0.2, 120), Assets.pbr("snow_02", 6.5, Color("#edf2f6")), Vector3(0, -0.1, -10))
 	# 河与河岸
 	K.box(self, Vector3(160, 0.05, 6), K.mat(Color("#3f5f61"), 0.12), Vector3(0, 0.02, RIVER_Z))
 	for sz in [-1, 1]:
@@ -75,7 +76,7 @@ func _ground() -> void:
 	for sx in [-1, 1]:
 		K.box(self, Vector3(0.15, 0.5, 7.6), K.STONE_DARK, Vector3(sx * 1.6, 0.9, RIVER_Z))
 	# 北岸长街、过桥到家的路、上山的石阶
-	var road := K.mat(Color("#8f8b84"), 0.95)
+	var road := YardMaterials.street()
 	K.box(self, Vector3(96, 0.04, 3.6), road, Vector3(1, 0.03, -1.0))
 	K.box(self, Vector3(3.6, 0.04, 6), road, Vector3(0, 0.03, 11.0))
 	for k in 8:
@@ -156,9 +157,9 @@ func _place_label(id: String, pos: Vector3) -> void:
 
 ## 从桥头进侧门，折上石阶是抬高的正屋，转过一侧的短灶房便是井院。
 func _residence(root: Node3D) -> void:
-	_residence_terrace(root, Vector2(-1.35, -0.82), Vector2(2.22, 1.84), 0.50, Color("#a39986"))
-	_residence_terrace(root, Vector2(-0.55, 1.75), Vector2(8.76, 3.5), 0.16, Color("#a89c86"))
-	_residence_terrace(root, Vector2(4.65, -0.34), Vector2(3.68, 5.11), 0.30, Color("#92917e"))
+	_residence_terrace(root, Vector2(-1.35, -0.82), Vector2(2.22, 1.84), 0.50)
+	_residence_terrace(root, Vector2(-0.55, 1.75), Vector2(8.76, 3.5), 0.16)
+	_residence_terrace(root, Vector2(4.65, -0.34), Vector2(3.68, 5.11), 0.30)
 	var hall := K.node(root, Vector3(-1.35, 0.50, -2.40))
 	hall.scale = Vector3.ONE * 0.69
 	var rooms := HomeHouse.build(hall, Vector3.ZERO, 0, 12.0, 4.5, 3.6, "hall")
@@ -166,7 +167,7 @@ func _residence(root: Node3D) -> void:
 	for corner: Vector2 in rooms.footprint:
 		base_outline.append(corner * 1.05)
 	# 台基逐间随外墙进退，石阶只接到中厅。西卧与东窗向院里伸出的轮廓都留在外面。
-	var plinth := K.floor_slab(hall, base_outline, 0.0, -hall.position.y / hall.scale.y, Color("#8e8677"))
+	var plinth := K.floor_slab(hall, base_outline, 0.0, -hall.position.y / hall.scale.y, Assets.pbr("rock_face_03", 2.8, Color("#9ca6ad")))
 	plinth.create_trimesh_collision()
 	Props.bed(hall, Vector3(-3.8, 0.18, -0.8))
 	Props.shrine(hall, Vector3(0, 0.14, -1.3))
@@ -191,7 +192,7 @@ func _residence(root: Node3D) -> void:
 		K.box(root, Vector3(0.40, 1.28, 0.40), K.WALL, Vector3(side * 1.02, 0.64, gate_z))
 		K.prism(root, Vector3(0.65, 0.25, 0.63), K.ROOF, Vector3(side * 1.02, 1.39, gate_z))
 		K.box(root, Vector3(0.11, 1.02, 0.68), K.WOOD, Vector3(side * 1.02, 0.69, gate_z - 0.44))
-	var slab := K.mat(Color("#aba89a"), 0.92)
+	var slab := YardMaterials.ground(true, false)
 	for z in [3.72, 3.10, 2.48, 1.86]:
 		K.box(root, Vector3(1.42, 0.085, 0.55), slab, Vector3(0, 0.17, z))
 	K.box(root, Vector3(1.66, 0.085, 0.55), slab, Vector3(-1.58, 0.17, 1.86))
@@ -205,11 +206,11 @@ func _residence(root: Node3D) -> void:
 		collider.set_meta("place", "home")
 
 
-func _residence_terrace(root: Node3D, center: Vector2, size: Vector2, height: float, surface: Color) -> void:
+func _residence_terrace(root: Node3D, center: Vector2, size: Vector2, height: float) -> void:
 	var box := Vector3(size.x, height, size.y)
 	var mid := Vector3(center.x, height * 0.5, center.y)
-	K.solid(root, box, Color("#726d63"), mid)
-	K.box(root, Vector3(size.x + 0.10, 0.075, size.y + 0.10), surface, Vector3(center.x, height - 0.0375, center.y))
+	K.solid(root, box, Assets.pbr("rock_face_03", 2.8, Color("#9ca6ad")), mid)
+	K.box(root, Vector3(size.x + 0.10, 0.075, size.y + 0.10), YardMaterials.ground(true, false), Vector3(center.x, height - 0.0375, center.y))
 
 
 func _plum_terrace(root: Node3D) -> void:
@@ -217,7 +218,7 @@ func _plum_terrace(root: Node3D) -> void:
 	var terrace := K.node(root, Vector3(-4.95, 0, 1.74))
 	var base := K.cyl(terrace, 2.15, 2.25, 0.38, K.STONE_DARK, Vector3(0, 0.19, 0), Vector3.ZERO, 8)
 	base.scale.z = 0.90
-	var paving := K.cyl(terrace, 2.18, 2.18, 0.085, Color("#a8a294"), Vector3(0, 0.41, 0), Vector3.ZERO, 8)
+	var paving := K.cyl(terrace, 2.18, 2.18, 0.085, YardMaterials.ground(true, false), Vector3(0, 0.41, 0), Vector3.ZERO, 8)
 	paving.scale.z = 0.90
 	paving.create_convex_collision()
 	var plum := Props.plum_tree(terrace, Vector3(-0.68, 0.45, 0.04))
