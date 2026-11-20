@@ -6,6 +6,7 @@ const Home = preload("res://scripts/core/home.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Director = preload("res://scripts/core/director.gd")
+const Events = preload("res://scripts/core/events.gd")
 const Ledger = preload("res://scripts/core/ledger.gd")
 const SaveFile = preload("res://scripts/core/save_file.gd")
 
@@ -91,9 +92,26 @@ func choose(prefix: String) -> bool:
 
 func advance_work() -> void:
 	var left := int(Game.run.busy.get("end", Game.run.t)) - int(Game.run.t)
-	if left > 0: Post.advance(Game.run, left)
-	Game.refresh()
+	if left > 0: main._screen.advance(left)
 	await frames(20)
+
+func finish_attic_work() -> bool:
+	var finish_time := int(Game.run.busy.end)
+	await advance_work()
+	if not check(int(Game.run.t) == Post.EVENT_AT and main.has_modal("event"), "施工途中的晨间事件未弹出"): return false
+	if not check(Floors.attic_stage(Game.run) == "ready" and Game.run.busy.get("end") == finish_time, "晨间事件改变了阁楼的完工时刻"): return false
+	var modal: Control = main._modals["event"]
+	var choice: Button
+	for item in Events.entry(Game.run).choices:
+		choice = button(item.text, modal)
+		if choice != null and not choice.disabled: break
+	if not check(choice != null and not choice.disabled, "晨间事件没有可用选项"): return false
+	await click(choice.get_global_rect().get_center())
+	var confirm := button("知道了", modal)
+	if not check(Game.run.pending_event == "" and confirm != null, "晨间事件选择后未显示结果"): return false
+	await click(confirm.get_global_rect().get_center())
+	await advance_work()
+	return check(Game.run.busy.is_empty() and int(Game.run.t) == finish_time and Floors.unlocked(Game.run, "attic"), "处理晨间事件后阁楼未按时完工")
 
 func shot(name: String) -> void:
 	var directory := OS.get_environment("C5_SHOT_DIR")
@@ -323,8 +341,7 @@ func _ready() -> void:
 	if not await open_bench(): get_tree().quit(1); return
 	if not await choose("阁楼施工"): get_tree().quit(1); return
 	check(str(Game.run.busy.get("kind", "")) == "attic_build", "阁楼未进入施工")
-	await advance_work()
-	check(Floors.attic_stage(Game.run) == "complete", "阁楼施工未完成")
+	if not await finish_attic_work(): get_tree().quit(1); return
 	screen.player.global_position = screen.world.spot_info("floor_attic").stand
 	screen.rig.snap()
 	await frames(10)
