@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 128 128">
+  <!-- Sign painters' trade devices. Each 32-unit block is also a navigation icon. -->
+  <g stroke="#453e34" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round">
+    <!-- residence: eaves and a pair of closed doors -->
+    <g><path fill="#dabd8f" d="M6 14h20v13H6z"/><path fill="#596e68" d="M2 14q7-3 12-10l3 1q3 5 13 9l-3 2-11-6-11 6z"/><path fill="#ae6b4c" d="M11 17h10v10H11z"/><path d="M16 17v10m-11 1h22" fill="none"/></g>
+    <!-- rice dealer: bent millet head, with leaves around a single stalk -->
+    <g transform="translate(32)"><path fill="none" d="M8 28Q19 21 20 11q1-6-4-8"/><path fill="#698064" d="M12 23Q7 22 5 15q6 1 7 8zm3-5q0-8-4-11-2 7 4 11z"/><path fill="#d6ac55" d="M19 6q-6 0-6 4 4 1 6-4zm1 3q-1 5 4 7 1-5-4-7zm-2 3q-6 0-6 5 5 0 6-5zm1 4q0 6 4 7 1-5-4-7zm-3 3q-4 0-5 5 4 0 5-5z"/></g>
+    <!-- greengrocer: a radish and three leaves -->
+    <g transform="translate(64)"><path fill="#778868" d="M17 11q-7-1-9-7 7 0 9 7zm1 0q-3-5 0-9 4 5 0 9zm1 1q1-8 9-8-1 6-9 8z"/><path fill="#ead9ac" d="M15 10q10-1 8 7-2 6-13 9l-5 3 3-5q1-6 7-14z"/><path d="m11 18 4 1m1-5 3 1" fill="none"/></g>
+    <!-- general store: loop and spout of an earthen oil jar -->
+    <g transform="translate(96)"><path fill="#c29e67" d="M11 7h10l-1 4q7 4 6 11-1 6-11 6T5 21q0-6 7-10z"/><path d="M22 14q7-6 7-1 0 4-5 6m-13-6q4 3 9 1" fill="none"/><path fill="#8a6d49" d="M10 6q5-3 12 0l-1 2H11z"/></g>
+    <!-- smith: anvil and a forging hammer -->
+    <g transform="translate(0 32)"><path fill="#717d78" d="M3 16h25l-4 5-6 1 1 3 4 1v2H9v-2l4-1 1-4-5-1z"/><path fill="#b1875c" d="m13 18-2-2 8-10 2 2z"/><path fill="#8fa099" d="m15 4 3-2 9 7-3 4z"/></g>
+    <!-- apothecary: pestle and a stone mortar -->
+    <g transform="translate(32 32)"><path fill="#b39373" d="m15 17 9-13q4-1 3 3l-10 13z"/><path fill="#8da198" d="M4 15q11-4 23 0-1 9-10 10l4 2v1H9v-1l4-2q-8-1-9-10z"/><path d="M5 16q11 3 20 0" fill="none"/></g>
+    <!-- carpenter: square and a plane handle -->
+    <g transform="translate(64 32)"><path fill="#c19964" d="m5 6 6-2 4 14 11-3 2 6-17 5z"/><path d="m10 10 2-1m0 5 2-1m4 7 1 2m3-3 1 2" fill="none"/><path fill="#899a91" d="m5 24 16-19 3 2L8 27l-4 1z"/></g>
+    <!-- temple: a three-legged ritual censer -->
+    <g transform="translate(96 32)"><path fill="#829a8a" d="M5 15h22q-1 8-7 9l1 4h-3l-2-3-3 3h-3l2-4q-8-1-7-9z"/><path d="M7 17q-5 1-4-4m22 4q5 2 4-4M11 12q-3-3-1-6m6 6q3-3 0-8m5 8q1-3 0-5" fill="none"/></g>
+    <!-- bookseller: open stitched volume -->
+    <g transform="translate(0 64)"><path fill="#b39c79" d="m2 9 12-3 3 2 12-4 1 19-12 4-5-2-10 3z"/><path fill="#eadcb8" d="m4 7 10-3 3 3 10-4 1 17-11 5-4-3-9 2z"/><path d="m16 8 1 15m-10-9 5-2m7 0 5-2" fill="none"/></g>
+    <!-- pawnbroker: two pans hanging from the beam of a scale -->
+    <g transform="translate(32 64)"><path fill="#ad8450" d="M14 5h3l1 19 5 3v1H9v-1l5-3z"/><path d="m4 11 23-5m-19 5-4 8h8l-4-8m15-4-4 9h8l-4-9" fill="none"/><path fill="#d5b56f" d="M3 19h10q-4 6-10 0zm15-3h10q-5 6-10 0z"/></g>
+    <!-- travel: path winding past a gate marker -->
+    <g transform="translate(64 64)"><path fill="#828f77" d="m2 16 8-11 6 8 7-10 7 13z"/><path fill="#d3b787" d="M11 29q0-4 8-6 8-3 3-6-2-1-1-4 1 2 6 4 6 5-5 9l-3 3z"/><path d="M7 25V12m-3 2h9l-2 3H4" fill="#b77e52"/></g>
+    <!-- time: gnomon and calibrated stone base -->
+    <g transform="translate(96 64)"><path fill="#b48e57" d="m3 18 15-8 11 8-15 10-11-6z"/><path fill="#e1c797" d="m3 18 15-9 11 8-15 9z"/><path fill="#75847a" d="m14 20 5-16 2 12z"/><path d="m6 18 3 1m1 2 2 2m5-1 2-2" fill="none"/></g>
+    <!-- packing: tied shoulder bag -->
+    <g transform="translate(0 96)"><path fill="#a4a68b" d="m9 3 6 3 6-3-2 7q9 8 7 14-1 4-11 4T5 23q-1-6 8-13z"/><path d="m10 11 11-1m-4 2 5 5m-11 4 3-7" fill="none"/></g>
+    <!-- opening: a scroll tied with red thread -->
+    <g transform="translate(32 96)"><path fill="#dbbd87" d="m5 23 15-19 7 5-15 19z"/><path fill="#ae6a4d" d="m12 13 7 4-2 3-7-4z"/><path d="m17 17 6 5m-12 1 4 2" fill="none"/></g>
+    <!-- checklist: wooden tally, three accounting notches -->
+    <g transform="translate(64 96)"><path fill="#b78f63" d="m8 5 7-1 2 23-8 1z"/><path fill="#d7c29b" d="m16 5 7 1-2 22-6-1z"/><path d="m10 11 3-1m-3 6 3-1m4-5 4 1m-4 4 3 1m-4 4 4 1" fill="none"/></g>
+    <!-- exposure: bronze warning bell and clapper -->
+    <g transform="translate(96 96)"><path fill="#bca06b" d="M7 22q3-2 3-9 1-7 6-7t6 7q0 7 4 9l-1 2H8z"/><path d="M14 6q-1-6 3-4l1 4m-5 19q3 7 6 0m-7-7q4 2 8 0" fill="none"/></g>
+  </g>
+</svg>

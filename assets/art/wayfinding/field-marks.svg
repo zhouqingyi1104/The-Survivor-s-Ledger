@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 128 128">
+ <g stroke="#484036" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Joiner's order book: door bar, boarded sash, water jar and vegetable rows. -->
+  <g><path fill="#a67a57" d="M4 5h11v22H4zm13 0h11v22H17z"/><path fill="#728077" d="M7 12h4v9H7zm15-1h4v9h-4z"/><path fill="#d4ad74" d="m3 15 26-3v4L3 19z"/><path d="m6 25 6-1m8-17 4 1" fill="none"/></g>
+  <g transform="translate(32)"><path fill="#a88c63" d="M5 3h22v25H5z"/><path fill="#718078" d="M8 6h16v18H8z"/><path fill="none" d="M16 6v18M8 12h16"/><path fill="#d4b181" d="m4 14 23-5 1 4-23 5zm0 8 23-4 1 4-23 4z"/></g>
+  <g transform="translate(64)"><path fill="#738d83" d="M5 9q1 18 8 19h7q6-2 7-19z"/><ellipse cx="16" cy="9" rx="12" ry="4" fill="#a0b8a7"/><ellipse cx="16" cy="9" rx="8.3" ry="2" stroke="none" fill="#546f69"/><path d="M8 15q2 7 4 9" stroke="#b9c9b0" fill="none"/></g>
+  <g transform="translate(96)"><path d="m2 21 14-12 14 6-14 13z" fill="#b79167"/><path d="m8 22 13-10m-8 13 12-11" fill="none"/><path fill="#869572" d="M9 17q-5-1-4-5 4 0 5 3 0-4 4-5 1 4-4 7zm9-2q-3-2-3-5 4 0 4 3 1-5 5-5 0 5-6 7z"/></g>
+  <!-- Masonry, trapdoor, lookout, and a flywheel engine. -->
+  <g transform="translate(0 32)"><path fill="#b19c7e" d="m3 13 14-6 12 5v12l-13 5-13-6z"/><path fill="#dac6a0" d="m3 13 14-6 12 5-13 6z"/><ellipse cx="12" cy="12" rx="3.5" ry="1.5" fill="#515850"/><ellipse cx="21" cy="12" rx="2.5" ry="1.3" fill="#515850"/><path fill="#61554a" d="M7 23v-5q2-4 5 1v6z"/></g>
+  <g transform="translate(32 32)"><path fill="#b49a75" d="m2 19 13-8 15 8-13 10z"/><path fill="#4e594f" d="m6 19 9-6 11 6-10 7z"/><path fill="#b79c77" d="m15 11 1-8 13 6 1 10z"/><path d="m12 19 5 2m-8 0 4 2m0-8-6 6m12-3-7 7" stroke="#ceaf7e" fill="none"/></g>
+  <g transform="translate(64 32)"><path fill="#b19167" d="M9 10h14l1 17h-3l-1-10h-8l-1 10H8z"/><path fill="#778679" d="m3 11 13-8 13 8-2 2-11-5-10 5z"/><path d="M7 16h18m-12 3 7 6m-7 0 7-6m-5-8v4" fill="none"/></g>
+  <g transform="translate(96 32)"><path fill="#8a9c8d" d="M4 13h17l3 12H4z"/><path fill="#c7ab77" d="M5 8h14v5H5z"/><path d="M7 17h4m-4 3h4m11-8V5h4" fill="none"/><circle cx="23" cy="21" r="6" fill="#7b8073"/><circle cx="23" cy="21" r="2" fill="#cdba92"/><path d="M2 27h27" fill="none"/></g>
+  <!-- Radiator, timber yard, mortuary lantern and raised granary. -->
+  <g transform="translate(0 64)"><path d="M4 12h23v10H4z" fill="#8f8270"/><path fill="#bba388" d="M6 9q1-3 3 0v15H6zm6-1q1-3 3 0v16h-3zm6 0q1-3 3 0v16h-3zm6 1q1-3 3 0v15h-3z"/><path d="M7 25v2m17-2v2M4 16H2v-4" fill="none"/></g>
+  <g transform="translate(32 64)"><path fill="#926d4e" d="m4 17 12-9q3-1 6 2l4 5-12 10z"/><path fill="#aa8057" d="m9 12 11-9q3-1 5 3l1 3-12 10zm3 8 12-10q4 0 5 4l-1 3-12 9z"/><g fill="#d9b581"><ellipse cx="7" cy="21" rx="4" ry="5"/><ellipse cx="12" cy="16" rx="4" ry="5"/><ellipse cx="15" cy="23" rx="4" ry="5"/></g><path d="M6 20v2m6-7v2m2 4 1 3" fill="none"/></g>
+  <g transform="translate(64 64)"><path d="M12 7q1-9 8-2l1 3" fill="none"/><path fill="#777b6f" d="m7 9 3-3h12l4 4-2 13H9z"/><path fill="#ded7b6" d="m7 10 5 1 10-1 3-1-2 13-11 2-3-3z"/><path d="m12 11 1 11m8-11-1 10m-8 3 10-1m-7 1-1 4m4-4v4" fill="none"/></g>
+  <g transform="translate(96 64)"><path fill="#c7aa76" d="M6 12h20v13H6z"/><path fill="#798777" d="m2 13 14-9 14 9-2 2-12-5-12 5z"/><path fill="#ab8259" d="M12 17h8v8h-8z"/><path d="M5 25h22M8 26v2m16-2v2" fill="none"/></g>
+  <!-- Temple whisk suspended from a lacquer handle. -->
+  <g transform="translate(0 96)"><path fill="#a47a54" d="m18 15 6-12 3 1-6 13z"/><path fill="#dbcba4" d="M17 13q-6 0-6 7 0 4-7 8 12 1 16-8 0 4-3 8 8-5 6-11z"/><path d="M17 17q-2 7-7 10m11-9-2 4" fill="none"/></g>
+ </g>
+</svg>

@@ -13,6 +13,7 @@ const Ledger = preload("res://scripts/core/ledger.gd")
 const Defense = preload("res://scripts/core/defense.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const PrepWork = preload("res://scripts/ui/dialogs/prep_work.gd")
+const TradeMarks = preload("res://scripts/ui/travel_marks.gd")
 const RiceStory = preload("res://scripts/ui/dialogs/rice_story.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
@@ -681,6 +682,7 @@ func _explore_pick(body: VBoxContainer) -> void:
 		var info := UI.vbox(2)
 		UI.expand(info)
 		var head := UI.hbox(8)
+		head.add_child(TradeMarks.icon(pid, 26))
 		head.add_child(UI.label(p.name, 20))
 		head.add_child(UI.label("险 " + "★".repeat(int(p.danger)) + "☆".repeat(4 - int(p.danger)), 16, UI.CINNABAR))
 		var warn := Explore.fall_warning(run, pid)
@@ -1186,6 +1188,7 @@ func _shop(body: VBoxContainer) -> void:
 		return
 	var s: Dictionary = Pre.shop(id)
 	var head := UI.hbox(10)
+	head.add_child(TradeMarks.icon(id, 34))
 	head.add_child(UI.tag(Pre.status(run, id), STATUS_COLORS.get(Pre.status(run, id), UI.INK_SOFT)))
 	head.add_child(UI.label("银两 %s　车上 %.0f / %d 斤" % [Pre.money(int(run.silver)), Pre.cart_weight(run), Pre.capacity(run)], 17, UI.INK_SOFT))
 	body.add_child(head)
@@ -1209,8 +1212,8 @@ func _goods(v: VBoxContainer, run: Dictionary, shop_id: String) -> void:
 	if Pre.status(run, shop_id) == "关门":
 		v.add_child(UI.para(Pre.shop(shop_id).get("close", {}).get("text", "已经关门了。"), 18, UI.CINNABAR))
 		return
-	var g := UI.grid(6, 10, 6)
-	for col in ["货品", "价钱", "斤两", "余货", "", ""]:
+	var g := UI.grid(7, 8, 6)
+	for col in ["", "货品", "价钱", "斤两", "余货", "", ""]:
 		g.add_child(UI.label(col, 15, UI.INK_FAINT))
 	for item_id in run.shops[shop_id]:
 		var it := Data.item(item_id)
@@ -1218,8 +1221,8 @@ func _goods(v: VBoxContainer, run: Dictionary, shop_id: String) -> void:
 		var name_label := UI.label("%s（%s）" % [it.name, it.unit], 18)
 		name_label.tooltip_text = it.desc
 		name_label.mouse_filter = Control.MOUSE_FILTER_PASS
-		UI.expand(name_label)
-		g.add_child(name_label)
+		g.add_child(UI.icon(item_id, 33))
+		g.add_child(UI.expand(name_label))
 		var p := Pre.price(run, shop_id, item_id)
 		g.add_child(UI.label(Pre.money(p), 18, UI.CINNABAR if p > int(it.price) else UI.INK))
 		g.add_child(UI.label(str(it.weight), 16, UI.INK_SOFT))
@@ -1236,6 +1239,7 @@ func _facilities(v: VBoxContainer, run: Dictionary) -> void:
 	for fac_id in facs:
 		var f: Dictionary = facs[fac_id]
 		var h := UI.hbox(10)
+		h.add_child(TradeMarks.icon(fac_id, 35))
 		var info := UI.vbox(2)
 		UI.expand(info)
 		info.add_child(UI.label("%s　%s" % [f.name, Pre.money(int(f.price))], 19))
@@ -1256,6 +1260,7 @@ func _pawn(v: VBoxContainer, run: Dictionary) -> void:
 	for item_id in items:
 		var h := UI.hbox(10)
 		var n := Inv.count(run.cart, item_id) + Inv.count(run.home, item_id)
+		h.add_child(UI.icon(item_id, 30))
 		h.add_child(UI.expand(UI.label("%s ×%d" % [Data.item_name(item_id), n], 18)))
 		h.add_child(UI.label("当得 %s" % Pre.money(Pre.pawn_value(item_id)), 17, UI.CINNABAR))
 		h.add_child(UI.button("当了", func(): _act_sfx(func(): return Pre.pawn(Game.run, item_id), "coins")))

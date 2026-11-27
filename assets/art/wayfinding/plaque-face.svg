@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="200" viewBox="0 0 360 100">
+  <!-- A recessed blue-green lacquer face with a trade device inset on the left. -->
+  <rect width="360" height="100" fill="#313d37"/>
+  <path d="M5 5h350v90H5z" fill="#40534c" stroke="#98805c" stroke-width="2"/>
+  <path d="M13 25v-9h10V9h315v7h9v68h-9v7H23v-7H13z" fill="#344c46" stroke="#c1a479" stroke-width="1.6"/>
+  <path d="M21 25v-3h10v-6m298 0v6h10v3M21 75v3h10v6m298 0v-6h10v-3" fill="none" stroke="#bfa471" stroke-width="2.4"/>
+  <path d="m48 18 17 5 9 12 2 14-5 19-13 12-17 1-14-9-8-15 1-18 9-13z" fill="#c7b07d" stroke="#272e29" stroke-width="2"/>
+  <path d="m47 22 15 4 9 11 2 13-5 16-12 10-14 1-12-8-7-13 1-15 8-12z" fill="#dec99b" stroke="#9c805a" stroke-width="1.2"/>
+</svg>

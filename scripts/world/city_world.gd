@@ -16,6 +16,7 @@ const Figure = preload("res://scripts/world/character.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Assets = preload("res://scripts/world/assets.gd")
+const Signs = preload("res://scripts/world/painted_signs.gd")
 
 ## 换成 cs-studio 中式铺面模型的铺子：[模型, 转多少度让门脸朝街, 缩放]。其余铺子还是程序搭的厅堂。
 const MODEL_SHOPS := {
@@ -171,7 +172,8 @@ func _building(id: String) -> void:
 	for side in [-1.0, 1.0]:
 		K.box(plaque, Vector3(board_w + 0.07, 0.045, 0.11), K.WOOD_LIGHT, Vector3(0, side * 0.329, 0))
 		K.box(plaque, Vector3(0.046, 0.62, 0.11), K.WOOD_LIGHT, Vector3(side * board_w * 0.49, 0, 0))
-	var plaque_text := K.text3d(plaque, name_text, Vector3(0, 0, 0.054), 87, Color("#e8cd98"), false)
+	Signs.shop(plaque, id, board_w)
+	var plaque_text := K.text3d(plaque, name_text, Vector3(board_w * 0.09, 0, 0.060), 77, Color("#f4dda4"), false)
 	plaque_text.outline_size = 0
 	if id != "pawnshop" or model == null:
 		_decor(id, root, w, d)

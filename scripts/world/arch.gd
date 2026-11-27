@@ -5,6 +5,7 @@ extends RefCounted
 const K = preload("res://scripts/world/kit.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const HomeHouse = preload("res://scripts/world/home_house.gd")
+const Signs = preload("res://scripts/world/painted_signs.gd")
 
 const EAVE := 0.8
 
@@ -150,9 +151,13 @@ static func gate(parent: Node3D, pos: Vector3, width := 2.6, h := 3.0) -> Dictio
 	var n := K.node(parent, pos)
 	for sx in [-1, 1]:
 		K.solid(n, Vector3(0.6, h + 0.6, 0.6), HomeHouse.plaster(), Vector3(sx * (width / 2.0 + 0.3), (h + 0.6) / 2.0, 0))
-		K.box(n, Vector3(0.22, 1.6, 0.02), K.CINNABAR, Vector3(sx * (width / 2.0 + 0.3), 1.9, 0.31))
+		var paper := Vector3(sx * (width / 2.0 + 0.3), h - 1.73, 0.31)
+		K.box(n, Vector3(0.22, 1.6, 0.02), K.CINNABAR, paper)
+		Signs.verse(n, 3 if sx > 0 else 2, Vector2(0.216, 1.59), paper + Vector3(0, 0, 0.011))
 	K.box(n, Vector3(width + 1.4, 0.4, 0.5), K.WOOD, Vector3(0, h + 0.1, 0))
 	K.box(n, Vector3(1.1, 0.36, 0.06), K.ROOF_EDGE, Vector3(0, h - 0.25, 0.29))
+	var lintel := K.text3d(n, "春满人间", Vector3(0, h - 0.25, 0.325), 84, Color("#e1c186"), false, 0.0025)
+	lintel.outline_size = 0
 	roof(n, width + 0.8, 0.5, 0.55, Vector3(0, h + 0.3, 0), K.mat(K.ROOF, 0.7), 0.35)
 	var leaves := []
 	var leaf_mats := []

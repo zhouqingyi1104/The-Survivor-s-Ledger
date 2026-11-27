@@ -4,7 +4,6 @@ extends "res://scripts/ui/screens/world_screen.gd"
 const Inv = preload("res://scripts/core/inv.gd")
 const Explore = preload("res://scripts/core/explore.gd")
 const Post = preload("res://scripts/core/post.gd")
-const Hud = preload("res://scripts/ui/hud_kit.gd")
 const RuinWorld = preload("res://scripts/world/ruin_world.gd")
 const Player = preload("res://scripts/world/player.gd")
 const CamRig = preload("res://scripts/world/cam_rig.gd")
@@ -15,6 +14,8 @@ const InputCfg = preload("res://scripts/core/input_cfg.gd")
 const Expedition = preload("res://scripts/core/expedition.gd")
 const RiceStory = preload("res://scripts/ui/dialogs/rice_story.gd")
 const SiteJourney = preload("res://scripts/core/site_journey.gd")
+const Marks = preload("res://scripts/ui/travel_marks.gd")
+const ClockDial = preload("res://scripts/ui/widgets/clock_dial.gd")
 
 ## 这个界面上弹的窗用夜色（main.gd 看这个）
 var dark_ui := true
@@ -23,6 +24,7 @@ var rig: Node3D
 var _hint: PanelContainer
 var _hint_label: Label
 var _near := -1
+var _dial: ClockDial
 var _near_feature := ""
 var _near_journey := ""
 var _fleeing := false
@@ -98,6 +100,7 @@ func _process(delta: float) -> void:
 				Game.refresh()
 	if _clock != null:
 		_clock.text = "%s  %s" % [Post.shichen(Game.run), Post.clock_text(Game.run)]
+		_dial.minutes = Post.clock(Game.run)
 	if is_instance_valid(_budget_label):
 		_budget_label.text = "距 21:00 还有 %d 分钟 · 返程 %d 分钟" % [maxi(0, Post.CURFEW_AT - Post.day_minute(Game.run)), int(Post.ACTIONS.travel[1])]
 	if is_instance_valid(_return_button): _return_button.disabled = Post.is_busy(Game.run)
@@ -303,6 +306,7 @@ func _journey_panel(body: VBoxContainer, id: String) -> void:
 			for raw_id in cache.keys():
 				var item := str(raw_id)
 				var row := UI.hbox(8)
+				row.add_child(UI.icon(item, 27))
 				row.add_child(UI.label("%s ×%d · 每件 %.1f 斤" % [Data.item(item).name, Inv.count(cache, item), float(Data.item(item).get("weight", 0))], 16))
 				row.add_child(UI.spacer())
 				var take := UI.button("取 1", _journey_transfer.bind(id, item, true))
@@ -314,6 +318,7 @@ func _journey_panel(body: VBoxContainer, id: String) -> void:
 			for raw_id in bag.keys():
 				var item := str(raw_id)
 				var row := UI.hbox(8)
+				row.add_child(UI.icon(item, 27))
 				row.add_child(UI.label("%s ×%d" % [Data.item(item).name, Inv.count(bag, item)], 16))
 				row.add_child(UI.spacer())
 				var put := UI.button("放回 1", _journey_transfer.bind(id, item, false))
@@ -376,7 +381,10 @@ func _site_options_panel(body: VBoxContainer, idx: int) -> void:
 		body.add_child(UI.label("已离开此处。", 17))
 		return
 	var p: Dictionary = Data.table("map_points")[ex.point]
-	body.add_child(UI.para(str(p.desc), 16))
+	var site := UI.hbox(9)
+	site.add_child(Marks.icon(ex.point, 34))
+	site.add_child(UI.expand(UI.para(str(p.desc), 16)))
+	body.add_child(site)
 	body.add_child(UI.para("选择如何处理这里；合上或按 Esc 可先离开，不消耗时间。", 16, UI.GOLD))
 	var choices := UI.vbox(8)
 	var options: Array = Explore.site_options(Game.run, idx)
@@ -459,7 +467,10 @@ func _loot_panel(body: VBoxContainer, idx: int) -> void:
 	var loot: Dictionary = spot.get("loot", {})
 	var bag: Dictionary = ex.get("bag", {})
 	var left := maxf(0.0, Explore.carry(Game.run) - Inv.weight(bag))
-	body.add_child(UI.label("背囊 %.1f / %.1f 斤 · 还能装 %.1f 斤" % [Inv.weight(bag), Explore.carry(Game.run), left], 19, UI.GOLD))
+	var burden := UI.hbox(8)
+	burden.add_child(Marks.icon(&"pack", 32))
+	burden.add_child(UI.label("背囊 %.1f / %.1f 斤 · 还能装 %.1f 斤" % [Inv.weight(bag), Explore.carry(Game.run), left], 19, UI.GOLD))
+	body.add_child(burden)
 	body.add_child(UI.para("取物不消耗时间。未拿走的物资会留在此处，本次返家后无法带回；可将背囊物资放回这里，腾出位置。", 15))
 	var contents := UI.vbox(6)
 	contents.add_child(UI.heading("此处物资", 20, UI.GOLD))
@@ -469,6 +480,7 @@ func _loot_panel(body: VBoxContainer, idx: int) -> void:
 		var id := str(raw_id)
 		var item: Dictionary = Data.item(id)
 		var row := UI.hbox(8)
+		row.add_child(UI.icon(id, 31))
 		row.add_child(UI.label("%s ×%d · 每件 %.1f 斤" % [item.name, Inv.count(loot, id), float(item.get("weight", 0))], 17))
 		row.add_child(UI.spacer())
 		row.add_child(UI.button("取 1", func(): _take_loot(idx, id, 1)))
@@ -482,6 +494,7 @@ func _loot_panel(body: VBoxContainer, idx: int) -> void:
 		var id := str(raw_id)
 		var item: Dictionary = Data.item(id)
 		var row := UI.hbox(8)
+		row.add_child(UI.icon(id, 31))
 		row.add_child(UI.label("%s ×%d · 每件 %.1f 斤" % [item.name, Inv.count(bag, id), float(item.get("weight", 0))], 17))
 		row.add_child(UI.spacer())
 		row.add_child(UI.button("放回 1", func(): _put_back(idx, id, 1)))
@@ -519,7 +532,10 @@ func build_hud() -> void:
 		return
 	var p: Dictionary = Data.table("map_points")[ex.point]
 	var v := UI.vbox(4)
-	v.add_child(UI.heading(p.name, 26))
+	var place := UI.hbox(8)
+	place.add_child(Marks.icon(ex.point, 32))
+	place.add_child(UI.heading(p.name, 26))
+	v.add_child(place)
 	v.add_child(UI.wrap_line(p.desc, 15, UI.INK_SOFT, 300))
 	if not ex.get("only_investigate", false):
 		var journey_profile: Dictionary = SiteJourney.profile(str(ex.point))
@@ -575,6 +591,7 @@ func build_hud() -> void:
 
 	var e := UI.vbox(4)
 	var row := UI.hbox(10)
+	row.add_child(Marks.icon(&"exposure", 25))
 	row.add_child(UI.label("阳气外泄", 20, UI.CINNABAR))
 	row.add_child(UI.bar(int(ex.exposure), Explore.EXPOSURE_MAX, UI.CINNABAR, 360, 20))
 	row.add_child(UI.label("%d / %d" % [ex.exposure, Explore.EXPOSURE_MAX], 18))
@@ -585,13 +602,21 @@ func build_hud() -> void:
 	corner_panel(e, Control.PRESET_CENTER_TOP, 14, 0.9)
 
 	var top := UI.hbox(6)
-	_clock = Hud.text("%s  %s" % [Post.shichen(run), Post.clock_text(run)], 22, Hud.CYAN, true)
-	top.add_child(_clock)
+	_dial = ClockDial.new()
+	_dial.custom_minimum_size = Vector2(78, 78)
+	_dial.minutes = Post.clock(run)
+	top.add_child(_dial)
+	var readings := UI.vbox(3)
+	top.add_child(readings)
+	_clock = UI.heading("%s  %s" % [Post.shichen(run), Post.clock_text(run)], 22, UI.DAI)
+	readings.add_child(_clock)
+	var actions := UI.hbox(4)
+	readings.add_child(actions)
 	_return_button = UI.seal_button("逃回家" if ex.caught else "回家", finish)
 	_return_button.set_meta("mainline_return", true)
 	_return_button.disabled = Post.is_busy(run)
-	top.add_child(_return_button)
-	top.add_child(UI.button("劫余录", Dialogs.journal))
+	actions.add_child(_return_button)
+	actions.add_child(UI.button("劫余录", Dialogs.journal))
 	corner_panel(top, Control.PRESET_TOP_RIGHT)
 	corner_panel(UI.log_lines(ex.notes, 4, 15, 560), Control.PRESET_BOTTOM_LEFT, 14, 0.8)
 	var help := UI.label("WASD 走动 · %s 翻找 / 查看 / 回家 · 右键拖动转视角" % InputCfg.first_key_name("interact"), 15, Color(UI.PAPER_LIGHT, 0.95))

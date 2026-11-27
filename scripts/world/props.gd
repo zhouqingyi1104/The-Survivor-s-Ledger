@@ -793,11 +793,8 @@ static func couplet(parent: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var n := K.node(parent, pos, Vector3(0, rot_y, 0))
 	K.box(n, Vector3(0.205, 1.60, 0.020), Color("#82533a"), Vector3.ZERO)
 	K.box(n, Vector3(0.184, 1.56, 0.006), Color("#923f32"), Vector3(0, 0, 0.012))
-	var verse := "梅\n开\n千\n树\n雪" if pos.x > 0 else "竹\n报\n四\n时\n安"
-	var ink := K.text3d(n, verse, Vector3(0, 0, 0.020), 48, Color("#2c221e"), false, 0.0034)
-	ink.outline_size = 0
-	ink.line_spacing = 18.0
-	ink.shaded = true
+	preload("res://scripts/world/painted_signs.gd").verse(n, 1 if pos.x > 0 else 0,
+			Vector2(0.182, 1.55), Vector3(0, 0, 0.017))
 	return n
 
 

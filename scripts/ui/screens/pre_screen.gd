@@ -5,6 +5,7 @@ const Pre = preload("res://scripts/core/pre.gd")
 const PrepWork = preload("res://scripts/ui/dialogs/prep_work.gd")
 const CityWorld = preload("res://scripts/world/city_world.gd")
 const CamRig = preload("res://scripts/world/cam_rig.gd")
+const Marks = preload("res://scripts/ui/travel_marks.gd")
 
 static var STATUS_COLORS := {"正常": UI.JADE, "拥挤": UI.GOLD, "哄抢": UI.CINNABAR, "关门": UI.INK_FAINT}
 
@@ -144,8 +145,8 @@ func build_hud() -> void:
 	var top := UI.hbox(6)
 	var opening_entry := UI.button("今世开局", Dialogs.opening_info)
 	opening_entry.set_meta("opening_entry", "pre")
-	top.add_child(opening_entry)
-	top.add_child(UI.button("囤货清单", Dialogs.checklist))
+	top.add_child(Marks.on_button(opening_entry, &"opening"))
+	top.add_child(Marks.on_button(UI.button("囤货清单", Dialogs.checklist), &"checklist"))
 	top.add_child(UI.button("劫余录", Dialogs.journal))
 	top.add_child(UI.button("设置", func(): Dialogs.settings(true)))
 	corner_panel(top, Control.PRESET_TOP_RIGHT)
@@ -154,7 +155,7 @@ func build_hud() -> void:
 	var end := UI.seal_button("熬到天黑 · 尸劫降临" if last else "回家歇息，明日再说", end_day)
 	end.custom_minimum_size = Vector2(260, 52)
 	var evening := UI.vbox(6)
-	evening.add_child(UI.button("备荒杂事", _open_work, world.walking))
+	evening.add_child(Marks.on_button(UI.button("备荒杂事", _open_work, world.walking), &"pack"))
 	evening.add_child(end)
 	var p := corner_panel(evening, Control.PRESET_BOTTOM_RIGHT, 14, 0.0)
 	p.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
@@ -170,7 +171,10 @@ func build_hud() -> void:
 
 func _status(run: Dictionary) -> void:
 	var v := UI.vbox(3)
-	v.add_child(UI.heading("备劫 · 第 %d 日 · %s时" % [run.day, State.HOURS[run.hour % 12]], 24))
+	var head := UI.hbox(7)
+	head.add_child(Marks.icon(&"time", 29))
+	head.add_child(UI.heading("备劫 · 第 %d 日 · %s时" % [run.day, State.HOURS[run.hour % 12]], 24))
+	v.add_child(head)
 	var left := Pre.hours_left(run)
 	v.add_child(UI.label("距宵禁 %d 个时辰 · 距尸劫 %d 日 · %s" % [left, State.PRE_DAYS - int(run.day) + 1, State.diff_name(run)], 17, UI.CINNABAR if left <= 2 else UI.INK_SOFT))
 	var vid := Pre.vehicle_id(run)
@@ -181,7 +185,10 @@ func _status(run: Dictionary) -> void:
 
 func _places(run: Dictionary) -> void:
 	var v := UI.vbox(3)
-	v.add_child(UI.label("临川城", 18, UI.INK_SOFT))
+	var heading := UI.hbox(6)
+	heading.add_child(Marks.icon(&"route", 24))
+	heading.add_child(UI.heading("临川城", 20, UI.DAI))
+	v.add_child(heading)
 	var ids := ["home"]
 	ids.append_array(Data.table("shops").keys())
 	for id in ids:
@@ -192,7 +199,9 @@ func _places(run: Dictionary) -> void:
 		var b := UI.button(title + ("（在此）" if here else ""), func(): go_to(id), block != "" and not here, block)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.custom_minimum_size.x = 150
-		h.add_child(b)
+		h.add_child(Marks.on_button(b, id, 24))
+		if here:
+			b.add_theme_stylebox_override("normal", UI._box(Color("#e3dbc4"), UI.DAI, 1, 3, 12, 6))
 		if id != "home":
 			var status := Pre.status(run, id)
 			h.add_child(UI.label("%d 时辰" % Pre.travel_cost(run, id), 14, UI.INK_FAINT))
