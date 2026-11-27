@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="88" height="76" viewBox="0 0 88 76">
+  <!-- The four corners stay at their original size in a nine-slice. -->
+  <rect x="1" y="1" width="86" height="74" rx="3" fill="#242b29"/>
+  <rect x="2" y="2" width="83" height="70" rx="2" fill="#43564e"/>
+  <path d="M3 4h81v64H3z" fill="#344741"/>
+  <path d="M5 3v66m6-65v65" fill="none" stroke="#617267" stroke-width="1"/>
+  <path d="M13 4v65" stroke="#243932" stroke-width="2"/>
+  <path d="M16 5h66v63H16" fill="#bfa783"/>
+  <path d="M17 6h64v60H17z" fill="#f0e4c9"/>
+  <path d="M17 68h65l2-2v4H16z" fill="#877657"/>
+  <path d="M17 69h65M18 71h65" fill="none" stroke="#ddcba8" stroke-width="1"/>
+  <path d="m2 12 9-9H3zm83 49-1 9-8 2z" fill="#a77f52"/>
+  <path d="m3 9 6-6M79 70l5-5" stroke="#ead1a2" fill="none"/>
+</svg>

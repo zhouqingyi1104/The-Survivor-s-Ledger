@@ -64,21 +64,46 @@ class Modal extends Control:
 		UI.use_dark(false)
 
 
-## 旧木书匣外沿，纸面和内容仍由原控件负责。
+## 靛布书衣：四眼线订留在书脊上，页口和包角随匣子九宫缩放。
 class ModalFrame extends PanelContainer:
-	func _ready() -> void:
-		resized.connect(queue_redraw)
+	func _init() -> void:
+		var cover := StyleBoxTexture.new()
+		cover.texture = preload("res://assets/ui/ledger-cover.svg")
+		cover.texture_margin_left = 18
+		cover.texture_margin_right = 13
+		cover.texture_margin_top = 14
+		cover.texture_margin_bottom = 15
+		cover.content_margin_left = 18
+		cover.content_margin_right = 8
+		cover.content_margin_top = 8
+		cover.content_margin_bottom = 10
+		add_theme_stylebox_override("panel", cover)
 
 	func _draw() -> void:
-		var grain := Color(0.72, 0.57, 0.37, 0.23)
-		var edge := Color(0.72, 0.57, 0.37, 0.55)
-		draw_rect(Rect2(3, 3, maxf(size.x - 6, 0), maxf(size.y - 6, 0)), edge, false, 1.0)
-		for y in [5.0, size.y - 5.0]:
-			draw_line(Vector2(14, y), Vector2(size.x - 14, y), grain, 1.0)
-		for x in [5.0, size.x - 5.0]:
-			draw_line(Vector2(x, 14), Vector2(x, size.y - 14), grain, 1.0)
-		for corner in [Vector2(7, 7), Vector2(size.x - 7, 7), Vector2(7, size.y - 7), Vector2(size.x - 7, size.y - 7)]:
-			draw_circle(corner, 2.0, Color("#9b7c4d"))
+		var thread := Color("#cabc98")
+		var inset := minf(30.0, size.y * 0.15)
+		draw_line(Vector2(10, inset), Vector2(10, size.y - inset), thread, 1.2, true)
+		for i in 4:
+			var y := lerpf(inset, size.y - inset, i / 3.0)
+			draw_circle(Vector2(10, y), 2.3, Color("#1f302a"), true, -1, true)
+			draw_line(Vector2(2, y + 1.5), Vector2(10, y), thread, 1.7, true)
+
+
+func _title_slip(title: String) -> Label:
+	var label := UI.heading(title, 26, Color("#4c3428"))
+	var slip := StyleBoxTexture.new()
+	slip.texture = preload("res://assets/ui/ledger-title-slip.svg")
+	slip.texture_margin_left = 12
+	slip.texture_margin_right = 10
+	slip.texture_margin_top = 7
+	slip.texture_margin_bottom = 8
+	slip.content_margin_left = 17
+	slip.content_margin_right = 13
+	slip.content_margin_top = 0
+	slip.content_margin_bottom = 0
+	label.add_theme_stylebox_override("normal", slip)
+	label.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
+	return label
 
 
 func _ready() -> void:
@@ -168,7 +193,7 @@ func open_modal(key: String, title: String, build: Callable, closable := true, w
 	var outer := UI.vbox(10)
 	outer.custom_minimum_size = Vector2(width, 0)
 	var head := UI.hbox(8)
-	head.add_child(UI.heading(title, 26, UI.GOLD if m.dark else UI.CINNABAR))
+	head.add_child(_title_slip(title))
 	head.add_child(UI.spacer())
 	if closable:
 		head.add_child(UI.button("合上", func(): close_modal(key)))
@@ -176,15 +201,11 @@ func open_modal(key: String, title: String, build: Callable, closable := true, w
 	outer.add_child(UI.sep())
 	m.body = UI.vbox(8)
 	outer.add_child(m.body)
-	var p := UI.panel(outer, UI.PAPER_LIGHT)
-	# 夜色弹窗继续使用深底和浅字；宣纸页使用温润旧纸，避免改变内容的对比度。
-	if not m.dark:
-		p.add_theme_stylebox_override("panel", UI._box(Color("#e9ddc5"), Color("#aa987b"), 1, 0, 14, 12))
+	var p := UI.panel(outer)
+	var page_color := Color("#232b28") if m.dark else Color("#f2ead9")
+	var page_edge := Color("#697267") if m.dark else Color("#bca98a")
+	p.add_theme_stylebox_override("panel", UI._box(page_color, page_edge, 1, 0, 10, 12))
 	var frame := ModalFrame.new()
-	var wood := UI._box(Color("#302820"), Color("#191511"), 2, 1, 9, 9)
-	wood.shadow_color = Color(0, 0, 0, 0.5)
-	wood.shadow_size = 8
-	frame.add_theme_stylebox_override("panel", wood)
 	frame.add_child(p)
 	center.add_child(frame)
 	_modal_layer.add_child(m)
