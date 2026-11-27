@@ -68,7 +68,7 @@ func build() -> void:
 		mates.add_child(UI.button("%s %s" % ["■" if on else "□", str(p.name)],
 			func(): _toggle_mate(pid), full, "取消" if on else ("院里已经住满了" if full else "带他进宅院")))
 	mates.add_child(UI.spacer())
-	mates.add_child(UI.label("每人每天 12 饱腹 + 1 瓢水 · 道心 −5%/人", 15, UI.INK_FAINT))
+	mates.add_child(UI.label("每人每天 12 饱腹 + 1 瓢水 · 道心 −5%/人", 15, UI.INK))
 	v.add_child(mates)
 	for pid in _mates:
 		var p2: Dictionary = Data.table("companions").get(pid, {})
@@ -119,9 +119,9 @@ func build() -> void:
 		right.add_child(_row(g, _picked, "bonus", 0))
 	cols.add_child(right)
 	v.add_child(UI.spacer())
-	v.add_child(UI.para("当前挑战：" + _start_text().trim_suffix("，开始"), 15, UI.INK_SOFT))
+	v.add_child(UI.para("当前挑战：" + _start_text().trim_suffix("，开始"), 15, UI.INK))
 	var foot := UI.hbox()
-	foot.add_child(UI.para("开局互斥，挑战可空着。", 15, UI.INK_FAINT))
+	foot.add_child(UI.para("开局互斥，挑战可空着。", 15, UI.INK))
 	foot.add_child(UI.spacer())
 	var plain_start := UI.button("普通行囊，跳过挑战", func(): _start(false), false, "使用普通开局并清空誓约、凭仗和了愿；保留已选模式与同院的人。")
 	plain_start.set_meta("opening_start", "plain")

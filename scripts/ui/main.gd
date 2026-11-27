@@ -24,6 +24,7 @@ var _toast_entries := {}
 var _modals := {}
 var _screen: Control
 var _backdrop: Control
+var _reading_wash: ColorRect
 
 
 class ToastEntry extends RefCounted:
@@ -80,37 +81,23 @@ class ModalFrame extends PanelContainer:
 			draw_circle(corner, 2.0, Color("#9b7c4d"))
 
 
-## 远山：几层淡墨山影，压在宣纸底色上。
-class Backdrop extends Control:
-	const UI = preload("res://scripts/ui/ui_kit.gd")
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), UI.PAPER)
-		draw_circle(Vector2(size.x * 0.82, size.y * 0.2), 46, Color(UI.CINNABAR, 0.12))
-		var layers := [[0.62, 70.0, 0.045, 0.7], [0.72, 55.0, 0.06, 2.1], [0.84, 40.0, 0.08, 4.3]]
-		for layer in layers:
-			var pts := PackedVector2Array()
-			pts.append(Vector2(0, size.y))
-			var x := 0.0
-			while x <= size.x + 8:
-				var t := x / maxf(size.x, 1.0)
-				var y: float = size.y * layer[0] - layer[1] * (0.55 + 0.45 * sin(t * 7.0 + layer[3])) * (0.6 + 0.4 * sin(t * 2.3 + layer[3] * 1.7))
-				pts.append(Vector2(x, y))
-				x += 8
-			pts.append(Vector2(size.x, size.y))
-			draw_colored_polygon(pts, Color(UI.INK, layer[2]))
-
-
 func _ready() -> void:
 	theme = UI.make_theme()
 	UI.host = self
 	# 根节点和装界面的容器都不吃鼠标，否则 3D 场景的点击、拖动转视角、滚轮缩放都到不了 _unhandled_input
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_backdrop = UI.full_rect(Backdrop.new())
+	var album := TextureRect.new()
+	album.texture = preload("res://assets/ui/ferry-album.png")
+	album.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	album.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	album.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	album.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_backdrop = UI.full_rect(album)
+	# 誓约与结算有直接排在画上的小字，覆一层薄纸，让松针和船影退到字后。
+	_reading_wash = ColorRect.new()
+	_reading_wash.color = Color(UI.PAPER_LIGHT, 0.57)
+	_reading_wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_backdrop.add_child(UI.full_rect(_reading_wash))
 	add_child(_backdrop)
 	_holder = UI.full_rect(Control.new())
 	_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -137,6 +124,7 @@ func _show(target: String) -> void:
 		_screen.queue_free()
 	_screen = UI.full_rect(load(SCREENS[target]).new())
 	_backdrop.visible = not ("uses_world" in _screen)
+	_reading_wash.visible = target in ["challenge", "dead", "ending"]
 	_holder.add_child(_screen)
 
 

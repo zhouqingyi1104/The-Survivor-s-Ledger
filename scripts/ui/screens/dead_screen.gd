@@ -40,7 +40,7 @@ func build() -> void:
 	var detail := []
 	for l in gain.lines:
 		detail.append("%s +%d" % [l[0], l[1]])
-	var d := UI.label("道心明细：" + "　".join(detail), 16, UI.INK_FAINT)
+	var d := UI.label("道心明细：" + "　".join(detail), 16, UI.INK_SOFT)
 	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(d)
 

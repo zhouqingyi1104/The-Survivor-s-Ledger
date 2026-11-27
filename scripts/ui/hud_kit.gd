@@ -101,8 +101,10 @@ static func primary(t: String, cb: Callable, disabled := false, tip := "", size 
 	return b
 
 
-## 圆形印章按钮：一个字的图标，旁边写名字和快捷键。
+## 圆章中的器物小像。功能名和快捷键仍由相邻的文字显示。
 class SealButton extends Button:
+	const ART := preload("res://assets/ui/hud-seals.svg")
+	const ART_COLUMNS := {"录": 0, "签": 1, "囊": 2, "战": 3, "设": 4}
 	var glyph := ""
 	var accent := Color("#d7aa4f")
 
@@ -110,9 +112,14 @@ class SealButton extends Button:
 		var r := minf(size.x, size.y) / 2.0 - 1.0
 		var c := size / 2.0
 		var hovered := is_hovered()
-		draw_circle(c, r, Color(0.08, 0.07, 0.06, 0.88))
-		draw_arc(c, r, 0, TAU, 40, accent if hovered else Color(accent, 0.6), 1.5, true)
-		draw_arc(c, r - 4, 0, TAU, 40, Color(accent, 0.25), 1.0, true)
+		draw_circle(c, r, Color("#4c4434") if hovered else Color("#293431"), true, -1.0, true)
+		draw_arc(c, r - 0.7, 0, TAU, 64, accent if hovered else Color("#a39272"), 1.35, true)
+		if ART_COLUMNS.has(glyph):
+			var cell := float(ART.get_height())
+			var side := roundf(r * 1.62)
+			draw_texture_rect_region(ART, Rect2(c - Vector2.ONE * side * 0.5, Vector2.ONE * side),
+					Rect2(float(ART_COLUMNS[glyph]) * cell, 0, cell, cell))
+			return
 		var f := get_theme_default_font()
 		var fs := int(r * 0.95)
 		var w := f.get_string_size(glyph, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
@@ -122,6 +129,7 @@ class SealButton extends Button:
 static func seal(glyph: String, cb: Callable, tip := "", d := 44.0) -> Button:
 	var b := SealButton.new()
 	b.glyph = glyph
+	b.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	b.custom_minimum_size = Vector2(d, d)
 	b.flat = true
 	b.focus_mode = Control.FOCUS_NONE
