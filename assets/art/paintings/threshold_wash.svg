@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="160" viewBox="0 0 640 160">
+  <defs>
+    <linearGradient id="wash" x2="1" y2=".11" gradientUnits="objectBoundingBox">
+      <stop stop-color="#6b3427" stop-opacity=".32"/><stop offset=".15" stop-color="#692d21" stop-opacity=".89"/>
+      <stop offset=".49" stop-color="#79392b" stop-opacity=".82"/><stop offset=".82" stop-color="#74382b" stop-opacity=".71"/>
+      <stop offset="1" stop-color="#8e5040" stop-opacity=".19"/>
+    </linearGradient>
+  </defs>
+  <!-- The brush was set down on the left. The bristles separate on the return. -->
+  <path fill="url(#wash)" fill-rule="evenodd" d="M14 72Q21 56 53 52C84 47 122 49 147 51L139 53Q189 54 225 61L219 62Q244 61 273 65C330 71 385 67 445 62Q490 56 543 60L528 62 580 64 605 67 573 69 617 73Q557 75 507 82C484 86 461 92 418 92Q389 94 368 91L375 94C309 91 260 87 199 82S87 76 38 83L19 88 27 80 11 83Z M47 67Q66 61 89 62L64 64Z M156 61Q184 63 198 67L177 65Z M224 76Q246 76 264 80L241 78Z M310 72Q326 71 346 73L327 73Z M359 86Q390 89 422 84L404 88Z M475 73L505 69 485 73Z"/>
+  <g fill="#5d2b20">
+    <path opacity=".45" d="M28 66Q52 52 94 53C172 54 208 67 276 69 195 71 154 63 99 61 69 59 45 64 28 70Z"/>
+    <path opacity=".44" d="M44 85C93 71 152 77 212 84S336 97 393 94Q299 105 216 93 115 78 44 87Z"/>
+    <path opacity=".32" d="M108 88C162 83 234 96 273 101L244 101Q179 91 108 91Z"/>
+    <path opacity=".32" d="M351 83C421 85 470 81 513 75Q465 89 377 88Z"/>
+  </g>
+  <g fill="#93513c" opacity=".47">
+    <path d="M300 101Q360 105 429 95C475 87 532 80 607 78Q531 85 468 95C412 104 347 109 300 101Z"/>
+    <path d="M447 102C505 91 552 89 596 88Q536 95 492 98Z"/>
+    <path d="M15 93Q36 83 56 82L30 90Z"/>
+  </g>
+</svg>

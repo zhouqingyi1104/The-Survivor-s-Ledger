@@ -429,7 +429,7 @@ static func device(container: Node3D, id: String, pos: Vector3, index: int) -> v
 		"blood_sill":
 			var imprint := PlaneMesh.new()
 			imprint.size = Vector2(2.4,0.62)
-			var wash := K._mesh(parent,imprint,_surface(preload("res://scripts/world/sill_wash.gdshader")),pos + Vector3.UP * 0.056)
+			var wash := K._mesh(parent, imprint, preload("res://assets/art/paintings/threshold_wash.tres"), pos + Vector3.UP * 0.056)
 			wash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		"talisman_wall":
 			for k in 9:

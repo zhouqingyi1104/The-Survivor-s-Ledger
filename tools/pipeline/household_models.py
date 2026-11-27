@@ -10,7 +10,7 @@ import struct
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "assets/models/household/household.glb"
@@ -56,7 +56,7 @@ def atlas():
         ((151,62,39), grain * .52 + .52 * np.cos(TAU * (8*x + broad)), .65, 0),
         ((224,209,169), .33 * np.sin(TAU*(14*x + broad)) + grain * .47, .82, 0),
         ((137,143,134), fleck * .60 + grain * .88 + broad * .64, .83, 0),
-        ((210,189,143), broad * 1.1 + grain * .50 + fleck * .23, .94, 0),
+        ((235,208,147), .11 * broad, .94, 0),
         ((84,75,66), fleck * .65 + broad + grain, .94, 0)]
     maps = [Image.new("RGB", (size*4,size*4)) for _ in range(3)]
     for i,(base,h,rough,metal) in enumerate(samples):
@@ -70,24 +70,20 @@ def atlas():
         for sheet, pixels in zip(maps, [color,(norm*.5+.5)*255,orm*255]):
             sheet.paste(Image.fromarray(pixels.clip(0,255).astype("uint8")),
                         (size*(i%4),size*(i//4)))
-    # Original brush marks on a single printed protective slip. Uneven ink
-    # follows the paper fibres, including the edges of the little square seal.
-    stamp=Image.new("L",(size,size))
-    pen=ImageDraw.Draw(stamp)
-    strokes=[[(113,18),(137,26),(145,34)],[(66,58),(79,44),(184,41),(172,61)],
-             [(114,69),(92,108),(154,131)],[(146,74),(135,102),(123,115),(84,136)],
-             [(65,91),(98,85),(181,81)],[(83,162),(129,153),(163,159),(139,172),(95,177)],
-             [(110,181),(132,186),(143,198)],[(82,202),(168,196)]]
-    for j,line in enumerate(strokes):
-        pen.line(line,fill=225,width=5+j%3,joint="curve")
-    pen.rectangle((155,212,190,239),outline=237,width=3)
-    for x0 in [164,175,181]:
-        pen.line((x0,218,x0+2,232),fill=219,width=2)
-    where=(2*size,3*size)
-    ink=np.asarray(stamp)/255*(.77+.20*grain+.10*fleck)
-    paper=np.array(maps[0].crop((*where,where[0]+size,where[1]+size)))
-    red=np.array([119.,48.,32.])
-    maps[0].paste(Image.fromarray((paper+(red-paper)*ink[...,None]).astype("uint8")),where)
+    # The hanging slip is twice as tall as its square atlas cell. Set real type at
+    # the physical aspect ratio before packing it into the cell.
+    origin = (2 * size, 3 * size)
+    paper = maps[0].crop((*origin, origin[0] + size, origin[1] + size)).resize((256, 512))
+    pen = ImageDraw.Draw(paper)
+    face = str(ROOT / "assets/fonts/LXGWWenKai-Regular.ttf")
+    brush = ImageFont.truetype(face, 168)
+    for glyph, y in [("安", 55), ("宅", 224)]:
+        pen.text((128, y), glyph, font=brush, fill=(127, 48, 33), anchor="mt",
+                 stroke_width=1, stroke_fill=(127, 48, 33))
+    pen.line([(44, 43), (116, 42), (213, 43)], fill=(175, 109, 66), width=2)
+    pen.rounded_rectangle((152, 406, 200, 457), radius=3, fill=(149, 63, 43))
+    pen.text((176, 414), "平", font=ImageFont.truetype(face, 35), fill=(238, 206, 145), anchor="mt")
+    maps[0].paste(paper.resize((size, size), Image.Resampling.LANCZOS), origin)
     # A weathered rice merchant's chop, printed twice around the reused sacking.
     mark = Image.new("L", (size, size))
     pen = ImageDraw.Draw(mark)
