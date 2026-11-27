@@ -6,6 +6,7 @@ const Craft = preload("res://scripts/world/building_craft.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const K = preload("res://scripts/world/kit.gd")
 const Props = preload("res://scripts/world/props.gd")
+const FieldProps = preload("res://scripts/world/field_props.gd")
 const SkyKit = preload("res://scripts/world/sky.gd")
 const Figure = preload("res://scripts/world/character.gd")
 const Data = preload("res://scripts/core/data.gd")
@@ -317,26 +318,12 @@ func _expedition_layout() -> void:
 	var gate_size := Vector3(0.26, 2.0, CELL) if across_x else Vector3(CELL, 2.0, 0.26)
 	_gate_body = K.collider(self, gate_size, gate_center + Vector3(0,1,0))
 	_gate_mesh = K.node(self, gate_center)
-	K.box(_gate_mesh, gate_size, K.WOOD, Vector3(0,1,0))
-	for j in 5:
-		var p := Vector3(0,0.12 + j * 0.4,0)
-		K.box(_gate_mesh, Vector3(0.32,0.08,CELL) if across_x else Vector3(CELL,0.08,0.32), K.WOOD_LIGHT, p)
+	FieldProps.gate(_gate_mesh, CELL, across_x)
 	var profile: Dictionary = Expedition.profile(point)
 	for key in ["clue_0", "clue_1", "gate"]:
 		var at: Vector3 = feature_positions[key]
 		var label := str(profile.get("title", "机关")) if key == "gate" else str(profile.get("clues", [])[0 if key == "clue_0" else 1].get("title", "线索"))
-		# Distinct found objects carry the clues without printing their solutions.
-		if point == "school" or point == "rice_ruin":
-			K.box(self, Vector3(0.65,0.08,0.45), K.PAPER, at + Vector3(0,0.18,0))
-			K.cyl(self, 0.06, 0.06, 0.7, K.WOOD_LIGHT, at + Vector3(0,0.2,0.2), Vector3(0,0,90))
-		elif point == "pharmacy_ruin":
-			K.box(self, Vector3(0.55,0.45,0.28), K.WOOD, at + Vector3(0,0.23,0))
-			K.box(self, Vector3(0.22,0.13,0.04), K.PAPER, at + Vector3(0,0.3,0.16))
-		elif point == "lumber" or point == "granary":
-			K.box(self, Vector3(0.65,0.18,0.3), K.WOOD_LIGHT, at + Vector3(0,0.12,0), Vector3(0,20,0))
-		else:
-			K.box(self, Vector3(0.55,0.65,0.24), K.STONE_DARK, at + Vector3(0,0.33,0))
-			K.box(self, Vector3(0.22,0.26,0.03), K.PAPER, at + Vector3(0,0.42,0.13))
+		FieldProps.clue(K.node(self, at), point, key)
 		K.text3d(self, label, at + Vector3(0,1.35,0), 50, Color("#e7cd8a"), true, 0.005)
 		K.light(self, Color("#d6b879"), 0.5, 2.5, at + Vector3(0,1,0))
 
@@ -353,18 +340,17 @@ func _make_journey_obstacle() -> void:
 	var size := Vector3(0.38,1.3,3.3) if across_x else Vector3(3.3,1.3,0.38)
 	var body := K.collider(self,size,center + Vector3(0,0.65,0))
 	var visual := K.node(self,center)
+	var cargo := K.node(visual, Vector3.ZERO, Vector3(0, 90 if across_x else 0, 0))
 	if point == "rice_ruin":
-		for j in 5:
-			for row in 2:
-				var offset := Vector3(0,0.3+row*0.6,-1.2+j*0.6) if across_x else Vector3(-1.2+j*0.6,0.3+row*0.6,0)
-				K.cyl(visual,0.24,0.3,0.58,K.RICE_SACK,offset)
+		for i in 4:
+			var stack := Props.rice_sacks(cargo, Vector3((i - 1.5) * 0.79, 0, 0), 13)
+			stack.scale = Vector3(0.63, 1.38, 0.55)
 	else:
-		K.box(visual,size,K.WOOD_LIGHT if point == "lumber" else K.WOOD,Vector3(0,0.65,0))
 		for i in 3:
-			if across_x:
-				K.box(visual,Vector3(0.42,0.12,3.25),K.WOOD_LIGHT,Vector3(0,0.35+i*0.4,0))
-			else:
-				K.box(visual,Vector3(3.25,0.12,0.42),K.WOOD_LIGHT,Vector3(0,0.35+i*0.4,0))
+			var crate := K.node(cargo, Vector3((i - 1) * 1.05, 0, 0), Vector3(0, (i - 1) * 4, 0))
+			crate.scale = Vector3(1.12, 1.14 + i * 0.09, 0.78)
+			FieldProps.chest(crate)
+		Props.wood_pile(cargo, Vector3(0.10, 0.80, 0), 3)
 	K.text3d(visual,str(spec.label),Vector3(0,1.55,0),48,Color("#d4c5a8"),true,0.005)
 	journey_obstacles[str(spec.stage)] = {"body":body,"visual":visual,"center":center,"normal":normal}
 
@@ -375,24 +361,16 @@ func _journey_props() -> void:
 		var id := str(stage.id)
 		var at: Vector3 = journey_positions[id]
 		var n := K.node(self, at)
-		var mat = K.STONE if point in ["city_god", "mortuary", "taoist_temple"] else K.WOOD_LIGHT
-		if point == "lumber":
-			K.cyl(n,0.20,0.20,0.85,mat,Vector3(0,0.16,0),Vector3(0,0,90))
-		elif point in ["rice_ruin", "granary"]:
-			K.cyl(n,0.18,0.26,0.55,K.RICE_SACK,Vector3(0,0.28,0))
-		elif point == "pharmacy_ruin":
-			K.cyl(n,0.15,0.2,0.4,K.mat(Color("#766e59")),Vector3(0,0.2,0))
-		elif point == "school":
-			K.box(n,Vector3(0.7,0.09,0.45),K.PAPER,Vector3(0,0.15,0))
-		else:
-			K.box(n,Vector3(0.55,0.35,0.4),mat,Vector3(0,0.18,0))
+		FieldProps.station(n, point, id)
 		var ring := TorusMesh.new()
-		ring.inner_radius = 0.52
-		ring.outer_radius = 0.58
+		ring.inner_radius = 0.536
+		ring.outer_radius = 0.563
+		ring.rings = 36
+		ring.ring_segments = 6
 		var mi := MeshInstance3D.new()
 		mi.mesh = ring
-		mi.material_override = K.mat(Color("#7db3a0"),0.6,1.3)
-		mi.position.y = 0.06
+		mi.material_override = K.mat(Color("#98c3ad"), 0.6, 0.60)
+		mi.position.y = 0.078
 		n.add_child(mi)
 		var label := K.text3d(n,str(stage.title),Vector3(0,1.1,0),48,Color("#c3e0ce"),true,0.005)
 		_journey_nodes[id] = {"node":n,"label":label,"title":str(stage.title)}
@@ -408,58 +386,24 @@ func _exit_marker() -> void:
 	K.box(self, Vector3(2.0, 0.025, 0.45), K.mat(Color("#c2b18e")), Vector3(0, 0.045, 5.0))
 
 
-func _coffin(pos: Vector3, rot_y: float, open: bool) -> Node3D:
-	var n := K.node(self, pos, Vector3(0, rot_y, 0))
-	K.box(n, Vector3(0.8, 0.7, 2.0), K.mat(Color("#2a1f1a"), 0.6), Vector3(0, 0.35, 0))
-	var lid := K.box(n, Vector3(0.85, 0.12, 2.05), K.mat(Color("#3a2a22"), 0.6), Vector3(0, 0.76, 0))
-	if open:
-		lid.position = Vector3(0.6, 0.4, 0.1)
-		lid.rotation_degrees = Vector3(0, 12, 60)
-	K.collider(n, Vector3(0.8, 0.8, 2.0), Vector3(0, 0.4, 0))
-	return n
-
-
 ## 一处可翻的地方：按名字挑道具，脚下一圈金光，头上写名字。
 func _spot_prop(k: int, spot_name: String) -> void:
 	var pos: Vector3 = _spot_positions[k]
 	var n := K.node(self, pos)
-	if spot_name.contains("棺") or spot_name.contains("停尸"):
-		_coffin(pos, 0.0, false)
-	elif spot_name.contains("柜") or spot_name.contains("药"):
-		Props.cabinet(n, Vector3(0, 0, -0.3), 0)
-	elif spot_name.contains("仓") or spot_name.contains("粮") or spot_name.contains("米"):
-		Props.rice_sacks(n, Vector3.ZERO, 5)
-	elif spot_name.contains("木"):
-		Props.wood_pile(n, Vector3.ZERO, 6)
-	elif spot_name.contains("田"):
-		K.box(n, Vector3(1.6, 0.2, 1.6), K.EARTH, Vector3(0, 0.1, 0))
-		for c in 4:
-			K.sphere(n, 0.1, K.mat(Color("#8a3b22"), 0.3), Vector3(-0.4 + c * 0.27, 0.25, 0), Vector3(1, 0.4, 1), true)
-	elif spot_name.contains("车"):
-		K.box(n, Vector3(1.2, 0.5, 2.0), K.WOOD_LIGHT, Vector3(0, 0.6, 0))
-		for sx in [-1, 1]:
-			K.cyl(n, 0.4, 0.4, 0.1, K.WOOD, Vector3(sx * 0.68, 0.4, 0), Vector3(0, 0, 90))
-	elif spot_name.contains("铺盖"):
-		K.box(n, Vector3(1.0, 0.2, 1.9), K.CLOTH_BLUE, Vector3(0, 0.1, 0))
-	elif spot_name.contains("案") or spot_name.contains("桌") or spot_name.contains("台") or spot_name.contains("供") or spot_name.contains("香"):
-		K.box(n, Vector3(1.6, 0.08, 0.8), K.WOOD, Vector3(0, 0.82, 0))
-		for sx in [-1, 1]:
-			K.box(n, Vector3(0.1, 0.8, 0.7), K.WOOD, Vector3(sx * 0.7, 0.4, 0))
-		K.box(n, Vector3(0.4, 0.2, 0.3), K.WOOD_LIGHT, Vector3(0.3, 0.96, 0))
-	else:
-		K.box(n, Vector3(1.0, 0.7, 0.7), K.WOOD, Vector3(0, 0.35, 0))
-		K.box(n, Vector3(1.05, 0.1, 0.75), K.WOOD_LIGHT, Vector3(0, 0.74, 0))
+	FieldProps.spot(n, spot_name)
 	K.collider(n, Vector3(1.2, 1.0, 1.0), Vector3(0, 0.5, 0))
 	var glow := K.node(n)
 	var ring := TorusMesh.new()
-	ring.inner_radius = 0.95
-	ring.outer_radius = 1.05
+	ring.inner_radius = 0.973
+	ring.outer_radius = 1.012
+	ring.rings = 44
+	ring.ring_segments = 6
 	var ring_mi := MeshInstance3D.new()
 	ring_mi.mesh = ring
-	ring_mi.material_override = K.mat(Color("#ffc65a"), 0.5, 3.0)
-	ring_mi.position.y = 0.05
+	ring_mi.material_override = K.mat(Color("#ddb477"), 0.5, 0.65)
+	ring_mi.position.y = 0.078
 	glow.add_child(ring_mi)
-	K.light(glow, Color("#ffc65a"), 0.9, 3.5, Vector3(0, 1.4, 0))
+	K.light(glow, Color("#ffe5c6"), 0.82, 3.1, Vector3(0, 1.4, 0))
 	var label := K.text3d(n, spot_name, Vector3(0, 1.8, 0), 56, Color("#ffe3a0"), true, 0.005)
 	_spots.append({"pos": pos, "glow": glow, "label": label, "name": spot_name})
 
