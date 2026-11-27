@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="96" viewBox="0 0 192 96">
+  <!-- Unknown stock travels wrapped in cloth. Uncatalogued furniture keeps its maker's timber tag. -->
+  <g stroke="#544635" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M12 63q10-13 17-27l16-12 22 12 12 21 3 15-15 9-44-1-10-7z" fill="#a6a68b" stroke-width="2.8"/>
+    <path d="M29 37q14 5 21 20l-7 18-17-2-10-7 12-6z" fill="#bbc0a3" stroke="none"/>
+    <path d="M61 39q-5 9-7 18l11 12 12 3-6 4-23 2 3-24z" fill="#838c78" stroke="none"/>
+    <path d="m39 30-5-11 9 2 5 7 5-11 12-5-5 15-9 8z" fill="#b1b39a" stroke-width="2.4"/>
+    <path d="m33 35 19 5 6-5-18-6z" fill="#a37a4f" stroke-width="2"/>
+    <path d="m51 38-6 10m8-9 6 8M28 59l9-11m20 9 8 9" fill="none" stroke-width="2.1"/>
+    <path d="M50 35q13-1 15 9l-1 9" fill="none" stroke="#71513b" stroke-width="2.4"/>
+    <path d="m59 49 7-3 8 3-1 16-13 2z" fill="#e7d5ad" stroke-width="2"/>
+  </g>
+  <g transform="translate(96)" stroke="#564431" stroke-linejoin="round" stroke-linecap="round">
+    <path d="m14 53 39-14 27 8-38 15z" fill="#d4af79" stroke-width="2.6"/>
+    <path d="m14 53 28 9 .1 12-28-10z" fill="#ae8053" stroke-width="2.6"/>
+    <path d="m42 62 38-15v12L42 74z" fill="#89704b" stroke-width="2.6"/>
+    <path d="m29 43 18-7-3-12 11-4 6 5 4 15-18 8z" fill="#e2c28d" stroke-width="2.4"/>
+    <path d="m44 24 9 4 8-3m-8 3 3 11" fill="none" stroke-width="1.8"/>
+    <path d="m17 64 7 2v12l-7-3zm49-.5 7-3v12l-7 3z" fill="#916d49" stroke-width="2"/>
+    <path d="m21 58 8 3m19 7 17-6" fill="none" stroke="#6e573b" stroke-width="1.8"/>
+  </g>
+</svg>
