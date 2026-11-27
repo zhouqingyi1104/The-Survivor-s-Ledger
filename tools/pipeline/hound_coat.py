@@ -1,10 +1,10 @@
 """Smooth anatomical union for the yard dog's coat, sampled once when authoring the GLB."""
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 from folk_mesh import Surface,linear
 
 def coat_mesh():
-    step=.025
+    step=.019
     axes=[np.arange(a,b,step) for a,b in [(-.24,.25),(-.045,.87),(-.56,.555)]]
     grid=np.stack(np.meshgrid(*axes,indexing='ij'),axis=-1)
     field=np.full(grid.shape[:-1],10.)
@@ -33,6 +33,7 @@ def coat_mesh():
     egg((.01,.603,.428),(.054,.037,.085),.023)
     egg((.01,.580,.402),(.049,.026,.078),.017)
     for sign in [-1,1]:
+        egg((.01+sign*.058,.623,.351),(.030,.039,.068),.019)
         x=sign*.095; lead=.034*sign
         limb([(x,.400,.164+lead),(x,.314,.159+lead),(x,.236,.131+lead),(x,.149,.151+lead),(x,.064,.174+lead)],
              [.071,.053,.039,.028,.023],.031)
@@ -52,7 +53,7 @@ def coat_mesh():
     tets=[(0,1,2,6),(0,2,3,6),(0,3,7,6),(0,7,4,6),(0,4,5,6),(0,5,1,6)]
     offsets=[field[a:a+len(axes[0])-1,b:b+len(axes[1])-1,c:c+len(axes[2])-1] for a,b,c in corners]
     cells=np.argwhere((np.min(offsets,axis=0)<0)&(np.max(offsets,axis=0)>0))
-    surface=Surface();edges={}; tan=linear('b68a5f');cream=linear('dfcbac');sable=linear('574233')
+    surface=Surface();edges={}; tan=linear('ab7950');cream=linear('e3caa8');sable=linear('513d32')
     def color(p):
         x,y,z=p
         upper=np.clip((y-.385)*5.4,0,1)*np.clip((.327-z)*5.8,0,1)
@@ -60,7 +61,14 @@ def coat_mesh():
         cheeks=np.exp(-((y-.612)/.101)**2)*np.clip((z-.31)*5.8,0,.8)
         chest=np.exp(-((z-.259)/.08)**2)*np.clip((.57-y)*4.4,0,.78)
         belly=max(.79*below,.91*cheeks,chest)
-        return (tan*(1-upper)+sable*upper)*(1-belly)+cream*belly
+        base=(tan*(1-upper)+sable*upper)*(1-belly)+cream*belly
+        # A darker mask follows the bridge and the eye sockets. The lip and eyebrows
+        # keep their separate warm guard hairs while the pale throat runs into the chest.
+        bridge=np.clip((z-.36)/.12,0,1)*np.clip((y-.575)/.046,0,1)
+        eye=np.exp(-(((abs(x-.01)-.072)/.04)**2+((y-.66)/.023)**2+((z-.354)/.044)**2))
+        brow=np.exp(-(((abs(x-.01)-.066)/.028)**2+((y-.685)/.016)**2+((z-.345)/.035)**2))
+        mask=max(.81*bridge,.70*eye)
+        return (base*(1-mask)+sable*mask)*(1-.46*brow)+cream*(.46*brow)
     for cell in cells:
         ijk=corners+cell
         coord=grid[tuple(ijk.T)]
@@ -87,10 +95,11 @@ def coat_mesh():
     return surface
 
 def coat_texture(out):
-    size=256; rng=np.random.default_rng(981);im=Image.new('L',(size,size),231);draw=ImageDraw.Draw(im)
-    for i in range(6300):
-        x,y=rng.integers(-8,size,2);n=rng.uniform(3,11);c=int(rng.integers(185,255))
-        for dx in [0,size] if x<1 else [0]:
-            for dy in [0,-size] if y>size-12 else [0]:
-                draw.line((x+dx,y+dy,x+dx+n*.25,y+dy+n),fill=c,width=1)
-    im.save(out/'guard_hair.png')
+    size=256
+    y,x=np.mgrid[:size,:size]/size
+    bend=.24*np.sin(2*np.pi*y)+.17*np.sin(2*np.pi*(x+y))
+    growth=np.cos(2*np.pi*(17*x+4*y+bend))
+    tips=np.cos(2*np.pi*(71*x+18*y+3.8*bend))
+    groups=np.sin(2*np.pi*(3*x-y))
+    value=231+3.5*growth+2.1*tips*(.6+.4*growth)+3*groups
+    Image.fromarray(np.rint(value).astype('uint8')).save(out/'guard_hair.png')

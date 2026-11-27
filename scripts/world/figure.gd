@@ -1,5 +1,5 @@
 extends Node3D
-## 人物：用胶囊、圆柱拼的低多边形小人，关节可动（髋-膝、肩-肘），程序动画：
+## 标题街上的尸影复用局内长衫、手和面部的轻量定姿网格。其余简模按关节做程序动画：
 ## 走路（摆腿屈膝、摆臂）、干活（手在身前忙）、躺下（睡觉）、僵尸蹦跳、倒地。
 ## 局部 +Z 是正面。kind：scholar / escort / herbalist / watchman / jiangshi / villager。
 
@@ -36,8 +36,25 @@ var _fall := -1.0
 func setup(k: String, robe := Color(0, 0, 0, 0)) -> Node3D:
 	kind = k
 	_t = randf() * 10.0
+	if k == "jiangshi":
+		_body = K.node(self)
+		_torso = K.node(_body)
+		Gear.attach(_torso, "title_walker", "StreetFigure")
+		for side in [-1, 1]:
+			var pivot := Vector3(side * 0.1, 0.9, 0)
+			var hip := K.node(_body, pivot)
+			var knee := K.node(hip, Vector3.DOWN * 0.44)
+			var foot := "LeftFoot" if side < 0 else "RightFoot"
+			Gear.attach(knee, "title_walker", foot, -pivot + Vector3.UP * 0.44)
+			_hips.append(hip)
+			_knees.append(knee)
+		Gear.attach(_torso, "headwear", "OfficialCap", Vector3(0, 1.821, -0.038))
+		Gear.sewn_panel(_torso, "rank_badge", Vector2(0.17, 0.16), Vector3(0, 1.319, 0.16))
+		var slip := Gear.sewn_panel(_torso, "ward_paper", Vector2(0.080, 0.166), Vector3(0.006, 1.727, 0.109))
+		slip.rotation_degrees = Vector3(-9, 0, -4)
+		return self
 	var robe_color: Color = robe if robe.a > 0 else ROBES.get(k, ROBES.villager)
-	var skin: Color = K.JIANGSHI_SKIN if k == "jiangshi" else K.SKIN
+	var skin: Color = K.SKIN
 	var trouser := robe_color.darkened(0.5)
 	var long: bool = k in LONG_ROBE
 	_body = K.node(self)
@@ -80,12 +97,6 @@ func setup(k: String, robe := Color(0, 0, 0, 0)) -> Node3D:
 		_shoulders.append(sh)
 		_elbows.append(el)
 	_hat(k, robe_color)
-	if k == "jiangshi":
-		for sh in _shoulders:
-			sh.rotation_degrees.x = -88
-		Gear.sewn_panel(_torso, "rank_badge", Vector2(0.2, 0.2), Vector3(0, 0.28, 0.215))
-		var tal := Gear.sewn_panel(_head, "ward_paper", Vector2(0.085, 0.18), Vector3(0, 0.16, 0.135))
-		tal.rotation_degrees.x = -10
 	return self
 
 
@@ -105,8 +116,6 @@ func _hat(k: String, robe: Color) -> void:
 			var lan := K.node(_elbows[1], Vector3(0, -0.42, 0.06))
 			K.sphere(lan, 0.1, K.mat(Color("#ff8a4a"), 0.5, 2.5), Vector3(0, -0.08, 0), Vector3(1, 1.3, 1))
 			lantern_light = K.light(lan, Color("#ffae6b"), 1.2, 6.0, Vector3(0, -0.08, 0))
-		"jiangshi":
-			Gear.attach(_head, "headwear", "OfficialCap", Vector3(0, 0.34, -0.02))
 		_:
 			K.sphere(_head, 0.06, K.ROOF_EDGE, Vector3(0, 0.33, -0.04))
 

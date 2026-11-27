@@ -36,7 +36,7 @@ def make_garment(body):
     long=body.endswith('long')
     dx=.94 if female else 1.
     dy=.947 if female else 1.
-    main,shade,leather,edge=(Surface() for _ in range(4))
+    main,shade,leather,edge=(Surface(uv_per_metre=1.6) for _ in range(4))
     # A single garment from neck to hem: shoulder fall, bloused waist, wider lower skirt.
     low=.19 if long else .73
     body_rows=[(low, .333 if long else .242, .248 if long else .181),
@@ -48,9 +48,10 @@ def make_garment(body):
                (1.528,.152,.109),(1.55,.086,.082),(1.565,.078,.076)]
     def folds(a,k):
         spread=(.066 if long else .033)*(1-min(1,max(0,body_rows[k][0]-.30)/.8))
-        return 1+(spread+.014)*np.cos(a*10+body_rows[k][0]*.9)+spread*.41*np.sin(a*7-.5)
+        y = body_rows[k][0]
+        return 1 + spread*(.72*np.cos(a*6+.7*y)+.46*np.cos(9*a-1.8*y+1.2)+.21*np.cos(4*a-.5))
     def cloth(a,k):
-        return gray(.79+.18*(.5+.5*np.cos(a*10+body_rows[k][0]*.9))+.03*np.sin(a*4+k*.28))
+        return gray(.89+.045*np.cos(a*6+body_rows[k][0]*.7)+.025*np.sin(a*4+k*.22))
     upright(main,[(0,y,-.016 if y<1.43 else -.044,rx,rz) for y,rx,rz in body_rows],cloth,48,folds)
     # Solid collar closes the original gap between exposed neck and the torso mesh.
     upright(edge,[(0,1.538,-.048,.099,.093),(0,1.568,-.048,.089,.084),
@@ -65,10 +66,19 @@ def make_garment(body):
     for path,thick in [([(-.061,1.566),(-.055,1.513),(-.026,1.431),(.008,1.367),(.063,1.295),(.112,1.232),(.150,1.16),(.162,1.093)],.033),
                        ([(.053,1.558),(.054,1.506),(.042,1.449),(.010,1.391),(-.004,1.367)],.026)]:
         panel(edge,[front(x-thick/2,y) for x,y in path],[front(x+thick/2,y) for x,y in path],.15,gray(.52))
+        welt=[np.array(front(x-thick*.37,y))+[0,0,.0022] for x,y in path]
+        edge.tube(welt,[.0025]*len(welt),gray(.88),8)
+    # Two knotted cloth fastenings bridge the front overlap; the loop sits above the binding.
+    for x,y in [(.074,1.279),(.143,1.167)]:
+        strip=[(x-.031,y+.008),(x-.017,y+.005),(x+.013,y-.002),(x+.026,y+.003),
+               (x+.028,y-.003),(x+.021,y-.007),(x+.011,y-.006),(x-.022,y+.001)]
+        loop=[np.array(front(px,py))+[0,0,.009] for px,py in strip]
+        edge.tube(loop,[.0032]*len(loop),gray(.80),8)
+        edge.ball(np.array(front(x+.013,y-.003))+[0,0,.009],(.006,.008,.006),gray(.66),12)
     # Weighted sleeves run along the unposed arms, with material sag on the undersides.
     for side in (-1,1):
-        sleeve=[(.070,1.423,.090,.101),(.133,1.441,.113,.132),(.198,1.446,.125,.127),(.245,1.446,.121,.127),
-                (.318,1.442,.121,.120),(.39,1.433,.117,.118),(.458,1.433,.114,.113),
+        sleeve=[(.070,1.423,.085,.092),(.133,1.433,.101,.114),(.198,1.437,.112,.117),(.245,1.437,.110,.112),
+                (.318,1.435,.108,.109),(.39,1.430,.105,.106),(.458,1.431,.105,.104),
                 (.532,1.437,.110,.110),(.617,1.445,.103,.099),(.692,1.444,.100,.094),
                 (.714,1.444,.099,.094),(.714,1.444,.085,.082),(.701,1.444,.061,.061),(.681,1.445,.036,.038),(.680,1.445,.001,.001)]
         def cuff(rows):
@@ -149,14 +159,14 @@ def make_garment(body):
 
 def weave():
     # Periodic interlocked yarns with broad dye variation. All maps are authored together.
-    size=512; y,x=np.mgrid[0:size,0:size]/size; rng=np.random.default_rng(413)
+    size=512; y,x=np.mgrid[0:size,0:size]/size
     w=2*np.pi*(x*42+.11*np.sin(2*np.pi*y*3)); h=2*np.pi*(y*41+.10*np.sin(2*np.pi*x*4))
     over=(np.cos(w*.5)*np.cos(h*.5))*.55+.5
     relief=(np.cos(w)*over+np.cos(h)*(1-over))*.62
     mottle=.32*np.sin(2*np.pi*(4*x+y))+.18*np.sin(2*np.pi*(2*y-x))+.12*np.cos(2*np.pi*(3*x-5*y))
-    val=np.clip(228+11*relief+7*mottle+rng.normal(0,1.4,(size,size)),0,255).astype('uint8')
+    val=np.clip(228+4*relief+5*mottle,0,255).astype('uint8')
     Image.fromarray(val).save(OUT/'dyed_weave.png')
-    gx=(np.roll(relief,-1,1)-np.roll(relief,1,1))*.65; gy=(np.roll(relief,-1,0)-np.roll(relief,1,0))*.65
+    gx=(np.roll(relief,-1,1)-np.roll(relief,1,1))*.22; gy=(np.roll(relief,-1,0)-np.roll(relief,1,0))*.22
     normal=np.stack((-gx,gy,np.ones_like(gx)),axis=-1); normal/=np.linalg.norm(normal,axis=-1)[:,:,None]
     Image.fromarray(((normal*.5+.5)*255).astype('uint8')).save(OUT/'dyed_weave_normal.png')
 

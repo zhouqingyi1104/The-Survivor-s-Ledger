@@ -17,8 +17,9 @@ def unit(v):
 
 
 class Surface:
-    def __init__(self):
+    def __init__(self, uv_per_metre=None):
         self.pts, self.uv, self.tint, self.faces = [], [], [], []
+        self.uv_per_metre = uv_per_metre
 
     def vertex(self, p, uv, color):
         self.pts.append(np.array(p))
@@ -35,8 +36,19 @@ class Surface:
     def rings(self, sections, colors, sides=28, warp=None):
         """Sections are center and two oriented radius vectors. Warp shapes individual folds."""
         prev = []
+        course = 0.
+        prev_section = None
+        if self.uv_per_metre:
+            # All rings of a cut piece share one weft length; gathering the cuff doesn't
+            # restart the weave or allocate an entire texture row to a two-millimetre hem.
+            wraps = max(1, round(np.mean([np.linalg.norm(u) + np.linalg.norm(v)
+                                          for _, u, v in sections]) * math.pi * self.uv_per_metre))
         for k, (c, u, v) in enumerate(sections):
             c,u,v = map(np.asarray, (c,u,v))
+            radius = (np.linalg.norm(u) + np.linalg.norm(v)) * .5
+            if self.uv_per_metre and prev_section is not None:
+                course += math.hypot(np.linalg.norm(c - prev_section[0]), radius - prev_section[1]) * self.uv_per_metre
+            prev_section = c, radius
             row = []
             for i in range(sides+1):
                 theta = 2 * math.pi * (i % sides) / sides
@@ -44,7 +56,8 @@ class Surface:
                 if warp:
                     d *= warp(theta,k)
                 shade = colors(theta,k) if callable(colors) else colors
-                row.append(self.vertex(c+d, [i/sides, k/(len(sections)-1)], shade))
+                uv = [wraps*i/sides, course] if self.uv_per_metre else [i/sides, k/(len(sections)-1)]
+                row.append(self.vertex(c+d, uv, shade))
                 if prev and i:
                     hint = d + self.pts[row[-2]] - c
                     self.face(prev[i-1],prev[i],row[i],hint)

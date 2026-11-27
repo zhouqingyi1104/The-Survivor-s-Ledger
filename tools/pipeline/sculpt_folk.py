@@ -14,13 +14,34 @@ def hound(w):
     fur,face,collar=Surface(),Surface(),Surface()
     saddle=linear('654630'); tan=linear('b58250'); cream=linear('e1c7a1'); black=linear('302923')
     body=coat_mesh()
-    face.ball((.01,.618,.484),(.039,.024,.023),black,24)
+    triangles=np.asarray(body.pts)[body.faces]
+    # Intersect the actual coat at each eyelid and lip point. A free line through
+    # the muzzle appears suspended when the player walks to the dog's other side.
+    def flank(y,z,sign):
+        yz=triangles[:,:,1:]
+        near=np.all((yz.min(axis=1)<=[y,z]) & (yz.max(axis=1)>=[y,z]),axis=1)
+        candidates=triangles[near]
+        u=candidates[:,1,1:]-candidates[:,0,1:]
+        v=candidates[:,2,1:]-candidates[:,0,1:]
+        d=np.array([y,z])-candidates[:,0,1:]
+        det=u[:,0]*v[:,1]-u[:,1]*v[:,0]
+        keep=abs(det)>1e-12
+        a=np.zeros_like(det);b=a.copy()
+        a[keep]=(d[keep,0]*v[keep,1]-d[keep,1]*v[keep,0])/det[keep]
+        b[keep]=(u[keep,0]*d[keep,1]-u[keep,1]*d[keep,0])/det[keep]
+        inside=keep & (a>=-1e-6) & (b>=-1e-6) & (a+b<=1.000001)
+        x=candidates[:,0,0]+a*(candidates[:,1,0]-candidates[:,0,0])+b*(candidates[:,2,0]-candidates[:,0,0])
+        return sign*(sign*x[inside]).max()
+    face.ball((.01,.614,.492),(.034,.018,.019),black,24)
     for sign in [-1,1]:
         # Eyes sit in the outward-facing side of the skull, ahead of the cheeks.
-        face.ball((.01+sign*.072,.664,.359),(.015,.013,.018),linear('33251e'),16)
-        face.ball((.01+sign*.078,.668,.372),(.004,.004,.003),linear('c8bb98'),12)
-        face.tube([(.01+sign*.038,.593,.481),(.01+sign*.051,.587,.457),
-                   (.01+sign*.055,.588,.423),(.01+sign*.063,.597,.391)],[.002,.003,.003,.001],black,8)
+        face.ball((flank(.66,.358,sign)-sign*.004,.66,.358),(.010,.009,.015),linear('352a26'),18)
+        lid=[(.659,.345),(.667,.352),(.668,.360),(.662,.371)]
+        face.tube([(flank(y,z,sign)+sign*.001,y,z) for y,z in lid],
+                  [.001,.0038,.003,.001],saddle,8)
+        face.ball((.01+sign*.016,.616,.508),(.008,.003,.0018),linear('261f1b'),12)
+        lip=[(.593,.482),(.589,.467),(.587,.447),(.588,.426),(.591,.411),(.594,.400)]
+        face.tube([(flank(y,z,sign),y,z) for y,z in lip],[.001,.0018,.0022,.0021,.0014,.0006],linear('543e32'),8)
         # Guard-hair outer edge, recessed inner ear and arched tip.
         ear=[(.017+sign*.065,.690,.275),(.017+sign*.074,.722,.267),
              (.017+sign*.082,.765,.263),(.017+sign*.093,.802,.252)]

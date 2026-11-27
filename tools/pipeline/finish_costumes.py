@@ -22,7 +22,7 @@ def coat_atlas(kind):
     fold=np.sin(2*np.pi*(x*16+.32*np.sin(y*8.1)+.19*np.sin(x*23)))*(.58+.42*np.sin(2*np.pi*x*3.0))
     hem=(np.clip((y-.553)/.24,0,1)*np.clip((.906-y)/.065,0,1))
     wave=np.sin(x*2*np.pi*39+y*5)
-    depth=.12*fold*hem+.026*warp+.019*wave
+    depth=.065*fold*hem+.005*warp+.006*wave
     warmth=np.array([.94,.91,.84]) if kind=='moon' else np.array([.94,.93,.91])
     rgb=rgb*(1+depth[:,:,None])*(1+linen[:,:,None]*(warmth-1))
     albedo=Image.fromarray(np.clip(rgb,0,255).astype('uint8')).convert('RGBA')
@@ -47,13 +47,13 @@ def coat_atlas(kind):
     albedo.putalpha(alpha)
     albedo.save(OUT/(kind+'_tailoring.png'),optimize=True)
     # Fine normals follow the fibre and the broad fabric folds; roughness differs at trim.
-    height=warp*.11+fold*hem*2.1
+    height=warp*.032+fold*hem*1.45
     gy,gx=np.gradient(height)
     norm=np.stack((-gx,gy,np.ones_like(gx)),axis=-1)
     norm/=np.linalg.norm(norm,axis=-1)[:,:,None]
     if kind == 'moon':  # Both costumes share the same weave and UV layout.
         Image.fromarray(((norm+1)*127.5).clip(0,255).astype('uint8')).save(OUT/'moon_tailoring_normal.png')
-    rough=np.clip(.68+.19*linen+.055*fold+.04*warp,0,1)
+    rough=np.clip(.71+.15*linen+.035*fold+.009*warp,0,1)
     Image.fromarray((rough*255).astype('uint8')).save(OUT/(kind+'_tailoring_rough.png'))
 
 def moon_hat():
@@ -63,8 +63,9 @@ def moon_hat():
     u=x/width;v=y/height
     ring=np.exp(-((v-.827)/.092)**8)
     faded=np.clip(v**2,0,1)
-    dye=(.10*np.cos(2*np.pi*(u*14+v*.24))+.035*np.cos(2*np.pi*(u*53-v*7)))
-    weave=.03*np.sin(2*np.pi*(u*238+v*19))*np.cos(2*np.pi*v*99)
+    # Bias-cut wool varies gradually between the crown and the folded brim.
+    dye=(.044*np.cos(2*np.pi*(u*3+v*.24))+.026*np.sin(2*np.pi*(u*5-v*.4)))
+    weave=.005*np.sin(2*np.pi*(u*238+v*19))*np.cos(2*np.pi*v*99)
     col=np.array([66,54,66])*(1+dye[:,:,None]+weave[:,:,None])+faded[:,:,None]*np.array([17,14,13])
     col=col*(1-ring[:,:,None])+(np.array([84,81,91])+dye[:,:,None]*32)*ring[:,:,None]
     image=Image.fromarray(np.uint8(np.clip(col,0,255)));draw=ImageDraw.Draw(image)
