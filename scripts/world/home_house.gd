@@ -131,7 +131,7 @@ static func _service_wing(room: Node3D, roof: Node3D, plan: PackedVector2Array, 
 		_fret_eave(roof, plan[4], plan[5], h - 0.20, base, tiles)
 
 
-static func build_platform(room: Node3D, plan: PackedVector2Array, kitchen: bool) -> void:
+static func build_platform(room: Node3D, plan: PackedVector2Array, kitchen: bool, floor_finish: Material = null) -> void:
 	K.floor_slab(room, plan, 0.107, 0.01, Color("#504e45"))
 	var bounds := Rect2(plan[0], Vector2.ZERO)
 	for point in plan:
@@ -169,7 +169,7 @@ static func build_platform(room: Node3D, plan: PackedVector2Array, kitchen: bool
 	var boards := MeshInstance3D.new()
 	surface.generate_tangents()
 	boards.mesh = surface.commit()
-	boards.material_override = _mapped("cobblestone_floor_08" if kitchen else "brown_planks_09")
+	boards.material_override = floor_finish if floor_finish != null else _mapped("cobblestone_floor_08" if kitchen else "brown_planks_09")
 	room.add_child(boards)
 	for i in range(2, plan.size() - 1):
 		_rail(room, plan[i], plan[i + 1], 0.11, 0.085, 0.12, TRIM)
