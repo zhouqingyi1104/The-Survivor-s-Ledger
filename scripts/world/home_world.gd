@@ -261,8 +261,8 @@ func _decor() -> void:
 	Props.basket(self, Vector3(7.6, 0, 2.4), Color("#d8c9a3"))
 	Props.basket(self, Vector3(7.0, 0, 2.9), Color("#a9c98a"))
 	# 书架由 run.furniture 绘制，不能在原处再留一座静态副本。
-	for x in [-2.2, 2.2]:
-		Props.scroll_painting(self, Vector3(x, 2.1, -7.84))
+	Props.scroll_painting(self, Vector3(-2.2, 2.1, -7.84))
+	Props.scroll_painting(self, Vector3(2.2, 2.1, -7.84), true)
 	for x in [-3.0, 3.0]:
 		Props.couplet(self, Vector3(x, 2.0, -3.52))
 

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="544" viewBox="0 0 144 306">
+  <defs>
+    <linearGradient id="silk" x2=".86" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#e5d7b4"/><stop offset=".48" stop-color="#ecdfbd"/><stop offset="1" stop-color="#d9c9a6"/>
+    </linearGradient>
+    <linearGradient id="stone" x2="1" y2=".6" gradientUnits="objectBoundingBox">
+      <stop stop-color="#a5a18a"/><stop offset=".49" stop-color="#9b9b84"/><stop offset="1" stop-color="#788075"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#silk)" d="M0 0h144v306H0z"/>
+  <!-- Leaning culms, their joints displaced at the bend. -->
+  <g fill="none" stroke="#969c85" stroke-linecap="round">
+    <path stroke-width="1.7" d="M30 254C29 213 22 177 9 137M24 207q-9-15-20-19m12-24q6-11 6-18M81 241c20-46 30-94 36-139m-9 65q10-16 22-22"/>
+    <path stroke-width="1" d="M115 119q5-10 11-14m-9 12-7-12m1 44q-3-13-7-17m-85 50-9-7"/>
+  </g>
+  <g fill="#9ca489">
+    <path d="M126 105q1-12 7-19-1 13-7 19zm-6 6q-3-12 1-24 3 13-1 24zm-9-4q-8-4-12-13 9 3 12 13zm-7 26q-6-6-6-16 6 4 6 16zm16 19q6-13 17-17-4 10-17 17zM18 173q-9-5-13-16 10 5 13 16zm-5-16q-7-9-8-21 7 5 8 21zm10-8q2-12 8-18-1 12-8 18z"/>
+  </g>
+  <g fill="#4f594e">
+    <path d="M38 252q5-20 8-38l3 1q-2 18-6 37zm8-40q5-24 7-43l2 1q-2 20-6 43zm7-46q4-27 9-46l1.8 1q-4 19-8 46zm9-48q4-22 10-41l1.8.3-10 42zm10-44q4-14 7-24l1 .2q-2 10-6 25zm7-25 6-15-4.8 15z"/>
+    <path d="m45 212 5.5.6.1 1.8-5.8-.1zm7-45 4 .2 1.2 2-5.5-.5zm9.5-48.6 3.1-.2 1 1.9-4.8-.4zm10-43.8 3-.1.6 1.7-4-.2z"/>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path stroke="#656e5a" stroke-width="2.3" d="M40 252q-2-35-1-63 .1-33-6-73m6 74q-7-19-19-30m17-13q5-13 4-24M48 212c10-10 24-17 34-18m-29-27c-9-12-17-18-25-20m35-28c9-12 22-19 37-20m-27-23q-7-13-20-19m24-1q8-9 16-11"/>
+    <path stroke="#626d5a" stroke-width="1.15" d="M71 107c9-1 18 0 26 4m-15-10q7-12 15-15m-29 32q6 1 12 5m-21-68-11-10m14 24-17-3m-5 83-18 4m54 42 11-8m-56-40q-5-7-12-9m69-91q7 .5 12 5m-20-5 1-14"/>
+  </g>
+  <g fill="#69775f">
+    <path d="M32 118q-8-12-10-30 9 10 10 30zm7 15q2-18 11-30-1 17-11 30zm-12 12q-13-6-21-21 15 8 21 21zm1 3q-11 .7-23-6 12-1 23 6zM48 67q-14-2-21-10 11 0 21 10zm8-10q-11-9-13-23 11 10 13 23zm-7-12q-12-8-16-20 11 6 16 20zm41 3q10 4 21 15-12-3-21-15zm-8-11q-2-13 3-26 4 15-3 26z"/>
+    <path d="M97 88q8-12 21-17-8 12-21 17zm-2 20q19 0 30 10-17-1-30-10zm-15 14q10 7 14 21-12-7-14-21zM72 200q6-12 16-18-4 11-16 18zm9-7q13-3 24 3-14 2-24-3zM23 163q-9-3-16-12 10 2 16 12z"/>
+  </g>
+  <g fill="#47594b">
+    <path d="M69 107c4-17 10-25 17-33-2 15-10 27-17 33zm13-5q7-12 24-18-9 12-24 18zm9-3q12-8 29-7-13 8-29 7zm5 1q17 0 31 10-17-2-31-10zm-8 7c9 5 19 13 22 25-10-6-17-14-22-25z"/>
+    <path d="M61 68q-15-3-25-12 14 2 25 12zm2 1q-7-11-8-24 7 8 8 24zm20-18q6-13 16-20-3 11-16 20zm12-6q10-6 21-3-12 4-21 3zM24 153q-13 6-22 5 9-7 22-5zm56 41q11-11 26-12-13 9-26 12zm0 1q17 2 27 10-17-1-27-10z"/>
+  </g>
+  <!-- The upper fold is left as bare silk; the foot is shaded under the rock. -->
+  <path fill="#a6a68e" d="M-4 249q12-6 17-20l5-19 18-11 15 7 9 17 17 10-2 18-28 14-32 3-19 9z"/>
+  <path fill="url(#stone)" d="m-5 242 17-13 8-19 18-7 12 7-10 8-9 16-10 6-7 14-19 5z"/>
+  <path fill="#7f8879" d="m16 260 13-21 8-4 9-16 3-10 7 9-1 8 14 8-8 12-18 5-14 12z"/>
+  <path fill="#b9b49b" d="m-4 275 21-11 18-2 25-10 19-1 12 3-20 7-21 1-23 8-31 10z"/>
+  <g fill="none" stroke="#687263" stroke-linecap="round">
+    <path stroke-width="1.6" d="m-2 243 15-14 7-18 15-8m3 2-10 13-4 12m27-19-8 11-3 12m24 2-12 9-14 3m-23 9 7-8"/>
+    <path stroke-width=".9" d="m4 241 8-6m13-20-8 17m22-25-4 8m4 12-6 12m15-12-6 8m7-2-2 4m2 15-14 5"/>
+  </g>
+  <path fill="#687461" d="m64 249 4-18 2 15 5-12-3 14 12-13-8 14 13-7-11 9z"/>
+  <g fill="none" stroke="#98a086" stroke-width="1.1" stroke-linecap="round"><path d="M3 277q20-7 36-6m-22 5 15-1m24-12 14-2m11-5 12-1"/></g>
+  <g transform="translate(108 265)" fill="none" stroke="#a15d45"><path stroke-width="1.5" d="m.5 0 8 .3-.4 10-7.8-.5z"/><path stroke-width="1.1" d="m2.5 8 1.8-5.3L6.7 2m-2.4 3.4 2.4-1m-3 3.4 2.8-1"/></g>
+</svg>

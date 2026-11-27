@@ -9,6 +9,9 @@ const STONE = preload("res://scripts/world/cut_bluestone.gdshader")
 const GLAZE = preload("res://scripts/world/kiln_glaze.gdshader")
 const WATER = preload("res://scripts/world/well_water.gdshader")
 const INK = preload("res://scripts/world/ink_landscape.gdshader")
+const BAMBOO_STONE = preload("res://assets/art/paintings/bamboo_stone.svg")
+const PLUM_BULBUL = preload("res://assets/art/paintings/plum_bulbul.svg")
+const LOTUS_EGRET = preload("res://assets/art/paintings/lotus_egret.svg")
 
 static var _surface_materials := {}
 static var _jar_mesh: ArrayMesh
@@ -19,7 +22,7 @@ static var _bench_frame: Mesh
 static var _well_timber: BaseMaterial3D
 static var _cup_glaze: ShaderMaterial
 static var _table_stone: ShaderMaterial
-static var _screen_panels := {}
+static var _painting_materials := {}
 static var _foliage: StandardMaterial3D
 
 static func _surface(shader: Shader) -> ShaderMaterial:
@@ -629,13 +632,27 @@ static func basket(parent: Node3D, pos: Vector3, filled: Color) -> Node3D:
 	return n
 
 
-## 山水挂轴：挂在墙上，画心是几笔远山。
-static func scroll_painting(parent: Node3D, pos: Vector3) -> Node3D:
+## 每幅挂轴或折屏的每一扇共用对应材料。索引跟随家具，不随世界坐标变换。
+static func _painting(sheet: Texture2D, leaf := -1) -> ShaderMaterial:
+	if not _painting_materials.has(sheet):
+		_painting_materials[sheet] = {}
+	var panels: Dictionary = _painting_materials[sheet]
+	if not panels.has(leaf):
+		var ink := ShaderMaterial.new()
+		ink.shader = INK
+		ink.set_shader_parameter("sheet", sheet)
+		ink.set_shader_parameter("leaf", leaf)
+		panels[leaf] = ink
+	return panels[leaf]
+
+
+## 绢边、木轴独立于画心；西轴竹石，东轴梅上白头鹎。
+static func scroll_painting(parent: Node3D, pos: Vector3, plum := false) -> Node3D:
 	var n := K.node(parent, pos)
 	K.box(n, Vector3(0.7, 1.5, 0.02), K.mat(Color("#cdb98d")), Vector3.ZERO)
 	var paper := QuadMesh.new()
 	paper.size = Vector2(0.58, 1.23)
-	K._mesh(n, paper, _surface(INK), Vector3(0, 0.02, 0.014))
+	K._mesh(n, paper, _painting(PLUM_BULBUL if plum else BAMBOO_STONE), Vector3(0, 0.02, 0.014))
 	K.cyl(n, 0.03, 0.03, 0.8, K.WOOD, Vector3(0, -0.77, 0.01), Vector3(0, 0, 90), 6)
 	return n
 
@@ -707,11 +724,7 @@ static func furnishing(n: Node3D, id: String) -> bool:
 				K.box(part,Vector3(0.372,1.10,0.026),Color("#c7bca3"),Vector3(0,0.93,0))
 				var paper := QuadMesh.new()
 				paper.size = Vector2(0.34,1.05)
-				if not _screen_panels.has(i):
-					var ink := _surface(INK).duplicate() as ShaderMaterial
-					ink.set_shader_parameter("triptych_panel", float(i))
-					_screen_panels[i] = ink
-				K._mesh(part,paper,_screen_panels[i],Vector3(0,0.93,0.015))
+				K._mesh(part, paper, _painting(LOTUS_EGRET, i), Vector3(0, 0.93, 0.015))
 		"rice_jar","pickle_jar":
 			var scale_by := 0.97 if id == "rice_jar" else 0.72
 			storage_jar(n,scale_by,id == "rice_jar")
