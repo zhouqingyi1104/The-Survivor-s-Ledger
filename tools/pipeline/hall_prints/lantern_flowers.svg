@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="560" viewBox="0 0 256 224">
+  <defs>
+    <linearGradient id="silk" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#d5b585"/><stop offset=".18" stop-color="#f0dbb0"/><stop offset=".7" stop-color="#f6e8c6"/><stop offset="1" stop-color="#dbc498"/></linearGradient>
+    <g id="plum"><path fill="#b77768" d="M0-2c-7-7-11-1-6 3-5 5 1 9 5 3 3 6 9 4 7-1 7 0 6-6 1-6 1-5-6-6-7 1Z"/><circle r="1.7" fill="#eac992"/></g>
+  </defs>
+  <path fill="url(#silk)" d="M0 0h256v224H0Z"/>
+  <!-- Orchid: one arching strap leaf anchors the airy flower. -->
+  <g>
+    <path fill="#69745a" d="M10 191q21-32 20-95 8 52-14 95Zm4-2q-8-48 5-78-6 42-1 71Zm0 3q8-43 40-70-22 30-37 68Z"/>
+    <path fill="none" stroke="#79734f" stroke-width="2" d="M16 191q21-45 16-86-1-15 7-35m-7 39 12-13"/>
+    <path fill="#9f6b74" d="M38 81Q22 68 25 61q10 4 14 16-1-20 8-26 3 15-7 28 12-12 18-9-3 8-16 13 3 5-4 7-7 0-8-5Z"/>
+    <path fill="#c09190" d="M38 79q-8-10-12-15 8 5 12 15Zm4-3q1-12 4-19-1 13-4 19Z"/>
+    <path fill="#c4a46f" d="m34 83 5-3 4 3-2 4-5 1Z"/>
+    <path fill="#c29592" d="M43 98q-4-9 1-14 5 5 1 13 5-7 12-5-4 8-13 8Z"/>
+  </g>
+  <!-- Prunus: a crooked, sparse spur, opened flowers and tight buds. -->
+  <g transform="translate(64)">
+    <path fill="#68604c" d="m7 191 7-36 9-22 1-28 16-22 4-40-1 41-16 24 1 26-10 27-5 30Z"/>
+    <g stroke="#85765d" stroke-width="1.5" fill="none"><path d="m24 119-14-14-4-19m4 18 4-14m24-1 16-12m-22 17 1-26m8-11 10-14"/></g>
+    <use href="#plum" transform="translate(9 98) rotate(10)"/><use href="#plum" transform="translate(34 88) scale(.84)"/>
+    <use href="#plum" transform="translate(45 66) scale(.92)"/><use href="#plum" transform="translate(53 77) scale(.62)"/>
+    <g fill="#ad7665"><ellipse cx="44" cy="43" rx="2" ry="4"/><ellipse cx="12" cy="90" rx="2" ry="3"/></g>
+  </g>
+  <!-- Single lotus leaf and bud. -->
+  <g transform="translate(128)">
+    <path d="M21 191q8-41 7-79m4 77q15-49 11-98" fill="none" stroke="#798266" stroke-width="2"/>
+    <path fill="#81937a" d="M4 122q10-13 17-16 9-4 15-1 8 4 15 16-13-4-20-3-10 0-27 4Z"/>
+    <path fill="#627a64" d="M9 121q12-2 20-9l-1 5q-11 5-19 4Z"/>
+    <path fill="none" stroke="#9eaa89" stroke-width=".8" d="m29 112-7-3m7 3 7-5m-7 5 13 4"/>
+    <path fill="#b67c78" d="M43 94q-11-10-1-32 11 16 7 24Z"/>
+    <path fill="#ce9b8f" d="m43 94 1-25q8 17-1 25Z"/><path fill="#718166" d="m37 88 7 4 7-9-5 12-5 1Z"/>
+  </g>
+  <!-- Narcissus: two bells on a bent stem and low blue-green leaves. -->
+  <g transform="translate(192)">
+    <path d="M20 191q-8-35 5-82m-2 78q22-37 23-81m-21 81q0-45 14-60" fill="none" stroke="#7c8f76" stroke-width="3.8"/>
+    <path d="M26 188q13-54 8-91-2-14-11-12m12 13q2-13 9-15" fill="none" stroke="#768065" stroke-width="1.7"/>
+    <g stroke="#a59b7d" stroke-width="1" fill="#f6edce"><path d="m23 85 2-12 3 11 6 4-8 1-4 10-3-7-10 2 5-8-4-7 8 1 3-6Z"/><path d="m44 82 5-8-1 8 7-2-3 6 4 5-8-1-5 6-1-8-7-4Z"/></g>
+    <g fill="#b88d43"><ellipse cx="22" cy="86" rx="4" ry="3"/><ellipse cx="46" cy="85" rx="3.5" ry="2.7"/></g>
+  </g>
+</svg>

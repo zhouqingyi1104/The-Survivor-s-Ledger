@@ -36,6 +36,8 @@ static func _surface(shader: Shader) -> ShaderMaterial:
 			material.set_shader_parameter("stone_arm", load(ROCK + "arm.jpg"))
 		elif shader == GLAZE:
 			material.set_shader_parameter("mineral_grain", preload("res://assets/third_party/polyhaven/textures/rock_face_03/rock_face_03_arm.jpg"))
+		elif shader == COTTON:
+			material.set_shader_parameter("cover_print", preload("res://assets/art/textiles/indigo_fish.svg"))
 		_surface_materials[shader] = material
 	return _surface_materials[shader]
 

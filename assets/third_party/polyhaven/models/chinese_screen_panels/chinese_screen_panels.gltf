@@ -92,17 +92,17 @@
     {
       "mimeType": "image/jpeg",
       "name": "chinese_screen_panels_nor_gl",
-      "uri": "textures/chinese_screen_panels_nor_gl_1k.jpg"
+      "uri": "textures/persimmon_screen_nor_gl_1k.webp"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chinese_screen_panels_diff",
-      "uri": "textures/chinese_screen_panels_diff_1k.jpg"
+      "uri": "textures/persimmon_screen_diff_1k.webp"
     },
     {
       "mimeType": "image/jpeg",
       "name": "chinese_screen_panels_metal-chinese_screen_panels_rough",
-      "uri": "textures/chinese_screen_panels_arm_1k.jpg"
+      "uri": "textures/persimmon_screen_arm_1k.webp"
     }
   ],
   "accessors": [

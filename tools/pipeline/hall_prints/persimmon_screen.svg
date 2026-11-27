@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="824" viewBox="0 0 384 412">
+  <defs>
+    <linearGradient id="ground" x2=".8" y2="1">
+      <stop stop-color="#364742"/><stop offset=".58" stop-color="#273833"/><stop offset="1" stop-color="#26332e"/>
+    </linearGradient>
+    <g id="fruit">
+      <path fill="#c99053" d="M-1-13C5-18 18-16 21-9c6 13-1 26-12 30-13 5-28-2-31-13-3-13 4-23 21-21Z"/>
+      <path fill="#a76e42" d="M18-9c2 14-5 23-15 25-6 1-12-1-16-4 5 9 16 12 25 7 10-5 12-17 6-28Z"/>
+      <path fill="#657353" d="m-4-14-11-5 4 6-9 1 13 2 6 6 3-8 9 2-6-6 8-3-13 2-2-5Z"/>
+      <path fill="#eed099" d="M-16-3q5-7 11-5-6 2-9 9Z"/>
+      <path fill="none" stroke="#b37d49" stroke-width=".8" d="M4-5q9 12 1 21m-10-16q-3 7 1 12"/>
+    </g>
+    <g id="leaf">
+      <path fill="#72816a" d="M0 0Q10-20 31-19c-8 17-17 20-31 19Z"/>
+      <path fill="#aeab7a" d="M1-1q15-11 27-16Q16-10 1-1Z"/>
+    </g>
+    <g id="newleaf">
+      <path fill="#a69d6f" d="M0 0Q3-14 18-16 16-4 0 0Z"/>
+    </g>
+  </defs>
+  <path fill="url(#ground)" d="M0 0h384v412H0Z"/>
+  <!-- A fruiting branch enters from the outer hinge. A single twig reaches across the fold. -->
+  <path fill="#a49665" d="M0 317q30-20 53-47l22-42 16-9 19-32 29-26 24-39 32-33 36-12-36 16-26 32-22 40-30 27-18 35-17 9-22 45-28 30L0 334Z"/>
+  <path fill="#736e51" d="m0 327 36-27 21-25 17-34 8-6-16 36-17 27L0 342Z"/>
+  <g fill="none" stroke-linecap="round">
+    <path stroke="#d1b77d" stroke-width="1.6" d="M4 321q23-15 44-39m13-18q10-16 15-31m28-35 14-19m29-30 9-15"/>
+    <path stroke="#4f5946" stroke-width="1.6" d="m11 318 15-12m27-27 9-17m35-45 12-14m22-29 6-8"/>
+    <path stroke="#928b60" stroke-width="1.7" d="m21 308 4-21 10-16-8 3m67-55 10-10"/>
+  </g>
+  <g fill="none" stroke="#b4a270" stroke-width="2.3" stroke-linecap="round">
+    <path d="m51 275 16-52-4-34 12-22M66 218l-16-19-5-23M84 229l32-7 20-17 27-6M100 211l9-31-10-28 5-24M135 165l-3-34 9-27-2-22M156 140l32 5 30-12 22 6M170 119l6-32 17-22 5-23M192 95l28 9 15-3 16 7M213 87l28-1 21-11 19 3"/>
+    <path d="m170 144 9 22-2 11M199 142l4 19-4 8M107 181l-11-5-9 5M235 103l4 15"/>
+  </g>
+  <use href="#leaf" transform="translate(59 206) rotate(-91)"/><use href="#newleaf" transform="translate(65 194) rotate(-26)"/>
+  <use href="#leaf" transform="translate(98 151) rotate(-108)"/><use href="#leaf" transform="translate(136 122) rotate(-123)"/>
+  <use href="#newleaf" transform="translate(140 107) rotate(-23)"/><use href="#leaf" transform="translate(179 84) rotate(-106)"/>
+  <use href="#leaf" transform="translate(189 144) rotate(48)"/><use href="#leaf" transform="translate(210 136) rotate(10)"/>
+  <use href="#newleaf" transform="translate(219 104) rotate(-16)"/><use href="#newleaf" transform="translate(258 77) rotate(-47)"/>
+  <use href="#leaf" transform="translate(129 211) rotate(-18)"/><use href="#newleaf" transform="translate(109 223) rotate(88)"/>
+  <use href="#leaf" transform="translate(49 195) rotate(-152) scale(.79)"/><use href="#leaf" transform="translate(141 104) rotate(-49) scale(.75)"/>
+  <use href="#newleaf" transform="translate(239 86) rotate(-108)"/><use href="#leaf" transform="translate(111 218) rotate(60) scale(.76)"/>
+  <use href="#fruit" transform="translate(86 194) rotate(12) scale(.79)"/><use href="#fruit" transform="translate(177 188) rotate(-8)"/>
+  <use href="#fruit" transform="translate(201 175) rotate(11) scale(.70)"/><use href="#fruit" transform="translate(239 128) rotate(-8) scale(.67)"/>
+  <!-- A swallow breaks the stillness below the bough. Cream bib and forked tail remain visible across the room. -->
+  <path fill="#202e2d" stroke="#b1a17a" stroke-width="1.5" d="M278 256c-12-5-24-20-33-44 18 9 35 20 49 34 9-1 13 4 14 10l9 3-10 3c-6 13-15 16-25 14l-29 13 15-14-19 3 23-14c-16-2-29-6-43-14 18-1 34 1 49 6Z"/>
+  <path fill="#d7c49b" d="M266 262q19 4 30-6l8 4q-6 17-21 14l-13 4 9-8Z"/>
+  <path fill="#435753" d="m248 216q12 11 32 31l-10-5q-13-10-22-26Zm-7 37 25 5 11 5-21-5Z"/>
+  <path fill="none" stroke="#939576" stroke-width=".95" stroke-linecap="round" d="m252 223 23 24m-21-18 16 18m-22 7 21 5m10 13-11 6"/>
+  <path fill="#a77150" d="m298 256q5-2 8 4l-6 4-5-2Z"/>
+  <circle cx="302" cy="255" r="1.45" fill="#d9c596"/>
+  <path fill="none" stroke="#668175" stroke-width="1.5" d="M201 344q24-4 46-3m8-4q21-4 46-3m-27 12q32-2 42-5"/>
+  <g stroke="#9e9368" fill="none" stroke-width="1.7">
+    <path d="M7 28V7h25m-21 14v-9h9m337-5h20v24m-13-19h8v9M7 385v20h25m-21-15v10h9m336 5h21v-22m-13 17h8v-9"/>
+  </g>
+</svg>

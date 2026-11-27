@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="896" height="576" viewBox="0 0 448 288">
+  <defs>
+    <linearGradient id="dye" x2="1" y2=".45"><stop stop-color="#34555c"/><stop offset=".45" stop-color="#3f686d"/><stop offset="1" stop-color="#345963"/></linearGradient>
+    <g id="fish">
+      <path fill="#c2c6a8" d="M0 0c14-19 38-24 60-11q8 5 13 13c-9 11-26 20-45 16C14 16 5 9 0 3l-18 8 7-13-9-12Z"/>
+      <path fill="#b1bb9f" d="m22-12 9-11 4 6 7-2 6 6m-25 29 9 8 7-3 3-6Z"/>
+      <path fill="#587a77" d="M51-8q-7 9 1 19-12-9-1-19Zm-43 8q11-7 27-10-10 5-21 11Z"/>
+      <path fill="none" stroke="#6d8981" stroke-width="1.7" stroke-linecap="round" d="m24-3 5 4 4-4m-14 6 5 3 3-3m2 2 4 3 3-3m0-10 4 3 3-3"/>
+      <circle cx="61" cy="-2" r="2.4" fill="#39545a"/>
+    </g>
+    <g id="flower" fill="#a8b89e">
+      <path d="M0-1q-7-7-5-12 7 0 7 10 2-9 9-9 3 7-7 12 8-4 12 1-2 7-13 4 8 4 6 11-7 0-10-10-2 8-9 8-2-7 7-12-8 1-11-4 3-5 14 1Z"/>
+      <circle cx="1" cy="1" r="2.4" fill="#526e6e"/>
+    </g>
+  </defs>
+  <path fill="url(#dye)" d="M0 0h448v288H0Z"/>
+  <!-- Cuff rests on the actual turned edge in the folded mesh. -->
+  <path fill="#bbaf92" d="M0 0h43q8 59 2 115-7 78 1 173H0Z"/>
+  <path fill="#9a927f" d="M42 0q8 59 2 115-7 78 1 173h4q-6-99 1-172Q57 52 48 0Z"/>
+  <path fill="#71918c" d="M374 0h4v288h-4zM383 0h10v288h-10zM399 0h3v288h-3z"/>
+  <g fill="none" stroke="#859f94" stroke-width="2.3" stroke-linecap="round">
+    <path d="M88 102q12-8 31-10m-25 18q18-7 27-7m129 73q26-13 45-8m-46 17q16-7 33-8M142 219q21-8 40-6m-29 13q20-4 41-3M290 55q14-7 33-6"/>
+    <path d="M59 54q33 9 67-15m-39 18q13 6 29 1M328 247q12-19 34-25m-22 19 19-5"/>
+  </g>
+  <g fill="#96aa99"><path d="M90 51q-1-17 17-21-2 13-17 21Zm12-5q12 1 20 11-14 1-20-11Zm250 181q-2-12 7-19 4 12-7 19Z"/></g>
+  <use href="#fish" transform="translate(150 108) rotate(-16) scale(1.12)"/>
+  <use href="#fish" transform="translate(266 161) rotate(155) scale(.91)"/>
+  <use href="#flower" transform="translate(126 39) rotate(10) scale(.65)"/>
+  <use href="#flower" transform="translate(331 248) rotate(-15) scale(.6)"/>
+</svg>
