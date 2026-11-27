@@ -249,3 +249,67 @@ static func stairs(exit: Node3D, cellar: bool) -> void:
 		for z in [-0.37, 0.82]:
 			K.box(exit, Vector3(0.089, 0.67, 0.089), K.WOOD, Vector3(-0.694, 0.46, z))
 		K.box(exit, Vector3(0.108, 0.083, 1.34), K.WOOD_LIGHT, Vector3(-0.694, 0.81, 0.225))
+
+
+static func courtyard_hatch(hatch: Node3D) -> void:
+	# 门框跨过院面与工棚地板的高差，四边压在实处，两片长合页靠同一根后框。
+	for side in [-1.0, 1.0]:
+		K.box(hatch, Vector3(0.085, 0.14, 1.0), K.WOOD, Vector3(side * 0.656, 0.141, 0))
+		K.box(hatch, Vector3(1.23, 0.14, 0.076), K.WOOD, Vector3(0, 0.141, side * 0.461))
+	for i in 5:
+		K.box(hatch, Vector3(0.235, 0.092, 0.836), K.WOOD_LIGHT, Vector3((i - 2) * 0.245, 0.169, 0))
+	var iron := StandardMaterial3D.new()
+	iron.albedo_color = Color("#564e41")
+	iron.metallic = 0.69
+	iron.roughness = 0.58
+	for x in [-0.40, 0.40]:
+		K.box(hatch, Vector3(0.085, 0.014, 0.28), iron, Vector3(x, 0.224, -0.279))
+		K.box(hatch, Vector3(0.132, 0.014, 0.060), iron, Vector3(x, 0.217, -0.466))
+		for pin in 3:
+			K.cyl(hatch, 0.023, 0.023, 0.039, iron, Vector3(x + (pin - 1) * 0.044, 0.235, -0.428), Vector3(0, 0, 90), 16)
+		for z in [-0.366, -0.219]:
+			K.sphere(hatch, 0.014, iron, Vector3(x, 0.231, z), Vector3(1, 0.42, 1))
+	K.box(hatch, Vector3(0.132, 0.016, 0.14), iron, Vector3(0, 0.227, 0.152))
+	var pull := TorusMesh.new()
+	pull.inner_radius = 0.058
+	pull.outer_radius = 0.079
+	pull.rings = 32
+	pull.ring_segments = 10
+	K._mesh(hatch, pull, iron, Vector3(0, 0.257, 0.207), Vector3(14, 0, 0))
+	K.cyl(hatch, 0.017, 0.017, 0.084, iron, Vector3(0, 0.268, 0.143), Vector3(0, 0, 90), 16)
+	for x in [-0.038, 0.038]:
+		K.cyl(hatch, 0.012, 0.014, 0.046, iron, Vector3(x, 0.247, 0.143), Vector3.ZERO, 12)
+	House.finish_joinery(hatch)
+	K.merge_static(hatch, [])
+
+
+static func loft_ladder(stairs: Node3D) -> void:
+	# 从原望点起脚。竖梯在同一占地内起高，上层落脚板向西搭在卧房露明梁上。
+	var foot := Vector3(0, 0.135, 0.179)
+	var landing := Vector3(0, 3.12, -0.706)
+	var run := landing - foot
+	var pitch := rad_to_deg(atan2(run.z, run.y))
+	for side in [-1.0, 1.0]:
+		var x: float = side * 0.389
+		K.box(stairs, Vector3(0.089, run.length() + 0.12, 0.115), K.WOOD,
+			(foot + landing) * 0.5 + Vector3.RIGHT * x, Vector3(pitch, 0, 0))
+		K.box(stairs, Vector3(0.11, 0.15, 0.144), K.STONE_DARK, Vector3(x, 0.142, foot.z))
+	for i in 11:
+		var at := foot.lerp(landing, (i + 0.60) / 11.0)
+		K.box(stairs, Vector3(0.786, 0.064, 0.176), K.WOOD_LIGHT, at)
+	# 西侧搁在卧房纵梁上。梯顶另铺一跨楼板向屋内延伸，正面保留上下人的开口。
+	for z in [-2.06, -1.30, -0.50]:
+		K.box(stairs, Vector3(1.58, 0.146, 0.105), K.WOOD, Vector3(-0.337, 3.052, z))
+	for side in [-0.98, 0.39]:
+		K.box(stairs, Vector3(0.102, 0.135, 1.69), K.WOOD, Vector3(side, 2.976, -1.28))
+	for i in 9:
+		K.box(stairs, Vector3(1.46, 0.061, 0.178), K.WOOD_LIGHT, Vector3(-0.286, 3.153, -2.052 + i * 0.182))
+	for x in [-0.98, 0.39]:
+		for z in [-2.06, -0.57]:
+			K.box(stairs, Vector3(0.075, 0.68, 0.075), K.WOOD, Vector3(x, 3.43, z))
+		K.box(stairs, Vector3(0.092, 0.071, 1.59), K.WOOD_LIGHT, Vector3(x, 3.77, -1.31))
+		K.box(stairs, Vector3(0.059, 0.048, 1.47), K.WOOD, Vector3(x, 3.42, -1.31))
+		for z in [-1.73, -1.39, -1.06, -0.76]:
+			K.box(stairs, Vector3(0.041, 0.54, 0.044), K.WOOD_LIGHT, Vector3(x, 3.45, z))
+	House.finish_joinery(stairs)
+	K.merge_static(stairs, [])
