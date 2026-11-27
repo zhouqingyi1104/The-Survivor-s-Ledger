@@ -91,7 +91,7 @@ func _ready() -> void:
 	for floor_id in ["cellar", "attic", "guest_zhou"]:
 		_floor_rooms[floor_id] = FloorWorld.build(self, floor_id)
 		_floor_rooms[floor_id].root.visible = false
-	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration"]:
+	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration", "lookout"]:
 		_dynamic[key] = K.node(self, Vector3.ZERO, Vector3.ZERO, key)
 	# 菜畦整块的拾取碰撞（菜苗每次重画，碰撞固定在这里；大小随画出来的畦数变，见 _fit_garden）
 	var garden_root := K.node(self, Vector3.ZERO, Vector3.ZERO, "spot_garden")
@@ -450,21 +450,24 @@ func _sync_side_yard(run: Dictionary) -> bool:
 		Arch.wall(_side_yard, Vector3(10.2, 0, 2.5), Vector3(16.5, 0, 2.5), 2.6)
 		Arch.wall(_side_yard, Vector3(16.5, 0, 2.5), Vector3(16.5, 0, 6.9), 2.6)
 		Arch.wall(_side_yard, Vector3(10.2, 0, 6.9), Vector3(16.5, 0, 6.9), 2.6)
-		K.box(_side_yard, Vector3(6.1, 0.06, 4.2), K.STONE_DARK, Vector3(13.3, 0.06, 4.7))
+		K.box(_side_yard, Vector3(6.1, 0.045, 4.2), YardMaterials.ground(false, false), Vector3(13.3, 0.022, 4.7))
+		var flags := SurfaceTool.new()
+		flags.begin(Mesh.PRIMITIVE_TRIANGLES)
+		_pave(flags, Rect2(10.25, 2.60, 6.1, 4.2), 6, 6)
+		K._mesh(_side_yard, flags.commit(), YardMaterials.ground(true, false), Vector3.ZERO)
 		_side_lantern = Arch.lantern(_side_yard, Vector3(15.8, 2.2, 3.0))
 		Arch.set_lantern(_side_lantern, _night)
 	else:
 		Arch.wall(_side_yard, Vector3(10.2, 0, -8.2), Vector3(10.2, 0, 7.0), 3.0)
 		# 标记清理与备料的真实进度；均为无碰撞的视觉，不代表工程已经完工。
 		if stage == "survey":
-			for i in range(4):
-				K.box(_side_yard, Vector3(0.55, 0.35, 0.45), K.STONE, Vector3(12.8 + i * 0.55, 0.18, 4.6 + (i % 2) * 0.45), Vector3(0, i * 20, i * 5))
+			for i in 10:
+				var at := Vector3(13.5 + cos(i * 2.4) * sqrt(i) * 0.3, 0.012, 4.65 + sin(i * 2.4) * sqrt(i) * 0.19)
+				preload("res://scripts/world/field_props.gd").rubble(_side_yard, at, i % 3, 1.7 - i * 0.09, i * 1.7)
 		elif stage in ["cleared", "ready"]:
-			K.box(_side_yard, Vector3(3.4, 0.025, 2.1), K.EARTH, Vector3(13.5, 0.045, 4.6))
+			K.box(_side_yard, Vector3(3.4, 0.025, 2.1), YardMaterials.ground(false, false), Vector3(13.5, 0.045, 4.6))
 			if stage == "ready":
-				for i in range(3):
-					K.box(_side_yard, Vector3(1.8, 0.12, 0.22), K.WOOD_LIGHT, Vector3(13.5, 0.15 + i * 0.12, 4.4))
-				K.box(_side_yard, Vector3(0.4, 0.24, 0.4), K.WOOD, Vector3(14.8, 0.15, 4.8))
+				Props.wood_pile(_side_yard, Vector3(13.5, 0.057, 4.42), 7, -7.0)
 	return true
 
 
@@ -698,13 +701,11 @@ func _rebuild_extras(run: Dictionary) -> void:
 	var facs: Array = run.get("facilities", [])
 	if "water_vat" in facs:
 		Props.water_vat(_dynamic.extras, Vector3(-5.2, 0, 2.0))
-	if "watchtower" in facs:
-		var t := K.node(_dynamic.extras, Vector3(8.6, 0, 5.6))
-		for sx in [-1, 1]:
-			for sz in [-1, 1]:
-				K.box(t, Vector3(0.14, 5.0, 0.14), K.WOOD, Vector3(sx * 0.6, 2.5, sz * 0.6))
-		K.box(t, Vector3(1.6, 0.12, 1.6), K.WOOD_LIGHT, Vector3(0, 4.2, 0))
-		K.prism(t, Vector3(2.0, 0.6, 2.0), K.ROOF, Vector3(0, 5.3, 0), Vector3(0, 90, 0))
+	var lookout: Node3D = _dynamic.lookout
+	if "watchtower" in facs and lookout.get_child_count() == 0:
+		Props.watchtower(lookout, Vector3(8.6, 0, 5.6))
+	if lookout.get_child_count() > 0:
+		(lookout.get_child(0) as Node3D).visible = "watchtower" in facs
 	if "cellar" in facs:
 		var hatch := K.node(_dynamic.extras, Vector3(6.0, 0, -2.4))
 		FloorFittings.courtyard_hatch(hatch)
@@ -718,8 +719,12 @@ func _rebuild_extras(run: Dictionary) -> void:
 		K.collider(stairs, Vector3(0.9, 0.65, 1.0), Vector3(0, 0.33, -0.25), {"spot": "floor_attic"})
 		_register("floor_attic", stairs)
 	if "door_bar" in facs:
-		for y in [0.6, 2.2]:
-			K.box(_dynamic.extras, Vector3(2.4, 0.14, 0.06), K.mat(Color("#4a4d52"), 0.4), Vector3(0, y, GATE_Z + 0.12))
+		var latch := K.node(_dynamic.extras, Vector3(0, 1.22, GATE_Z - 0.18), Vector3.ZERO, "door_bar")
+		K.box(latch, Vector3(2.42, 0.14, 0.13), HomeHouse.TIMBER, Vector3.ZERO)
+		var iron := K.mat(Color("#59594f"), 0.58)
+		for x: float in [-1.04, -0.70, 0.70, 1.04]:
+			K.box(latch, Vector3(0.080, 0.162, 0.154), iron, Vector3(x, 0, 0))
+		HomeHouse.finish_joinery(latch)
 	if State.flag(run, "dog"):
 		Props.dog(_dynamic.extras, Vector3(1.4, 0, 5.4))
 
@@ -847,6 +852,9 @@ func _update_gate(run: Dictionary) -> void:
 
 
 func show_gate_open(open: bool) -> void:
+	var latch := (_dynamic.extras as Node3D).get_node_or_null("door_bar") as Node3D
+	if latch:
+		latch.visible = not open and int(_current_run.get("door", {}).get("cur", 100)) > 0
 	for k in 2:
 		var pivot: Node3D = gate.leaves[k]
 		var sx := -1.0 if k == 0 else 1.0

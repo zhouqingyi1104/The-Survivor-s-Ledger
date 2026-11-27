@@ -74,8 +74,7 @@ static func _plants(root: Node3D, choice: String) -> void:
 		if choice == "bamboo":
 			Props.potted_bamboo(root, p, false)
 		else:
-			var trunk := K.node(root, p + Vector3.UP * 0.38)
+			var pot := Props.flowerpot(root, p)
+			var trunk := K.node(pot, Vector3.UP * 0.385)
 			trunk.scale = Vector3.ONE * 0.53
 			Props.plum_tree(trunk, Vector3.ZERO, false)
-			K.cyl(root, 0.30, 0.23, 0.44, K.mat(Color("#785740"), 0.55), p + Vector3.UP * 0.22)
-			K.cyl(root, 0.27, 0.27, 0.02, K.EARTH, p + Vector3.UP * 0.44)

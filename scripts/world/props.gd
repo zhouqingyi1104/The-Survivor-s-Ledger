@@ -16,6 +16,7 @@ const LOTUS_EGRET = preload("res://assets/art/paintings/lotus_egret.svg")
 static var _surface_materials := {}
 static var _jar_mesh: ArrayMesh
 static var _vat_mesh: ArrayMesh
+static var _flowerpot_mesh: ArrayMesh
 static var _wok_mesh: ArrayMesh
 static var _bedding_meshes := {}
 static var _bench_frame: Mesh
@@ -24,6 +25,51 @@ static var _cup_glaze: ShaderMaterial
 static var _table_stone: ShaderMaterial
 static var _painting_materials := {}
 static var _foliage: StandardMaterial3D
+
+## 望台的梯子落在朝院的一侧，栏杆在梯顶留出缺口。
+static func watchtower(parent: Node3D, pos: Vector3) -> Node3D:
+	var tower := K.node(parent, pos, Vector3.ZERO, "lookout")
+	const DECK := 3.48
+	const EAVE := 5.38
+	for x: float in [-0.65, 0.65]:
+		for z: float in [-0.65, 0.65]:
+			K.cyl(tower, 0.21, 0.26, 0.24, K.STONE, Vector3(x, 0.14, z), Vector3(0, 22.5, 0), 8)
+			K.box(tower, Vector3(0.18, EAVE - 0.22, 0.18), House.TIMBER, Vector3(x, (EAVE + 0.22) / 2, z))
+		K.box(tower, Vector3(0.17, 0.20, 1.64), House.TIMBER, Vector3(x, DECK - 0.15, 0))
+		K.box(tower, Vector3(0.18, 0.18, 1.74), House.TRIM, Vector3(x, EAVE - 0.09, 0))
+		for height: float in [DECK + 0.38, DECK + 0.79]:
+			K.box(tower, Vector3(0.07, 0.09, 1.34), House.TRIM, Vector3(x, height, 0))
+		for z: float in [-0.37, 0.0, 0.37]:
+			K.box(tower, Vector3(0.05, 0.77, 0.055), House.TIMBER, Vector3(x, DECK + 0.4, z))
+		_tower_strut(tower, Vector3(x, 0.55, -0.65), Vector3(x, DECK - 0.18, 0.65), 0.11)
+	for z: float in [-0.65, 0.65]:
+		K.box(tower, Vector3(1.73, 0.16, 0.17), House.TRIM, Vector3(0, DECK - 0.13, z))
+		K.box(tower, Vector3(1.67, 0.18, 0.16), House.TIMBER, Vector3(0, EAVE - 0.09, z))
+		for x: float in [-0.65, 0.65]:
+			_tower_strut(tower, Vector3(x, DECK - 0.81, z), Vector3(x * 0.28, DECK - 0.16, z), 0.11)
+	for board in 8:
+		K.box(tower, Vector3(1.64, 0.09, 0.196), House.TRIM, Vector3(0, DECK - 0.044, (board - 3.5) * 0.201))
+	for height: float in [DECK + 0.38, DECK + 0.79]:
+		K.box(tower, Vector3(1.36, 0.09, 0.07), House.TRIM, Vector3(0, height, 0.65))
+		for x: float in [-0.50, 0.50]:
+			K.box(tower, Vector3(0.30, 0.09, 0.07), House.TRIM, Vector3(x, height, -0.65))
+	for x: float in [-0.34, 0.34]:
+		K.box(tower, Vector3(0.08, 0.86, 0.09), House.TIMBER, Vector3(x, DECK + 0.42, -0.65))
+		_tower_strut(tower, Vector3(x, 0.07, -1.51), Vector3(x, DECK + 0.16, -0.71), 0.085)
+	for step in 11:
+		var t := (step + 0.85) / 11.75
+		K.box(tower, Vector3(0.69, 0.067, 0.13), House.TRIM, Vector3(0, lerpf(0.07, DECK + 0.16, t), lerpf(-1.51, -0.71, t)))
+	preload("res://scripts/world/arch.gd").roof(tower, 1.62, 1.62, 0.48, Vector3(0, EAVE, 0), K.mat(K.ROOF), 0.20)
+	House.finish_joinery(tower)
+	K.merge_static(tower, [])
+	return tower
+
+
+static func _tower_strut(parent: Node3D, heel: Vector3, head: Vector3, width: float) -> void:
+	var axis := head - heel
+	var timber := K.box(parent, Vector3(width, axis.length(), width), House.TIMBER, (heel + head) * 0.5)
+	timber.quaternion = Quaternion(Vector3.UP, axis.normalized())
+
 
 static func _surface(shader: Shader) -> ShaderMaterial:
 	if not _surface_materials.has(shader):
@@ -526,13 +572,19 @@ static func _turned_vessel(rim: PackedVector2Array, long_grain := false) -> Arra
 	return surface.commit()
 
 
+static func flowerpot(parent: Node3D, pos: Vector3) -> Node3D:
+	var pot := K.node(parent, pos)
+	if _flowerpot_mesh == null:
+		_flowerpot_mesh = _turned_vessel(PackedVector2Array([Vector2(0.20, 0), Vector2(0.205, 0.04),
+			Vector2(0.25, 0.08), Vector2(0.296, 0.40), Vector2(0.315, 0.434),
+			Vector2(0.312, 0.462), Vector2(0.278, 0.464), Vector2(0.265, 0.40)]))
+	K._mesh(pot, _flowerpot_mesh, _surface(GLAZE), Vector3.ZERO)
+	K.cyl(pot, 0.27, 0.27, 0.016, Color("#4b4033"), Vector3.UP * 0.407, Vector3.ZERO, 32)
+	return pot
+
+
 static func potted_bamboo(parent: Node3D, pos: Vector3, collide := true) -> Node3D:
-	var n := K.node(parent, pos)
-	var pot := _turned_vessel(PackedVector2Array([Vector2(0.20, 0), Vector2(0.205, 0.04),
-		Vector2(0.25, 0.08), Vector2(0.296, 0.40), Vector2(0.315, 0.434),
-		Vector2(0.312, 0.462), Vector2(0.278, 0.464), Vector2(0.265, 0.40)]))
-	K._mesh(n, pot, _surface(GLAZE), Vector3.ZERO)
-	K.cyl(n, 0.27, 0.27, 0.016, Color("#4b4033"), Vector3.UP * 0.407, Vector3.ZERO, 32)
+	var n := flowerpot(parent, pos)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(pos.x * 100 + pos.z)
 	var foliage := SurfaceTool.new()
