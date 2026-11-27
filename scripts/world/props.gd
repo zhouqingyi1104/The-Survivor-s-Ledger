@@ -345,15 +345,7 @@ static func plum_tree(parent: Node3D, pos: Vector3, collide := true) -> Node3D:
 
 static func dog(parent: Node3D, pos: Vector3) -> Node3D:
 	var n := K.node(parent, pos, Vector3(0, 200, 0))
-	var fur := K.mat(Color("#b8883e"))
-	K.box(n, Vector3(0.28, 0.26, 0.6), fur, Vector3(0, 0.38, 0))
-	K.box(n, Vector3(0.22, 0.22, 0.26), fur, Vector3(0, 0.56, 0.36))
-	K.box(n, Vector3(0.12, 0.1, 0.14), fur, Vector3(0, 0.52, 0.52))
-	for sx in [-1, 1]:
-		K.box(n, Vector3(0.06, 0.1, 0.04), fur.albedo_color.darkened(0.3), Vector3(sx * 0.08, 0.7, 0.32))
-		for sz in [-1, 1]:
-			K.box(n, Vector3(0.07, 0.26, 0.07), fur, Vector3(sx * 0.1, 0.13, sz * 0.22))
-	K.box(n, Vector3(0.05, 0.05, 0.3), fur, Vector3(0, 0.5, -0.38), Vector3(-40, 0, 0))
+	preload("res://scripts/world/character_gear.gd").attach(n, "courtyard_hound", "CourtyardHound")
 	return n
 
 

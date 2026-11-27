@@ -5,6 +5,8 @@ extends Node3D
 
 const K = preload("res://scripts/world/kit.gd")
 
+const Gear = preload("res://scripts/world/character_gear.gd")
+
 const ROBES := {
 	"scholar": Color("#5d6f80"), "escort": Color("#3a3330"), "herbalist": Color("#4f6a52"),
 	"watchman": Color("#6b5a3f"), "jiangshi": Color("#24324a"), "villager": Color("#7a6a55"),
@@ -81,10 +83,9 @@ func setup(k: String, robe := Color(0, 0, 0, 0)) -> Node3D:
 	if k == "jiangshi":
 		for sh in _shoulders:
 			sh.rotation_degrees.x = -88
-		K.box(_torso, Vector3(0.2, 0.2, 0.02), K.mat(K.GOLD, 0.5), Vector3(0, 0.28, 0.215))
-		var tal := K.box(_head, Vector3(0.11, 0.24, 0.01), K.mat(K.PAPER, 0.8, 0.4), Vector3(0, 0.16, 0.135))
+		Gear.sewn_panel(_torso, "rank_badge", Vector2(0.2, 0.2), Vector3(0, 0.28, 0.215))
+		var tal := Gear.sewn_panel(_head, "ward_paper", Vector2(0.085, 0.18), Vector3(0, 0.16, 0.135))
 		tal.rotation_degrees.x = -10
-		K.box(_head, Vector3(0.02, 0.16, 0.012), K.CINNABAR, Vector3(0, 0.16, 0.142))
 	return self
 
 
@@ -105,10 +106,7 @@ func _hat(k: String, robe: Color) -> void:
 			K.sphere(lan, 0.1, K.mat(Color("#ff8a4a"), 0.5, 2.5), Vector3(0, -0.08, 0), Vector3(1, 1.3, 1))
 			lantern_light = K.light(lan, Color("#ffae6b"), 1.2, 6.0, Vector3(0, -0.08, 0))
 		"jiangshi":
-			K.cyl(_head, 0.15, 0.17, 0.13, K.ROOF_EDGE, Vector3(0, 0.33, 0), Vector3.ZERO, 14)
-			K.cyl(_head, 0.24, 0.24, 0.035, K.ROOF_EDGE, Vector3(0, 0.27, 0), Vector3.ZERO, 14)
-			K.sphere(_head, 0.045, K.CINNABAR, Vector3(0, 0.43, 0))
-			K.box(_head, Vector3(0.07, 0.24, 0.02), K.ROOF_EDGE, Vector3(0, 0.15, -0.15))
+			Gear.attach(_head, "headwear", "OfficialCap", Vector3(0, 0.34, -0.02))
 		_:
 			K.sphere(_head, 0.06, K.ROOF_EDGE, Vector3(0, 0.33, -0.04))
 

@@ -5,6 +5,10 @@ extends Node3D
 
 const K = preload("res://scripts/world/kit.gd")
 
+const Gear = preload("res://scripts/world/character_gear.gd")
+const WEAVE := preload("res://assets/models/folk/dyed_weave.png")
+const WEAVE_NORMAL := preload("res://assets/models/folk/dyed_weave_normal.png")
+
 const BODIES := {
 	"male_short": "res://assets/models/characters/male_short.glb",
 	"male_long": "res://assets/models/characters/male_long.glb",
@@ -62,6 +66,7 @@ const FAIRY_GLOW := Color("#cfeaff")
 
 static var _scenes := {}
 static var _lib: AnimationLibrary
+static var _surface_finishes := {}
 
 var kind := "villager"
 ## 主角用：换女身、上仙气装束。要在 setup() 之前设。
@@ -152,10 +157,13 @@ func setup(k: String, robe := Color(0, 0, 0, 0)) -> Node3D:
 		if _ap.has_animation(clip_name):
 			_ap.get_animation(clip_name).loop_mode = Animation.LOOP_LINEAR
 	_accessories()
-	if xray:
-		_enable_xray()
 	if hero:
 		_fairy_wear()
+		var bag := Gear.attach(_bone("hips"), "field_gear", "BeltSatchel", Vector3(0.145, 0.013, 0.101))
+		bag.scale = Vector3.ONE * 0.72
+		bag.rotation_degrees.y = 38
+	if xray:
+		_enable_xray()
 	if kind == "jiangshi":
 		var arms := ArmsForward.new()
 		_skel.add_child(arms)
@@ -201,7 +209,7 @@ func _fairy_wear() -> void:
 	if not _rig.get("own_dress", false):
 		_belt()
 	_motes = Motes.make(_model, FAIRY_GLOW, 0.44 / s, 1.5 / s)
-	K.light(self, FAIRY_GLOW, 0.5, 2.6, Vector3(0, 1.15, 0))
+	K.light(self, FAIRY_GLOW, 0.16, 1.65, Vector3(0, 1.15, 0))
 
 
 ## 束腰：一圈青灰的带子，压在衣摆接缝上（那块模型的裙边是锯齿的，不遮一下像撕破了）。
@@ -233,20 +241,24 @@ func _hair() -> void:
 	K.sphere(head, 0.0075, K.mat(K.CINNABAR, 0.4, 0.6), top + Vector3(0, -0.062, 0.10))
 
 
-## 丝绸：比布衣亮、有边缘光，还带一点自发光，暗处也飘得起来。
+## 丝绸细纹接住侧光；衣物贴近灯笼时才显出高光。
 static func _silk(c: Color) -> StandardMaterial3D:
 	var key := "silk|" + c.to_html()
 	if K._mats.has(key):
 		return K._mats[key]
 	var m := StandardMaterial3D.new()
 	m.albedo_color = c
-	m.roughness = 0.52
+	m.roughness = 0.57
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.vertex_color_use_as_albedo = true
 	m.rim_enabled = true
-	m.rim = 0.55
+	m.rim = 0.17
 	m.rim_tint = 0.4
-	m.emission_enabled = true
-	m.emission = c.lightened(0.4)
-	m.emission_energy_multiplier = 0.12
+	m.normal_enabled = true
+	m.normal_texture = WEAVE_NORMAL
+	m.normal_scale = 0.24
+	m.albedo_texture = WEAVE
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	K._mats[key] = m
 	return m
 
@@ -254,8 +266,14 @@ static func _silk(c: Color) -> StandardMaterial3D:
 ## 衣服、鞋按身份上色；僵尸的皮肤发青。主角用丝绸料，头发按仙气配色。
 func _dress() -> void:
 	var fairy: bool = _look.get("fairy", false)
-	for mi in _skel.find_children("*", "MeshInstance3D", false, false):
+	for mi in _model.find_children("*", "MeshInstance3D", true, false):
 		var m: MeshInstance3D = mi
+		if _look.body in ["male_long", "male_short", "female_long", "female_short"]:
+			if m.name == "Skirt":
+				m.visible = false
+				continue
+			if m.name == "Clothes":
+				m.mesh = Gear.mesh("coat_" + str(_look.body), "TailoredCoat")
 		for s in m.mesh.get_surface_count():
 			var mat := m.mesh.surface_get_material(s)
 			var mname := mat.resource_name if mat != null else ""
@@ -264,15 +282,72 @@ func _dress() -> void:
 					m.set_surface_override_material(s, _silk(_look.robe) if fairy else _cloth(_look.robe))
 				"Pants":
 					m.set_surface_override_material(s, _silk(_look.pants) if fairy else _cloth(_look.pants))
+				"Binding":
+					m.set_surface_override_material(s, _cloth((_look.robe as Color).lightened(0.14)))
 				"Shoes":
-					m.set_surface_override_material(s, _cloth(Color("#1c1816")))
+					m.set_surface_override_material(s, _cloth(Color("#493b31")))
 				_:
-					if _look.has("hair") and mname.begins_with("MI_Hair"):
-						m.set_surface_override_material(s, K.mat(_look.hair, 0.5))
+					if _rig.own_dress and mat is StandardMaterial3D:
+						var finish := _finish_imported(mat, mname, m.mesh.get_aabb().size.length(), _look.body == "moon")
+						if finish != mat:
+							m.set_surface_override_material(s, finish)
+					elif mname.begins_with("MI_Hair") and mat is StandardMaterial3D:
+						var hair := mat.duplicate() as StandardMaterial3D
+						hair.albedo_color = _look.get("hair", Color("#695947") if kind == "jiangshi" else Color("#514033"))
+						hair.roughness = 0.65
+						m.set_surface_override_material(s, hair)
 					elif _look.has("skin") and m.name == "Body" and mat is StandardMaterial3D:
 						var skin: StandardMaterial3D = mat.duplicate()
-						skin.albedo_color = _look.skin
+						if kind == "jiangshi":
+							skin.albedo_texture = preload("res://assets/models/folk/weathered_skin.jpg")
+							skin.albedo_color = Color.WHITE
+						else:
+							skin.albedo_color = _look.skin
 						m.set_surface_override_material(s, skin)
+
+
+## 保留原画衣饰、花边和镂空。经纬只叠加在织物层，皮肤和眼睛仍使用作者的贴图。
+static func _finish_imported(base: StandardMaterial3D, label: String, extent: float, moon: bool) -> StandardMaterial3D:
+	var fiber := "_CLOTH" in label or label.begins_with("MC ") and "filigree" not in label
+	if not fiber and "_SKIN" not in label and "_HAIR" not in label:
+		return base
+	var key := Vector3i(base.get_instance_id(), roundi(extent), int(moon))
+	if not _surface_finishes.has(key):
+		var mat := base.duplicate() as StandardMaterial3D
+		if "Tops" in label and "_CLOTH" in label:
+			var prefix := Gear.DIR + ("moon" if moon else "base") + "_tailoring"
+			mat.albedo_texture = load(prefix + ".png")
+			mat.normal_enabled = true
+			mat.normal_texture = preload("res://assets/models/folk/moon_tailoring_normal.png")
+			mat.normal_scale = 0.65
+			mat.roughness_texture = load(prefix + "_rough.png")
+			mat.roughness = 1.0
+			mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		elif label == "MC midnight purple silk":
+			mat.albedo_texture = preload("res://assets/models/folk/moon_hat_brocade.png")
+			mat.albedo_color = Color.WHITE
+			mat.roughness = 0.76
+			mat.normal_enabled = true
+			mat.normal_texture = WEAVE_NORMAL
+			mat.normal_scale = 0.18
+			mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+		elif fiber:
+			mat.detail_enabled = true
+			mat.detail_uv_layer = BaseMaterial3D.DETAIL_UV_2
+			mat.detail_blend_mode = BaseMaterial3D.BLEND_MODE_MUL
+			mat.detail_albedo = WEAVE
+			mat.detail_normal = WEAVE_NORMAL
+			mat.uv2_triplanar = true
+			mat.uv2_scale = Vector3.ONE * (5.0 / maxf(extent, 0.4))
+			mat.roughness = 0.64 if "silk" in label or "ribbon" in label else 0.86
+			mat.albedo_color = mat.albedo_color * Color("#eaded1")
+		elif "_HAIR" in label:
+			mat.roughness = 0.62
+		else:
+			mat.roughness = 0.79
+			mat.metallic_specular = 0.25
+		_surface_finishes[key] = mat
+	return _surface_finishes[key]
 
 
 static func _cloth(c: Color) -> StandardMaterial3D:
@@ -282,8 +357,16 @@ static func _cloth(c: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = c
 	m.roughness = 0.92
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = WEAVE
+	m.normal_enabled = true
+	m.normal_texture = WEAVE_NORMAL
+	m.normal_scale = 0.38
+	m.uv1_scale = Vector3(3.0, 2.5, 1)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	m.rim_enabled = true
-	m.rim = 0.25
+	m.rim = 0.10
 	m.rim_tint = 0.6
 	K._mats[key] = m
 	return m
@@ -362,27 +445,21 @@ func _accessories() -> void:
 		top += Vector3(0, -0.05, 0)
 	match _look.get("hat", ""):
 		"scholar":
-			K.box(head, Vector3(0.21, 0.12, 0.22) * hs, K.ROOF_EDGE, top + Vector3(0, 0.02, -0.01))
-			for sx in [-1, 1]:
-				K.box(head, Vector3(0.03, 0.24, 0.012) * hs, K.ROOF_EDGE, Vector3(sx * 0.045, 0.1, -0.12) * hs, Vector3(10, 0, 0))
+			Gear.attach(head, "headwear", "ScholarsCap", top + Vector3(0, -0.025, -0.014)).scale = Vector3.ONE * hs
 		"escort":
 			K.cyl(head, 0.112, 0.112, 0.05, K.CINNABAR, top + Vector3(0, -0.06, 0))
 			K.sphere(head, 0.055, K.ROOF_EDGE, top + Vector3(0, 0.02, -0.03))
 		"watchman":
-			K.cyl(head, 0.02, 0.34, 0.15, Color("#b89a5e"), top + Vector3(0, 0.03, 0), Vector3.ZERO, 16)
+			Gear.attach(head, "headwear", "PlaitedRainHat", top + Vector3(0, -0.017, 0))
 			var hand := _bone("hand_r")
-			var lan := K.node(hand, Vector3(0, 0.12, 0.05))
-			K.sphere(lan, 0.09, K.mat(Color("#ff8a4a"), 0.5, 2.5), Vector3(0, -0.05, 0), Vector3(1, 1.3, 1))
-			lantern_light = K.light(lan, Color("#ffae6b"), 1.2, 6.0, Vector3(0, -0.05, 0))
+			var lan := Gear.attach(hand, "field_gear", "HandLantern", Vector3(0, 0.02, 0.05))
+			lantern_light = K.light(lan, Color("#ffbd82"), 0.63, 3.2, Vector3(0, -0.07, 0))
 		"jiangshi":
-			K.cyl(head, 0.13, 0.15, 0.12, K.ROOF_EDGE, top + Vector3(0, 0.03, 0), Vector3.ZERO, 16)
-			K.cyl(head, 0.2, 0.2, 0.03, K.ROOF_EDGE, top + Vector3(0, -0.03, 0), Vector3.ZERO, 16)
-			K.sphere(head, 0.04, K.CINNABAR, top + Vector3(0, 0.12, 0))
-			var tal := K.box(head, Vector3(0.09, 0.2, 0.008), K.mat(K.PAPER, 0.8, 0.4), Vector3(0, 0.12, 0.125))
-			tal.rotation_degrees.x = -12
-			K.box(head, Vector3(0.016, 0.13, 0.01), K.CINNABAR, Vector3(0, 0.12, 0.13))
+			Gear.attach(head, "headwear", "OfficialCap", top + Vector3(0, -0.012, -0.010))
+			var tal := Gear.sewn_panel(head, "ward_paper", Vector2(0.080, 0.166), Vector3(0.008, 0.142, 0.128))
+			tal.rotation_degrees = Vector3(-10, 0, -4)
 			var chest := _bone("chest")
-			K.box(chest, Vector3(0.2, 0.2, 0.015), K.mat(K.GOLD, 0.5), Vector3(0, 0.05, 0.16))
+			Gear.sewn_panel(chest, "rank_badge", Vector2(0.191, 0.183), Vector3(0, 0.058, 0.176))
 		"villager":
 			K.sphere(head, 0.05, K.ROOF_EDGE, top + Vector3(0, 0.0, -0.035))
 		"jade":
@@ -513,13 +590,10 @@ func face(dir: Vector3, weight := 1.0) -> void:
 	rotation.y = lerp_angle(rotation.y, atan2(dir.x, dir.z), weight)
 
 
-## 飘带（披帛 / 腰绦）：一串首尾相接的小片，靠每节错开一点相位摆，看着像被风带着飘。
-## 关键：相位差要小（行波，不是正负交替），幅度也要小——否则链子会自己折回来团成一团。
+## 披帛沿长度渐窄。七段骨骼共同带动一片连续的丝面，折边和下摆随着身体摆动。
 class Ribbon extends Node3D:
 	const SEGS := 7
-
-	var _segs: Array[Node3D] = []
-	var _amp := 0.05
+	var _bones := Skeleton3D.new()
 	var _freq := 1.5
 	var _phase := 0.0
 	var _lean := 0.035
@@ -532,31 +606,56 @@ class Ribbon extends Node3D:
 		r._phase = phase
 		r._lean = lean
 		parent.add_child(r)
-		var node: Node3D = r
-		for i in range(SEGS):
-			var seg := Node3D.new()
+		r.add_child(r._bones)
+		for i in SEGS:
+			r._bones.add_bone("Silk_%d" % i)
 			if i > 0:
-				seg.position = Vector3(0, -seg_len, 0)
-			node.add_child(seg)
-			var k := float(i) / float(SEGS - 1)
-			K.box(seg, Vector3(width * (1.0 - k * 0.55), seg_len, 0.012), mat, Vector3(0, -seg_len * 0.5, 0))
-			r._segs.append(seg)
-			node = seg
+				r._bones.set_bone_parent(i, i - 1)
+				r._bones.set_bone_rest(i, Transform3D(Basis.IDENTITY, Vector3.DOWN * seg_len))
+		r._bones.reset_bone_poses()
+		var surface := SurfaceTool.new()
+		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var cross_section := [-0.5, -0.43, 0.00, 0.43, 0.5]
+		for row in range(SEGS * 2 + 1):
+			var t := float(row) / (SEGS * 2)
+			var prev := mini(row / 2, SEGS - 1)
+			var next := mini(prev + 1, SEGS - 1)
+			var w := 0.5 if row % 2 else 0.0
+			for col in cross_section.size():
+				var x: float = cross_section[col]
+				var edge := absf(x) > 0.45
+				surface.set_normal(Vector3(-x * 0.17, 0, 1).normalized())
+				surface.set_uv(Vector2(x + 0.5, t))
+				surface.set_color(Color("#94a9af") if edge or row == SEGS * 2 - 1 else Color.WHITE)
+				surface.set_bones(PackedInt32Array([prev, next, 0, 0]))
+				surface.set_weights(PackedFloat32Array([1.0 - w, w, 0, 0]))
+				surface.add_vertex(Vector3(x * width * (1.0 - t * 0.52), -t * SEGS * seg_len,
+					(0.16 - x * x) * width * 0.42))
+				if row > 0 and col > 0:
+					var v := row * cross_section.size() + col
+					for index in [v - 6, v - 1, v, v - 6, v, v - 5]:
+						surface.add_index(index)
+		surface.generate_tangents()
+		var face := MeshInstance3D.new()
+		face.mesh = surface.commit()
+		face.material_override = mat
+		face.skeleton = NodePath("..")
+		face.skin = r._bones.create_skin_from_rest_transforms()
+		r._bones.add_child(face)
 		return r
 
 	func tick(t: float, wind: float) -> void:
-		for i in _segs.size():
-			var s := _segs[i]
-			var k := float(i) / float(_segs.size() - 1)
-			# 每节只错 0.45 弧度，从根到尖传一遍，像鞭子那样甩
+		for i in SEGS:
+			var k := float(i) / (SEGS - 1)
 			var ph := t * _freq - k * 0.45 + _phase
-			s.rotation.x = _lean + _amp * wind * sin(ph) * (0.25 + 0.75 * k)
-			s.rotation.z = _amp * 0.7 * wind * sin(ph * 0.8 + 1.1) * (0.25 + 0.75 * k)
+			var turn := Vector3(_lean + 0.05 * wind * sin(ph) * (0.25 + 0.75 * k), 0,
+				0.035 * wind * sin(ph * 0.8 + 1.1) * (0.25 + 0.75 * k))
+			_bones.set_bone_pose_rotation(i, Quaternion.from_euler(turn))
 
 
 ## 灵光：绕着人慢慢转的一圈小光点，各自上下浮、忽明忽暗。
 class Motes extends Node3D:
-	const COUNT := 22
+	const COUNT := 8
 
 	var _pts: Array[MeshInstance3D] = []
 	var _spin := 0.3
@@ -564,7 +663,7 @@ class Motes extends Node3D:
 	static func make(parent: Node3D, color: Color, radius: float, height: float) -> Motes:
 		var m := Motes.new()
 		parent.add_child(m)
-		var glow := K.mat(color, 0.25, 1.7, 0.55)
+		var glow := K.mat(color, 0.42, 0.65, 0.36)
 		for i in COUNT:
 			var a := TAU * float(i) / float(COUNT) + randf() * 0.4
 			var pivot := Node3D.new()
@@ -572,7 +671,7 @@ class Motes extends Node3D:
 			pivot.position = Vector3(cos(a) * r, 0.12 + randf() * height, sin(a) * r)
 			pivot.set_meta("a", a)
 			m.add_child(pivot)
-			var mi := K.sphere(pivot, 0.009 + randf() * 0.011, glow, Vector3.ZERO)
+			var mi := K.sphere(pivot, 0.005 + randf() * 0.006, glow, Vector3.ZERO)
 			m._pts.append(mi)
 		m._spin = 0.22 + randf() * 0.16
 		return m
