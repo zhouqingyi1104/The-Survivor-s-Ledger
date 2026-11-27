@@ -16,7 +16,10 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "assets/models/household/household.glb"
 TAU = math.tau
 TILES = ["linen", "hemp", "bark", "split", "end", "wood", "willow", "iron",
-         "brass", "sacking", "leaf", "pepper", "garlic", "stone", "paper", "ash"]
+         "brass", "sacking", "leaf", "pepper", "garlic", "stone", "paper", "ash",
+         "cut_meat", "smoked_rind", "rice", "leaf_heart"]
+ATLAS_COLUMNS = 4
+ATLAS_ROWS = math.ceil(len(TILES) / ATLAS_COLUMNS)
 
 
 def atlas():
@@ -26,39 +29,50 @@ def atlas():
     def noise(scale):
         field = Image.fromarray(rng.integers(0, 255, (scale, scale), dtype="uint8"))
         return np.asarray(field.resize((size, size), Image.Resampling.BICUBIC)) / 255 - 0.5
-    grain, broad, fleck = noise(36), noise(6), noise(256)
+    grain, broad = noise(36), noise(6)
     twist = np.sin(TAU * (22*x - 6*y))
     # Threads alternately pass over one another. The shallower crossing is shaded.
     warp = np.sin(TAU * 66 * x + 0.4 * grain)
     weft = np.sin(TAU * 35 * y + 0.27 * broad)
     over = np.sin(TAU * x * 33) * np.sin(TAU * y * 17.5) > 0
     linen = np.where(over, 0.64 * warp + 0.2 * weft, 0.33 * warp + 0.5 * weft)
-    bark = np.sin(TAU * (x * 12 + 2.3 * broad + 0.38 * grain + 0.27 * np.sin(6 * y)))
-    radius = np.sqrt((x - 0.43) ** 2 + ((y - 0.36) * 1.1) ** 2)
-    rings = np.sin(TAU * (radius * 24 + 0.38 * broad + 0.16 * grain))
+    barkfile = ROOT / "assets/third_party/polyhaven/models/dead_tree_trunk/textures/dead_tree_trunk_diff_1k.jpg"
+    with Image.open(barkfile) as scan:
+        bark = np.asarray(scan.convert("L").crop((55, 502, 310, 964)).resize((size, size), Image.Resampling.LANCZOS)) / 255
+    bark = bark - bark.mean()
+    dx, dy = x - .35, y - .55
+    radius = np.hypot(dx + .035 * broad, 1.12 * dy)
+    season = radius * 18 + .25 * np.sin(17 * radius) + .24 * broad
+    latewood = np.maximum(0, np.cos(TAU * season))**4
+    split = np.exp(-((dy + .42 * dx + .009 * np.sin(19 * dx)) / .008)**2) * np.clip(dx * 6, 0, 1)
+    rings = .12 - latewood * (.22 + .13 * grain) - .7 * split + .20 * broad
     woodfile = ROOT / "assets/third_party/polyhaven/textures/brown_planks_09/brown_planks_09_diff.jpg"
     with Image.open(woodfile) as src:
         wood = np.asarray(src.convert("L").crop((15, 111, 995, 167)).resize((size,size))) / 255
     wood = wood - wood.mean()
     # base sRGB, relief, roughness, metallic
     samples = [
-        ((193,166,122), linen * 0.38 + broad * 0.58 + fleck * 0.41, .96, 0),
-        ((175,139,88), twist * 0.38 + fleck * 0.35, .93, 0),
-        ((95,74,55), bark * .64 + grain * .82 + fleck * .50, .95, 0),
-        ((185,144,96), wood.T * 2.65 + grain * .34, .82, 0),
-        ((189,153,110), rings * .53 + grain * .60, .87, 0),
-        ((147,109,75), wood * 2.9 + fleck * .15, .66, 0),
-        ((181,138,75), .35 * np.sin(TAU * (26 * x + .25 * broad)) + .52 * grain, .77, 0),
-        ((101,103,98), .5 * grain + broad + .2 * fleck, .48, .79),
-        ((167,130,79), grain * .65 + broad + fleck * .16, .49, .72),
-        ((185,166,135), linen * .53 + broad * .55 + fleck * .42, .96, 0),
-        ((120,147,93), grain * .45 + broad * .95, .76, 0),
-        ((151,62,39), grain * .52 + .52 * np.cos(TAU * (8*x + broad)), .65, 0),
-        ((224,209,169), .33 * np.sin(TAU*(14*x + broad)) + grain * .47, .82, 0),
-        ((137,143,134), fleck * .60 + grain * .88 + broad * .64, .83, 0),
+        ((193,166,122), linen * .16 + broad * .28, .96, 0),
+        ((175,139,88), twist * .20 + broad * .18, .93, 0),
+        ((97,79,62), bark * 4.4, .94, 0),
+        ((190,153,111), wood.T * 1.95 + grain * .14, .85, 0),
+        ((184,149,109), rings, .91, 0),
+        ((147,109,75), wood * 2.45, .72, 0),
+        ((181,138,75), .20 * np.sin(TAU * (26 * x + .25 * broad)) + .20 * grain, .81, 0),
+        ((101,103,98), .15 * grain + broad * .48, .56, .76),
+        ((167,130,79), .12 * grain + broad * .55, .54, .72),
+        ((188,166,129), linen * .18 + broad * .28 + grain * .09, .96, 0),
+        ((135,156,96), grain * .14 + broad * .34, .80, 0),
+        ((151,62,39), grain * .18 + .22 * np.cos(TAU * (8*x + broad)), .70, 0),
+        ((224,209,169), .15 * np.sin(TAU*(14*x + broad)) + grain * .14, .84, 0),
+        ((137,143,134), grain * .36 + broad * .58, .89, 0),
         ((235,208,147), .11 * broad, .94, 0),
-        ((84,75,66), fleck * .65 + broad + grain, .94, 0)]
-    maps = [Image.new("RGB", (size*4,size*4)) for _ in range(3)]
+        ((84,75,66), .52 * broad + .21 * grain, .94, 0),
+        ((143,81,62), .38*broad+.09*grain, .72, 0),
+        ((116,74,49), .62*broad+.27*grain, .84, 0),
+        ((218,201,161), .35*broad+.08*grain, .88, 0),
+        ((168,187,120), .23*broad+.09*grain, .78, 0)]
+    maps = [Image.new("RGB", (size*ATLAS_COLUMNS,size*ATLAS_ROWS)) for _ in range(3)]
     for i,(base,h,rough,metal) in enumerate(samples):
         lum = np.clip(1.0 + .29 * h, .49, 1.44)
         color = np.array(base) * lum[...,None]
@@ -70,6 +84,28 @@ def atlas():
         for sheet, pixels in zip(maps, [color,(norm*.5+.5)*255,orm*255]):
             sheet.paste(Image.fromarray(pixels.clip(0,255).astype("uint8")),
                         (size*(i%4),size*(i//4)))
+    def tint_tile(name, rgb, coverage):
+        index = TILES.index(name)
+        x0, y0 = size*(index%ATLAS_COLUMNS), size*(index//ATLAS_COLUMNS)
+        original = np.asarray(maps[0].crop((x0, y0, x0+size, y0+size)))
+        alpha = coverage.clip(0, 1)[...,None]
+        maps[0].paste(Image.fromarray((original*(1-alpha)+np.array(rgb)*alpha).astype("uint8")), (x0,y0))
+
+    # Raised midrib and alternating secondary veins belong to each real leaf.
+    stem = .5 + .044*np.sin(4*y)
+    span = np.abs(x - stem)
+    midrib = np.exp(-(span/(.019+.049*y))**2)
+    branches = np.zeros_like(x)
+    for j in range(1,6):
+        line = .16*j - span*(.58+.13*y) - .20*span**2 + .018*np.sin(6*x+j)
+        branches = np.maximum(branches, np.exp(-((y-line)/.014)**2) * np.exp(-span*2.5))
+    tint_tile("leaf", (219,222,163), .70*midrib + .34*branches + .12*y)
+    # Fat partitions taper into the cut. The skin turns around its outer edge.
+    lean_edge = .68 + .07*np.sin(6*y+.7) + .055*broad
+    fat = np.clip((x-lean_edge)*18,0,1)
+    marble = np.exp(-((x-.18-.70*y+.08*np.sin(6*y)+.02*grain)/(.018+.026*y))**2)
+    tint_tile("cut_meat", (208,171,125), .83*fat+.69*marble)
+    tint_tile("cut_meat", (117,71,42), np.clip((x-.92-.03*np.sin(8*y))*35,0,1))
     # The hanging slip is twice as tall as its square atlas cell. Set real type at
     # the physical aspect ratio before packing it into the cell.
     origin = (2 * size, 3 * size)
@@ -94,7 +130,7 @@ def atlas():
             pen.line([(center + dx, yy) for dx, yy in line], fill=177, width=2)
     tile = (size, 2 * size)
     cloth = np.asarray(maps[0].crop((*tile, tile[0]+size, tile[1]+size)))
-    faded = np.asarray(mark)[...,None] / 255 * (.75 + .4*grain + .25*fleck)[...,None]
+    faded = np.asarray(mark)[...,None] / 255 * (.71 + .35*broad + .16*grain)[...,None]
     maps[0].paste(Image.fromarray((cloth + (np.array([91,68,47])-cloth)*faded).astype("uint8")), tile)
     return maps
 
@@ -136,7 +172,7 @@ class Model:
                 tex = np.array(uv)*.968+.016
                 color = tint(j/(rows-1),i/(cols-1)) if callable(tint) else tint
                 for out, val in zip(self.attrs, (grid[j,i], -norm if flip else norm,
-                                   (tex + [cell%4,cell//4])/4, color)):
+                                   (tex + [cell%ATLAS_COLUMNS,cell//ATLAS_COLUMNS])/[ATLAS_COLUMNS,ATLAS_ROWS], color)):
                     out.append(val)
         for j in range(rows-1):
             for i in range(cols-1):
@@ -321,15 +357,28 @@ def brazier():
 
 def meat():
     m=Model()
-    for i in range(3):
-        x=(i-1)*.30
-        h=1.37
-        m.tube([(x,1.49,0),(x+.013,1.42,.012),(x,1.36,.014)],.009,"hemp")
-        for offset,col in [(0,"ab6045"),(.027,"c9a67a")]:
-            path=[(x+offset,h,.005),(x+offset*.8,h-.07,.017),(x-.009+offset,h-.17,.016),
-                  (x-.022+offset*.9,h-.30,.032),(x+.004+offset*.4,h-.43-.025*i,.044)]
-            m.tube(path,[.026,.060,.055,.042,.012] if offset==0 else [.012,.023,.017,.016,.006],
-                   "pepper" if offset==0 else "garlic",swatch(col),9)
+    # A short rib end, belly strip and cheek hang from separate loops. The rind
+    # and fat follow the cut face rather than a second cylinder running beside it.
+    for i, (x, length, width, lean) in enumerate([(-.32,.35,.084,-.15), (0,.48,.067,.12), (.32,.31,.096,-.06)]):
+        m.tube([(x-.018,1.49,0),(x+.012,1.50,0),(x+.018,1.43,.016),
+                (x,1.38,.022),(x-.020,1.43,.016),(x-.018,1.49,0)], .0065, "hemp")
+        profile = [(0,.35),(.12,.80),(.29,1),(.52,.90),(.79,.75),(1,.44)]
+        rows = []
+        for t, spread in profile:
+            mid = x + lean*length*t + .015*math.sin(t*5+i)
+            h = 1.39-length*t
+            w = width*spread
+            depth = .025 + .012*math.sin(t*math.pi)
+            rows.append([vec([mid + a*w, h + .014*a*math.sin(t*4+i),
+                              depth*(1 - .16*a*a) + .011*math.sin(4*t+i)]) for a in (-1,-.57,.46,.70,1)])
+        m.surface(rows,"cut_meat",swatch("eadaca"))
+        back = [[v-[0,0,.047] for v in row] for row in rows]
+        m.surface(back,"smoked_rind",flip=True)
+        for edge in (0,-1):
+            m.surface([[row[edge],rear[edge]] for row,rear in zip(rows,back)],
+                      "smoked_rind",flip=edge==0)
+        for end in (0,-1):
+            m.surface([rows[end],back[end]],"cut_meat",swatch("c8ad93"),flip=end==0)
     return m
 
 
@@ -387,46 +436,55 @@ def basket():
 
 def produce():
     m=Model()
-    for i in range(9):
-        a=i*2.399
-        reach=.16 * math.sqrt(i/8)
-        x,z=reach*math.cos(a),reach*.9*math.sin(a)
-        h=.31+.025*(1-reach/.16)
-        rx,rz=.093,.082
-        def bulb(p,_a,_j):
-            wobble=1+.06*math.cos(5*_a+i)
-            return [x+p[0]*wobble,h+p[1],z+p[2]*wobble]
-        m.loft([(.02,.02,-.072),(rx*.78,rz*.8,-.041),(rx,rz,-.005),
-                (rx*.82,rz*.8,.033),(.022,.021,.057),(.007,.007,.075)],
-               "leaf",swatch("d8dba4") if i%3 else swatch("aeb780"),14,bulb)
-        # The leaf veins and cupped margins follow each overlapping head.
-        for leaf in range(3):
-            ang=a+leaf*2.094
-            l=vec([math.cos(ang),0,math.sin(ang)])
-            w=vec([-math.sin(ang),0,math.cos(ang)])
-            origin=vec([x,h-.042,z])
-            m.surface([[origin+l*.04-w*.017,origin+l*.047,origin+l*.04+w*.017],
-                       [origin+l*.079-w*.04+[0,.05,0],origin+l*.095+[0,.051,0],origin+l*.079+w*.04+[0,.05,0]],
-                       [origin+l*.053-w*.029+[0,.086,0],origin+l*.078+[0,.092,0],origin+l*.053+w*.029+[0,.086,0]]],
-                      "leaf",swatch("9eae89"))
+    heads=[(-.122,-.092,.30,.83),(.085,-.093,.31,.97),(-.143,.083,.30,.91),
+           (.092,.078,.31,1.0),(-.029,.003,.35,1.06)]
+    for i,(cx,cz,base,scale) in enumerate(heads):
+        origin=vec([cx,base,cz])
+        def heart(point,angle,row):
+            return origin + point*scale
+        m.loft([(.019,.021,-.065),(.065,.060,-.034),(.078,.072,.013),
+                (.065,.061,.056),(.031,.029,.089),(.002,.002,.096)],
+               "leaf_heart",swatch("dfdfb9"),20,heart)
+        for leaf in range(12):
+            angle=i*.71 + leaf*2.399
+            outward=vec([math.cos(angle),0,math.sin(angle)])
+            side=vec([-math.sin(angle),0,math.cos(angle)])
+            outer=1.0-leaf/12
+            grid=[]
+            for t, width, reach, rise in [(0,.009,.019,-.059),(.22,.029,.059,-.042),
+                                         (.48,.044,.087,-.003),(.70,.051,.079,.045),
+                                         (.85,.043,.059,.072),(.95,.026,.034,.086),(1,.006,.012,.094)]:
+                row=[]
+                for u in [-1,-.69,-.32,0,.32,.69,1]:
+                    curl=abs(u)**1.65
+                    tip=t*t*t
+                    radial=reach*(.90+.24*outer) - .034*curl + .054*outer**2*tip
+                    y=rise - .014*curl + .007*math.sin(6*t+leaf+2*u)*curl - .032*outer**2*tip
+                    row.append(origin+scale*(radial*outward+(width*u+.021*tip)*side+[0,y,0]))
+                grid.append(row)
+            def leaf_colour(v,u):
+                green=swatch("b6c692")*outer + swatch("e7e5b5")*(1-outer)
+                return green*(.86+.14*v)
+            m.surface(grid,"leaf",leaf_colour)
     return m
 
 
 def grain():
     m=Model()
     m.loft([(.001,.001,.29),(.281,.247,.287),(.244,.208,.319),(.179,.157,.343),(.094,.084,.358),(.001,.001,.363)],
-           "garlic",swatch("d9cdb3"),36)
+           "rice",swatch("e9deca"),36)
     rng=np.random.default_rng(702)
-    for _ in range(165):
+    for _ in range(225):
         a=rng.uniform(0,TAU)
         r=math.sqrt(rng.random())
         x,z=.26*r*math.cos(a),.22*r*math.sin(a)
         h=float(np.interp(.26*r,[0,.094,.179,.244,.282],[.366,.361,.346,.322,.290]))+.0018
-        d=vec([math.cos(a),0,math.sin(a)])*.009
-        w=vec([-math.sin(a),0,math.cos(a)])*.004
+        tilt=rng.uniform(0,TAU)
+        d=vec([math.cos(tilt),0,math.sin(tilt)])*.008
+        w=vec([-math.sin(tilt),0,math.cos(tilt)])*.0035
         p=vec([x,h,z])
         m.surface([[p-d-w*.25,p-d+w*.25],[p-w+[0,.003,0],p+w+[0,.003,0]],
-                   [p+d-w*.25,p+d+w*.25]],"garlic",swatch("ebd9aa"))
+                   [p+d-w*.25,p+d+w*.25]],"rice",swatch("f8edda"))
     return m
 
 
