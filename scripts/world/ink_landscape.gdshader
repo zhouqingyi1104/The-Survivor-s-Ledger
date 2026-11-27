@@ -1,6 +1,7 @@
 shader_type spatial;
 
 varying float wall_x;
+uniform float triptych_panel = -1.0;
 void vertex() {
 	wall_x = (MODEL_MATRIX * vec4(VERTEX, 1.0)).x;
 }
@@ -41,8 +42,13 @@ float pine(vec2 p) {
 
 void fragment() {
 	vec2 p = vec2(UV.x, 1.0 - UV.y);
-	if (wall_x < 0.0) { p.x = 1.0 - p.x; }
-	float phase = wall_x < 0.0 ? 0.72 : 0.0;
+	float phase = 0.0;
+	if (triptych_panel >= 0.0) {
+		p.x = (p.x + triptych_panel) / 3.0;
+	} else if (wall_x < 0.0) {
+		p.x = 1.0 - p.x;
+		phase = 0.72;
+	}
 	float far = 0.48 + 0.37 * ridge(p.x + phase, 2.8);
 	float mid = 0.31 + 0.51 * ridge(p.x + phase, 9.3);
 	float near = 0.17 + 0.26 * ridge(p.x + phase, 14.8);

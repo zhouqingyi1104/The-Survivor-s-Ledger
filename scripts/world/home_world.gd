@@ -652,64 +652,15 @@ func _core_mesh(root: Node3D, id: String, run: Dictionary) -> void:
 			Props.workbench(root, Vector3.ZERO, 0)
 
 
-## 各类家具的样子：够看就行，都是基本体拼的。
+## 家具的占地、点击和朝向由外层布置逻辑管理，模型在本地原点展开。
 func _furn_mesh(root: Node3D, id: String) -> void:
-	match id:
-		"bookshelf":
-			Props.bookshelf(root, Vector3.ZERO)
-		"rice_jar":
-			K.box(root, Vector3(0.72, 0.7, 0.72), K.EARTH, Vector3(0, 0.35, 0))
-			K.box(root, Vector3(0.8, 0.08, 0.8), K.STONE_DARK, Vector3(0, 0.72, 0))
-			K.box(root, Vector3(0.5, 0.04, 0.5), K.RICE_SACK, Vector3(0, 0.76, 0))
-		"pickle_jar":
-			K.box(root, Vector3(0.52, 0.5, 0.52), K.EARTH, Vector3(0, 0.25, 0))
-			K.box(root, Vector3(0.58, 0.06, 0.58), K.STONE_DARK, Vector3(0, 0.52, 0))
-		"water_vat":
-			Props.water_vat(root, Vector3.ZERO)
-		"planter":
-			K.box(root, Vector3(1.4, 0.36, 0.6), K.WOOD, Vector3(0, 0.18, 0))
-			K.box(root, Vector3(1.24, 0.06, 0.46), K.EARTH, Vector3(0, 0.36, 0))
-		"brazier":
-			K.box(root, Vector3(0.7, 0.26, 0.7), K.STONE_DARK, Vector3(0, 0.13, 0))
-			K.box(root, Vector3(0.5, 0.08, 0.5), K.mat(Color("#3a2a24"), 0.9), Vector3(0, 0.28, 0))
-			for i in 3:
-				K.box(root, Vector3(0.12, 0.06, 0.12), K.mat(K.CINNABAR, 0.6, 1.2),
-					Vector3(-0.14 + i * 0.14, 0.33, 0.02 * i))
-		"rat_trap":
-			K.box(root, Vector3(0.5, 0.12, 0.36), K.WOOD_LIGHT, Vector3(0, 0.06, 0))
-			K.box(root, Vector3(0.44, 0.04, 0.06), K.STONE_DARK, Vector3(0, 0.14, 0))
-		"smoke_rack":
-			for sx in [-0.5, 0.5]:
-				K.box(root, Vector3(0.1, 1.5, 0.1), K.WOOD, Vector3(sx, 0.75, 0))
-			K.box(root, Vector3(1.2, 0.1, 0.12), K.WOOD_LIGHT, Vector3(0, 1.45, 0))
-			for i in 2:
-				K.box(root, Vector3(0.18, 0.4, 0.18), K.CINNABAR.darkened(0.2), Vector3(-0.2 + i * 0.4, 1.18, 0))
-		"incense":
-			K.box(root, Vector3(0.34, 0.5, 0.34), K.WOOD, Vector3(0, 0.25, 0))
-			K.box(root, Vector3(0.42, 0.06, 0.42), K.GOLD, Vector3(0, 0.53, 0))
-		"screen":
-			for i in 3:
-				K.box(root, Vector3(0.42, 1.5, 0.06), K.WOOD, Vector3(-0.42 + i * 0.42, 0.75, 0))
-				K.box(root, Vector3(0.34, 1.3, 0.03), K.PAPER, Vector3(-0.42 + i * 0.42, 0.75, 0.05))
-		"armchair":
-			K.box(root, Vector3(0.7, 0.1, 0.68), K.WOOD, Vector3(0, 0.45, 0))
-			K.box(root, Vector3(0.7, 0.7, 0.1), K.WOOD, Vector3(0, 0.8, -0.3))
-			for sx in [-0.35, 0.35]:
-				K.box(root, Vector3(0.06, 0.45, 0.68), K.WOOD_LIGHT, Vector3(sx, 0.22, 0))
-		"tea_table":
-			K.box(root, Vector3(0.86, 0.08, 0.86), K.WOOD_LIGHT, Vector3(0, 0.52, 0))
-			for sx in [-0.34, 0.34]:
-				for sz in [-0.34, 0.34]:
-					K.box(root, Vector3(0.08, 0.5, 0.08), K.WOOD, Vector3(sx, 0.25, sz))
-			K.box(root, Vector3(0.16, 0.12, 0.16), K.PAPER, Vector3(0.1, 0.62, 0.05))
-		"bamboo":
-			K.box(root, Vector3(0.44, 0.36, 0.44), K.EARTH, Vector3(0, 0.18, 0))
-			for i in 3:
-				K.box(root, Vector3(0.06, 1.3 - i * 0.2, 0.06), K.LEAF.darkened(0.2),
-					Vector3(-0.1 + i * 0.1, 0.65, 0.02 * i), Vector3(0, 0, (i - 1) * 8))
-		_:
-			var sz := Home.size_of(id, 0)
-			K.box(root, Vector3(sz.x * 0.8, 0.7, sz.y * 0.8), K.WOOD_LIGHT, Vector3(0, 0.35, 0))
+	if id == "bookshelf":
+		Props.bookshelf(root, Vector3.ZERO)
+	elif id == "water_vat":
+		Props.water_vat(root, Vector3.ZERO)
+	elif not Props.furnishing(root, id):
+		var sz := Home.size_of(id, 0)
+		K.box(root, Vector3(sz.x * 0.8, 0.7, sz.y * 0.8), K.WOOD_LIGHT, Vector3(0, 0.35, 0))
 
 
 func _rebuild_devices(run: Dictionary) -> void:

@@ -44,7 +44,7 @@ static func _twig(s: SurfaceTool, a: Vector3, b: Vector3, thick: float, thin: fl
 		_face(s, a + thick * p, b + thin * p, b + thin * q, p + q, tone)
 		_face(s, a + thick * p, b + thin * q, a + thick * q, p + q, tone)
 
-static func plum_tree(parent: Node3D, pos: Vector3) -> Node3D:
+static func plum_tree(parent: Node3D, pos: Vector3, collide := true) -> Node3D:
 	var root := K.node(parent, pos)
 	if not _tree:
 		_tree = _plum_mesh()
@@ -52,7 +52,8 @@ static func plum_tree(parent: Node3D, pos: Vector3) -> Node3D:
 	tree.mesh = _tree
 	tree.rotation.y = fposmod(pos.x * 0.74 + pos.z * 0.4, TAU)
 	root.add_child(tree)
-	K.collider(root, Vector3(0.5, 2.0, 0.5), Vector3(0, 1.0, 0))
+	if collide:
+		K.collider(root, Vector3(0.5, 2.0, 0.5), Vector3(0, 1.0, 0))
 	return root
 
 static func _plum_mesh() -> ArrayMesh:
@@ -197,15 +198,21 @@ static func _crop_mesh(kind: String) -> ArrayMesh:
 			var foot := Vector3(-0.055 + 0.098 * k, 0, -0.035 * k)
 			var neck := foot + Vector3(0.026, 0.116 + 0.044 * k, 0)
 			_twig(s, foot, neck, 0.026, 0.022, Color("#935535"), 7)
-			for j in 12:
-				var a := Vector3(cos(j * TAU / 12.0), 0, sin(j * TAU / 12.0))
-				var b := a.rotated(Vector3.UP, -TAU / 12.0)
-				var r := Vector3(0.107, 0, 0.075)
-				var e := neck + a * r
-				var f := neck + b * r
-				_face(s, neck + Vector3.UP * 0.033, e, f, Vector3.UP, Color("#97482c"))
-				_face(s, e, e + a * 0.013 - Vector3.UP * 0.008, f, Vector3.UP, Color("#be8853"))
-				_face(s, f, e + a * 0.013 - Vector3.UP * 0.008, f + b * 0.013 - Vector3.UP * 0.008, Vector3.UP, Color("#d3a572"))
+			# 菌盖从偏心菌柄向外生长，琥珀色同心纹一直延伸到浅色边缘。
+			for j in 18:
+				var a := j * TAU / 18.0
+				var b := (j + 1) * TAU / 18.0
+				var p := Vector3(cos(a) * (0.099 + 0.021 * cos(3.0*a)), 0, sin(a) * 0.081)
+				var q := Vector3(cos(b) * (0.099 + 0.021 * cos(3.0*b)), 0, sin(b) * 0.081)
+				var zones := [Color("#6d4131"), Color("#994f31"), Color("#b47748"), Color("#d2a570")]
+				for band in 4:
+					var t := band / 4.0
+					var u := (band + 1) / 4.0
+					var l := neck + Vector3.UP * (0.032 - t*t*0.035) + Vector3.RIGHT * t * 0.029
+					var r := neck + Vector3.UP * (0.032 - u*u*0.035) + Vector3.RIGHT * u * 0.029
+					if band > 0:
+						_face(s, l+p*t, l+q*t, r+q*u, Vector3.UP, zones[band])
+					_face(s, l+p*t, r+q*u, r+p*u, Vector3.UP, zones[band])
 	else:
 		var cabbage := kind == "cabbage"
 		var chive := kind == "chive"
@@ -224,12 +231,28 @@ static func _crop_mesh(kind: String) -> ArrayMesh:
 				spread *= 0.56
 				h *= 1.09
 				shade = shade.lightened(0.16)
-			var rib := foot + outward * spread * 0.57 + Vector3.UP * h * 0.72
-			var width := outward.cross(Vector3.UP) * w
-			var lip := outward * (0.02 if cabbage else 0.01)
-			var tip := foot + outward * spread + Vector3.UP * h
-			_face(s, foot, rib - width + lip, rib, Vector3.UP, shade)
-			_face(s, foot, rib, rib + width + lip, Vector3.UP, shade.darkened(0.11))
-			_face(s, rib - width + lip, tip, rib, Vector3.UP, shade.lightened(0.08))
-			_face(s, rib, tip, rib + width + lip, Vector3.UP, shade)
+			# 中肋带出折面。外层菜叶向地面舒展，内层沿菜心收拢。
+			var side := outward.cross(Vector3.UP)
+			var last_ridge := foot
+			var last_left := foot
+			var last_right := foot
+			for segment in 4:
+				var t := (segment + 1) / 4.0
+				var arc := sin(t * PI)
+				var reach := spread * (t + (0.45 if cabbage else 0.18) * arc)
+				var mid := foot + outward * reach + Vector3.UP * (h * (t - (0.35 if chive else 0.20) * t*t))
+				var half_width := w * (0.027 + pow(arc, 0.70))
+				var frill := 0.008 * sin(i * 4.3 + t * 12.1) * arc
+				var ridge := mid + Vector3.UP * (0.010 * arc)
+				var left := mid - side * half_width + Vector3.UP * (0.014 * arc + frill)
+				var right := mid + side * half_width + Vector3.UP * (0.014 * arc - frill)
+				var pigment := shade.lightened(0.070 * t)
+				if segment > 0:
+					_face(s, last_left, left, last_ridge, Vector3.UP, pigment)
+					_face(s, last_ridge, right, last_right, Vector3.UP, pigment.darkened(0.07))
+				_face(s, last_ridge, left, ridge, Vector3.UP, pigment)
+				_face(s, last_ridge, ridge, right, Vector3.UP, pigment.darkened(0.07))
+				last_left = left
+				last_ridge = ridge
+				last_right = right
 	return _painted_mesh(s)
