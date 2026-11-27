@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="0 0 384 384"
+     stroke-linejoin="round" stroke-linecap="round">
+  <defs>
+    <linearGradient id="celadon" x2="85%" y2="100%">
+      <stop stop-color="#c3d2b4"/><stop offset=".45" stop-color="#8aa79a"/><stop offset="1" stop-color="#6d9084"/>
+    </linearGradient>
+    <linearGradient id="silver" x1="0%" y1="5%" x2="80%" y2="100%">
+      <stop stop-color="#919d9b"/><stop offset=".23" stop-color="#d7d8c9"/>
+      <stop offset=".54" stop-color="#a5afa8"/><stop offset=".74" stop-color="#8c9995"/><stop offset="1" stop-color="#bdc1b4"/>
+    </linearGradient>
+    <linearGradient id="clay" x1="0%" y1="20%" x2="100%" y2="75%">
+      <stop stop-color="#c69671"/><stop offset=".55" stop-color="#b47c56"/><stop offset="1" stop-color="#996246"/>
+    </linearGradient>
+  </defs>
+  <g id="millet" transform="translate(0 0)">
+    <!-- Golden millet in a square wooden measure, oak end grain visible on the right. -->
+    <path d="M11 41 L48 23 L85 40 L80 66 L48 83 L17 67Z" fill="#ae7951" stroke="#594736" stroke-width="2"/>
+    <path d="M47 56 L82 40 L78 65 L48 80Z" fill="#835d44"/>
+    <path d="M13 40 L47 22 L84 39 L48 57Z" fill="#c99259" stroke="#6e543a" stroke-width="1.8"/>
+    <path d="M18 40 Q22 33 30 33 Q32 27 38 28 Q43 19 51 19 Q61 18 67 27
+      Q75 29 79 38 L48 51Z" fill="#ce9e43" stroke="#a0763e" stroke-width="1.5"/>
+    <path d="M21 39 C29 28 34 31 39 27 Q44 20 53 21 Q61 21 63 25
+      Q53 23 49 29 Q38 29 32 38 L27 42Z" fill="#e5bb65"/>
+    <g fill="#f1d187">
+      <ellipse cx="44" cy="29" rx="2.3" ry="1.25"/><ellipse cx="34" cy="36" rx="2.1" ry="1.1"/>
+      <ellipse cx="50" cy="35" rx="2.4" ry="1.3"/><ellipse cx="56" cy="28" rx="2" ry="1.1"/>
+    </g>
+    <path d="M11 40 L48 52 L83 37 L85 41 L48 58 L12 45Z" fill="#ce9d6a" stroke="#685039" stroke-width="1.5"/>
+    <path d="M19 49 L24 51 L27 66 L21 64Z M41 58 L46 59 L46 77 L40 74Z" fill="#c18d5f"/>
+    <path d="M22 66 L42 74 M53 72 L64 67 M54 67 L74 58" fill="none" stroke="#694e37" stroke-width="1.4"/>
+    <circle cx="23" cy="54" r="1.35" fill="#624d3a"/><circle cx="43" cy="62" r="1.35" fill="#624d3a"/>
+  </g>
+  <g id="glutinous" transform="translate(96 0)">
+    <!-- The bamboo scoop is open at the front, with a short handle at the high end. -->
+    <path d="M62 34 Q66 24 76 16 L82 14 Q87 16 85 21 L72 37Z" fill="#a17b4f" stroke="#66523d" stroke-width="1.9"/>
+    <path d="M70 29 L81 18" fill="none" stroke="#d1ad78" stroke-width="2"/>
+    <path d="M10 62 C13 47 29 32 48 26 Q61 22 70 29 Q77 35 72 50
+      C64 65 46 77 28 79 Q17 79 10 72Z" fill="#a8804a" stroke="#61513d" stroke-width="2"/>
+    <path d="M13 61 C19 45 35 33 51 29 Q63 26 68 32 Q73 41 62 52 L32 68Z" fill="#c7a167"/>
+    <path d="M15 61 C22 52 29 45 39 42 Q46 33 54 35 Q62 32 67 41
+      Q69 44 66 48 C59 57 45 66 27 69Z" fill="#eee9d5" stroke="#a09677" stroke-width="1.3"/>
+    <path d="M18 60 Q29 46 40 45 Q46 39 52 38 Q57 36 61 39 Q48 42 40 50 L29 56Z" fill="#fbf4df"/>
+    <g fill="#c8c3a7">
+      <ellipse cx="37" cy="52" rx="2.4" ry="1.5" transform="rotate(-23 37 52)"/>
+      <ellipse cx="52" cy="46" rx="2.6" ry="1.6"/><ellipse cx="47" cy="54" rx="2.2" ry="1.4"/>
+      <ellipse cx="30" cy="58" rx="2.6" ry="1.5"/>
+    </g>
+    <path d="M10 61 Q17 66 27 68 C47 67 67 52 72 38 C75 51 66 63 47 73
+      Q34 80 24 77 Q15 76 10 72Z" fill="#d9b97e" stroke="#766044" stroke-width="1.6"/>
+    <path d="M13 69 Q25 78 42 70 M48 68 Q62 61 67 52" fill="none" stroke="#a68754" stroke-width="1.3"/>
+    <path d="M54 30 Q63 25 68 32" fill="none" stroke="#ebd0a0" stroke-width="2.1"/>
+  </g>
+  <g id="inkstone" transform="translate(192 0)">
+    <path d="M12 62 L24 22 Q26 17 32 17 L62 21 Q69 22 69 27 L58 66
+      Q57 73 49 75 L17 70 Q11 69 12 62Z" fill="#50585a" stroke="#363c3c" stroke-width="2"/>
+    <path d="M13 62 L48 67 Q53 68 56 63 L67 26 L68 32 L58 66 Q57 73 49 74 L17 69 Q13 68 13 62Z"
+      fill="#384442"/>
+    <path d="M16 59 L27 24 Q28 20 32 20 L61 24 Q64 24 63 28 L53 61 Q52 65 47 65 L20 61Z"
+      fill="#77817b" stroke="#92968a" stroke-width="1.1"/>
+    <path d="M23 53 L30 30 Q31 26 35 26 L56 29 Q61 30 58 36 L51 56 Q50 61 46 60 L25 57Z"
+      fill="#525c59" stroke="#444e4a" stroke-width="1.2"/>
+    <path d="M30 32 Q33 27 38 28 L54 30 Q58 31 57 34 Q54 38 45 39 L31 37Z" fill="#2f3937"/>
+    <path d="M34 32 Q39 30 47 32" fill="none" stroke="#99a394" stroke-width="1.5"/>
+    <path d="M28 51 L39 53 M29 48 L34 48.8" fill="none" stroke="#6d7570" stroke-width="1.1"/>
+    <path d="M49 81 L78 38 L82 40 L54 84Z" fill="#b78e58" stroke="#62503b" stroke-width="1.3"/>
+    <path d="M51 81 L69 55" fill="none" stroke="#e3c189" stroke-width="1.4"/>
+    <path d="M77 40 L79 34 L84 37 L82 42Z" fill="#484c46"/>
+    <path d="M79 34 C79 29 85 26 88 21 C89 29 87 34 84 37Z" fill="#5b5144" stroke="#453e34" stroke-width="1.2"/>
+  </g>
+  <g id="jade" transform="translate(288 0)">
+    <path d="M40 39 C40 29 55 27 57 17 Q59 10 52 11 C45 14 55 17 62 16
+      Q70 15 70 12" fill="none" stroke="#915749" stroke-width="2.8"/>
+    <path d="M42 38 Q45 30 53 32" fill="none" stroke="#c7996b" stroke-width="2"/>
+    <path fill-rule="evenodd" d="M39 29 Q44 25 50 30 L56 35 C62 34 66 37 68 42 Q78 45 75 52
+      Q82 60 73 65 Q73 73 65 73 C59 83 44 85 33 78 Q19 75 21 65
+      Q12 56 23 49 Q22 40 31 39Z M55 51 C48 47 39 51 37 58 C34 65 42 71 50 69
+      C57 68 63 62 61 56 Q60 53 55 51Z" fill="url(#celadon)" stroke="#4e695f" stroke-width="2"/>
+    <path d="M25 61 Q20 53 30 47 Q32 42 38 43 Q39 33 45 33
+      Q56 35 57 40 Q62 39 67 44 Q56 43 52 49 Q40 43 34 50 Q29 58 31 64Z" fill="#b9cbb4"/>
+    <path d="M72 51 Q77 58 68 63 Q66 72 58 74 C47 82 34 75 32 69
+      Q43 76 55 70 Q65 69 66 61Z" fill="#6b9184"/>
+    <path d="M29 58 Q27 50 34 48 Q40 49 38 54 Q35 57 33 54
+      M63 50 Q69 46 71 51 Q71 55 65 57" fill="none" stroke="#557b6e" stroke-width="1.5"/>
+    <path d="M41 69 Q48 73 56 67 Q60 65 62 61" fill="none" stroke="#b7cbb4" stroke-width="1.6"/>
+    <circle cx="44" cy="34" r="2.3" fill="#57766b"/>
+    <path d="M43.5 33.5 Q44 28 48 27" fill="none" stroke="#94624b" stroke-width="2"/>
+  </g>
+  <g id="bracelet" transform="translate(0 96)">
+    <!-- The open ends of this old silver bangle face one another. -->
+    <path d="M66 32 C53 19 36 19 23 29 C8 41 8 60 21 71 C33 82 54 79 68 69
+      C81 61 87 46 78 35 L72 40 C76 50 68 59 58 64 C44 71 28 70 23 61
+      C17 51 24 39 35 34 Q48 27 60 37Z" fill="url(#silver)" stroke="#58615f" stroke-width="2"/>
+    <path d="M16 45 C22 29 39 23 54 26 L61 30 C42 27 28 33 22 43 Q15 57 25 66
+      C14 62 12 53 16 45Z" fill="#e1e2d2"/>
+    <path d="M25 71 C40 78 56 73 67 65 Q83 53 80 42 Q86 57 68 69 Q45 84 25 73Z"
+      fill="#768780"/>
+    <path d="M57 32 Q60 24 65 27 L71 32 Q74 35 70 38 L64 39Z" fill="#c4c6b8" stroke="#66716a" stroke-width="1.5"/>
+    <path d="M72 40 Q68 38 70 34 Q75 28 80 32 Q85 35 80 41 L76 44Z" fill="#bac1b7" stroke="#5f6c65" stroke-width="1.6"/>
+    <path d="M62 30 L69 35 M73 36 Q76 32 79 34 M19 50 Q19 45 23 41" fill="none" stroke="#f1edda" stroke-width="1.6"/>
+  </g>
+  <g id="lingzhi_soup" transform="translate(96 96)">
+    <!-- Reishi decoction in a footed medicine pot with a pinched spout. -->
+    <path d="M69 42 C85 34 90 46 83 54 Q78 61 67 62 L65 56 Q76 54 78 49 Q80 43 72 47Z"
+      fill="#a1684c" stroke="#5f4437" stroke-width="1.8"/>
+    <path d="M17 37 L26 37 Q40 28 59 32 Q69 32 75 40 L70 62
+      Q66 74 53 77 L50 81 L35 81 L32 76 Q19 72 17 60 L16 47 L10 39Z"
+      fill="url(#clay)" stroke="#624b3d" stroke-width="2"/>
+    <path d="M20 48 Q30 54 44 52 L41 73 Q27 72 23 63Z" fill="#c38e65"/>
+    <path d="M65 49 L71 45 L67 62 Q61 75 49 75 L47 68 Q57 66 65 49Z" fill="#885a47"/>
+    <path d="M17 38 Q41 23 66 34 L73 39 Q62 48 44 49 Q25 49 18 45 L10 39Z"
+      fill="#d7ac7a" stroke="#76533d" stroke-width="1.5"/>
+    <path d="M23 40 Q42 28 63 36 L68 39 Q59 45 43 46 Q30 46 23 43Z" fill="#76432e"/>
+    <path d="M31 40 Q39 32 50 36 Q54 39 48 41 Q40 45 31 40Z"
+      fill="#b56743" stroke="#6b392c" stroke-width="1.2"/>
+    <path d="M35 39 Q43 35 48 38 M29 67 Q32 70 39 71" fill="none" stroke="#e0ae78" stroke-width="1.3"/>
+    <g transform="translate(0 5)">
+      <path d="M46 23 L57 15 Q63 13 64 16 Q64 18 59 20 L50 25Z" fill="#96704e" stroke="#5b4839" stroke-width="1.2"/>
+      <path d="M22 26 Q32 17 46 17 Q54 17 58 21 Q50 28 35 30 Q28 31 22 29Z"
+        fill="#bc8863" stroke="#684d3b" stroke-width="1.6"/>
+      <path d="M27 25 Q35 20 44 20" fill="none" stroke="#e0b587" stroke-width="1.6"/>
+    </g>
+  </g>
+  <g id="burnt" transform="translate(192 96)">
+    <path d="M12 65 Q24 45 44 47 C57 41 71 47 83 57 Q67 73 47 76 Q27 77 12 65Z"
+      fill="#9b9874" stroke="#67674e" stroke-width="1.6"/>
+    <path d="M16 64 Q39 68 75 56 M30 66 L23 58 M55 64 L62 53" fill="none" stroke="#77795c" stroke-width="1.2"/>
+    <path d="M16 54 L23 38 Q32 28 48 27 L58 32 L65 35 L64 44 L57 44 L54 51 L43 54
+      L39 61 L22 63Z" fill="#50473c" stroke="#453b31" stroke-width="2"/>
+    <path d="M18 51 L26 39 Q36 30 47 30 L55 33 L51 37 L57 41 L48 42 L42 49 L34 47 L32 54 L22 57Z"
+      fill="#75614a"/>
+    <path d="M30 39 L37 34 L45 34 L40 38 L36 39 L35 43Z" fill="#a48256"/>
+    <path d="M26 48 L32 44 L39 46 M49 32 L45 38 L47 42 M40 54 L42 49" fill="none" stroke="#473e33" stroke-width="1.7"/>
+    <path d="M48 57 L53 50 L58 49 L61 43 L70 45 L76 55 L71 65 L55 68 L48 64Z"
+      fill="#61513e" stroke="#423b31" stroke-width="1.8"/>
+    <path d="M52 59 L58 52 L63 51 L65 47 L70 48 L71 53 L65 54 L63 58 L57 58 L54 63Z" fill="#ba925f"/>
+    <path d="M59 60 L64 56 M66 48 L70 51" fill="none" stroke="#dfb982" stroke-width="1.3"/>
+    <path d="M74 63 l5 -2 l4 4 l-6 3Z M39 68 l3 -3 l4 2 l-2 3Z" fill="#5e5141"/>
+  </g>
+</svg>

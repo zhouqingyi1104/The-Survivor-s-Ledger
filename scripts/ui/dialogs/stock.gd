@@ -10,7 +10,6 @@ const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
-const InventoryArt = preload("res://scripts/ui/inventory_art.gd")
 const Kit = preload("res://scripts/ui/dialogs/kit.gd")
 const CAT_ORDER := ["食", "菜", "水", "药", "粮", "柴炭", "守具", "材", "种", "器", "书", "杂"]
 const INVENTORY_PAPER = preload("res://assets/ui/inventory/paper.png")
@@ -90,18 +89,10 @@ static func item_card(run: Dictionary, id: String) -> Control:
 	UI.expand(v)
 	var image_row := CenterContainer.new()
 	image_row.custom_minimum_size.y = 72
-	var artwork := InventoryArt.texture(id)
-	if artwork != null:
-		var illustration := TextureRect.new()
-		illustration.texture = artwork
+	var illustration := UI.icon(id, 72)
+	if illustration is TextureRect:
 		illustration.set_meta("inventory_art", id)
-		illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		illustration.custom_minimum_size = Vector2(72, 72)
-		illustration.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		image_row.add_child(illustration)
-	else:
-		image_row.add_child(UI.icon(id, 72))
+	image_row.add_child(illustration)
 	v.add_child(image_row)
 	var title := UI.hbox(4)
 	title.add_child(label(it.name, 17, Color("#302921")))

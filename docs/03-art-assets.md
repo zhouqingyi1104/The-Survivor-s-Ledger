@@ -200,6 +200,6 @@ python -I tools/pipeline/synth_night_music.py build/night-music-qa --asset-path 
 
 ## 九、物品与家具图标
 
-家中存货通过 `scripts/ui/inventory_art.gd` 使用物资插画：米、铁钉沿用 `8836c3c` 中的独立 PNG；其余 55 件由内置 imagegen 生成四张透明图集，用 `AtlasTexture` 读取，不能称为人工手绘。保留旧纸、深木框、墨字和朱砂分类按钮，来源、范围与本批验证见 [47](47-inventory-art.md)。
+家中存货有 57 张从矢量路径烘焙的插画。米、铁钉用独立 PNG，其余 55 件用四张四乘四透明图集；原图格为 288 像素，卡片按 72 像素显示。物件版型、局部色面和纸底均有可编辑源稿。[图稿](../tools/pipeline/inventory_art/) · [实现与历版来源](47-inventory-art.md)
 
-其它物品入口与 18 件家具继续由 `scripts/ui/icon_art.gd` 用 CanvasItem 现画（墨线 + 淡彩），`icon_view.gd` 负责显示；本批没有替换这些入口或 3D 素材。未知未来物品仍可用代码图标兜底，当前 57 件存货则要求插画完整覆盖。
+灶房的菜图与添置家具的用料图复用相同物资插画。18 件家具各有独立图格，按 52 像素显示在家具卡片上。新物件尚无源稿时，`icon_view.gd` 仍可显示备用图标。

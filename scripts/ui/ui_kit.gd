@@ -6,6 +6,7 @@ extends RefCounted
 ## 所以弹窗内容的代码不用管自己在哪种底色上。
 
 const IconView = preload("res://scripts/ui/icon_view.gd")
+const InventoryArt = preload("res://scripts/ui/inventory_art.gd")
 const Fonts = preload("res://scripts/ui/fonts.gd")
 
 const PAPER_COLORS := {
@@ -246,11 +247,22 @@ static func ignore_mouse(node: Control) -> void:
 		(n as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-## 物品 / 家具的图标（纯代码画，见 icon_art.gd）。
+## 同一件物资在存货、菜谱和家具用料里读取同一张图。
 static func icon(id: String, px: float, furniture := false) -> Control:
-	var n: Control = IconView.new()
-	n.id = id
-	n.is_furn = furniture
+	var art := InventoryArt.furniture(id) if furniture else InventoryArt.texture(id)
+	var n: Control
+	if art != null:
+		var illustration := TextureRect.new()
+		illustration.texture = art
+		illustration.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		illustration.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		illustration.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		n = illustration
+	else:
+		var fallback := IconView.new()
+		fallback.id = id
+		fallback.is_furn = furniture
+		n = fallback
 	n.custom_minimum_size = Vector2(px, px)
 	n.size = Vector2(px, px)
 	n.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="288" height="192" viewBox="0 0 288 192"
+     fill="#eee2c9" stroke="#493e34" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round">
+  <g id="pickle_jar" transform="translate(0 0)">
+    <path d="M27 28q-1 7-7 14-6 7-5 18 2 17 15 23 16 7 36 0 12-6 14-23 1-11-5-18l-7-12Z" fill="#846445"/>
+    <path d="M28 34q1 4-4 11-5 9-3 16l5 10-6-4q-8-14 1-25Z" fill="#b09163" stroke="none"/>
+    <path d="M62 33q10 13 9 28-2 15-15 22l-9 3q25 1 31-17 5-16-3-27l-7-10Z" fill="#655039" stroke="none"/>
+    <path d="M18 60q7 7 20 6l17 1q13-1 20-7m-47 17q12 6 25 4" fill="none" stroke="#67543e" stroke-width="1.2"/>
+    <path d="M24 28q1-10 9-12 14-5 26-2l10 4 6 8-3 11-7-2-6 6-9-5-11 3-5-4-11 2Z" fill="#a65646"/>
+    <path d="M25 27q2-8 9-11 13-3 24-2l7 3-13 2-9 4-8 2Z" fill="#c7876c" stroke="none"/>
+    <path d="m31 23-3 7m9-7-2 8m17-9 3 8m7-9 6 6" fill="none" stroke="#844b40" stroke-width="1.2"/>
+    <path d="M24 28q18 5 39 0l6-2 3 2-2 3q-21 7-45 1l-3-2Z" fill="#d0b17e" stroke-width="1.25"/>
+    <path d="M65 31q6-8 10-3 2 5-8 5l6 12m-8-12-1 7" stroke="#745b41" stroke-width="1.45" fill="none"/>
+    <path d="M22 48q2-5 4-6m5 40q12 4 25 1" fill="none" stroke="#b08c60" stroke-width="1.2"/>
+  </g>
+  <g id="smoke_rack" transform="translate(96 0)">
+    <path d="m15 80 12-10 7 1-10 10-8 2Zm51-1 11-9 8 1-9 11-8 1Z" fill="#906d4c"/>
+    <path d="m21 21 4-4 5 2-2 57-6 4Z" fill="#ad855d"/>
+    <path d="m26 21 3-1-2 56-3 2Z" fill="#775b42" stroke="none"/>
+    <path d="m71 19 4-3 4 2-2 57-6 4Z" fill="#997451"/>
+    <path d="m76 20 3-2-2 56-3 3Z" fill="#74563f" stroke="none"/>
+    <path d="m16 19 62-7 4 3-1 6-61 8-5-3Z" fill="#b99266"/>
+    <path d="m17 20 58-7 5 2-59 8Z" fill="#d7b787" stroke="none"/>
+    <path d="m22 22 2 4m49-10 2 4" fill="none" stroke="#71543a" stroke-width="1.25"/>
+    <path d="M34 29q-1-7 2-9 4 0 3 9m9 1q-1-8 2-11 4 0 3 10m8-2q-1-7 2-10 4 0 3 10" fill="none" stroke="#77644e" stroke-width="1.25"/>
+    <path d="M35 28q-4 7-3 15l4 16q3 6 7 2l1-9q-3-11-4-23Z" fill="#a36348"/>
+    <path d="M34 35q-3 6 1 14l4 8-1-7-3-12Z" fill="#d4a07a" stroke="none"/>
+    <path d="m50 29-3 9 4 8q4 8 4 17l-3 5 6-2q4-9 1-19l-4-17Z" fill="#91533f"/>
+    <path d="M50 38q1 6 4 10l2 11q2-10-2-17Z" fill="#c48967" stroke="none"/>
+    <path d="M62 27q-2 9 1 15l-1 8 2 6q6-4 7-13l-4-16Z" fill="#aa6950"/>
+    <path d="m64 33 3 7-1 6" fill="none" stroke="#d2a27d" stroke-width="1.15"/>
+    <path d="m19 78 8-4m46-4 1-5" fill="none" stroke="#b3956b" stroke-width="1.1"/>
+  </g>
+  <g id="brazier" transform="translate(192 0)">
+    <path d="m30 59-2 11-8 8 2 4 7-1 11-17Zm32-1 4 9 9 8-1 5-7 1-13-17Zm-16 7-1 10 5 4 5-3-1-11Z" fill="#6c7065"/>
+    <path d="M10 40q1 16 13 26 10 8 29 8 23-1 32-19l2-16Z" fill="#707770"/>
+    <path d="M15 48q9 13 20 16l7 6q-18-1-24-11Z" fill="#92978c" stroke="none"/>
+    <path d="M70 50q-2 15-14 19-6 3-14 4 21 2 32-7 9-8 10-21Z" fill="#575d56" stroke="none"/>
+    <ellipse cx="48" cy="40" rx="38" ry="14" fill="#a7a99b"/>
+    <ellipse cx="48" cy="40" rx="33.5" ry="10.7" fill="#4f5149" stroke-width="1.2"/>
+    <path d="m18 42 6-8 9-1 6 6-3 8-11 1Zm17-6 4-7 9-2 6 6-4 9-9 2Zm18 1 8-5 9 2 4 8-7 5-12-2Z" fill="#62665b" stroke-width="1.2"/>
+    <path d="m22 39 3-5 7-1 4 4-8 2Zm18-8 8-3 4 4-7 3Zm21 3 8 1 2 4-9-2Z" fill="#9c9c88" stroke="none"/>
+    <path d="m32 47 4-7 5 4 5-3 5 3-8 6Zm21 1 4-3 8 3-4 2Z" fill="#c68255" stroke="none"/>
+    <path d="m37 46 3-3 3 3-4 2Zm20 2 3-1 2 1-3 1Z" fill="#e0aa6c" stroke="none"/>
+    <path d="M12 44q12 13 40 11 20-1 29-7m-46 20 12 2m21 5 3 3" fill="none" stroke="#4e554f" stroke-width="1.15"/>
+  </g>
+  <g id="rat_trap" transform="translate(0 96)">
+    <path d="m11 52 37-29 18-3 17 11 2 23-36 25-27 1-11-9Z" fill="#8d7856"/>
+    <path d="M13 54q5-14 17-13 17-1 22 18l-3 15-24 6-14-9Z" fill="#b2986e"/>
+    <path d="M16 65q1-13 11-15 12-1 16 11l-2 10-14 5-12-6Z" fill="#64583e" stroke-width="1.25"/>
+    <path d="M29 40q17-18 31-18 20-1 23 18l2 13-33 24 1-16q-2-15-16-19Z" fill="#b7a078"/>
+    <path d="M51 39q12-7 23-9l5 4-29 20Z" fill="#a28c67" stroke="none"/>
+    <path d="m40 43 30-17m-25 22 31-19m-27 25 31-20m-28 27 31-21m-31 28 32-22m-49-7 29-14" fill="none" stroke="#796c4d" stroke-width="1.35"/>
+    <path d="M41 32q16-2 24 15l2 16m-17-37q14-2 23 14l2 17" fill="none" stroke="#795f42" stroke-width="2"/>
+    <path d="M42 31q16-1 24 15l2 16m-16-37q15 0 22 14l2 16" fill="none" stroke="#debf85" stroke-width="1.4"/>
+    <path d="m20 57 2 15 3 2-1-19m6-3 2 20m4-17 2 14" fill="none" stroke="#d0b17d" stroke-width="1.75"/>
+    <path d="m11 69 14 9 23-6 36-24v6L49 79l-24 4-14-9Z" fill="#ab875a" stroke-width="1.3"/>
+    <path d="m15 72 10 6 20-4" fill="none" stroke="#d7b780" stroke-width="1.1"/>
+  </g>
+  <g id="planter" transform="translate(96 96)">
+    <path d="m13 55 6-4 5 2 1 17-6 5-5-2Zm53-3 13-8v15l-8 9-5-3Zm-19 6 10-4-1 20-8 7-5-3Z" fill="#806449"/>
+    <path d="m10 44 34-23 41 9v24L53 78 11 69Z" fill="#ac855c"/>
+    <path d="m10 44 34-23 41 9-33 26Z" fill="#d1af80"/>
+    <path d="m16 44 29-19 33 7-27 19Z" fill="#705d43" stroke-width="1.2"/>
+    <path d="m22 44 13-9 8 1 5-6 9 3 14 1-20 15Z" fill="#8b7758" stroke="none"/>
+    <path d="m12 47 37 9v7l-35-8Z" fill="#bf986d" stroke="none"/>
+    <path d="m52 56 33-25-1 23-31 23Z" fill="#92704f"/>
+    <path d="m12 56 40 10 31-23m-71 22 37 9" fill="none" stroke="#775d43" stroke-width="1.2"/>
+    <path d="m16 46 4 1 1 22-4-1Zm28 8 4 1v20l-4-1Zm32-16 4-3v22l-4 3Z" fill="#987552" stroke-width="1.05"/>
+    <path d="M39 42q-8-2-10-9 8 1 10 9Zm0-1q4-9 9-9-1 7-9 9Z" fill="#7f8967" stroke="#626c52" stroke-width="1.05"/>
+    <path d="M60 37q-6-2-6-7 6 2 6 7Zm0 0q3-6 6-5-1 4-6 5Z" fill="#9aa180" stroke="#687059" stroke-width="1.05"/>
+    <path d="m26 53 10 2m24 11 8-6" fill="none" stroke="#c8a478" stroke-width="1.15"/>
+  </g>
+  <g id="incense" transform="translate(192 96)">
+    <path d="m31 63-2 10-6 6q3 6 10 2l7-14Zm27-1 1 10 6 9 6-1 1-3-6-7-1-9Zm-12 4v8l4 4 4-3-1-10Z" fill="#8d7955"/>
+    <path d="M23 47Q13 33 12 43q-3 7 9 14l2 5q-17-5-15-19 1-16 12-9l8 10Z" fill="#b09765"/>
+    <path d="M70 42q7-16 13-10 7 8-6 22l-7 3v-6q12-10 10-16-4-2-8 11Z" fill="#ad9668"/>
+    <path d="M19 49q0 17 11 22 15 8 32 1 14-6 14-25l-13-6-34 1Z" fill="#aa9060"/>
+    <path d="M23 52q0 12 12 16l8 4q-15-2-20-10l-3-10Z" fill="#c9b07b" stroke="none"/>
+    <path d="M64 53q-3 14-16 19l-9 2q19 4 31-8 5-6 5-15Z" fill="#86744f" stroke="none"/>
+    <ellipse cx="47" cy="47" rx="28.5" ry="8.2" fill="#d2bb88"/>
+    <ellipse cx="47" cy="46.6" rx="24.3" ry="5.3" fill="#8c866e" stroke-width="1.1"/>
+    <path d="m37 46-8-28 1-1 9 28Zm13 1-2-34 1-1 3 34Zm9-2 6-28 1 1-5 27Z" fill="#a77f53" stroke="#7e684b" stroke-width="1.15"/>
+    <path d="m29 18-1-4m20 0-1-4m18 8 1-4" fill="none" stroke="#aa5944" stroke-width="1.65"/>
+    <path d="M28 54q16 5 36-1m-29 14 6 2m19 3-3 2" fill="none" stroke="#75674d" stroke-width="1.15"/>
+  </g>
+</svg>

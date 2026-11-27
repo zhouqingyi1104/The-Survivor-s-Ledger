@@ -795,7 +795,7 @@
       "tier": "ui",
       "mode": "window",
       "timeout_seconds": 180,
-      "success_regex": "(?m)^\\[inventory_ui\\] [1-9][0-9]* 项检查，完成 5/5，失败 0 处\\r?$"
+      "success_regex": "(?m)^\\[inventory_ui\\] [1-9][0-9]* 项检查，完成 6/6，失败 0 处\\r?$"
     },
     {
       "id": "journal_tabs",

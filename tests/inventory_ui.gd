@@ -5,6 +5,7 @@ const Demo = preload("res://scripts/dev/demo.gd")
 const Data = preload("res://scripts/core/data.gd")
 const State = preload("res://scripts/core/state.gd")
 const Post = preload("res://scripts/core/post.gd")
+const Art = preload("res://scripts/ui/inventory_art.gd")
 const CATEGORIES := ["食", "菜", "水", "药", "粮", "柴炭", "守具", "材", "种", "器", "书", "杂"]
 const SHOTS := "res://build/inventory-art-qa/shots"
 var main: Control
@@ -164,7 +165,7 @@ func _ready() -> void:
 			first = arg.trim_prefix("--from=")
 			start = false
 	var selected := 0
-	for test in [test_gallery, test_use_refresh, test_empty_escape, test_guest, test_unknown_fallback]:
+	for test in [test_gallery, test_use_refresh, test_empty_escape, test_guest, test_unknown_fallback, test_related_menus]:
 		if str(test.get_method()) == first: start = true
 		if not start or (only != "" and str(test.get_method()) != only): continue
 		selected += 1
@@ -186,6 +187,7 @@ func test_gallery() -> void:
 	for id in Data.table("items"):
 		if not check(art.has(id), "当前物品回退到代码图标：" + id): return
 		check(art[id].texture != null, "插画纹理为空：" + id)
+		check(art[id].texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS, "卡片未使用缩略采样：" + id)
 		check(art[id].custom_minimum_size == Vector2(72, 72) and art[id].size == Vector2(72, 72), "插画尺寸不为 72×72：" + id)
 		check(cards()[id].custom_minimum_size.x == 190, "卡片宽度合同改变：" + id)
 		check(icon_views(cards()[id]).is_empty(), "当前物品卡仍混入代码图标：" + id)
@@ -299,4 +301,50 @@ func test_unknown_fallback() -> void:
 	check(future.find_children("*", "TextureRect", true, false).is_empty(), "未知物品误用已知插画")
 	future.free()
 	items.erase(id)
+	finished += 1
+
+func shows_icon(nodes: Array, texture: Texture2D, pixels: int) -> bool:
+	for node: TextureRect in nodes:
+		if node.texture == texture and node.custom_minimum_size == Vector2(pixels, pixels):
+			return node.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	return false
+
+func test_related_menus() -> void:
+	await fixture(stock_all())
+	await close_modals()
+	Dialogs.cook()
+	await frames()
+	if not check(main.has_modal("cook"), "灶房未打开"): return
+	var dishes: Array = main._modals.cook.find_children("*", "TextureRect", true, false)
+	for id in Data.table("recipes"):
+		if not check(shows_icon(dishes, Art.texture(id), 44), "灶房缺少同款菜图：" + id): return
+	await shot("cook")
+	await close_modals()
+	Dialogs.furnish()
+	await frames()
+	if not check(main.has_modal("furnish"), "家具页未打开"): return
+	var icons: Array = main._modals.furnish.find_children("*", "TextureRect", true, false)
+	var required_materials := {}
+	for id in Data.table("furniture"):
+		if not check(shows_icon(icons, Art.furniture(id), 52), "家具页图格不匹配：" + id): return
+		for material in Data.table("furniture")[id].get("cost", {}):
+			required_materials[material] = true
+	for material in required_materials:
+		check(shows_icon(icons, Art.texture(material), 22), "家具用料缺少同款缩略图：" + material)
+	var viewport: ScrollContainer = main._modals.furnish.find_children("*", "ScrollContainer", true, false)[0]
+	var captured := {}
+	var page := 0
+	while true:
+		var bounds := viewport.get_global_rect().intersection(get_viewport().get_visible_rect())
+		for node in icons:
+			if node.custom_minimum_size == Vector2(52, 52) and bounds.encloses(node.get_global_rect()):
+				captured[node.texture] = true
+		await shot("furniture-%02d" % page)
+		var bar := viewport.get_v_scroll_bar()
+		var end := maxi(0, floori(bar.max_value - bar.page))
+		if viewport.scroll_vertical >= end: break
+		viewport.scroll_vertical = mini(end, viewport.scroll_vertical + maxi(52, int(bounds.size.y) - 100))
+		await frames()
+		page += 1
+	check(captured.size() == 18, "家具实窗仅完整覆盖 %d/18 件" % captured.size())
 	finished += 1

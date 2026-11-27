@@ -1,6 +1,5 @@
 extends RefCounted
-## 家中存货专用插画。其它入口与家具继续使用原来的 IconArt。
-## 图集按固定 4×4 等格读取，不修改或裁写源 PNG；来源见 docs/47。
+## 物资与家具的二维插画。每格 288 像素，源稿与烘焙方法见 docs/47。
 
 const RICE = preload("res://assets/ui/inventory/rice.png")
 const NAILS = preload("res://assets/ui/inventory/nails.png")
@@ -19,6 +18,11 @@ const ITEMS := {
 const COLUMNS := 4
 const ROWS := 4
 static var _textures := {}
+const FURNITURE_SHEET = preload("res://assets/ui/inventory/furniture_atlas.png")
+const FURNITURE := ["stove", "bed", "desk", "bench", "storage", "rice_jar",
+	"pickle_jar", "smoke_rack", "brazier", "rat_trap", "planter", "incense",
+	"bookshelf", "water_vat", "screen", "armchair", "tea_table", "bamboo"]
+static var _furniture := {}
 
 
 static func ids() -> Array:
@@ -44,12 +48,23 @@ static func texture(id: String) -> Texture2D:
 	for group in ITEMS:
 		var index: int = ITEMS[group].find(id)
 		if index < 0: continue
-		var sheet: Texture2D = SHEETS[group]
-		var cell := sheet.get_size() / Vector2(COLUMNS, ROWS)
-		var art := AtlasTexture.new()
-		art.atlas = sheet
-		art.region = Rect2(Vector2(index % COLUMNS, index / COLUMNS) * cell, cell)
-		art.filter_clip = true
-		_textures[id] = art
-		return art
+		_textures[id] = _region(SHEETS[group], index, COLUMNS, ROWS)
+		return _textures[id]
 	return null
+
+
+static func furniture(id: String) -> Texture2D:
+	if not _furniture.has(id):
+		var index := FURNITURE.find(id)
+		if index < 0: return null
+		_furniture[id] = _region(FURNITURE_SHEET, index, 3, 6)
+	return _furniture[id]
+
+
+static func _region(sheet: Texture2D, index: int, columns: int, rows: int) -> AtlasTexture:
+	var size := sheet.get_size() / Vector2(columns, rows)
+	var art := AtlasTexture.new()
+	art.atlas = sheet
+	art.region = Rect2(Vector2(index % columns, index / columns) * size, size)
+	art.filter_clip = true
+	return art

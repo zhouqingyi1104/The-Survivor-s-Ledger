@@ -58,6 +58,12 @@ func test_coverage() -> void:
 	check(not Art.has("") and Art.texture("") == null, "空 ID 返回错误插画")
 	check(Art.texture("rice").resource_path == "res://assets/ui/inventory/rice.png", "米袋原插画路径改变")
 	check(Art.texture("nails").resource_path == "res://assets/ui/inventory/nails.png", "铁钉原插画路径改变")
+	var furniture_ids: Array = Data.table("furniture").keys()
+	var illustrated := Art.FURNITURE.duplicate()
+	furniture_ids.sort()
+	illustrated.sort()
+	check(illustrated == furniture_ids and illustrated.size() == 18, "家具图集与真实家具表不一致")
+	check(Art.furniture("unknown_furnishing") == null, "未知家具误用已知插画")
 	finished += 1
 
 func test_regions() -> void:
@@ -83,6 +89,12 @@ func test_regions() -> void:
 		sheets[atlas.atlas.resource_path] = true
 	check(occupied.size() == 55, "新增插画的唯一图集区域不是 55 个")
 	check(sheets.size() == 4, "新增插画没有使用四张图集")
+	for i in Art.FURNITURE.size():
+		var id: String = Art.FURNITURE[i]
+		var tile := Art.furniture(id) as AtlasTexture
+		if not check(tile != null and tile.filter_clip and tile.atlas == Art.FURNITURE_SHEET, "家具图格或留白保护缺失：" + id): return
+		var cell := Vector2(288, 288)
+		check(tile.region == Rect2(Vector2(i % 3, i / 3) * cell, cell), "家具图格未对齐：" + id)
 	finished += 1
 
 func source_image(texture: Texture2D) -> Image:
@@ -91,12 +103,13 @@ func source_image(texture: Texture2D) -> Image:
 	return image_cache[path]
 
 func test_pixels() -> void:
-	for id in Art.ids():
-		var texture: Texture2D = Art.texture(id)
+	for id in Art.ids() + Art.FURNITURE:
+		var texture: Texture2D = Art.furniture(id) if id in Art.FURNITURE else Art.texture(id)
 		var atlas := texture as AtlasTexture
 		var source: Texture2D = atlas.atlas if atlas != null else texture
 		var image := source_image(source)
 		if not check(image != null and not image.is_empty(), "插画像素为空：" + id): return
+		if not check(image.has_mipmaps(), "插画缺少缩略采样层：" + id): return
 		if image.is_compressed():
 			if not check(image.decompress() == OK, "插画解压失败：" + id): return
 		# 原生图集可以是 1254px 等尺寸；浮点等格边界要向外覆盖，不能截断漏扫。

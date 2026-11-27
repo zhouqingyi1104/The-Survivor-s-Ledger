@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="384" viewBox="0 0 384 384" stroke-linecap="round" stroke-linejoin="round">
+
+  <g id="flatbread" transform="translate(0 0)">
+    <!-- The torn top separates from its neighbour at the oven seam. -->
+    <path d="M13 52c4-11 22-16 42-13 15 2 26 9 27 18 1 11-14 17-31 18-19 2-35-3-38-11-2-4-2-8 0-12Z" fill="#be925e" stroke="#604a36" stroke-width="1.8"/>
+    <path d="M14 53c5-8 23-13 40-10 13 1 23 7 27 12-2 9-16 15-34 16-16 0-27-4-33-11Z" fill="#dfb880"/>
+    <path d="M22 66c8 4 24 6 39 3m4-1 7-2" fill="none" stroke="#96774d" stroke-width="1.1"/>
+    <path d="M14 42c5-12 21-20 36-21 4 0 9 0 12 2l-1 4 6 1-1 5 5 2 1 4 6 1c2 8-2 15-9 20-9 7-24 10-37 7-14-3-22-13-18-25Z" fill="#bf915e" stroke="#604a36" stroke-width="1.8"/>
+    <path d="M15 42c5-11 20-19 35-20 4-1 7 0 10 1l-1 5 6 1-1 5 5 2 1 4 6 1c1 6-3 12-10 16-10 6-23 9-35 5-13-4-19-11-16-20Z" fill="#e7c18a"/>
+    <path d="M60 23v4l7 1-1 5 6 2v4l6 1-1 5-6-2-2-4-6-2 1-5-6-2Z" fill="#f7e6bd"/>
+    <path d="M18 43c1-7 8-12 15-14-1 3-4 4-4 6-5 1-6 5-11 8Zm14 12c3-3 7-3 9-5 3-4 9-6 12-5l-5 3c-1 4-5 4-8 7-2 2-6 2-8 0Z" fill="#c49864"/>
+    <path d="M48 26c4-2 8-2 11-1l-2 3c-4 0-6 1-9 2Zm8 31c5-1 8-5 12-5-2 4-6 7-11 8Z" fill="#cfaa73"/>
+    <path d="M23 47c0-4 3-7 6-9m12 8c3-3 8-5 12-5m-20 9 3-.7" fill="none" stroke="#f4d9a9" stroke-width="1.7"/>
+    <path d="M61 29c1 0 2 1 2 2m4 4 1 1m4 3 2 2m-49 5 2-.7m1-6 2-.6m18-7 2-.4" fill="none" stroke="#b9946e" stroke-width="1.12"/>
+  </g>
+
+  <g id="pickles" transform="translate(96 0)">
+    <!-- Small open preservation crock with folded mustard greens. -->
+    <path d="M22 32c2 5 8 8 9 12-10 7-14 16-11 25 3 10 13 15 29 15 17 0 27-7 29-17 1-9-3-17-12-23 1-4 7-7 9-12Z" fill="#b68360" stroke="#584638" stroke-width="1.8"/>
+    <path d="M68 48c8 6 11 15 6 24-4 7-13 10-25 11 11-5 16-12 18-18 2-6 2-12 1-17Z" fill="#9e6e51"/>
+    <path d="M27 49c-5 8-5 17-1 22 4 6 11 8 19 9-11-6-13-10-14-16-1-6 1-11 4-16Z" fill="#d1a77f"/>
+    <path d="M23 57c13 5 35 5 52-2l2 5c-14 7-39 9-56 3Z" fill="#80634b"/>
+    <path d="M24 59c11 4 19 5 27 4m7-1 13-3" fill="none" stroke="#c19d74" stroke-width="1.1"/>
+    <path d="M22 31c0-5 12-10 27-10 15-1 26 3 26 9 0 7-12 13-27 13-15 0-26-5-26-12Z" fill="#d6b088" stroke="#584638" stroke-width="1.7"/>
+    <path d="M26 31c0-4 9-7 23-8 12 0 21 2 22 7-2 5-13 9-24 9-12 1-19-3-21-8Z" fill="#70563c"/>
+    <path d="M29 33c3-3 8-4 13-3l-5-5c1-3 5-7 9-6l8 7 7-3 8 4-7 6-6 2-5-4-5 3-4 4c-4 0-9-1-13-5Z" fill="#9ca365" stroke="#5b6648" stroke-width="1.2"/>
+    <path d="M44 25c2-5 4-10 10-12l7 2-2 6-7 2-4 7Z" fill="#adb479" stroke="#67704c" stroke-width="1.2"/>
+    <path d="m36 33 7-1m11-3 7-2m-13-2 7-8" fill="none" stroke="#6f784c" stroke-width="1.2"/>
+    <path d="M24 40c6 5 15 7 25 6m9-1 9-3m-33 32c5 3 11 4 16 3" fill="none" stroke="#866048" stroke-width="1.1"/>
+  </g>
+
+  <g id="jerky" transform="translate(192 0)">
+    <!-- Hemp cord pierces the smoked rind. Fat twists with the hanging belly. -->
+    <path d="M51 26c5-7 5-11 2-15-4-5-10-2-11 2-1 4 2 7 6 11l-2 2c-5-5-8-9-6-15 2-6 9-8 15-3 6 6 4 12-2 20Z" fill="#bea17a" stroke="#705b42" stroke-width="1.3"/>
+    <path d="M47 21c3-4 9-5 17-1l7 4-2 9c-4 4-3 9-4 14-2 10-8 15-12 21-4 8-6 11-12 15-4 3-10 2-16-2-5-2-9-5-9-8 2-6 8-10 9-17 3-8 7-14 12-20 5-8 4-12 10-15Z" fill="#8e5140" stroke="#533e33" stroke-width="1.8"/>
+    <path d="M46 23c3-3 6-4 9-4-2 6-7 10-7 16-1 7-8 16-11 20-4 5-4 12-9 19l-4 5-7-5c3-5 7-10 9-16 2-8 6-13 11-20 6-7 5-11 9-15Z" fill="#bf8060"/>
+    <path d="M47 22c-2 9-8 17-11 21-5 7-6 13-8 20-2 4-5 9-8 13l4 3c7-9 9-15 10-19 1-8 8-15 11-21 3-7 3-12 7-18Z" fill="#e0b78c"/>
+    <path d="M53 26c-2 6-3 13-8 20-5 6-6 13-8 20-2 4-5 8-8 13 4 3 7 4 11 4 5-6 7-12 11-17 6-10 12-16 11-26 0-5 4-10 6-13l-8-4Z" fill="#a15f49"/>
+    <path d="M57 28c-2 6-2 11-5 15-4 6-6 8-8 16-1 6-3 8-6 12l-4 10 5 2c4-7 5-11 9-16 6-7 5-13 8-19 4-8 4-14 7-20Z" fill="#deb792"/>
+    <path d="M65 29c-3 8-3 12-4 20-3 7-7 11-12 19-4 5-4 11-9 15l4-1c6-4 8-11 14-18 6-7 10-13 10-20 0-8 5-14 3-20Z" fill="#744c3c"/>
+    <path d="M45 23c3-4 10-6 17-3l8 4-5 4c-7-5-12-1-17 2Z" fill="#865b43" stroke="#694734" stroke-width="1.1"/>
+    <path d="M48 25c1-2 4-3 5-2l-2 3Z" fill="#513f32"/>
+    <path d="M50 25c0-3-2-5-3-7m-8 26-3 6m-7 17-3 5m22-16 3-5" fill="none" stroke="#b18b66" stroke-width="1.2"/>
+    <!-- A cut end set down beside the hanging strip. -->
+    <path d="M57 70c4-7 12-11 18-10l7 4c1 4-5 10-12 14-5 3-11 4-15 2l-4-4Z" fill="#92553f" stroke="#634737" stroke-width="1.4"/>
+    <path d="M55 73c5-6 14-12 20-11l5 2-4 3c-7 0-11 8-20 10l-3-1Z" fill="#dcb48d"/>
+    <path d="M60 73c4-2 8-5 11-7" fill="none" stroke="#a6694d" stroke-width="1.1"/>
+    <path d="M48 34c-2 5-6 9-8 14m4-2-3 9m-4 4c0 4-2 8-5 11M60 38c-1 7-5 12-6 18m-7 3c-1 5-4 8-6 11m-2 3-2 4M19 73c4-3 6-7 8-11" fill="none" stroke="#c88c6d" stroke-width="1.14"/>
+    <path d="M31 60c1-5 4-7 6-10l2-5m3-5c1-3 3-5 5-7m6 11c4-4 4-6 4-9m-5 15c-1 4 0 6-3 9m19 10 5-4m-17 13c5-1 9-4 12-6" fill="none" stroke="#efd0a5" stroke-width="1.12"/>
+    <path d="m41 13 2 1m0-4 1 1m8-2-1 1m4 2-1 1" fill="none" stroke="#e1c299" stroke-width="1"/>
+  </g>
+
+  <g id="egg" transform="translate(288 0)">
+    <path d="M59 14c9-1 19 11 22 23 3 13-1 25-11 27-11 3-22-6-25-17-4-14 3-32 14-33Z" fill="#e9d5af" stroke="#6f5742" stroke-width="1.7"/>
+    <path d="M68 21c12 9 16 25 12 35-3 7-9 9-14 8 8-8 12-22 2-43Z" fill="#d4bc95"/>
+    <path d="M61 18c-6 1-11 10-12 18" fill="none" stroke="#f9edd7" stroke-width="2.3"/>
+    <path d="M33 26c9 0 17 14 17 27 0 11-6 22-16 23-11 2-21-5-22-18-2-14 10-32 21-32Z" fill="#d7b08c" stroke="#674f40" stroke-width="1.8"/>
+    <path d="M31 29c-8 2-17 18-16 28 0 9 5 14 9 16-4-12-2-30 10-42Z" fill="#ebc8a2"/>
+    <path d="M45 47c6-7 21-5 30 3 11 8 12 18 7 25-6 9-20 12-30 7-12-5-15-23-7-35Z" fill="#e9d5af" stroke="#6f5742" stroke-width="1.7"/>
+    <path d="M70 48c11 4 16 13 13 22-3 8-12 13-22 13 9-4 15-12 16-19 1-6-2-11-7-16Z" fill="#d4be9b"/>
+    <path d="M46 51c3-5 7-6 12-6m8 35c6-1 10-4 13-8" fill="none" stroke="#c2a989" stroke-width="1.15"/>
+    <path d="m27 36 1-.5m7 25 1 .5m30-32 1 1m-15 24 .5 .5" stroke="#ab8564" stroke-width="1.5"/>
+  </g>
+
+  <g id="cabbage" transform="translate(0 96)">
+    <path d="M24 64c-10-5-12-14-8-18-6-8-1-16 5-16-2-8 5-14 12-12 1-8 11-11 16-5 5-7 13-3 15 2 8-3 15 2 14 11 7 4 8 11 4 17 4 10-1 16-9 20-10 4-19 11-25 19-5 5-15 4-21-2-4-6-5-9-3-16Z" fill="#93a568" stroke="#4e6249" stroke-width="1.8"/>
+    <path d="M31 68c-6-6-16-15-11-25l4-2c-4-5-3-10 2-14l4 2c-2-6 1-9 6-8 9 5 12 18 10 29Z" fill="#adba78"/>
+    <path d="M45 57c1-14 0-26 9-36l4 1c1-7 6-8 9-5l1 4c6-1 9 2 8 6l-3 5c6-2 9 2 7 7-3 9-14 13-20 22Z" fill="#899e69"/>
+    <path d="M31 80c-6-4-7-8-7-12 3-4 1-11 0-17-1-5-2-11-1-14 2 7 5 8 7 13 3 7 6 7 8 12 5-11 9-21 8-37 4 5 4 10 4 15l7-14c-1 17-7 29-12 42 13-11 20-17 31-21-7 9-19 16-27 29l-5 7c-3 3-10 2-13-3Z" fill="#e8e6c8" stroke="#7d8965" stroke-width="1.1"/>
+    <path d="M26 74c3 3 7 3 12 7l7-2-2 4c-4 4-13 0-17-5Z" fill="#c5c6a1"/>
+    <path d="M33 73c-5-12-4-18-6-22m11 23c5-13 8-25 10-37m-3 36c6-9 14-16 20-20M58 48l11-13-1-6m-26 8-6-9m25 15 8-1" stroke="#81906e" stroke-width="1.15" fill="none"/>
+  </g>
+
+  <g id="radish" transform="translate(96 96)">
+    <path d="M49 36c0-9-6-16-6-21l4-4 3 6 3-4c4 2 4 6 3 10l2 5-3 7Z" fill="#819567" stroke="#53664a" stroke-width="1.45"/>
+    <path d="M53 35c3-10 5-19 12-24l4 3 4-3 2 3-4 6-6 2-3 7-5 8Z" fill="#a0ad6c" stroke="#596d50" stroke-width="1.5"/>
+    <path d="M56 37c5-7 12-11 18-11l2 3 7-1 2 4-6 3-4-1-5 4-9 1Z" fill="#789363" stroke="#526c4e" stroke-width="1.45"/>
+    <path d="M51 34c-3-7-9-11-16-12l-2 3 7 6-1 2 11 7Z" fill="#a2ac74" stroke="#60734e" stroke-width="1.4"/>
+    <path d="M48 32c-8 3-12 10-15 17-7 14-14 25-21 30l4 1-6 6c12-4 22-10 34-17 11-7 22-17 23-26 1-7-9-14-19-11Z" fill="#dedfcd" stroke="#65715b" stroke-width="1.65"/>
+    <path d="M37 44c4-9 11-13 18-12 6 0 10 4 11 8 0 4-1 7-4 9-1-3-4-5-6-6l-3 2-3-4-4 2-2-3Z" fill="#b3be86"/>
+    <path d="M14 80c6 0 15-6 22-10 14-8 25-21 29-30 3 7-1 14-7 20-13 12-29 19-44 22Z" fill="#c1c3a9"/>
+    <path d="m38 48 5 3m-10 7 4 3m9-1 3 1m-22 9 3 1m24-33 5-11 5-7m-9 20 10-7" fill="none" stroke="#8e9776" stroke-width="1.2"/>
+  </g>
+
+  <g id="chive" transform="translate(192 96)">
+    <g stroke="#53684a" stroke-width="1.2">
+      <path d="M24 74C37 53 41 25 46 12c1 20-5 42-16 65Z" fill="#94a76e"/>
+      <path d="M27 72C44 48 49 21 64 9c-4 10-6 17-11 25-5 16-13 30-21 42Z" fill="#748e61"/>
+      <path d="M28 75c19-26 36-43 54-48-21 18-35 32-48 51Z" fill="#849864"/>
+      <path d="M24 71c6-19 8-37 3-55 13 17 8 39 3 58Z" fill="#718865"/>
+      <path d="M28 71c13-24 18-45 25-54l4-3-2 11c-7 17-9 31-21 48Z" fill="#a3b077"/>
+      <path d="M30 73c15-17 24-36 39-52l10-8c-7 11-11 18-17 26-10 13-16 27-26 38Z" fill="#687f53"/>
+      <path d="M28 74c15-24 36-32 54-34-16 8-33 18-47 37Z" fill="#94a56b"/>
+      <path d="M20 71c5-17 3-27-1-42 12 11 10 30 8 44Z" fill="#9dac74"/>
+    </g>
+    <path d="m23 62 15 8-7 9-4-1-5 7-4-2 3-6-5 4-3-3 5-8-2-2Z" fill="#d9d3a4" stroke="#687453" stroke-width="1.5"/>
+    <path d="m21 61 19 7-3 5-20-8Z" fill="#c29a6c" stroke="#725d44" stroke-width="1.3"/>
+    <path d="m21 64 14 8m-9-4-5 10m8-8-6 10m11-10c5-1 8 0 9 3-1 3-5 3-8 1l2 7" fill="none" stroke="#87714e" stroke-width="1.1"/>
+  </g>
+
+  <g id="lingzhi" transform="translate(288 96)">
+    <path d="M28 77c8-6 15-12 17-23 1-7-2-13 1-20l10 1c-3 6-1 11-1 18 2 12-7 25-18 30-6 3-12-1-9-6Z" fill="#b57751" stroke="#654a38" stroke-width="1.7"/>
+    <path d="M33 78c10-8 15-16 15-26l2 1c0 13-6 21-14 26Z" fill="#dbac77"/>
+    <path d="M38 67c-4-7-10-11-17-13l3-7c11 1 20 9 22 16Z" fill="#b77c52" stroke="#72513d" stroke-width="1.2"/>
+    <path d="M43 30c-4-6 2-14 11-15 5-5 12-4 17-1 8 1 14 7 13 14 2 6-1 13-7 17-5 5-12 6-17 4-5 2-11 0-13-4-4-4-4-9-4-15Z" fill="#deab72" stroke="#624436" stroke-width="1.8"/>
+    <path d="M46 29c-3-6 4-11 10-11 5-4 11-3 15 0 7 1 11 6 9 12 1 8-7 14-14 14-6 4-17 0-18-5 0-5-1-7-2-10Z" fill="#ac6145"/>
+    <path d="M47 29c3-3 9-3 12 2l1 4c6 0 11-3 13-8 3 8-6 14-14 14-7 0-10-5-12-12Z" fill="#844a38"/>
+    <path d="M52 23c4-4 8-5 13-3m7 2c4 2 5 5 4 8m-11 11c-4 1-7 1-10 0" fill="none" stroke="#d49162" stroke-width="1.4"/>
+    <path d="M15 39c8-7 17-8 24-4 5 4 5 10 1 13-1 6-8 10-16 10-5 0-9-2-13-5-4-5-1-10 4-14Z" fill="#d9a66c" stroke="#684735" stroke-width="1.75"/>
+    <path d="M14 43c6-8 17-10 24-5 4 5-1 9-3 11-8 6-19 6-23 1-1-2-1-4 2-7Z" fill="#aa6143"/>
+    <path d="M15 48c6-3 9-4 13-7m-9 10c5 1 11-1 15-4" fill="none" stroke="#da9b66" stroke-width="1.25"/>
+  </g>
+  <g id="water" transform="translate(0 192)">
+    <!-- Water from the courtyard well, with a forged bail and two hoop bands. -->
+    <path d="M20 48c-3-17 3-33 15-37 12-5 25 4 31 19l-3 2c-6-15-16-22-26-18-11 4-16 17-14 32Z" fill="#867d6a" stroke="#5b574b" stroke-width="1.4"/>
+    <path d="M18 41c4-5 12-8 26-9 17-1 28 2 34 8l-7 33c-2 6-12 10-25 10-13-1-21-4-23-10Z" fill="#b69975" stroke="#5b5041" stroke-width="1.8"/>
+    <path d="m24 46 10 3 4 31-10-4Zm24 5 14-2-3 31-10 2Z" fill="#c4aa82"/>
+    <path d="m66 48 9-5-7 30-7 5Z" fill="#92785d"/>
+    <path d="M33 50c1 9 2 19 4 27m11-25 1 28m14-30-3 27" stroke="#8f785d" stroke-width="1.1" fill="none"/>
+    <path d="M20 52c15 7 38 8 55-1l-1 5c-16 8-39 7-53 0Zm3 17c13 7 31 9 49 0l-1 5c-15 8-32 7-47 0Z" fill="#686b61" stroke="#55594f" stroke-width="1.05"/>
+    <path d="M17 41c0-7 13-13 30-13 18-1 31 4 32 11 0 8-13 14-30 15-17 0-31-5-32-13Z" fill="#cdb596" stroke="#665745" stroke-width="1.6"/>
+    <path d="M21 41c0-5 11-9 26-10 15-1 26 3 28 8-2 5-12 10-27 10-14 1-25-3-27-8Z" fill="#83a3a0" stroke="#6a7062" stroke-width="1.3"/>
+    <path d="M22 41c7-7 19-6 27-7 8 0 16-2 23 3-11-3-18 0-25 2-8 1-16-1-22 4Z" fill="#c2d5c7"/>
+    <path d="M32 44c5 1 13 0 18-1m7-1 8-2" fill="none" stroke="#e3e7ce" stroke-width="1.4"/>
+    <path d="M20 38c3 0 5 3 4 5l-1 9c-1 2-4 2-5 0l-1-11Z" fill="#746d5c" stroke="#58594e" stroke-width="1.1"/>
+    <circle cx="20.8" cy="48.5" r="1.2" fill="#c7b590"/>
+  </g>
+
+  <g id="congee" transform="translate(96 192)">
+    <!-- Plain celadon rice bowl, with the skin of the porridge breaking at the spoonful. -->
+    <path d="M37 71c5-4 17-4 24 0l-1 6c-5 4-17 5-23 1Z" fill="#c7c6ae" stroke="#67695b" stroke-width="1.4"/>
+    <path d="M14 39c-1 8 3 20 11 27 7 7 18 10 27 9 16-1 27-11 30-26l1-10Z" fill="#dedfcd" stroke="#5b6357" stroke-width="1.85"/>
+    <path d="M17 44c2 12 7 20 18 25-5-6-9-13-10-22Z" fill="#efead8"/>
+    <path d="M63 48c1 11-3 20-12 25 15-1 24-11 28-27Z" fill="#b5bcad"/>
+    <path d="M13 39c0-8 14-15 33-16s36 5 37 13c2 10-12 17-32 18-19 1-36-5-38-15Z" fill="#f1ead2" stroke="#5b6357" stroke-width="1.8"/>
+    <path d="M18 39c1-6 14-12 29-12 16-1 30 3 32 10 1 6-12 12-28 13-16 1-31-3-33-11Z" fill="#e2d6b7" stroke="#a6a48a" stroke-width="1.1"/>
+    <path d="M21 39c4-3 8-4 12-4 5-5 11-4 15-3 7-3 12-2 16 1 7-1 11 1 13 5-6 7-15 10-28 10-12 1-23-3-28-9Z" fill="#f3e9ce"/>
+    <g fill="none" stroke="#c2ac84" stroke-width="1.25">
+      <path d="M30 39q3-2 5 0m5-5q3-2 5-.4m9 2q3-2 5-.2m-18 7q4 1 6-1m13 1 4-1.4"/>
+    </g>
+    <path d="M21 48c7 4 16 6 24 6" fill="none" stroke="#849187" stroke-width="1.1"/>
+  </g>
+
+  <g id="millet_cake" transform="translate(192 192)">
+    <!-- Coarse millet bun, cut to reveal a warm yellow dense interior. -->
+    <path d="M12 54c-1-13 5-23 17-29 11-6 24-6 34-1 7 3 12 9 14 18l-12 18-30 9-21-6Z" fill="#bd8d4f" stroke="#624b35" stroke-width="1.8"/>
+    <path d="M13 51c1-9 5-18 16-24 11-5 24-7 34-2 7 3 11 9 13 17l-15 8-22 1-14 9-10-1Z" fill="#ddac60"/>
+    <path d="M16 48c5-12 16-22 33-23 8-1 14 1 18 5-12-1-18 1-25 7l-6 2-3 6-8 3-4 6Z" fill="#ecc584"/>
+    <path d="M27 36c5-4 12-6 19-7m-11 14 4-2m12-7 5-1m-28 16 2-1" fill="none" stroke="#c09758" stroke-width="1.35"/>
+    <path d="M31 58c5-8 13-14 22-18 8-4 17-3 24 2l6 13-13 15-26 9-15-8Z" fill="#d39954" stroke="#6b4f37" stroke-width="1.8"/>
+    <path d="M31 59c5-9 15-15 24-19 8-3 16-2 22 2l2 4c-11 0-17 5-24 8l-12 9Z" fill="#e5b773"/>
+    <path d="M32 59c8-4 15-3 20-7 7-5 17-10 25-10l6 13c-6 9-20 17-39 23l-14-8Z" fill="#eac17e" stroke="#966e45" stroke-width="1.25"/>
+    <path d="M34 62c7-4 14-4 20-8 7-5 13-9 21-9l2 3c-11 0-16 5-21 9-6 4-14 5-22 9Z" fill="#f2d499"/>
+    <path d="m42 66 3-2m9 2 3-2m3-7 2-1m8 1 3-2m4-4 2-1m-30 20 2-1" fill="none" stroke="#b38852" stroke-width="1.55"/>
+  </g>
+
+  <g id="veg_soup" transform="translate(288 192)">
+    <!-- Twin handles sit above the belly of this unglazed soup pot. -->
+    <path d="M21 42c-8-5-15-1-14 6 0 6 7 10 15 8l3-5c-7 2-13-1-13-4 0-2 3-3 8 0Z" fill="#a27556" stroke="#5f4b3b" stroke-width="1.65"/>
+    <path d="M74 39c6-6 13-5 15 1 3 6-3 12-10 14l-4-4c6-1 11-4 10-7-1-2-4-3-9 1Z" fill="#a27556" stroke="#5f4b3b" stroke-width="1.65"/>
+    <path d="M18 42c-2 7 0 20 8 28 7 7 19 9 32 7 14-2 23-10 23-21l-1-16Z" fill="#b68360" stroke="#5c4838" stroke-width="1.8"/>
+    <path d="M22 54c3 10 8 16 16 19-7-1-15-5-18-15Z" fill="#d2a781"/>
+    <path d="M18 46c12 9 43 12 62-2v5c-17 14-48 13-62 2Z" fill="#8c624a"/>
+    <path d="M16 41c-1-8 13-16 32-17 18-2 33 4 34 11 2 9-13 18-32 20-18 1-33-4-34-14Z" fill="#c69b71" stroke="#604b3a" stroke-width="1.7"/>
+    <path d="M20 41c0-6 12-12 28-14 16-1 29 3 30 9 1 6-11 13-28 15-15 1-29-3-30-10Z" fill="#a89e68" stroke="#7b7353" stroke-width="1.1"/>
+    <path d="M23 41c4-4 10-6 18-6 3-5 11-5 15-3 11-2 17 0 19 5-6 7-16 11-28 11-13 0-20-2-24-7Z" fill="#d2bc82"/>
+    <path d="M29 39c5-5 10-5 16-3l-4 7c-5 2-9 1-12-4Zm21-4c3-4 7-6 12-6l-2 6-6 4Zm5 9c3-5 8-7 14-7l-4 6-7 3Z" fill="#778a5e" stroke="#617450" stroke-width="1.05"/>
+    <path d="m34 40 6-2m14-3 5-3m-16 12 5-3" stroke="#c3cb90" stroke-width="1.5"/>
+    <path d="M30 68c5 3 13 5 22 4m5-1 8-2" fill="none" stroke="#8a624b" stroke-width="1.1"/>
+  </g>
+
+  <g id="fried_rice" transform="translate(0 288)">
+    <!-- Broad-rimmed dish. Three broken clumps rise behind the scattered, pan-browned rice. -->
+    <path d="M8 55c-1-10 17-20 38-21 22-2 40 4 42 14 3 11-13 24-37 26-23 3-41-5-43-15Z" fill="#aeb9a9" stroke="#55655e" stroke-width="1.8"/>
+    <path d="M8 52c0-10 17-20 39-21 21-2 38 3 40 14s-13 22-36 24C29 72 9 64 8 52Z" fill="#e6e5d2" stroke="#64766b" stroke-width="1.45"/>
+    <path d="M14 53c0-7 15-14 32-17 17-2 31 1 34 9 3 7-13 17-31 18-15 2-31-2-35-10Z" fill="#d5d7bc" stroke="#adb5a2" stroke-width="1.05"/>
+    <path d="M17 50c-1-3 1-6 4-7l3-1c-2-3 1-7 5-8l1-4c3-3 6-3 9-2 1-3 3-5 7-5l3-3c3-1 7-1 9 2 5-2 7 1 8 4 4 0 6 3 6 6 5 0 7 3 6 6l-2 4c4 2 2 6-1 7 1 3-4 6-8 5-3 4-6 4-9 3-2 4-8 4-11 2-4 3-9 3-11 1-4 1-8 1-10-2-6 0-9-2-8-6Z" fill="#c69e68" stroke="#77654b" stroke-width="1.45"/>
+    <path d="M20 45c3-4 6-4 9-4-2-3 0-6 4-6 0-5 5-7 9-6 0-3 4-5 7-4 3-4 7-3 9-2 3 0 5 2 4 4-4 1-3 5-7 5-2 3-6 3-8 3-1 4-5 6-9 5-2 4-7 7-10 6-3 3-6 2-8-1Z" fill="#e7c58a"/>
+    <path d="M48 43c2-3 5-4 8-4l3-4 6-1 2-3c5-1 8 2 7 6-2 2-4 4-8 3-2 4-5 3-7 5-5 2-9 2-11-2ZM25 53c4-4 7-3 10-4l4-3 6 1c2 2 0 5-3 5l-2 3-7 1-4 2Z" fill="#e4bd80"/>
+    <path d="m28 38 6-4 5 1-3 3-6 2Zm28 11 6-5 8-1-3 4-7 3Zm1-20 3-3 5 2-4 4Z" fill="#a76249" stroke="#8d5a3f" stroke-width="1.05"/>
+    <path d="m31 38 5-2m23 12 6-3" fill="none" stroke="#dbab81" stroke-width="1.1"/>
+    <path d="m37 32 4-4 4 2-4 3Zm12 15 4-4 4 .5-3 3Zm19-9 3-4 3 1-3 4Z" fill="#77875d"/>
+    <path d="m22 46 2-1m3-2 4-.5m6-3 1.5-2m4-1 4-1m3-7 3-1m4-3 2 .5m-5 8 3-2m8 4 2 .5m-26 17 3-1m4 4 3-.5m5-6 4-2m12 4 3-2m3-9 2-.5m-49 7 2 1" fill="none" stroke="#f8ddad" stroke-width="1.6"/>
+    <path d="m28 58 2 1m45-10 4-2m-18 13 3-1" stroke="#cdb080" stroke-width="1.6"/>
+    <path d="M12 58c4 5 11 8 21 9m28-1c8-2 15-5 20-10" fill="none" stroke="#7d9188" stroke-width="1.15"/>
+    <!-- Soft grain ridges collect on the upper faces with a shaded tuck just below them. -->
+    <g fill="#f0d8a4" stroke="#bca071" stroke-width=".75">
+      <path d="M25 46c.3-2.3 3.7-4 5.3-3.3-.1 2.1-3.1 3.8-5.3 3.3Zm8-4c.2-2 3.7-4.7 5.3-4.1-.1 2-3.2 4.4-5.3 4.1ZM37 34c1-2 3.8-3 5.7-2.3-.8 2.2-3.9 3.2-5.7 2.3Zm9-5c1.1-2.2 3.6-3.5 5.3-2.8-.6 2-3.3 3.6-5.3 2.8Z"/>
+      <path d="M37 50c1.1-2 4.3-3.1 6-2.4-.6 2.1-4 3.2-6 2.4Zm7.4 1.5c.6-2 3.3-3.6 5.3-3.1-.4 2-3.3 4-5.3 3.1Zm11-14c.6-2.1 3.4-3.7 5.4-3.1-.5 1.8-3.2 3.7-5.4 3.1ZM66 40c.8-2 3.5-3 5.7-2.1-.7 1.8-3.8 3-5.7 2.1Z"/>
+      <path d="M28 55c1.5-1.5 4.6-1.7 6.2-.6-1.3 1.7-4.5 2.1-6.2.6Zm25.7.2c.8-2 3.5-3.1 5.4-2.3-.5 1.8-3.3 3.1-5.4 2.3ZM72 47c.4-1.8 2.6-3.3 4.7-2.8-.2 1.9-2.8 3.6-4.7 2.8Z"/>
+    </g>
+    <path d="M24 50c2 1 3 1 4 0m13 8c2 .7 4 .6 6-.6m10-10c1 .2 3-.2 4-1m4-17 2-.5" fill="none" stroke="#9b7c54" stroke-width="1.05"/>
+  </g>
+
+  <g id="rice_cake" transform="translate(96 288)">
+    <!-- Powdered glutinous-rice cakes on a torn reed leaf; the cut shows red filling. -->
+    <path d="M9 63c8-9 20-18 35-22 13-3 29-3 40-1-9 19-22 30-41 36-15 4-24 2-34 0l10-8Z" fill="#9ca679" stroke="#6c7856" stroke-width="1.45"/>
+    <path d="M17 73c18-4 39-12 58-28m-31 22 3-7m-14 12 2-6" fill="none" stroke="#73855f" stroke-width="1.1"/>
+    <path d="M39 44c-1-10 7-20 18-21 10-2 21 4 24 13 4 9-1 18-11 21-12 5-30 0-31-13Z" fill="#e9d5af" stroke="#70634e" stroke-width="1.6"/>
+    <path d="M45 33c4-7 14-10 22-6 4 1 7 4 9 7-11-5-19-4-30 1Z" fill="#f7edd5"/>
+    <path d="M15 54c2-10 8-18 17-19 11-2 20 4 22 15 1 10-8 20-20 21-12 1-21-6-19-17Z" fill="#e9d5af" stroke="#73654e" stroke-width="1.75"/>
+    <path d="M18 53c2-8 8-14 15-15 7-2 14 2 16 6-10-4-22-1-29 10Z" fill="#f6eed9"/>
+    <path d="M43 64c2-9 5-15 12-18 10-5 21 0 25 8l1 6-10 10-17 4-11-3Z" fill="#d0b894" stroke="#7b6952" stroke-width="1.6"/>
+    <path d="M44 65c6-6 10-10 17-12 8-3 16-2 19 1l2 5c-1 8-10 14-22 17-7 2-15 0-18-4Z" fill="#f3e7ca" stroke="#8f7b5d" stroke-width="1.3"/>
+    <path d="M51 67c2-4 8-8 14-9 4-2 8-1 10 1 1 3-4 8-11 11-6 2-12 3-14 1Z" fill="#8b5550" stroke="#74534a" stroke-width="1.05"/>
+    <path d="m20 57 2-2m9-11 2-1m22-10 3-1m12 0 2 1" stroke="#c9bca1" stroke-width="1.1"/>
+  </g>
+
+  <g id="egg_soup" transform="translate(192 288)">
+    <!-- A taller blue-edged cup frames the pale, folded ribbons of cooked egg. -->
+    <path d="M37 72c3-4 18-6 24-1l-.5 6c-4 4-17 5-23 1Z" fill="#bac1b2" stroke="#5a665c" stroke-width="1.4"/>
+    <path d="M17 37c2 10 4 25 12 32 5 6 13 8 22 7 12-1 23-10 25-24l3-16Z" fill="#dedfcd" stroke="#55675f" stroke-width="1.85"/>
+    <path d="M22 48c5 2 11 4 15 3l4 21c-10-3-15-11-19-24Z" fill="#f2ead6"/>
+    <path d="M63 48c1 12-3 22-8 26 11-5 17-13 19-27Z" fill="#a8b5a8"/>
+    <path d="M17 38c9 10 42 16 62-3l-1 7c-18 15-46 13-60 2Z" fill="#526e74"/>
+    <path d="M17 35c.5-7 13-14 29-15 17-1 32 3 34 11 2 8-12 16-29 18-17 1-32-5-34-14Z" fill="#788f8b" stroke="#4c6266" stroke-width="1.65"/>
+    <path d="M21 35c0-5 11-10 26-11 15-1 27 2 29 8 1 6-10 12-25 13-16 2-28-3-30-10Z" fill="#d7b472" stroke="#ece0b8" stroke-width="1.5"/>
+    <path d="M26 36c2-4 6-6 11-6 6 2 8-3 15-3l5 1-3 3c-6-1-9 5-16 4-4-1-7 3-12 1Zm14 5c3-5 7-6 13-6 6 1 6-4 12-5l5 1-2 3c-4 0-7 5-13 5-6-2-8 4-15 2Z" fill="#f7d68c" stroke="#bf9555" stroke-width="1"/>
+    <path d="m33 30 4 2m17 8 4-2m8-11 2 1" fill="none" stroke="#788261" stroke-width="1.7"/>
+    <path d="M28 58c3 2 6 2 8-1l2 8c-3 0-6-2-8-4m16-2c4 3 7 2 9-1m9-6c1 3 3 3 5 1M41 76c5 2 11 1 15 0" fill="none" stroke="#617d80" stroke-width="1.25"/>
+  </g>
+
+  <g id="eight_treasure" transform="translate(288 288)">
+    <!-- The dessert is unmoulded onto a folded lotus leaf. Split red dates radiate from its crown. -->
+    <path d="M8 60c5-6 12-12 23-15l11-6 10 4c12-4 22-5 33-2-2 7-5 12-11 18l13 4c-10 7-19 11-30 12l-6 5-13-4c-13 1-22-4-30-9l12-3Z" fill="#8e9c75" stroke="#657352" stroke-width="1.55"/>
+    <path d="M15 61c9 0 20 2 31 5l-20 5m15-2-5 5m15-8 9 6m-3-8 22-1m-27 3 17-13" fill="none" stroke="#b2ba91" stroke-width="1.15"/>
+    <path d="M17 53c2-15 11-29 23-34 11-4 23-1 32 7 7 7 10 16 10 26-2 9-12 18-29 20-17 2-32-3-36-12Z" fill="#cbb298" stroke="#655740" stroke-width="1.75"/>
+    <path d="M19 51c3-14 10-25 23-30 11-3 21 0 28 7 6 6 10 14 10 22-3 10-14 15-28 17-16 1-29-2-33-10Z" fill="#e8d6b4"/>
+    <path d="M22 49c4-12 12-22 23-25 10-3 18-1 22 3-12-1-20 3-26 8-5 5-11 9-15 16Z" fill="#f1e0c1"/>
+    <path d="M39 27c1-6 7-10 14-9 5 1 6 5 1 8-4 4-12 6-15 1Zm-17 24c0-6 3-12 7-14 3-1 5 3 3 8-2 5-6 9-9 9Zm43-21c2-3 7 0 11 5 3 6 4 11 1 12-4 1-8-4-10-8-2-4-3-6-2-9ZM40 66c-2-3 2-8 6-11 4-3 8-4 10-2 2 3-1 7-5 10-5 4-9 5-11 3Z" fill="#9a584a" stroke="#794c40" stroke-width="1.2"/>
+    <path d="M42 27c4-1 8-5 10-6M24 50l4-9m41-8 5 10m-30 21 8-8" fill="none" stroke="#c68366" stroke-width="1.25"/>
+    <path d="M32 32c3-6 7-8 11-8-2 4-5 8-10 11Zm25-11c6-2 11 2 14 6-6 0-11-1-14-6Zm-19 32c1-5 4-8 9-9-1 4-4 8-8 11Z" fill="#98a077" stroke="#778460" stroke-width="1.1"/>
+    <path d="M20 59c2-4 6-7 10-5 2 3-2 7-7 8Zm35-14c2-4 5-6 8-5 3 1 3 4 0 7-3 3-7 4-9 2Z" fill="#ddba83" stroke="#aa885f" stroke-width="1.15"/>
+    <path d="m37 38 3-1m5-4 3-2m4 9 3-1m8 12 3-2m-30 8 3-1m9-14 2-2m13-19 3 1m7 29 3-2m-34 12 3-.5m21 1 3-1" fill="none" stroke="#faf0d4" stroke-width="1.65"/>
+  </g>
+</svg>
