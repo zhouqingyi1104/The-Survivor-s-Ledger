@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="320" viewBox="0 0 80 160">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2=".24" gradientUnits="objectBoundingBox">
+      <stop stop-color="#c9a264"/><stop offset=".23" stop-color="#dbb979"/>
+      <stop offset=".72" stop-color="#e1c386"/><stop offset="1" stop-color="#cfaa6b"/>
+    </linearGradient>
+  </defs>
+  <path d="M0 0H80V160H0Z" fill="url(#paper)"/>
+  <path d="M0 128Q30 123 80 125Q39 124 0 131Z" fill="#ae874f" opacity=".19"/>
+  <!-- 令 at the head of the strip. Stroke ends turn or lift in the direction of the brush. -->
+  <g fill="#883d2e">
+    <path d="M38 8C40 8 43 10 43 13 39 20 30 28 23 31 18 34 14 35 10 35 20 29 30 21 35 14 37 11 37 10 38 8Z"/>
+    <path d="M41 13C44 15 48 19 54 21 60 25 66 26 71 26L66 31C64 32 61 31 59 30 51 26 45 20 41 13Z"/>
+    <path d="M36 23C39 23 44 25 46 28 47 30 46 32 44 32 41 31 40 27 36 23Z"/>
+    <path d="M21 37C28 37 41 34 47 33 50 32 54 31 56 33L59 36C53 38 47 44 42 50L40 49C43 43 47 38 48 37 39 38 28 41 25 41 23 40 22 39 21 37Z"/>
+    <path d="M30 44C36 46 42 50 43 54 44 58 41 60 39 57 37 53 33 47 30 44Z"/>
+  </g>
+  <!-- The large linked figure is drawn in separate sweeps, leaving the intervening paper open. -->
+  <g fill="#793528">
+    <path d="M52 47C54 48 55 51 54 54 48 63 34 68 24 71 19 73 16 75 16 78 19 82 29 81 36 77 29 84 17 88 12 82 7 74 19 69 27 65 39 60 47 56 52 47Z"/>
+    <path d="M37 62C41 62 43 64 43 67 41 76 37 84 34 90 42 86 53 79 58 75 61 73 65 74 67 77 64 80 58 88 56 91L53 91 57 81C49 87 38 95 31 97 27 98 25 94 27 91 33 80 37 69 37 62Z"/>
+    <path d="M14 103C21 103 38 98 49 93 53 91 57 90 59 93 58 96 53 97 47 99L19 109C17 108 15 106 14 103Z"/>
+    <path d="M45 85C47 85 50 86 50 90 48 98 42 110 36 119 43 117 48 114 53 110 47 118 39 126 33 128 29 129 25 126 27 122 36 110 44 96 45 85Z"/>
+    <path d="M46 102C50 103 54 107 57 114 60 119 61 121 67 121 62 126 57 124 54 120 51 115 50 107 46 102Z"/>
+  </g>
+  <!-- A small relief impression closes the strip. Quiet margins keep it distinct at a distance. -->
+  <path d="M29 135 51 134 52 149 30 150Z" fill="#a24e38"/>
+  <g fill="none" stroke="#d8b572" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m39 137 1 1.4m-6 .6 13-.5-.7 2.2m-9.2 1.1 6.8-.2m-5.5-.8-2 3.4 6.2 2.6m.2-5.4q-.8 4.6-9 5.3"/>
+  </g>
+</svg>

@@ -1,5 +1,7 @@
 """Derive garment maps from the authored 413games costume UVs and Quaternius skin atlas."""
 from pathlib import Path
+import shutil
+import subprocess
 import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageOps
 
@@ -88,39 +90,14 @@ def moon_hat():
 
 
 def printed_panels():
-    def surface(sz,base):
-     rng=np.random.default_rng(829); y,x=np.mgrid[:sz[1],:sz[0]]
-     grain=rng.normal(0,2.1,(sz[1],sz[0]))+1.5*np.sin(x*.8)+1.2*np.sin(y*.94)
-     return Image.fromarray(np.uint8(np.clip(np.array(base)[None,None,:]+grain[:,:,None],0,255)))
-    im=surface((160,320),(195,155,91));d=ImageDraw.Draw(im)
-    ink=(133,49,33)
-    for path in [[(31,48),(51,22),(64,41),(77,15)],[(73,46),(90,18),(109,39),(123,25)],
-     [(80,30),(77,93),(95,78),(96,50)],[(38,91),(61,78),(81,90),(114,69)],[(68,92),(86,128),(59,141),(42,111)],
-     [(87,99),(98,128),(115,111)],[(50,153),(89,141),(113,151),(96,170),(59,170),(46,185)],
-     [(82,126),(76,177),(98,209),(63,238),(61,207)],[(50,195),(100,172)],[(43,215),(104,190)],[(64,240),(84,266),(111,241)]]:
-     d.line(path,fill=ink,width=5,joint='curve')
-    d.rectangle((54,273,103,304),outline=ink,width=3)
-    d.line([(63,278),(63,299),(92,299),(92,280),(77,280),(77,294)],fill=ink,width=3)
-    im.save(OUT/'ward_paper.png')
-    im=surface((256,256),(52,61,60));d=ImageDraw.Draw(im)
-    for inset,col,w in [(5,(152,124,77),4),(12,(112,90,62),3),(25,(173,143,91),2)]:
-     d.rectangle((inset,inset,255-inset,255-inset),outline=col,width=w)
-    for a in range(30,235,18):
-     for y in [15,233]:d.arc((a-3,y-4,a+9,y+6),0,273,fill=(170,137,80),width=2)
-    for x in [33,61,183]:
-     d.arc((x,84+(x%2)*7,x+42,106+(x%2)*7),175,350,fill=(146,138,104),width=3)
-    for yy in [185,195,205,215]:
-     for x in range(21,225,22):d.arc((x,yy-7,x+28,yy+9),170,345,fill=(103,131,126),width=3)
-    # Heron in flight, long neck, bent wing and trailing legs.
-    d.polygon([(54,72),(95,97),(136,112),(158,106),(145,121),(117,129),(96,120),(73,101)],fill=(204,191,151))
-    d.polygon([(101,119),(95,138),(74,163),(68,177),(91,169),(112,150),(134,126)],fill=(179,168,131))
-    for k in range(6):
-     d.line([(63+k*5,81+k*3),(109+k*4,111+k*2)],fill=(91,94,86),width=2)
-     d.line([(79+k*3,162+k%2*3),(108+k*4,130+k%2*2)],fill=(82,89,85),width=2)
-    d.line([(143,117),(161,112),(174,96),(176,86),(184,78),(192,81)],fill=(211,193,152),width=6)
-    d.polygon([(187,79),(213,85),(190,85)],fill=(159,117,71))
-    d.line([(113,126),(81,137),(51,142)],fill=(171,133,74),width=2);d.line([(120,126),(85,143),(55,150)],fill=(171,133,74),width=2)
-    im.save(OUT/'rank_badge.png')
+    """Bake the two paintings through the same SVG rasterizer used by the game."""
+    bundled = ROOT / 'tools/godot/Godot_v4.7.2-stable_win64_console.exe'
+    godot = bundled if bundled.is_file() else shutil.which('godot4') or shutil.which('godot')
+    if not godot:
+        raise RuntimeError('Godot 4 is required to bake costume panels')
+    subprocess.run([str(godot), '--headless', '--path', str(ROOT),
+                    '--script', 'res://tools/pipeline/bake_costume_panels.gd'], check=True)
+
 
 if __name__=='__main__':
     for kind in ['base','moon']:coat_atlas(kind)

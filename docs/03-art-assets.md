@@ -209,3 +209,7 @@ python -I tools/pipeline/synth_night_music.py build/night-music-qa --asset-path 
 身份、难度、誓约、心法、生死簿和结局共用江岸册页。渡棚和系舟落在左下，松石留在右侧，中央的水面与留白承接正文。底图由本项目使用图像生成工具制作，运行时按窗口等比裁切。[江岸册页](../assets/ui/ferry-album.png)
 
 宅院的劫余录、求签、存货、夜战、设置各有一枚器物图章。五格矢量源按比例缩放，日月表盘的十二时辰、指针和尸潮预警随游戏时间绘制。[图章源稿](../assets/ui/hud-seals.svg) · [时辰盘](../scripts/ui/widgets/clock_dial.gd)
+
+## 十一、尸影衣上的符与补子
+
+额符的朱笔和胸前的鹤补各有独立矢量原稿，输出为 160×320 和 256×256 的纹样。两套尸影模型共用这两张图。只更新符和补子时，可在项目根目录用 Godot 运行 `--headless --path . --script res://tools/pipeline/bake_costume_panels.gd`。[矢量原稿](../tools/pipeline/costume_panels/) · [烘焙脚本](../tools/pipeline/bake_costume_panels.gd)

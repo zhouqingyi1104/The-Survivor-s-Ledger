@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="silk" x2=".86" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#374d50"/><stop offset=".65" stop-color="#324646"/><stop offset="1" stop-color="#293e40"/>
+    </linearGradient>
+  </defs>
+  <path d="M0 0H256V256H0Z" fill="#303d3d"/>
+  <path d="M7 7H249V249H7Z" fill="url(#silk)" stroke="#af946a" stroke-width="5"/>
+  <path d="M13 13H243V243H13Z" fill="none" stroke="#776e53" stroke-width="2"/>
+  <circle cx="51" cy="40" r="11.5" fill="#b86c4d"/>
+  <path d="M163 62c5-2 10-5 14-6-3-7 3-13 9-12 4-8 16-8 20-2 3 4 1 8-2 9 6 0 11-4 14-2 4 3 1 7-3 8 7 0 14-2 19-1" fill="none" stroke="#9f9870" stroke-width="2.8" stroke-linecap="round"/>
+  <!-- Water washes around a pair of dark rocks. The outer line follows the shore. -->
+  <path d="M15 218c33 1 46-6 62-13 22-10 41-14 54-6-10-1-21 2-29 7 25-3 47-6 65-11 25-7 44-8 74-3v48H15Z" fill="#527273"/>
+  <path d="M15 229c27 1 55-7 77-16 12-4 19-4 30-3-13 1-23 5-28 8 28-4 55-2 89-14 18-6 41-7 58-5" fill="none" stroke="#a2aaa0" stroke-width="3" stroke-linecap="round"/>
+  <path d="M152 238c11-6 26-8 39-9 9-1 20-4 28-8-7 0-14 0-21 2 14-8 28-12 43-11" fill="none" stroke="#869a91" stroke-width="2.3"/>
+  <path d="M19 212c9-8 12-17 18-16l13-18 12 3 8 15 14 6c-14 4-22 11-32 13l-29 5Z" fill="#5e6460"/>
+  <path d="m27 207 11-10 11-17 11 2-8 12 12-1-7 7 11-1" fill="none" stroke="#ae9f7e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Legs, hocks and toes are separate silhouettes, planted at different depths. -->
+  <g fill="none" stroke="#b29f77" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m130 148 9 23-1 8 1 23-11 3m11-3 6 3" stroke-width="3.5"/>
+    <path d="m148 151 11 18-2 7-12 23 9-2m-9 2-6 4" stroke-width="3"/>
+  </g>
+  <!-- Red-crowned crane in profile: open bill, dark throat and long, curved neck. -->
+  <path d="M126 128c-15-2-30-9-35-20-6-14 5-28 10-38 3-6 2-12-2-14-4-2-9-2-13 0l-3-5c4-5 11-8 18-6 9 1 15 10 13 19-1 13-16 26-13 36 2 7 12 10 21 10Z" fill="#e6dfc8"/>
+  <path d="M88 55c6-1 10 0 12 4 3 8-9 20-12 31-2 9 0 18 7 24-14-8-12-23-8-33 4-9 11-18 7-21Z" fill="#273437"/>
+  <path d="m87 49-29 12 31-6 5-3Z" fill="#c5a16b"/>
+  <path d="m60 60 29-8" fill="none" stroke="#785f40" stroke-width="1.4"/>
+  <path d="M88 47c4-6 13-8 19-3l2 3c-9-2-13 1-19 3Z" fill="#c3694c"/>
+  <circle cx="94.7" cy="50" r="1.9" fill="#293635"/>
+  <!-- The mantle and belly meet in a full body; long black tertials fall behind it. -->
+  <path d="M103 106c7-2 19-2 28 1 12 3 21 9 28 15 12 10 22 16 34 24 5 4 8 8 11 12-12-1-23-3-33-7-4 9-11 13-22 12-8-1-16-1-23-5-14-6-25-17-28-31-2-8-1-16 5-21Z" fill="#d7d2bc"/>
+  <path d="M105 106c5 5 6 10 12 13 10 5 20 3 28 9-10-2-17-1-24-4 5 9 15 15 26 17-12-1-23-5-31-13 3 13 12 20 24 24-16-2-31-14-35-28-1-5-3-12 0-18Z" fill="#ebe3c9"/>
+  <path d="M141 119c13 1 27 10 37 19 10 10 19 22 30 35-14-3-25-10-34-18 8 12 17 21 25 31-15-5-29-17-40-30 5 12 9 22 18 33-17-9-28-26-34-43-4-10-6-19-2-27Z" fill="#273537"/>
+  <path d="M132 113c17-2 33 7 44 17 7 6 13 14 17 21-12-7-21-15-32-18 7 6 11 12 15 16-11-5-18-13-26-17 5 5 7 11 9 16-10-6-17-16-22-19 2 5 4 11 4 15-12-10-18-20-14-26Z" fill="#dad5be"/>
+  <path d="M116 111c12-3 27-2 39 4m-28 3c12 0 21 4 28 10" fill="none" stroke="#b1b09f" stroke-width="2.3" stroke-linecap="round"/>
+  <path d="M142 156q4 5 5 11l4-4 3 2-2-6m-26-6q3 6 5 11l3-4 3 2-1-7" fill="#c3c2ac"/>
+</svg>
