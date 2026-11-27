@@ -5,6 +5,7 @@ extends Node3D
 
 const K = preload("res://scripts/world/kit.gd")
 const Arch = preload("res://scripts/world/arch.gd")
+const SkyArt = preload("res://scripts/world/sky.gd")
 const Yard = preload("res://scripts/world/yard_materials.gd")
 const Figure = preload("res://scripts/world/figure.gd")
 
@@ -157,6 +158,7 @@ func _snow() -> void:
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	m.albedo_color = Color(0.94, 0.96, 1.0, 0.62)
+	m.albedo_texture = SkyArt.snowflake()
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	q.material = m

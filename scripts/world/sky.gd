@@ -13,6 +13,21 @@ const PRESETS := {
 }
 
 
+static func snowflake() -> GradientTexture2D:
+	if _snowflake == null:
+		var falloff := Gradient.new()
+		falloff.offsets = PackedFloat32Array([0.0, 0.32, 0.72, 1.0])
+		falloff.colors = PackedColorArray([Color.WHITE, Color(1, 1, 1, 0.79), Color(1, 1, 1, 0.25), Color(1, 1, 1, 0.0)])
+		_snowflake = GradientTexture2D.new()
+		_snowflake.width = 32
+		_snowflake.height = 32
+		_snowflake.gradient = falloff
+		_snowflake.fill = GradientTexture2D.FILL_RADIAL
+		_snowflake.fill_from = Vector2(0.5, 0.5)
+		_snowflake.fill_to = Vector2(0.5, 0)
+	return _snowflake
+
+
 ## 建好天空、光、雾、雪，挂在 parent 下。返回句柄字典。
 static func make(parent: Node3D, snow_extent := 24.0, residential := false) -> Dictionary:
 	var we := WorldEnvironment.new()
@@ -69,19 +84,7 @@ static func make(parent: Node3D, snow_extent := 24.0, residential := false) -> D
 	flake.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	flake.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	flake.albedo_color = Color(1, 1, 1, 0.9)
-	if residential:
-		if _snowflake == null:
-			var falloff := Gradient.new()
-			falloff.offsets = PackedFloat32Array([0.0, 0.32, 0.72, 1.0])
-			falloff.colors = PackedColorArray([Color.WHITE, Color(1, 1, 1, 0.79), Color(1, 1, 1, 0.25), Color(1, 1, 1, 0.0)])
-			_snowflake = GradientTexture2D.new()
-			_snowflake.width = 32
-			_snowflake.height = 32
-			_snowflake.gradient = falloff
-			_snowflake.fill = GradientTexture2D.FILL_RADIAL
-			_snowflake.fill_from = Vector2(0.5, 0.5)
-			_snowflake.fill_to = Vector2(0.5, 0)
-		flake.albedo_texture = _snowflake
+	flake.albedo_texture = snowflake()
 	flake.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	# 贴着镜头的雪片会变成大白块，近处淡掉
 	flake.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA

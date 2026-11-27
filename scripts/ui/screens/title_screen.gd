@@ -1,16 +1,15 @@
 extends "res://scripts/ui/screens/screen_base.gd"
-## 标题：一片会动的雪夜远景（3D），左侧竖排菜单，左下角题名。
+## 标题：雪夜远景上叠一页线装书封，题签和菜单沿书脊排列。
 ## 3D 远景跑在一个 SubViewport 里，界面照旧用代码搭，叠在上面。
 
 const Vignette = preload("res://scripts/world/title_vignette.gd")
 
-const INK_LIGHT := Color("#e8dfcc")
-const INK_DIM := Color("#98a4b2")
-const SEAL := Color("#c0392b")
+const INK_LIGHT := Color("#f1e7cd")
+const INK_DIM := Color("#d0d2bf")
+const SEAL := Color("#9c453b")
 const GOLD := Color("#d8b26a")
 
 var _vig
-var _base_modulate := 1.0
 ## 点的是「新开一卷」（快速）还是「自选开局」：有旧卷要先确认合卷，确认完照这个走
 var _quick_new := true
 
@@ -32,29 +31,94 @@ func build() -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
-	# ---- 压暗：整体一层，左侧与底部再各来一道，文字才压得住雪 ----
-	var dim := ColorRect.new()
-	dim.color = Color(0.02, 0.03, 0.05, 0.10)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(dim)
-	add_child(_grad(Color(0.02, 0.03, 0.05, 0.74), Color(0.02, 0.03, 0.05, 0.0), Vector2(0.5, 0.0)))
-	add_child(_grad(Color(0.02, 0.03, 0.05, 0.0), Color(0.02, 0.03, 0.05, 0.72), Vector2(0.0, 0.55)))
+	# 保留雪面的映光，在画幅底部收墨，让页脚能压住亮雪。
+	var wash := GradientTexture2D.new()
+	wash.width = 2
+	wash.height = 256
+	wash.fill_to = Vector2.DOWN
+	wash.gradient = Gradient.new()
+	wash.gradient.offsets = PackedFloat32Array([0.0, 0.58, 0.84, 1.0])
+	wash.gradient.colors = PackedColorArray([Color(0.035,0.075,0.09,0.14),
+			Color(0.035,0.075,0.09,0.14), Color(0.04,0.065,0.07,0.29), Color(0.03,0.045,0.05,0.72)])
+	var night_ink := TextureRect.new()
+	night_ink.texture = wash
+	night_ink.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	night_ink.set_anchors_preset(Control.PRESET_FULL_RECT)
+	night_ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(night_ink)
 
-	# ---- 左侧菜单 ----
-	var left := UI.full_rect(MarginContainer.new())
-	for side in ["left", "top", "bottom"]:
-		left.add_theme_constant_override("margin_" + side, 0)
-	left.add_theme_constant_override("margin_left", 64)
-	# 菜单要整段落在左下角题名（印章顶约在 535）上方：有旧卷时十项，下沿一压到题名就把「退出」盖住了
-	left.add_theme_constant_override("margin_top", 100)
-	left.add_theme_constant_override("margin_bottom", 205)
-	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(left)
-	var menu := UI.vbox(4)
-	menu.alignment = BoxContainer.ALIGNMENT_CENTER
-	menu.custom_minimum_size.x = 240
-	left.add_child(menu)
+	# 装订书封承接菜单；街景仅沿书页投下一道窄影。
+	var fold := GradientTexture2D.new()
+	fold.width = 128
+	fold.height = 2
+	fold.gradient = Gradient.new()
+	fold.gradient.set_color(0, Color(0.035, 0.064, 0.059, 0.62))
+	fold.gradient.set_color(1, Color(0.035, 0.064, 0.059, 0))
+	fold.fill_to = Vector2.RIGHT
+	var shadow := TextureRect.new()
+	shadow.texture = fold
+	shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shadow.anchor_bottom = 1
+	shadow.offset_left = 327
+	shadow.offset_right = 377
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(shadow)
+
+	var cover := TextureRect.new()
+	cover.texture = preload("res://assets/ui/title-binding.svg")
+	cover.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	cover.anchor_bottom = 1
+	cover.offset_right = 336
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(cover)
+
+	var title := Label.new()
+	title.text = "劫余录"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.anchor_top = 54.0 / 720.0
+	title.anchor_bottom = 147.0 / 720.0
+	title.offset_left = 55
+	title.offset_right = 252
+	title.add_theme_font_size_override("font_size", 55)
+	title.add_theme_color_override("font_color", Color("#2d3530"))
+	cover.add_child(title)
+	var stamp := _seal("尸\n劫")
+	stamp.anchor_top = 0.14
+	stamp.anchor_bottom = 0.14
+	stamp.offset_left = 254
+	stamp.offset_right = 278
+	stamp.offset_top = -21
+	stamp.offset_bottom = 21
+	cover.add_child(stamp)
+	var en := Label.new()
+	en.text = "THE SURVIVOR'S LEDGER"
+	en.anchor_top = 147.0 / 720.0
+	en.anchor_bottom = en.anchor_top
+	en.offset_top = 10
+	en.offset_left = 55
+	en.add_theme_font_override("font", UI.Fonts.body())
+	en.add_theme_font_size_override("font_size", 13)
+	en.add_theme_color_override("font_color", Color("#d1c8a8"))
+	cover.add_child(en)
+	_ignore_pointer(cover)
+
+	# 有续卷或坏档提示时仍可在较矮窗口滚动到末项。
+	var scroll := ScrollContainer.new()
+	scroll.anchor_top = 0.26
+	scroll.anchor_bottom = 1
+	scroll.offset_top = 12
+	scroll.offset_bottom = -34
+	scroll.offset_left = 53
+	scroll.offset_right = 296
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	add_child(scroll)
+	var menu := UI.vbox(3)
+	menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	menu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	scroll.add_child(menu)
 
 	var meta: Dictionary = Game.meta
 	if Game.has_save():
@@ -80,46 +144,9 @@ func build() -> void:
 		var warn := Label.new()
 		warn.text = Game.save_notice
 		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		warn.custom_minimum_size = Vector2(320, 0)
 		warn.add_theme_font_size_override("font_size", 14)
 		warn.add_theme_color_override("font_color", Color("#e0a08a"))
 		menu.add_child(warn)
-
-	# ---- 左下角：题名 ----
-	var bottom := UI.full_rect(MarginContainer.new())
-	bottom.add_theme_constant_override("margin_left", 64)
-	bottom.add_theme_constant_override("margin_bottom", 54)
-	bottom.add_theme_constant_override("margin_right", 64)
-	bottom.add_theme_constant_override("margin_top", 54)
-	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bottom)
-	var col := UI.vbox(6)
-	col.alignment = BoxContainer.ALIGNMENT_END
-	bottom.add_child(col)
-
-	var seal_row := UI.hbox(10)
-	var seal := _seal("尸 劫")
-	seal.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	seal_row.add_child(seal)
-	var line := ColorRect.new()
-	line.color = SEAL
-	line.custom_minimum_size = Vector2(120, 2)
-	line.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	seal_row.add_child(line)
-	col.add_child(seal_row)
-	var title := Label.new()
-	title.text = "劫余录"
-	title.add_theme_font_size_override("font_size", 84)
-	title.add_theme_color_override("font_color", INK_LIGHT)
-	title.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.55))
-	title.add_theme_constant_override("shadow_offset_x", 2)
-	title.add_theme_constant_override("shadow_offset_y", 3)
-	col.add_child(title)
-	var en := Label.new()
-	en.text = "T H E   S U R V I V O R ' S   L E D G E R"
-	en.add_theme_font_size_override("font_size", 14)
-	en.add_theme_color_override("font_color", INK_DIM)
-	col.add_child(en)
 
 	# ---- 底部一行小字 ----
 	var foot := UI.full_rect(MarginContainer.new())
@@ -138,7 +165,6 @@ func build() -> void:
 	foot_col.add_child(foot_row)
 	# Decorative descendants also cover the menu: ignoring only their parent
 	# does not prevent children from intercepting pointer input.
-	_ignore_pointer(bottom)
 	_ignore_pointer(foot)
 
 	# 入场：整屏淡入
@@ -173,42 +199,52 @@ func _ignore_pointer(node: Node) -> void:
 		_ignore_pointer(child)
 
 
-## 左侧菜单的一条：平时是灰的，指上去变暖白并沉下去一点。
+## 项目的文字位置不动；书签色带标出主入口、悬停和键盘焦点。
 func _item(text: String, cb: Callable, strong := false, tip := "") -> Button:
 	var b := Button.new()
 	b.text = text
 	b.tooltip_text = tip
-	b.flat = true
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", 20 if strong else 18)
+	b.custom_minimum_size = Vector2(204, 34)
+	b.add_theme_font_size_override("font_size", 21 if strong else 18)
 	b.add_theme_color_override("font_color", INK_LIGHT if strong else INK_DIM)
-	b.add_theme_color_override("font_hover_color", GOLD)
-	b.add_theme_color_override("font_pressed_color", SEAL)
-	b.add_theme_constant_override("outline_size", 4)
-	b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.45))
-	b.custom_minimum_size = Vector2(210, 32)
-	b.mouse_entered.connect(func(): b.position.x = 6.0)
-	b.mouse_exited.connect(func(): b.position.x = 0.0)
+	b.add_theme_color_override("font_hover_color", INK_LIGHT)
+	b.add_theme_color_override("font_focus_color", INK_LIGHT)
+	b.add_theme_color_override("font_pressed_color", Color("#f5d89f"))
+	b.add_theme_stylebox_override("normal", _tab(Color("#793e35") if strong else Color.TRANSPARENT))
+	b.add_theme_stylebox_override("hover", _tab(Color("#4b5950"), GOLD))
+	b.add_theme_stylebox_override("focus", _tab(Color(0, 0, 0, 0), GOLD))
+	b.add_theme_stylebox_override("pressed", _tab(Color("#683c34"), GOLD))
 	b.pressed.connect(cb)
 	return b
 
 
+func _tab(fill: Color, edge := Color.TRANSPARENT) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = fill
+	box.border_color = edge
+	box.border_width_left = 2
+	box.content_margin_left = 13
+	box.content_margin_right = 8
+	box.content_margin_top = 1
+	box.content_margin_bottom = 1
+	return box
+
+
 func _seal(text: String) -> Control:
 	var p := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = SEAL
-	sb.border_color = Color("#8e2a22")
-	sb.border_width_left = 2
-	sb.border_width_top = 2
-	sb.content_margin_left = 8
-	sb.content_margin_right = 8
-	sb.content_margin_top = 2
-	sb.content_margin_bottom = 2
-	p.add_theme_stylebox_override("panel", sb)
+	var block := StyleBoxFlat.new()
+	block.bg_color = SEAL
+	block.border_color = Color("#cba273")
+	block.set_border_width_all(1)
+	p.add_theme_stylebox_override("panel", block)
 	var l := Label.new()
 	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.add_theme_font_size_override("font_size", 14)
-	l.add_theme_color_override("font_color", Color("#f6e7cf"))
+	l.add_theme_constant_override("line_spacing", -3)
+	l.add_theme_color_override("font_color", Color("#f4dfb5"))
 	p.add_child(l)
 	return p
 
@@ -217,28 +253,10 @@ func _tiny(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", 12)
-	l.add_theme_color_override("font_color", Color(0.72, 0.77, 0.84, 0.62))
+	l.add_theme_color_override("font_color", Color("#ddd8c8"))
+	l.add_theme_constant_override("outline_size", 2)
+	l.add_theme_color_override("font_outline_color", Color(0.04, 0.06, 0.06, 0.82))
 	return l
-
-
-## 一道方向渐变，用来压暗画面边缘。
-func _grad(from: Color, to: Color, dir_vec: Vector2) -> TextureRect:
-	var g := Gradient.new()
-	g.set_color(0, from)
-	g.set_color(1, to)
-	var t := GradientTexture2D.new()
-	t.gradient = g
-	t.width = 128
-	t.height = 128
-	t.fill_from = Vector2.ZERO
-	t.fill_to = dir_vec
-	var tr := TextureRect.new()
-	tr.texture = t
-	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
-	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_SCALE
-	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return tr
 
 
 # ---------- 动作 ----------

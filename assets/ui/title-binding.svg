@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="336" height="720" viewBox="0 0 336 720" preserveAspectRatio="none">
+  <defs>
+    <linearGradient id="cloth" x2="1" y2=".13" gradientUnits="objectBoundingBox">
+      <stop stop-color="#1b3232"/><stop offset=".37" stop-color="#263e3d"/><stop offset="1" stop-color="#263b3a"/>
+    </linearGradient>
+    <linearGradient id="spine">
+      <stop stop-color="#182928"/><stop offset=".7" stop-color="#263836"/><stop offset=".94" stop-color="#19312f"/><stop offset="1" stop-color="#394743"/>
+    </linearGradient>
+  </defs>
+  <!-- The fore-edge and doubled stitching follow a traditional thread-bound cover. -->
+  <path fill="#978875" d="M0 0h329l-1 178 2 147-1 210 2 185H0Z"/>
+  <path fill="#d0be9a" d="M0 0h326l-1 237 1 137-1 197 2 149H0Z"/>
+  <path fill="#4b4e43" d="M0 0h323v720H0z"/>
+  <path fill="url(#cloth)" d="M0 0h321l-1 206 1 198-1 149 1 167H0Z"/>
+  <path fill="url(#spine)" d="M0 0h33v720H0Z"/>
+  <path d="M34 0v720" fill="none" stroke="#81917e" stroke-opacity=".43"/>
+  <g fill="none" stroke-linecap="round">
+    <path d="m0 82 24-1 1 157-25 2m0 223 24-1v157l-24 2" stroke="#18201e" stroke-width="4.4"/>
+    <path d="m0 81 24-1 1 157-25 2m0 223 24-1v157l-24 2" stroke="#bdab84" stroke-width="2.4"/>
+  </g>
+  <g fill="#d4c5a4"><circle cx="24" cy="80" r="2"/><circle cx="25" cy="237" r="2"/><circle cx="24" cy="461" r="2"/><circle cx="24" cy="618" r="2"/></g>
+  <!-- A bamboo block impression at the foot of the cloth cover. -->
+  <g fill="none" stroke="#4b645b" stroke-linecap="round">
+    <path d="M321 707q-30-72-62-110-12-15-42-37m62 64q-5-31-3-55m-3 47q-25-20-58-27m45 9q-3-21-11-35m51 99q-22-14-48-19" stroke-width="2.6"/>
+    <path d="m253 580-23-20m-12 27q-21-6-32-6m88 10 13-18m-34 70-19-10" stroke-width="1.25"/>
+  </g>
+  <g fill="#496258">
+    <path d="M222 564q-16-6-28-24 19 11 28 24Zm-1-1q-8-17-8-31 8 12 8 31Zm28 4q-11-11-15-31 12 13 15 31Zm0 0q-2-17 3-28 2 14-3 28Zm28 9q-8-11-10-31 10 13 10 31Zm0-6q3-19 15-30-2 14-15 30Zm10 4q11-14 25-18-9 12-25 18Zm-71 15q-18 7-36 1 17-5 36-1Zm-18-6q-16-1-30-13 18 5 30 13Zm34 11q-17 8-29 5 11-7 29-5Zm21 49q-20 2-33-5 16-1 33 5Zm-13-8q-12-3-22-17 15 7 22 17Z"/>
+  </g>
+  <!-- A pasted title slip; two ruled lines follow its folded edges. -->
+  <path d="m51 57 243-1 1 93-244 2z" fill="#182c2a" opacity=".72"/>
+  <path d="m50 54 243-1 1 93-244 2z" fill="#e1d1ae"/>
+  <path d="M55 59 288 58v83l-233 1Z" fill="none" stroke="#a7936e" stroke-width="1"/>
+  <path d="M58 62h227m-227 76h227" fill="none" stroke="#b7a481" stroke-width=".8"/>
+</svg>
