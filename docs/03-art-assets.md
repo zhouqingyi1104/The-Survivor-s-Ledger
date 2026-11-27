@@ -213,3 +213,9 @@ python -I tools/pipeline/synth_night_music.py build/night-music-qa --asset-path 
 ## 十一、尸影衣上的符与补子
 
 额符的朱笔和胸前的鹤补各有独立矢量原稿，输出为 160×320 和 256×256 的纹样。两套尸影模型共用这两张图。只更新符和补子时，可在项目根目录用 Godot 运行 `--headless --path . --script res://tools/pipeline/bake_costume_panels.gd`。[矢量原稿](../tools/pipeline/costume_panels/) · [烘焙脚本](../tools/pipeline/bake_costume_panels.gd)
+
+## 十二、书衣、铺额与宅院织绘
+
+游戏图标、启动页和标题取线装书封形制。通用弹窗共用可缩放的书衣与题签。灾前铺额和灾后搜寻牌使用各自的图记，门联保留可读的活字。[界面图稿](../assets/ui/) · [铺额与图记](../assets/art/wayfinding/)
+
+正厅落地屏风和宫灯沿用 Poly Haven 的木骨、五金与原模型 UV。屏面与八片灯绢重新绘制，并分别烘焙颜色、法线与材质贴图。蓝夹被的鱼纹随现有褶皱铺开。院外的安宅符用项目内置霞鹜文楷印字，门槛的笔印以半透明墨色透出石面。[屏面与灯绢原稿](../tools/pipeline/hall_prints/) · [夹被纹样](../assets/art/textiles/indigo_fish.svg) · [门槛笔印](../assets/art/paintings/threshold_wash.svg)
