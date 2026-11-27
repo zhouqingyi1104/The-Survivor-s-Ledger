@@ -79,6 +79,25 @@ func open_spot(id: String) -> bool:
 	await click(p)
 	return check(screen._menu.visible, "点击入口未打开菜单 " + id)
 
+
+func check_sorting_table_change(screen: Control) -> void:
+	var room: Dictionary = screen.world._floor_rooms.cellar
+	var jar := Home.add(Game.run, "rice_jar", -2, 0, 0)
+	screen.world.sync(Game.run)
+	# 玩家挪走米缸后仍站在原陈设范围内，先选墙桌，然后沿途让出分拣台的位置。
+	screen.player.global_position = screen.world.floor_origin() + Vector3(-1.82, 0, -0.3)
+	Home.remove(Game.run, jar.uid)
+	screen.world.sync(Game.run)
+	if not check(room.floor_use == room.wall_desk, "人未让开时分拣台抢回操作点"): return
+	var completed := [0]
+	screen.do_at("floor_use", func(): completed[0] += 1)
+	var deadline := Time.get_ticks_msec() + 12000
+	while completed[0] == 0 and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	check(room.floor_use != room.wall_desk and completed[0] == 1, "途中换台未完成原操作")
+	check(flat(screen.player.global_position, screen.world.spot_info("floor_use").stand) < 1.0, "玩家没有抵达恢复的分拣台")
+
+
 func choose(prefix: String) -> bool:
 	var screen: Control = main._screen
 	var b := button(prefix, screen._menu)
@@ -321,7 +340,8 @@ func _ready() -> void:
 	await get_tree().create_timer(1.5).timeout
 	Game.speed = 0
 	check(int(Game.run.t) > clock_before and float(Game.run.attrs.water) < water_before, "地窖正常运行时钟/水分未推进")
-	await walk(screen.world.floor_origin() + Vector3(0, 0, -1.9), "地窖整理台")
+	await check_sorting_table_change(screen)
+	await walk(screen.world.spot_info("floor_use").stand, "地窖整理台")
 	await drink_from_room()
 	var cellar_f := await place_furniture("圈椅", "armchair")
 	await inspect_furniture(cellar_f)

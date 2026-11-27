@@ -62,6 +62,7 @@ var _side_stage := ""
 var _side_lantern := {}
 var _floor := "courtyard"
 var _floor_rooms := {}
+var _furnishing_retry_in := 0.0
 var _outside_nodes: Array[Node3D] = []
 var _outside_visibility := {}
 var _neighbor_visual: Node3D
@@ -73,6 +74,7 @@ var _amb_ctx := {"phase": "post", "pday": 1, "heavy": false}
 
 
 func _ready() -> void:
+	set_physics_process(false)
 	add_to_group("navsrc")
 	sky = SkyKit.make(self, 26.0, true)
 	# The overhead camera looks through many metres of fog even at nearby props.
@@ -336,7 +338,7 @@ func floor_spawn(id: String) -> Vector3:
 
 func spot_info(id: String) -> Dictionary:
 	if _floor != "courtyard":
-		return FloorWorld.info(_floor, id)
+		return FloorWorld.info(_floor, id, _floor_rooms[_floor])
 	match id:
 		"neighbor_home":
 			var info: Dictionary = SPOTS.neighbor_home.duplicate()
@@ -497,6 +499,7 @@ func sync(run: Dictionary) -> void:
 	_rebuild_devices(run)
 	_rebuild_extras(run)
 	_rebuild_furniture(run)
+	var fittings_changed := _sync_floor_furnishings(run)
 	_update_gate(run)
 	_update_window(run)
 	set_time(run)
@@ -509,12 +512,44 @@ func sync(run: Dictionary) -> void:
 		_nav_furniture_key = _furniture_nav_key(run)
 	else:
 		var key := _furniture_nav_key(run)
-		if key != _nav_furniture_key or old_rows != _garden_rows or side_changed:
+		if key != _nav_furniture_key or old_rows != _garden_rows or side_changed or fittings_changed:
 			_nav_furniture_key = key
 			nav_region.navigation_mesh.filter_baking_aabb = _nav_bounds_for("courtyard")
 			nav_region.bake_navigation_mesh(false)
 			for region in _room_nav.values():
 				region.bake_navigation_mesh(false)
+
+
+func _sync_floor_furnishings(run: Dictionary) -> bool:
+	var changed := false
+	var waiting := false
+	for floor_id in ["cellar", "attic"]:
+		var people := PackedVector2Array()
+		if _floor == floor_id:
+			for child in get_children():
+				if child is CharacterBody3D:
+					var p := to_floor_local(child.global_position)
+					people.append(Vector2(p.x, p.z))
+		var room: Dictionary = _floor_rooms[floor_id]
+		if FloorWorld.sync_furnishings(floor_id, room, run, people):
+			changed = true
+			if _floor == floor_id:
+				spot_nodes["floor_use"] = room.floor_use
+		waiting = waiting or room.layout.waiting_for_clearance
+	set_physics_process(waiting)
+	return changed
+
+
+## 收走自家家具时，等人让开再恢复原陈设。暂停游戏时钟也能走出这片区域。
+func _physics_process(delta: float) -> void:
+	_furnishing_retry_in -= delta
+	if _furnishing_retry_in > 0.0:
+		return
+	_furnishing_retry_in = 0.25
+	if _sync_floor_furnishings(_current_run) and not _room_nav.is_empty():
+		for floor_id in ["cellar", "attic"]:
+			_room_nav[floor_id].bake_navigation_mesh(false)
+		prepare_navigation()
 
 
 ## 补修木板只在真实施工完成后显示；次日结算才挂出相应的记事牌。
@@ -1026,15 +1061,27 @@ func _inside_pick_bounds(p: Vector3) -> bool:
 	return Expansion.complete(_current_run) and p.x >= 10.0 and p.x < 16.3 and p.z > 2.7 and p.z < 6.7
 
 
-## 移动时射线穿过所选家具自身，其他物体仍阻挡；允许原地改朝向。
+## 自己布置家具时可接替完工附带的陈设；挪动时也允许射线穿过所选家具自身。
+func _replaceable_bodies() -> Array[RID]:
+	if _floor in ["cellar", "attic"]:
+		return _floor_rooms[_floor].layout.bodies.duplicate()
+	return []
+
+
+func replaces_room_furnishings(id: String, point: Vector3, rotation: int) -> bool:
+	if _floor not in ["cellar", "attic"]:
+		return false
+	return _floor_rooms[_floor].layout.replaces_group(_floor, id, to_floor_local(point), rotation)
+
+
 func pick_move_ground(cam: Camera3D, screen_pos: Vector2, uid: int) -> Dictionary:
 	var from := cam.project_ray_origin(screen_pos)
 	var q := PhysicsRayQueryParameters3D.create(from, from + cam.project_ray_normal(screen_pos) * 200.0)
+	var excluded := _replaceable_bodies()
 	var root: Node = spot_nodes.get("f_%d" % uid)
 	if root != null:
-		var excluded: Array[RID] = []
 		_collect_collision_rids(root, excluded)
-		q.exclude = excluded
+	q.exclude = excluded
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	if hit.is_empty() or hit.collider.has_meta("spot"):
 		return {}
@@ -1093,6 +1140,7 @@ func build_spot_block(run: Dictionary, id: String, x: float, z: float, rot: int)
 	var q := PhysicsShapeQueryParameters3D.new()
 	q.shape = shape
 	q.transform = Transform3D(Basis.IDENTITY, floor_origin() + Vector3(x, 0.45, z))
+	q.exclude = _replaceable_bodies()
 	for hit in get_world_3d().direct_space_state.intersect_shape(q, 64):
 		if hit.collider is StaticBody3D:
 			return "这儿有东西挡着。"
@@ -1127,7 +1175,7 @@ func move_spot_block(run: Dictionary, uid: int, x: float, z: float, rot: int) ->
 	var q := PhysicsShapeQueryParameters3D.new()
 	q.shape = shape
 	q.transform = Transform3D(Basis.IDENTITY, floor_origin() + Vector3(x, 0.45, z))
-	var excluded: Array[RID] = []
+	var excluded := _replaceable_bodies()
 	var source: Node = spot_nodes.get("f_%d" % uid)
 	if source != null:
 		_collect_collision_rids(source, excluded)

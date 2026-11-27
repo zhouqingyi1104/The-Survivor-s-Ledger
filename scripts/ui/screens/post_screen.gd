@@ -54,8 +54,10 @@ var _tags := {}
 var _menu: PanelContainer
 var _menu_spot := ""
 var _hover := ""
+var _hover_node: Node3D
 var _pending := Callable()
 var _pending_spot := ""
+var _pending_stand := Vector3.ZERO
 ## HUD 上的快捷键提示（动作名 → 那个显示键名的 Label）。改键后 refresh_key_hints 刷新。
 var _key_hints: Dictionary = {}
 var _acc := 0.0
@@ -226,7 +228,7 @@ func _update_ghost() -> void:
 		_ghost.material_override = _ghost_mat
 		_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		world.add_child(_ghost)
-	var hit: Dictionary = world.pick_move_ground(rig.cam, get_viewport().get_mouse_position(), Game.moving_uid) if Game.moving_uid >= 0 else world.pick(rig.cam, get_viewport().get_mouse_position())
+	var hit: Dictionary = world.pick_move_ground(rig.cam, get_viewport().get_mouse_position(), Game.moving_uid)
 	if Game.placing_at != null:
 		_ghost_at(Game.placing_at)
 	elif hit.has("ground"):
@@ -255,6 +257,8 @@ func _ghost_at(p: Vector3) -> void:
 	if Game.moving_uid >= 0 and block == "":
 		block = Post.can_act(Game.run)
 	_place_reason = block
+	if block == "" and world.replaces_room_furnishings(Game.placing, _ghost.global_position, Game.placing_rot):
+		_place_reason = "可放下，原陈设让位"
 	_ghost_mat.albedo_color = Color(0.92, 0.35, 0.28, 0.30) if block != "" else Color(0.42, 0.85, 0.52, 0.30)
 
 
@@ -626,11 +630,14 @@ func _update_hover(ui_blocked: bool) -> void:
 	if not ui_blocked:
 		var hit: Dictionary = world.pick(rig.cam, get_viewport().get_mouse_position())
 		id = hit.get("spot", "")
-	if id == _hover:
+	var target: Node3D = world.spot_nodes.get(id)
+	if id == _hover and is_same(target, _hover_node):
 		return
-	Outline.set_outline(world.spot_nodes.get(_hover), false)
+	if is_instance_valid(_hover_node):
+		Outline.set_outline(_hover_node, false)
 	_hover = id
-	Outline.set_outline(world.spot_nodes.get(_hover), true)
+	_hover_node = target
+	Outline.set_outline(target, true)
 
 
 ## HUD 快捷键提示读 InputMap（改键后由设置弹窗调 refresh_key_hints 刷新）。
@@ -736,7 +743,7 @@ func _click(pos: Vector2) -> void:
 	if modal_open():
 		return
 	if Game.placing != "":
-		var spot: Dictionary = world.pick_move_ground(rig.cam, pos, Game.moving_uid) if Game.moving_uid >= 0 else world.pick(rig.cam, pos)
+		var spot: Dictionary = world.pick_move_ground(rig.cam, pos, Game.moving_uid)
 		if spot.has("ground"):
 			_place_at(spot.ground)
 		else:
@@ -948,6 +955,7 @@ func do_at(id: String, cb: Callable) -> void:
 		return
 	_pending = cb
 	_pending_spot = id
+	_pending_stand = stand
 	world.prepare_navigation()
 	player.walk_to(stand)
 
@@ -958,6 +966,10 @@ func _on_arrived() -> void:
 	var cb := _pending
 	_pending = Callable()
 	var info := _spot_info(_pending_spot)
+	# 人让开旧家具位置后，原本靠墙的整理操作会转回分拣岛；继续已选的操作。
+	if _pending_spot == "floor_use" and not info.is_empty() and not _pending_stand.is_equal_approx(info.stand):
+		do_at(_pending_spot, cb)
+		return
 	if info.is_empty() or Vector2(player.global_position.x - info.stand.x, player.global_position.z - info.stand.z).length() >= 1.0:
 		Game.toast.emit("走不到那里，请调整摆放或清出通路。")
 		return

@@ -4,6 +4,7 @@ const K = preload("res://scripts/world/kit.gd")
 const HomeHouse = preload("res://scripts/world/home_house.gd")
 const Craft = preload("res://scripts/world/building_craft.gd")
 const Fittings = preload("res://scripts/world/floor_fittings.gd")
+const RoomFurnishings = preload("res://scripts/world/room_furnishings.gd")
 const Figure = preload("res://scripts/world/character.gd")
 
 const ORIGINS := {"cellar": Vector3(-40, 0, 0), "attic": Vector3(40, 0, 0), "guest_zhou": Vector3(0, 0, -40)}
@@ -77,13 +78,28 @@ static func build(parent: Node3D, floor_id: String) -> Dictionary:
 	K.collider(exit, Vector3(1.2, 0.5, 0.6), Vector3(0, 0.25, 0), {"spot": "floor_exit"})
 	var use := K.node(root, Vector3(0, 0, -3.0), Vector3.ZERO, "floor_use")
 	Fittings.desk(use, is_cellar)
-	K.collider(use, Vector3(1.2, 0.9, 0.45), Vector3(0, 0.45, 0), {"spot": "floor_use"})
-	K.text3d(use, "整理台", Vector3(0, 1.35, 0), 48, Color("#f2d89c"))
+	var desk_body := K.collider(use, Vector3(1.2, 0.9, 0.45), Vector3(0, 0.45, 0), {"spot": "floor_use"})
+	var desk_label := K.text3d(use, "整理台", Vector3(0, 1.35, 0), 48, Color("#f2d89c"))
 	# 拾取高亮沿设备自身的层级查找网格，整理台和楼梯各自合批。
 	for fixture: Node3D in [exit, use]:
 		HomeHouse.finish_joinery(fixture)
 		K.merge_static(fixture, [])
-	return {"root": root, "floor_exit": exit, "floor_use": use}
+	return {"root": root, "floor_exit": exit, "floor_use": use, "wall_desk": use,
+		"desk_body": desk_body, "desk_label": desk_label, "layout": RoomFurnishings.new()}
+
+
+static func sync_furnishings(floor_id: String, room: Dictionary, run: Dictionary, people: PackedVector2Array) -> bool:
+	var layout: RoomFurnishings = room.layout
+	var changed := layout.sync(room.root, floor_id, run, people)
+	if changed and floor_id == "cellar":
+		var sorting: Node3D = layout.groups.get("sorting")
+		room.floor_use = sorting if sorting != null else room.wall_desk
+		room.desk_label.visible = sorting == null
+		if sorting == null:
+			room.desk_body.set_meta("spot", "floor_use")
+		elif room.desk_body.has_meta("spot"):
+			room.desk_body.remove_meta("spot")
+	return changed
 
 
 static func _backdrop(root: Node3D, color: Color, bottom := 0.0) -> void:
@@ -209,7 +225,7 @@ static func _build_guest(parent: Node3D) -> Dictionary:
 static func spawn(floor_id: String) -> Vector3:
 	return ORIGINS.get(floor_id, Vector3.ZERO) + Vector3(0, 0, 1.5)
 
-static func info(floor_id: String, id: String) -> Dictionary:
+static func info(floor_id: String, id: String, room: Dictionary) -> Dictionary:
 	var origin: Vector3 = ORIGINS.get(floor_id, Vector3.ZERO)
 	if id == "floor_exit":
 		return {"name": "返回宅院", "stand": origin + Vector3(0, 0, 1.5), "tag": origin + Vector3(0, 1.4, 2.85)}
@@ -217,6 +233,10 @@ static func info(floor_id: String, id: String) -> Dictionary:
 		return {"name": "老周", "stand": origin + Vector3(0, 0, -1.0), "tag": origin + Vector3(0, 2.2, -2.2)}
 	if id == "floor_use":
 		if floor_id == "guest_zhou": return {}
+		if floor_id == "cellar" and room.floor_use != room.wall_desk:
+			var station: Vector3 = room.floor_use.global_position
+			return {"name": "地窖整理台", "stand": station + RoomFurnishings.SORTING_STAND,
+				"tag": station + RoomFurnishings.SORTING_TAG}
 		return {"name": "地窖整理台" if floor_id == "cellar" else "阁楼整理台", "stand": origin + Vector3(0, 0, -1.9), "tag": origin + Vector3(0, 1.5, -3.0)}
 	return {}
 

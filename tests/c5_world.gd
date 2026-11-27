@@ -11,6 +11,77 @@ func check(ok: bool, message: String) -> void:
 	if not ok:
 		failed += 1
 		push_error(message)
+
+
+func shown_stock(groups: Dictionary) -> Vector2i:
+	var total := Vector2i.ZERO
+	for group: Node3D in groups.values():
+		var contents := group.get_node_or_null("Stock")
+		if contents:
+			total += Vector2i(contents.get_meta("shown"))
+	return total
+
+
+func check_cellar_stock(world: Node3D, run: Dictionary) -> void:
+	var saved: Dictionary = run.home.duplicate(true)
+	var groups: Dictionary = world._floor_rooms.cellar.layout.groups
+	var table: Node3D = groups.sorting
+	run.home = {"water": 4}
+	world.sync(run)
+	check(shown_stock(groups) == Vector2i.ZERO, "empty cellar displayed food")
+	run.home = {"rice": 1, "cabbage": 1}
+	world.sync(run)
+	check(shown_stock(groups) == Vector2i.ONE, "scarce food was duplicated between fixtures")
+	run.home = {"rice": 5, "millet": 2, "glutinous": 1, "cabbage": 3}
+	world.sync(run)
+	check(shown_stock(groups) == Vector2i(8, 3), "stored grain varieties or vegetables missing")
+	var bag: Node = groups.delivery.get_node("Stock").get_child(0)
+	world.sync(run)
+	check(bag == groups.delivery.get_node("Stock").get_child(0) and table == groups.sorting, "unchanged stock rebuilt the cellar")
+	run.home = saved
+	world.sync(run)
+
+
+func check_custom_layout(world: Node3D, run: Dictionary, floor_id: String) -> void:
+	var room: Dictionary = world._floor_rooms[floor_id]
+	var layout = room.layout
+	var group := "sorting" if floor_id == "cellar" else "berth"
+	check(layout.groups.has(group), floor_id + ": missing furnished area")
+	var site: Vector3 = world.floor_origin() + Vector3(-2.0, 0, 0)
+	var cam := Camera3D.new()
+	world.add_child(cam)
+	cam.position = site + Vector3.UP * 8
+	cam.look_at(site, Vector3.FORWARD)
+	var pixel := cam.unproject_position(site)
+	check(world.pick_move_ground(cam, pixel, -1).has("ground"), floor_id + ": fitting blocked the placement cursor")
+	check(world.build_spot_block(run, "rice_jar", site.x, site.z, 0) == "", floor_id + ": fitting obstructed a legal build")
+	var jar := Home.add(run, "rice_jar", -2, 0, 0)
+	var original := jar.duplicate(true)
+	world.sync(run)
+	for i in 3: await get_tree().physics_frame
+	check(Home.find(run, jar.uid) == original and not layout.groups.has(group), floor_id + ": occupied fitting overlaps a saved item")
+	check(world.pick(cam, pixel).get("spot") == "f_%d" % jar.uid, floor_id + ": saved furniture cannot be selected")
+	check(world.move_spot_block(run, jar.uid, site.x, site.z, 90) == "", floor_id + ": custom item cannot be rotated in place")
+	if floor_id == "cellar":
+		check(room.floor_use == room.wall_desk and room.desk_label.visible, "cellar: no alternative sorting desk")
+		var stand: Vector3 = world.spot_info("floor_use").stand
+		check(world.nearest_spot(stand) == "floor_use", "cellar: alternative sorting desk cannot be used")
+	var occupant := CharacterBody3D.new()
+	world.add_child(occupant)
+	occupant.position = site
+	check(Home.remove(run, jar.uid) == "", floor_id + ": cannot remove a custom item")
+	world.sync(run)
+	check(not layout.groups.has(group), floor_id + ": fixture restored under player")
+	occupant.free()
+	for i in 40:
+		if layout.groups.has(group): break
+		await get_tree().physics_frame
+	check(layout.groups.has(group), floor_id + ": furniture area did not return when vacated")
+	if floor_id == "cellar":
+		check(room.floor_use != room.wall_desk and not room.desk_label.visible, "cellar: freestanding sorting desk not restored")
+	cam.free()
+
+
 func _ready() -> void:
 	Game.no_save = true
 	var run := State.new_run("scholar", State.new_meta(), 123)
@@ -60,6 +131,9 @@ func _ready() -> void:
 			check(hero.position.distance_to(bay) < 0.56 and hero.position.z < origin.z - 3.5, "player did not enter the window bay: " + str(hero.position))
 		hero.queue_free()
 		await get_tree().physics_frame
+		if floor_id == "cellar":
+			check_cellar_stock(world, run)
+		await check_custom_layout(world, run, floor_id)
 		check(world.build_spot_block(run, "rice_jar", origin.x, 0.0, 0) != "", floor_id + ": corridor can be blocked")
 		var pt := origin + Vector3(2, 0, 0)
 		var placement_reason := world.build_spot_block(run, "rice_jar", pt.x, pt.z, 0)
