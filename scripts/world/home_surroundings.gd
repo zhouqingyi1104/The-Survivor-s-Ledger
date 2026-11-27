@@ -275,11 +275,11 @@ static func _build_streets(near: Node3D) -> void:
 	K.box(near, Vector3(1.9, 0.05, 12.5), stone, Vector3(11.4, 0.015, -3.75))
 	K.box(near, Vector3(1.9, 0.05, 15.1), stone, Vector3(11.4, 0.015, 14.45))
 	# 巷口雪埂 / 排水沟（都低于 0.1m，纯贴片）
+	K.box(near, Vector3(56.0, 0.07, 0.22), K.SNOW, Vector3(0, 0.02, -12.4))
+	K.box(near, Vector3(56.0, 0.03, 0.3), ditch, Vector3(0, 0.005, -8.6))
 	for sx in [-1.0, 1.0]:
 		K.box(near, Vector3(0.22, 0.07, 17.0), K.SNOW, Vector3(sx * 3.4, 0.02, 15.6))
 		K.box(near, Vector3(0.3, 0.03, 17.0), ditch, Vector3(sx * 3.8, 0.005, 15.6))
-		K.box(near, Vector3(56.0, 0.07, 0.22), K.SNOW, Vector3(0, 0.02, -12.4))
-		K.box(near, Vector3(56.0, 0.03, 0.3), ditch, Vector3(0, 0.005, -8.6))
 		if sx < 0:
 			K.box(near, Vector3(0.2, 0.06, 32.0), K.SNOW, Vector3(-12.5, 0.02, 6.0))
 		else:

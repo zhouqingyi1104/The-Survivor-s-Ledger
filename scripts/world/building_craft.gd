@@ -6,6 +6,7 @@ const House = preload("res://scripts/world/home_house.gd")
 
 static var _ashlar: BaseMaterial3D
 static var _ridge_finish: StandardMaterial3D
+static var _exposed_brick: BaseMaterial3D
 
 static func stone() -> BaseMaterial3D:
 	if _ashlar == null:
@@ -126,6 +127,53 @@ static func bridge(parent: Node3D, pos: Vector3) -> void:
 					K.box(pier, Vector3(0.13, 0.12, run), grey, Vector3(x, 0.5 * (y + next_y) + rail_y, z + 0.575), Vector3(tilt, 0, 0))
 
 
+## 铁墩有窄腰和打平的砧面，木座用两道扁铁箍紧。
+static func smith_anvil(parent: Node3D, pos: Vector3) -> void:
+	var root := K.node(parent, pos, Vector3(0, -8, 0))
+	for i in 3:
+		K.box(root, Vector3(0.215, 0.51, 0.49), K.WOOD, Vector3((i - 1) * 0.222, 0.255, 0))
+	House.finish_joinery(root)
+	var iron := StandardMaterial3D.new()
+	iron.albedo_color = Color("#515656")
+	iron.metallic = 0.68
+	iron.roughness = 0.59
+	for y in [0.13, 0.385]:
+		for side in [-1, 1]:
+			K.box(root, Vector3(0.67, 0.032, 0.019), iron, Vector3(0, y, side * 0.25))
+			K.box(root, Vector3(0.018, 0.032, 0.50), iron, Vector3(side * 0.335, y, 0))
+	# x 左右不等长，右端收成短喙。截面的四角各削一道锻棱。
+	var rings: Array[PackedVector3Array] = []
+	for profile in [Vector4(-0.27, 0.27, 0.20, 0.51), Vector4(-0.28, 0.28, 0.20, 0.56),
+			Vector4(-0.17, 0.18, 0.115, 0.63), Vector4(-0.16, 0.22, 0.13, 0.74),
+			Vector4(-0.29, 0.47, 0.15, 0.82), Vector4(-0.29, 0.50, 0.145, 0.89)]:
+		var left: float = profile.x
+		var right: float = profile.y
+		var half: float = profile.z
+		var y: float = profile.w
+		var nose := right * 0.55
+		var end_width := half * (0.35 if y > 0.8 else 0.82)
+		rings.append(PackedVector3Array([Vector3(left, y, -half * 0.83), Vector3(left + 0.033, y, -half),
+			Vector3(nose, y, -half), Vector3(right, y, -end_width), Vector3(right, y, end_width),
+			Vector3(nose, y, half), Vector3(left + 0.033, y, half), Vector3(left, y, half * 0.83)]))
+	var s := SurfaceTool.new()
+	s.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for row in rings.size() - 1:
+		for k in 8:
+			var j := (k + 1) % 8
+			var a := rings[row][k]
+			var b := rings[row][j]
+			_quad(s, a, b, rings[row+1][j], rings[row+1][k], Vector3(b.z - a.z, 0, a.x - b.x), Color.WHITE)
+	var top := rings.back() as PackedVector3Array
+	s.set_normal(Vector3.UP)
+	for i in range(1, top.size() - 1):
+		for v in [top[0], top[i], top[i+1]]:s.add_vertex(v)
+	s.index()
+	K._mesh(root, s.commit(), iron, Vector3.ZERO)
+	var hammer := K.node(root, Vector3(-0.04, 0.896, 0.025), Vector3(0, -23, 0))
+	K.cyl(hammer, 0.019, 0.017, 0.29, K.WOOD_LIGHT, Vector3(0, 0.03, 0.085), Vector3(90, 0, 0), 8)
+	K.box(hammer, Vector3(0.14, 0.064, 0.066), iron, Vector3(0, 0.032, -0.067))
+
+
 ## 由店里实际的陈列方式决定开间：食材商号在檐下交货，书药当铺留高柜台与窗扇。
 static func shopfront(parent: Node3D, id: String, w: float, d: float, h: float) -> void:
 	var n := K.node(parent)
@@ -150,18 +198,39 @@ static func shopfront(parent: Node3D, id: String, w: float, d: float, h: float) 
 		K.box(bracket, Vector3(0.30, 0.13, 0.64), K.WOOD_LIGHT, Vector3(0, 0.29, 0.23))
 	if id in ["rice_shop","market","grocery","bookshop"]:
 		var tint: Color = {"rice_shop":Color("#b19b73"),"market":Color("#75806c"),"grocery":Color("#91816d"),"bookshop":Color("#75848a")}[id]
-		var cloth := K.mat(tint, 0.98)
+		var cloth := K.mat(tint, 0.98).duplicate() as BaseMaterial3D
+		cloth.cull_mode = BaseMaterial3D.CULL_DISABLED
 		var span := w * 0.58
 		var z0 := front + 0.37
 		# 两侧斜杆撑住雨布，檐头车缝沉出很浅的弧。
 		for side in [-1.0, 1.0]:
 			K.box(n, Vector3(0.065, 0.065, 1.40), K.WOOD, Vector3(side * span / 2.0, h - 0.52, z0 + 0.55), Vector3(17, 0, 0))
-		var stripes := 8
-		for i in stripes:
-			var phase := sin(PI * (i + 0.5) / stripes)
-			var x: float = span * ((i + 0.5) / stripes - 0.5)
-			K.box(n, Vector3(span / stripes + 0.003, 0.03, 1.31), cloth, Vector3(x, h - 0.47 - 0.06 * phase, z0 + 0.51), Vector3(16, 0, 0))
-			K.box(n, Vector3(span / stripes + 0.003, 0.12 + 0.07 * phase, 0.026), cloth, Vector3(x, h - 0.72 - 0.06 * phase, z0 + 1.132))
+		# 一整匹篷布系在两端，中腰渐垂。前缘是折回的短布帘。
+		var surface := SurfaceTool.new()
+		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var columns := 24
+		for i in columns + 1:
+			var t := float(i) / columns
+			var x := span * (t - 0.5)
+			var sag := sin(PI * t)
+			var pleat := sin(t * TAU * 3.0 + 0.38) * sag
+			var front_height := h - 0.614 - 0.105 * sag + 0.023 * pleat
+			var rim_z := z0 + 1.133 + 0.023 * pleat
+			for point in [Vector3(x, h - 0.27 - 0.055 * sag, z0 - 0.1),
+					Vector3(x, h - 0.49 - 0.12 * sag + 0.013 * pleat, z0 + 0.54),
+					Vector3(x, front_height, rim_z), Vector3(x, front_height - 0.019, rim_z + 0.004),
+					Vector3(x, front_height - 0.140 - 0.018 * sag, rim_z - 0.015)]:
+				surface.add_vertex(point)
+		for col in columns:
+			for row in 4:
+				var start := col * 5 + row
+				for idx in [start, start + 5, start + 1, start + 5, start + 6, start + 1]:
+					surface.add_index(idx)
+		surface.generate_normals()
+		var canopy := MeshInstance3D.new()
+		canopy.mesh = surface.commit()
+		canopy.material_override = cloth
+		n.add_child(canopy)
 	House.finish_joinery(n)
 
 ## 残墙保留真实受力位置；残砖压在墙脚，木柱和穿枋坐在残留墙段上。
@@ -178,34 +247,57 @@ static func ruined_bay(parent: Node3D, at: Vector3, along_z: bool, width: float,
 		return
 	var foot := minf(0.59, height * 0.48)
 	courses(root, width, foot, 0.25, true)
-	var s := SurfaceTool.new()
-	s.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# 每片顶部由实际断口截出；短墙保留低矮视线，长墙只有一处明显坍塌。
-	var pieces := maxi(4, ceili(width / 0.51))
+	var plaster := SurfaceTool.new()
+	var core := SurfaceTool.new()
+	plaster.begin(Mesh.PRIMITIVE_TRIANGLES)
+	core.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# 断口露出砌体与灰浆。灰皮的剥落边沿略低于砖芯，断面有厚度。
+	var pieces := maxi(4, ceili(width / 0.43))
 	var scar := 0.24 + 0.10 * posmod(seed_value, 5)
 	var rim := PackedVector2Array()
+	var skin := PackedFloat32Array()
 	for i in pieces + 1:
 		var t := float(i) / pieces
-		var loss := clampf(1.0 - absf(t - scar) / 0.27, 0, 1)
-		var jitter := 0.026 * posmod(i * 11 + seed_value * 3, 5)
-		var h := height - (height - foot) * 0.85 * loss - jitter
-		rim.append(Vector2((t - 0.5) * width, h))
-	for i in pieces:
+		var distance := absf(t - scar)
+		var loss := 1.0 - smoothstep(0.035, 0.31 if t < scar else 0.26, distance)
+		var nick := 0.016 * posmod(i * 11 + seed_value * 3, 5)
+		var h := height - (height - foot) * 0.78 * loss - nick
+		h = maxf(foot + 0.085, roundf(h / 0.075) * 0.075)
+		var x := (t - 0.5) * width
+		var bare := 0.009 + loss * (0.12 + nick * 1.4)
+		if i > 0 and absf(h - rim[-1].y) > 0.16:
+			var prev: Vector2 = rim[-1]
+			# 断裂沿一截砖床横走，再向下一皮砖错落。
+			rim.append(Vector2(lerpf(prev.x, x, 0.39), prev.y - 0.013))
+			skin.append(maxf(foot + 0.01, skin[-1] - 0.021))
+		rim.append(Vector2(x, h))
+		skin.append(maxf(foot + 0.014, h - bare))
+	var segments := rim.size() - 1
+	for i in segments:
 		var a := rim[i]
 		var b := rim[i + 1]
 		for side in [-1.0, 1.0]:
-			var z: float = side * 0.109
-			_quad(s, Vector3(a.x, foot, z), Vector3(b.x, foot, z), Vector3(b.x, b.y, z), Vector3(a.x, a.y, z), Vector3(0, 0, side), Color.WHITE)
-		_quad(s, Vector3(a.x, a.y, -0.109), Vector3(b.x, b.y, -0.109), Vector3(b.x, b.y, 0.109), Vector3(a.x, a.y, 0.109), Vector3.UP, Color.WHITE)
-	for end in [0, pieces]:
+			var z: float = side * 0.116
+			var inset: float = side * 0.097
+			var outward := Vector3(0, 0, side)
+			var low_a := Vector3(a.x, skin[i], z)
+			var low_b := Vector3(b.x, skin[i+1], z)
+			var bare_a := Vector3(a.x, a.y, inset)
+			var bare_b := Vector3(b.x, b.y, inset)
+			_quad(plaster, Vector3(a.x, foot, z), Vector3(b.x, foot, z), low_b, low_a, outward, Color.WHITE)
+			_quad(core, low_a, low_b, bare_b, bare_a, outward, Color.WHITE)
+		_quad(core, Vector3(a.x, a.y, -0.097), Vector3(b.x, b.y, -0.097), Vector3(b.x, b.y, 0.097), Vector3(a.x, a.y, 0.097), Vector3.UP, Color.WHITE)
+	for end in [0, segments]:
 		var p := rim[end]
-		_quad(s, Vector3(p.x, foot, -0.109), Vector3(p.x, p.y, -0.109), Vector3(p.x, p.y, 0.109), Vector3(p.x, foot, 0.109), Vector3.LEFT if end == 0 else Vector3.RIGHT, Color.WHITE)
-	s.index()
-	var panel := MeshInstance3D.new()
-	panel.mesh = s.commit()
-	panel.material_override = House.plaster()
-	root.add_child(panel)
-	for i in [0, pieces]:
+		_quad(core, Vector3(p.x, foot, -0.11), Vector3(p.x, p.y, -0.097), Vector3(p.x, p.y, 0.097), Vector3(p.x, foot, 0.11), Vector3.LEFT if end == 0 else Vector3.RIGHT, Color.WHITE)
+	if _exposed_brick == null:
+		_exposed_brick = Assets.pbr_unique("brick_wall_09", 2.5, Color("#c6beae"))
+		_exposed_brick.normal_scale = 0.36
+	plaster.index()
+	core.index()
+	K._mesh(root, plaster.commit(), House.plaster(), Vector3.ZERO)
+	K._mesh(root, core.commit(), _exposed_brick, Vector3.ZERO)
+	for i in [0, segments]:
 		var p := rim[i]
 		K.box(root, Vector3(0.14, p.y, 0.25), K.WOOD, Vector3(p.x * 0.968, p.y / 2.0, 0))
 

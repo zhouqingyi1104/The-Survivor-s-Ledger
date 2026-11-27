@@ -16,6 +16,8 @@ const Figure = preload("res://scripts/world/character.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Assets = preload("res://scripts/world/assets.gd")
+const FieldProps = preload("res://scripts/world/field_props.gd")
+const Workshop = preload("res://scripts/world/household_models.gd")
 const Signs = preload("res://scripts/world/painted_signs.gd")
 
 ## 换成 cs-studio 中式铺面模型的铺子：[模型, 转多少度让门脸朝街, 缩放]。其余铺子还是程序搭的厅堂。
@@ -281,28 +283,47 @@ func _decor(id: String, root: Node3D, w: float, d: float) -> void:
 			Props.rice_sacks(root, Vector3(-1.8, 0, front), 9)
 		"market":
 			for k in 3:
-				var x := -2.4 + k * 2.4
-				K.box(root, Vector3(1.8, 0.8, 0.9), K.WOOD_LIGHT, Vector3(x, 0.4, front))
-				K.box(root, Vector3(2.0, 0.06, 1.3), K.mat(Color("#7a8f5a")), Vector3(x, 2.0, front), Vector3(-12, 0, 0))
-				for c in 4:
-					K.sphere(root, 0.16, K.mat(Color("#a9c98a")), Vector3(x - 0.6 + c * 0.4, 0.95, front))
+				var stall := K.node(root, Vector3(-2.05 + k * 2.0, 0, front))
+				var height := 0.66 + 0.07 * (k % 2)
+				for x in [-0.69, 0.69]:
+					for z in [-0.27, 0.27]:
+						K.box(stall, Vector3(0.09, height, 0.10), K.WOOD, Vector3(x, height / 2, z))
+					K.box(stall, Vector3(0.085, 0.10, 0.65), K.WOOD, Vector3(x, height * 0.42, 0))
+				for row in 4:
+					K.box(stall, Vector3(1.73, 0.055, 0.184), K.WOOD_LIGHT, Vector3(0, height, (row - 1.5) * 0.19))
+				HomeHouse.finish_joinery(stall)
+				for side in [-1, 1]:
+					var basket := Props.basket(stall, Vector3(side * 0.39, height + 0.0275, side * 0.026), Color("#93a570") if k != 2 else Color("#beac80"))
+					basket.rotation.y = deg_to_rad(17.0 * (side + k))
 		"grocery":
 			Props.firewood(root, Vector3(-2.0, 0, front), 8)
-			K.cyl(root, 0.3, 0.3, 0.6, K.mat(Color("#4a3a2e"), 0.3), Vector3(2.2, 0.3, front))
+			Props.clay_jar(root, Vector3(2.06, 0, front - 0.08), 0.81)
 		"smithy":
-			K.box(root, Vector3(0.6, 0.6, 0.4), K.mat(Color("#3a3d42"), 0.3), Vector3(-1.5, 0.3, front))
-			K.box(root, Vector3(1.0, 0.8, 1.0), K.BRICK, Vector3(1.8, 0.4, front))
-			K.box(root, Vector3(0.6, 0.12, 0.6), K.mat(Color("#ff7a3d"), 0.5, 3.0), Vector3(1.8, 0.82, front))
-			K.light(root, Color("#ff8a4a"), 2.0, 6.0, Vector3(1.8, 1.4, front))
+			# 炉口高于台面，铁盆中能看见煤和灰。
+			Craft.smith_anvil(root, Vector3(-1.50, 0, front))
+			var hearth := K.node(root, Vector3(1.8, 0, front))
+			Craft.courses(hearth, 1.13, 0.61, 0.96, true)
+			K.box(hearth, Vector3(1.15, 0.095, 0.99), K.STONE_DARK, Vector3.UP * 0.64)
+			var fire := Workshop.place(hearth, &"Brazier", Vector3.UP * 0.685)
+			fire.scale = Vector3.ONE * 1.36
+			K.light(hearth, Color("#f89558"), 0.95, 4.0, Vector3.UP * 1.09)
 		"pharmacy":
 			K.box(root, Vector3(2.5, 1.8, 0.5), K.WOOD, Vector3(0, 0.9, -d / 2.0 + 0.5))
 			for r in 4:
 				for c in 6:
 					K.box(root, Vector3(0.36, 0.36, 0.04), K.WOOD_LIGHT, Vector3(-1.0 + c * 0.4, 0.3 + r * 0.42, -d / 2.0 + 0.76))
 		"bookshop":
-			for k in 3:
-				K.box(root, Vector3(0.5, 0.3, 0.35), K.mat(Color("#cbb98f")), Vector3(-1.5 + k * 1.5, 0.95, front), Vector3(0, k * 15, 0))
-			K.box(root, Vector3(4.0, 0.8, 0.8), K.WOOD, Vector3(0, 0.4, front))
+			var counter := K.node(root, Vector3(0, 0, front))
+			for x in [-1.69, 1.69]:
+				for z in [-0.29, 0.29]:
+					K.box(counter, Vector3(0.095, 0.81, 0.10), K.WOOD, Vector3(x, 0.405, z))
+			K.box(counter, Vector3(3.86, 0.11, 0.64), K.WOOD, Vector3(0, 0.71, 0))
+			K.box(counter, Vector3(4.0, 0.07, 0.82), K.WOOD_LIGHT, Vector3.UP * 0.81)
+			HomeHouse.finish_joinery(counter)
+			for pile in 3:
+				var base := Vector3(-1.29 + pile * 1.18, 0.845, 0.024 * pile)
+				for volume in 2 + pile % 2:
+					FieldProps.book(counter, base + Vector3(0.013 * volume, 0.058 * volume, 0), 9.0 * pile - 5.0 * volume)
 		"pawnshop":
 			K.box(root, Vector3(1.6, 1.6, 0.1), K.WALL, Vector3(-w / 2.0 + 1.2, 1.6, d / 2.0 + 0.1))
 			var big := K.text3d(root, "当", Vector3(-w / 2.0 + 1.2, 1.6, d / 2.0 + 0.17), 230, Color("#1f1a16"), false)

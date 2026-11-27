@@ -35,14 +35,17 @@ static func _twig(s: SurfaceTool, a: Vector3, b: Vector3, thick: float, thin: fl
 	var axis := (b - a).normalized()
 	var u := axis.cross(Vector3.FORWARD if absf(axis.z) < 0.88 else Vector3.RIGHT).normalized()
 	var v := axis.cross(u)
+	var taper := (thick - thin) / a.distance_to(b)
 	for i in sides:
 		var angle := TAU * i / sides
 		var step := TAU / sides
-		var p := u * cos(angle) + v * sin(angle)
-		var q := u * cos(angle + step) + v * sin(angle + step)
-		var tone := hue.darkened(0.10 * (0.5 + 0.5 * sin(i * 2.1)))
-		_face(s, a + thick * p, b + thin * p, b + thin * q, p + q, tone)
-		_face(s, a + thick * p, b + thin * q, a + thick * q, p + q, tone)
+		var edges := [u * cos(angle) + v * sin(angle), u * cos(angle + step) + v * sin(angle + step)]
+		for corner: Vector2i in [Vector2i(0,0), Vector2i(0,1), Vector2i(1,1), Vector2i(0,0), Vector2i(1,1), Vector2i(1,0)]:
+			var direction: Vector3 = edges[corner.x]
+			var tone := 0.023 * (1.0 + direction.dot(u))
+			s.set_color(hue.darkened(tone))
+			s.set_normal((direction + axis * taper).normalized())
+			s.add_vertex(a + thick * direction if corner.y == 0 else b + thin * direction)
 
 static func plum_tree(parent: Node3D, pos: Vector3, collide := true) -> Node3D:
 	var root := K.node(parent, pos)

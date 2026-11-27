@@ -32,8 +32,17 @@ static func tiles(parent: Node3D, length: float, half_depth: float, rise: float,
 	var width := length / runs
 	var surface := SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var section := PackedVector2Array([Vector2(0, 0.070), Vector2(0.16, 0.047), Vector2(0.28, 0.004),
-		Vector2(0.76, 0.004), Vector2(0.88, 0.048), Vector2(1, 0.070)])
+	# 半圆瓦垄与浅弧瓦沟共用连续法线；檐口截面仍保留硬边。
+	var section := PackedVector2Array([Vector2(0, 0.069), Vector2(0.105, 0.058), Vector2(0.20, 0.028),
+		Vector2(0.29, 0.010), Vector2(0.50, 0.003), Vector2(0.71, 0.010),
+		Vector2(0.80, 0.028), Vector2(0.895, 0.058), Vector2(1, 0.069)])
+	var slopes := PackedFloat32Array()
+	for i in section.size():
+		var derivative := 0.0
+		if i > 0 and i < section.size() - 1:
+			var tangent := section[i + 1] - section[i - 1]
+			derivative = tangent.y / (width * tangent.x)
+		slopes.append(derivative)
 	for row in rows:
 		var near := float(row) / rows
 		var far := float(row + 1) / rows
@@ -42,11 +51,10 @@ static func tiles(parent: Node3D, length: float, half_depth: float, rise: float,
 		for j in section.size() - 1:
 			var a := section[j]
 			var b := section[j + 1]
-			var normal := Vector3(a.y - b.y, (b.x - a.x) * width, -rise / half_depth * (b.x - a.x) * width).normalized()
 			for st: Vector2 in [Vector2.ZERO, Vector2(1, 0), Vector2.ONE, Vector2.ZERO, Vector2.ONE, Vector2(0, 1)]:
 				var profile := a.lerp(b, st.x)
 				var along := bottom.lerp(top, st.y)
-				surface.set_normal(normal)
+				surface.set_normal(Vector3(-slopes[j + int(st.x)], 1.0, -rise / half_depth).normalized())
 				surface.set_uv(Vector2(0.039 + profile.x * 0.044, 0.870 + st.y * 0.060))
 				surface.add_vertex(Vector3(profile.x * width, along.y + profile.y, along.x))
 			if row > 0:

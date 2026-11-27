@@ -2,9 +2,57 @@ extends RefCounted
 ## 搜寻点的物件都以地面为原点；通路、封锁和交互碰撞由 RuinWorld 管理。
 
 const K = preload("res://scripts/world/kit.gd")
+const Workshop = preload("res://scripts/world/household_models.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const House = preload("res://scripts/world/home_house.gd")
 const Props = preload("res://scripts/world/props.gd")
+
+
+static var _rubble_meshes := {}
+static var _broken_stone: BaseMaterial3D
+
+
+## 断面保留两三块宽面和不等宽的残棱，底面坐在地板上。
+static func rubble(parent: Node3D, pos: Vector3, variant: int, size: float, turn: float) -> void:
+	if not _rubble_meshes.has(variant):
+		var footprints := [
+			PackedVector2Array([Vector2(-0.24,-0.11), Vector2(0.08,-0.15), Vector2(0.23,-0.045), Vector2(0.18,0.11), Vector2(-0.13,0.15), Vector2(-0.26,0.05)]),
+			PackedVector2Array([Vector2(-0.16,-0.09), Vector2(0.11,-0.14), Vector2(0.19,0.025), Vector2(0.08,0.11), Vector2(-0.23,0.065)]),
+			PackedVector2Array([Vector2(-0.15,-0.07), Vector2(0.12,-0.08), Vector2(0.18,0.04), Vector2(-0.09,0.13), Vector2(-0.18,0.01)])]
+		var outline: PackedVector2Array = footprints[variant]
+		var lower := PackedVector3Array()
+		var shoulder := PackedVector3Array()
+		var upper := PackedVector3Array()
+		for k in outline.size():
+			var p := outline[k]
+			var h := 0.070 + 0.017 * ((k + variant) % 4)
+			lower.append(Vector3(p.x * 0.96, 0, p.y * 0.96))
+			shoulder.append(Vector3(p.x, h * 0.66, p.y))
+			var inset := 0.74 if k % 3 == variant else 0.88
+			upper.append(Vector3(p.x * inset, h, p.y * inset))
+		var surface := SurfaceTool.new()
+		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for k in outline.size():
+			var j := (k + 1) % outline.size()
+			for face in [[lower[k], shoulder[k], shoulder[j]], [lower[k], shoulder[j], lower[j]],
+					[shoulder[k], upper[k], upper[j]], [shoulder[k], upper[j], shoulder[j]],
+					[Vector3(0.015, 0.108, -0.012), upper[j], upper[k]]]:
+				# 三角形几何在上方俯视依顺时针；独立法线留下劈裂的钝棱。
+				var a: Vector3 = face[0]
+				var b: Vector3 = face[1]
+				var c: Vector3 = face[2]
+				surface.set_normal((b - a).cross(c - a).normalized())
+				surface.add_vertex(a)
+				surface.add_vertex(c)
+				surface.add_vertex(b)
+		surface.index()
+		_rubble_meshes[variant] = surface.commit()
+	if _broken_stone == null:
+		_broken_stone = Assets.pbr_unique("rock_01", 1.65, Color("#b4ada0"))
+		_broken_stone.normal_scale = 0.26
+	var piece := K._mesh(parent, _rubble_meshes[variant], _broken_stone, pos)
+	piece.scale = Vector3.ONE * size
+	piece.rotation.y = turn
 
 
 static func book(parent: Node3D, pos: Vector3, tilt := -8.0) -> void:
@@ -179,7 +227,7 @@ static func medicine_tray(parent: Node3D) -> void:
 	book(parent, Vector3(0.34, 0.127, 0.055), 4)
 
 
-static func table(parent: Node3D, offering: bool) -> void:
+static func _tabletop(parent: Node3D, offering: bool) -> float:
 	var id := "chinese_console_table" if offering else "chinese_tea_table"
 	var ref := Assets.prop(parent, id, Vector3.ZERO, 0.0, 0.78, false)
 	var top := 0.70
@@ -190,6 +238,19 @@ static func table(parent: Node3D, offering: bool) -> void:
 		for x in [-0.59, 0.59]:
 			for z in [-0.23, 0.23]:
 				K.box(parent, Vector3(0.072, top - 0.08, 0.072), K.WOOD, Vector3(x, (top - 0.08) * 0.5, z))
+	return top
+
+
+static func incense_table(parent: Node3D, three_vessels: bool) -> void:
+	var top := _tabletop(parent, true)
+	Workshop.place(parent, &"Incense", Vector3.UP * top)
+	if three_vessels:
+		for side in [-1, 1]:
+			Assets.prop(parent, "ceramic_vase_03", Vector3(side * 0.49, top, -0.015), side * 12, 0.51, false)
+
+
+static func table(parent: Node3D, offering: bool) -> void:
+	var top := _tabletop(parent, offering)
 	if offering:
 		Props.altar_items(parent, Vector3.UP * top)
 	else:
