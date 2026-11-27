@@ -3,6 +3,15 @@
   "engine_version": "4.7.2",
   "cases": [
     {
+      "id": "scanned_model_materials",
+      "entry": "tests/scanned_model_materials.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[scanned_model_materials\\] materials=[1-9][0-9]* failures=0\\r?$"
+    },
+    {
       "id": "rice_story",
       "entry": "tests/rice_story.gd",
       "kind": "script",

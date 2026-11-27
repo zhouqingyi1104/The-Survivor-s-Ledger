@@ -1,6 +1,6 @@
 extends RefCounted
 ## 3D 搭建工具：材质色板 + 基本几何体（盒、柱、棱柱、球）+ 碰撞 + 3D 文字。
-## 场景里没有美术资源，全部用这些基本体拼出来，走低多边形风格。
+## 程序构件和扫描模型共用的物料色板；有铺缝的路面由场景单独指定。
 
 const Fonts = preload("res://scripts/ui/fonts.gd")
 const Assets = preload("res://scripts/world/assets.gd")
@@ -35,9 +35,9 @@ static var _mats := {}
 ## [深色, 频率, 拉伸]
 const TEXTURED := {
 	"wall": [WALL, 0.92, 0.035, Vector3(1, 1, 1)],
+	"wall_shade": [WALL_SHADE, 0.90, 0.035, Vector3.ONE],
 	"wood": [WOOD, 0.72, 0.06, Vector3(1, 6, 1)],
 	"wood_light": [WOOD_LIGHT, 0.75, 0.06, Vector3(1, 6, 1)],
-	"lacquer": [LACQUER, 0.8, 0.05, Vector3(1, 5, 1)],
 	"stone": [STONE, 0.82, 0.09, Vector3(1, 1, 1)],
 	"stone_dark": [STONE_DARK, 0.82, 0.09, Vector3(1, 1, 1)],
 	"snow": [SNOW, 0.94, 0.02, Vector3(1, 1, 1)],
@@ -49,15 +49,35 @@ const TEXTURED := {
 ## 有写实贴图（Poly Haven，CC0）的就用写实的：[贴图 id, 一张铺多少米, 染色]
 const PBR := {
 	"wall": ["white_stucco", 2.5, Color(1, 1, 1)],
+	"wall_shade": ["white_stucco", 2.5, Color("#d5d1c8")],
 	"snow": ["snow_02", 3.0, Color(1.22, 1.22, 1.28)],
-	"stone": ["cobblestone_floor_08", 1.8, Color(1, 1, 1)],
-	"stone_dark": ["square_cobblestone", 1.8, Color(0.8, 0.8, 0.8)],
+	"stone": ["rock_01", 0.95, Color("#e4ecf1")],
+	"stone_dark": ["rock_01", 0.95, Color("#adbcc7")],
+	"brick": ["brick_wall_09", 2.3, Color("#dad4ce")],
+	"earth": ["brown_mud_dry", 1.75, Color("#cbbcaa")],
 	"wood": ["brown_planks_09", 1.4, Color(0.6, 0.46, 0.36)],
 	"wood_light": ["brown_planks_09", 1.4, Color(1, 1, 1)],
 }
 
 
 static func _textured(color: Color) -> BaseMaterial3D:
+	if color == LACQUER:
+		if not _mats.has("wood_lacquer"):
+			var coat := StandardMaterial3D.new()
+			coat.albedo_color = Color("#ab5643")
+			coat.albedo_texture = preload("res://assets/third_party/polyhaven/textures/brown_planks_09/brown_planks_09_diff.jpg")
+			coat.normal_enabled = true
+			coat.normal_texture = preload("res://assets/third_party/polyhaven/textures/brown_planks_09/brown_planks_09_nor.jpg")
+			coat.normal_scale = 0.18
+			coat.roughness = 0.53
+			coat.clearcoat_enabled = true
+			coat.clearcoat = 0.24
+			coat.clearcoat_roughness = 0.36
+			coat.uv1_triplanar = true
+			coat.uv1_scale = Vector3.ONE * 0.41
+			coat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+			_mats["wood_lacquer"] = coat
+		return _mats["wood_lacquer"]
 	for key in TEXTURED:
 		var spec: Array = TEXTURED[key]
 		if (spec[0] as Color).is_equal_approx(color):
@@ -104,6 +124,8 @@ static func mat(color: Color, rough := 0.85, emit := 0.0, alpha := 1.0) -> BaseM
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color(color, alpha)
 	m.roughness = rough
+	if color == GOLD and emit == 0.0 and alpha >= 1.0:
+		m.metallic = 0.70
 	if emit > 0.0:
 		m.emission_enabled = true
 		m.emission = color

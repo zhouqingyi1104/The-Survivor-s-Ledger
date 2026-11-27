@@ -33,6 +33,10 @@
         "metallicRoughnessTexture": {
           "index": 2
         }
+      },
+      "occlusionTexture": {
+        "index": 2,
+        "strength": 0.8
       }
     }
   ],
@@ -95,7 +99,7 @@
       ],
       "min": [
         -1.143192172050476,
-        -2.483498029448583e-8,
+        -2.483498029448583e-08,
         -0.4851073920726776
       ],
       "type": "VEC3"

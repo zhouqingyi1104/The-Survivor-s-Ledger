@@ -37,10 +37,12 @@
 | `cobblestone_floor_08`、`square_cobblestone` | 灶间铺石、门前石街 |
 | [`rock_face_03`](https://polyhaven.com/a/rock_face_03) | 井栏、石桌、铺路石和墙脚，各自按石作加工方式取色、打磨 |
 | [`brown_mud_dry`](https://polyhaven.com/a/brown_mud_dry) | 冬院裸土，与薄霜、井边水迹混合 |
+| [`rock_01`](https://polyhaven.com/a/rock_01) | 整块柱础、台沿和桥石，保留细石粒和石面明暗 |
+| [`brick_wall_09`](https://polyhaven.com/a/brick_wall_09) | 炉身和砖砌构件，砖缝按构件的实际尺寸铺开 |
 | `snow_02` | 雪地 |
 | `brown_planks_09` | 木作、门板 |
 
-小计：约 30 MB（模型）+ 约 18 MB（贴图）。
+独立地表贴图约 22 MB。15 件扫描模型的颜色、法线和表面贴图带多级缩小纹理，供远景和斜视角采样。13 件模型使用 ARM 红通道提供局部遮蔽；另外两件瓷瓶的灰度图只记录粗糙度。
 
 ### 2. cs-studio「Low Poly Chinese Style Building Set 1 [FREE]」—— 临川城的铺子
 
@@ -114,7 +116,7 @@ CC-BY 的资源用上以后，必须在游戏里写明模型名、作者、许�
 ### 怎么重新生成（脚本在 `tools/pipeline/`）
 
 ```bash
-# 1. Poly Haven：15 个模型 + 10 套贴图（1K），写到 assets/third_party/polyhaven/
+# 1. Poly Haven：15 个模型 + 12 套贴图（1K），写到 assets/third_party/polyhaven/
 python -I tools/pipeline/polyhaven_dl.py assets/third_party/polyhaven
 
 # 2. cs-studio：itch.io 领取（免费）→ 解包 → FBX 转 GLB（"FBX|贴图编号|输出名"）

@@ -25,6 +25,7 @@ static func pbr(id: String, size := 2.0, tint := Color.WHITE) -> BaseMaterial3D:
 	if not ResourceLoader.exists(diff):
 		return null
 	var m := ORMMaterial3D.new()
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	m.albedo_texture = load(diff)
 	m.albedo_color = tint
 	m.normal_enabled = true

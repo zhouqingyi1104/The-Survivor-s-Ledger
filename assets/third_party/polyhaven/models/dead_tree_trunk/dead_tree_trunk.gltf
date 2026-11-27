@@ -33,6 +33,10 @@
         "metallicRoughnessTexture": {
           "index": 2
         }
+      },
+      "occlusionTexture": {
+        "index": 2,
+        "strength": 0.8
       }
     }
   ],
