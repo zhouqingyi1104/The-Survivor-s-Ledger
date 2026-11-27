@@ -1,9 +1,11 @@
 extends Node3D
 ## 标题背后的动态远景：雪夜，院门外。
-## 全部用基本体拼：墙、门楼、灯笼、雪、街上的影子。不用任何贴图。
+## 标题门楼沿用实际院门的木作、砖石与透光灯纱。
 ## 相机极慢地往前推，鼠标带一点点视差；灯笼会晃、火光会抖。
 
 const K = preload("res://scripts/world/kit.gd")
+const Arch = preload("res://scripts/world/arch.gd")
+const Yard = preload("res://scripts/world/yard_materials.gd")
 const Figure = preload("res://scripts/world/figure.gd")
 
 const GATE_Z := 0.0
@@ -21,9 +23,12 @@ func _ready() -> void:
 	_sky()
 	_ground()
 	_wall()
-	_lanterns()
 	_snow()
 	_shadows()
+	var moving := []
+	for row in _lamps + _figs:
+		moving.append(row[0])
+	K.merge_static(self, moving)
 	_camera()
 
 
@@ -102,56 +107,32 @@ func _sky() -> void:
 
 
 func _ground() -> void:
-	K.box(self, Vector3(70, 0.3, 70), Color("#dfe4ea"), Vector3(0, -0.15, 0))
-	# 街心的雪被踩出一条脏痕
-	K.box(self, Vector3(26, 0.06, 2.6), Color("#b9c0c8"), Vector3(0, 0.02, 5.4))
-	for i in 9:
-		var x := -12.0 + i * 3.0
-		K.box(self, Vector3(1.6, 0.05, 1.1), Color("#c6ccd3"), Vector3(x + 0.4, 0.03, 5.2 + (i % 3) * 0.7))
+	K.box(self, Vector3(70, 0.3, 70), K.SNOW, Vector3(0, -0.15, 0))
+	K.box(self, Vector3(26, 0.05, 3.0), Yard.street(), Vector3(0, 0.017, 5.4))
 
 
 func _wall() -> void:
-	var stone := Color("#4a5158")
-	var dark := Color("#2f343a")
-	# 院墙：中间留出大门
-	for side in [-1, 1]:
-		var x: float = side * 5.9
-		K.box(self, Vector3(10.0, 3.4, 0.5), stone, Vector3(x, 1.7, GATE_Z))
-		K.prism(self, Vector3(10.4, 0.55, 1.1), dark, Vector3(x, 3.55, GATE_Z))
-	# 门框与门扇
-	K.box(self, Vector3(0.45, 3.9, 0.6), dark, Vector3(-1.55, 1.95, GATE_Z))
-	K.box(self, Vector3(0.45, 3.9, 0.6), dark, Vector3(1.55, 1.95, GATE_Z))
-	for side in [-1, 1]:
-		K.box(self, Vector3(1.3, 3.4, 0.14), Color("#3b2f28"), Vector3(side * 0.82, 1.7, GATE_Z - 0.05))
-	K.box(self, Vector3(0.1, 3.4, 0.2), Color("#6a5236"), Vector3(0, 1.7, GATE_Z - 0.12))
-	# 门楼：屋檐压在门上
-	K.prism(self, Vector3(5.6, 0.75, 2.3), dark, Vector3(0, 4.0, GATE_Z))
-	K.box(self, Vector3(3.6, 0.28, 0.9), Color("#584a3d"), Vector3(0, 3.72, GATE_Z + 0.1))
+	for side in [-1.0, 1.0]:
+		Arch.wall(self, Vector3(side * 1.88, 0, GATE_Z), Vector3(side * 11.0, 0, GATE_Z), 3.4)
+	var portal := Arch.gate(self, Vector3(0, 0, GATE_Z), 2.67, 3.35)
+	for side in 2:
+		var lamp: Dictionary = portal.lanterns[side]
+		Arch.set_lantern(lamp, true)
+		_lamps.append([lamp.node, lamp.light, -1.7 if side == 0 else 1.7])
 	# 院里透出来的一点暖光：门缝里能看见有人在
 	var inner := K.light(self, Color("#ffab5e"), 2.4, 8.5, Vector3(0.0, 2.1, GATE_Z - 1.6))
 	inner.omni_shadow_mode = OmniLight3D.SHADOW_DUAL_PARABOLOID
 	# 门前的石阶与石墩
-	K.box(self, Vector3(3.4, 0.16, 1.1), Color("#9aa1a8"), Vector3(0, 0.08, GATE_Z + 1.0))
+	K.box(self, Vector3(3.4, 0.16, 1.1), K.STONE, Vector3(0, 0.08, GATE_Z + 1.0))
 	for side in [-1, 1]:
-		K.box(self, Vector3(0.5, 0.7, 0.5), Color("#8d949b"), Vector3(side * 2.1, 0.35, GATE_Z + 1.25))
+		K.box(self, Vector3(0.5, 0.7, 0.5), K.STONE_DARK, Vector3(side * 2.1, 0.35, GATE_Z + 1.25))
 	# 院内露出的屋顶一角，让画面后面有东西
-	K.prism(self, Vector3(9.0, 2.2, 5.0), Color("#2b3036"), Vector3(0.5, 4.4, GATE_Z - 4.6))
+	Arch.roof(self, 7.2, 4.1, 1.8, Vector3(0.5, 3.35, GATE_Z - 4.6), K.mat(K.ROOF))
 	# 前景门洞：远一点、窄一点，只在四角压一压，别挡脸
 	var near := Color("#0d1116")
 	K.box(self, Vector3(1.1, 7.2, 0.6), near, Vector3(-4.9, 3.3, CAM_Z + 0.4))
 	K.box(self, Vector3(1.1, 7.2, 0.6), near, Vector3(4.9, 3.3, CAM_Z + 0.4))
 	K.box(self, Vector3(9.0, 1.05, 0.7), near, Vector3(0, 6.9, CAM_Z + 0.4))
-
-
-func _lanterns() -> void:
-	for side in [-1, 1]:
-		var root := K.node(self, Vector3(side * 1.9, 3.5, GATE_Z + 0.55))
-		K.box(root, Vector3(0.05, 0.75, 0.05), Color("#2a2e33"), Vector3(0, -0.35, 0))
-		var body := K.sphere(root, 0.34, K.mat(Color("#c0392b"), 0.7, 1.9), Vector3(0, -0.78, 0), Vector3(1, 1.25, 1))
-		K.cyl(root, 0.06, 0.06, 0.12, K.mat(Color("#b8893b"), 0.5), Vector3(0, -0.45, 0))
-		K.cyl(root, 0.06, 0.06, 0.10, K.mat(Color("#b8893b"), 0.5), Vector3(0, -1.12, 0))
-		var light := K.light(root, Color("#ff9b52"), 1.25, 7.5, Vector3(0, -0.78, 0))
-		_lamps.append([root, light, float(side) * 1.7])
 
 
 func _snow() -> void:

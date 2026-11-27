@@ -1,6 +1,9 @@
 extends RefCounted
 ## 装修只生成视觉网格；不含碰撞、导航、交互或运行时灯光。
 const K = preload("res://scripts/world/kit.gd")
+const Arch = preload("res://scripts/world/arch.gd")
+const Props = preload("res://scripts/world/props.gd")
+const Assets = preload("res://scripts/world/assets.gd")
 const Decoration = preload("res://scripts/core/home_decoration.gd")
 const Expansion = preload("res://scripts/core/home_expansion.gd")
 
@@ -26,7 +29,8 @@ static func sync(root: Node3D, run: Dictionary) -> void:
 
 
 static func _wall(root: Node3D, choice: String, expanded: bool) -> void:
-	var color := Color("#b89179") if choice == "warm" else Color("#79878b")
+	var color := Arch.HomeHouse.plaster().duplicate() as ShaderMaterial
+	color.set_shader_parameter("lime", Color("#b89179") if choice == "warm" else Color("#79878b"))
 	# 仅覆盖墙体内侧，门窗、墙帽及原碰撞保持不变。
 	K.box(root, Vector3(0.025, 2.4, 14.8), color, Vector3(-10.01, 1.7, -0.6))
 	if expanded:
@@ -44,14 +48,9 @@ static func _wall(root: Node3D, choice: String, expanded: bool) -> void:
 
 
 static func _floor(root: Node3D, choice: String) -> void:
-	var color := Color("#9c6954") if choice == "brick" else Color("#626f73")
-	var seam := color.darkened(0.3)
-	# 位于原铺石上方，碰撞仍由原地面提供。
-	K.box(root, Vector3(19.35, 0.02, 14.35), color, Vector3(0, 0.095, -0.5))
-	for i in range(-9, 10):
-		K.box(root, Vector3(0.025, 0.005, 14.3), seam, Vector3(float(i), 0.108, -0.5))
-	for i in range(-7, 7):
-		K.box(root, Vector3(19.3, 0.005, 0.025), seam, Vector3(0, 0.108, float(i)))
+	var stone := Assets.pbr("square_cobblestone", 3.4, Color("#a6b0b3"))
+	var brick := Assets.pbr("brick_wall_09", 2.9, Color("#c3a48a"))
+	K.box(root, Vector3(19.35, 0.02, 14.35), brick if choice == "brick" else stone, Vector3(0, 0.095, -0.5))
 
 
 static func _lamps(root: Node3D, choice: String) -> void:
@@ -62,21 +61,21 @@ static func _lamps(root: Node3D, choice: String) -> void:
 		K.box(root, Vector3(0.8, 0.08, 0.08), K.WOOD, post + Vector3(-side * 0.36, 3.42, 0))
 		var p := post + Vector3(-side * 0.7, 2.9, 0)
 		K.cyl(root, 0.025, 0.025, 0.45, K.WOOD, p + Vector3(0, 0.38, 0))
-		K.sphere(root, 0.26, K.mat(color, 0.8, 0.25), p, Vector3(1, 1.15, 1))
-		K.cyl(root, 0.13, 0.13, 0.06, K.ROOF_EDGE, p + Vector3(0, 0.29, 0))
-		K.cyl(root, 0.13, 0.13, 0.06, K.ROOF_EDGE, p - Vector3(0, 0.29, 0))
+		var shade := Arch.lantern(root, p)
+		# 装修灯帘不贡献局部光源。两款染色保持玩家所选的朱红、暖金。
+		shade.light.free()
+		shade.mat.albedo_color = color.lightened(0.32)
+		shade.mat.emission = color
+		shade.mat.emission_energy_multiplier = 0.42
 
 
 static func _plants(root: Node3D, choice: String) -> void:
 	for p in [Vector3(-4.7, 0, 2.9), Vector3(5.5, 0, 4.6)]:
-		K.cyl(root, 0.32, 0.24, 0.48, K.mat(Color("#7c5943")), p + Vector3(0, 0.24, 0))
 		if choice == "bamboo":
-			for j in range(3):
-				var dx := (j - 1) * 0.13
-				K.cyl(root, 0.025, 0.035, 1.35, K.mat(Color("#648447")), p + Vector3(dx, 1.15, 0))
-				for k in range(3):
-					K.box(root, Vector3(0.38, 0.025, 0.08), K.mat(Color("#80a563")), p + Vector3(dx, 0.95 + k * 0.3, 0), Vector3(0, j * 55, 20 - j * 20))
+			Props.potted_bamboo(root, p, false)
 		else:
-			K.cyl(root, 0.06, 0.09, 1.1, K.WOOD, p + Vector3(0, 1.0, 0))
-			for offset in [Vector3(-0.23, 1.52, 0), Vector3(0.2, 1.7, 0.08), Vector3(0, 1.9, -0.05)]:
-				K.sphere(root, 0.23, K.mat(Color("#d98491")), p + offset)
+			var trunk := K.node(root, p + Vector3.UP * 0.38)
+			trunk.scale = Vector3.ONE * 0.53
+			Props.plum_tree(trunk, Vector3.ZERO, false)
+			K.cyl(root, 0.30, 0.23, 0.44, K.mat(Color("#785740"), 0.55), p + Vector3.UP * 0.22)
+			K.cyl(root, 0.27, 0.27, 0.02, K.EARTH, p + Vector3.UP * 0.44)

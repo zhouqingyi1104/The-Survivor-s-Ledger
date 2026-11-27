@@ -2,6 +2,8 @@ extends Node3D
 ## 外出搜寻的废墟：每处保有自己的空间格局，入口在南。能翻的地方发金光，翻过就暗下去。
 ## 每个地点有自己的陈设（义庄是棺材、县学是书架……），后墙外有僵尸游荡；阳气外泄满了会有一只扑进来。
 
+const Craft = preload("res://scripts/world/building_craft.gd")
+const Assets = preload("res://scripts/world/assets.gd")
 const K = preload("res://scripts/world/kit.gd")
 const Props = preload("res://scripts/world/props.gd")
 const SkyKit = preload("res://scripts/world/sky.gd")
@@ -167,6 +169,11 @@ func setup(pid: String, spots: Array) -> void:
 	point = pid
 	sky = SkyKit.make(self, 12.0)
 	SkyKit.apply(sky, "ruin", 160)
+	# 从断壁上方落下的冷光照到木纹、灰缝；暖色线索灯仍各自只照一小块。
+	sky.sun.light_energy = 0.38
+	sky.sun.light_color = Color("#acbbd0")
+	sky.sun.rotation_degrees = Vector3(-41, -30, 0)
+	sky.env.ambient_light_energy = 0.54
 	_choose_positions(spots)
 	_room()
 	for k in spots.size():
@@ -183,7 +190,7 @@ func setup(pid: String, spots: Array) -> void:
 
 
 func _room() -> void:
-	K.box(self, Vector3(80, 0.2, 80), K.mat(K.SNOW.darkened(0.25), 0.95), Vector3(0, -0.1, 0))
+	K.box(self, Vector3(80, 0.2, 80), Assets.pbr("snow_02", 5.5, Color("#bcc5c7")), Vector3(0, -0.1, 0))
 	var floor_body := StaticBody3D.new()
 	var cs := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
@@ -205,6 +212,12 @@ func _room() -> void:
 			K.box(self, Vector3(rng.randf_range(0.2,0.5),rng.randf_range(0.1,0.3),rng.randf_range(0.2,0.5)),K.STONE_DARK,p,Vector3(0,rng.randf_range(0,90),rng.randf_range(-15,15)))
 	K.light(self, Color("#8fa2c8"), 0.8, 14.0, Vector3(0, 6, -5))
 	_exit_marker()
+	var keep: Array = [_gate_mesh]
+	for obstacle in journey_obstacles.values():
+		keep.append(obstacle.visual)
+	for stage in _journey_nodes.values():
+		keep.append(stage.node)
+	K.merge_static(self, keep)
 
 
 # Construct the actual connected rooms/yards, not just decoration on one shell.
@@ -212,55 +225,79 @@ func _expedition_layout() -> void:
 	var cells: Array = FOOTPRINTS.get(point, FOOTPRINTS.rice_ruin)
 	var names: Array = ZONE_NAMES.get(point, ZONE_NAMES.rice_ruin)
 	var outdoor := point in ["lumber", "granary"]
-	var floor_color = K.SNOW if point == "lumber" else (K.EARTH if point == "granary" else (K.STONE if point in ["mortuary", "city_god", "taoist_temple"] else K.WOOD))
+	var floor_material: Material = {
+		"lumber": Assets.pbr("brown_mud_dry", 3.4, Color("#aeaca2")), "granary":Assets.pbr("brown_mud_dry", 2.9, Color("#b2a391")),
+		"mortuary": Assets.pbr("cobblestone_floor_08", 3.2, Color("#929a9c")), "city_god":Assets.pbr("square_cobblestone", 3.4, Color("#b5aea6")),
+		"taoist_temple":Assets.pbr("cobblestone_floor_08", 3.7, Color("#bec1b6"))}.get(point, Assets.pbr("brown_planks_09", 2.85, Color("#a79a85")))
 	var dirs := [Vector2i(1,0), Vector2i(-1,0), Vector2i(0,1), Vector2i(0,-1)]
 	for i in cells.size():
 		var cell: Vector2i = cells[i]
 		var center := _cell_center(cell)
-		K.box(self, Vector3(CELL, 0.06, CELL), floor_color, center + Vector3(0,0.03,0))
+		K.box(self, Vector3(CELL, 0.06, CELL), floor_material, center + Vector3(0, 0.03, 0))
 		K.text3d(self, str(names[i]), center + Vector3(0,2.1,-2.65), 45, Color("#d4c5a8"), true, 0.005)
 		# Regional motifs sit against the walls; central routes stay traversable.
-		if point == "lumber":
+		if point == "lumber" and i in [1, 3, 6, 8]:
 			for row in 3: K.cyl(self, 0.20, 0.20, 2.2, K.WOOD_LIGHT, center + Vector3(-2.55, 0.2 + row * 0.33, 0), Vector3(90,0,0))
-		elif point == "granary" or point == "rice_ruin":
-			for j in 3: K.cyl(self, 0.18, 0.26, 0.65, K.RICE_SACK, center + Vector3(-2.5 + j * 0.5, 0.33, -2.5))
-		elif point == "pharmacy_ruin":
-			for j in 4: K.box(self, Vector3(0.4,0.4,0.15), K.WOOD_LIGHT, center + Vector3(-2.3 + j * 0.55, 1.5, -2.88))
-		elif point == "school":
+		elif point in ["granary","rice_ruin"] and i in [1, 4, 7, cells.size() - 1]:
+			Props.rice_sacks(self, center + Vector3(-2.15, 0, -2.45), 3)
+		elif point == "pharmacy_ruin" and i in [0, 1, 5, 8]:
+			for j in 4: K.box(self, Vector3(0.50, 0.36, 0.27), K.WOOD_LIGHT, center + Vector3(-2.3 + j * 0.50, 1.42, -2.8))
+			for j in 4:
+				K.box(self, Vector3(0.12, 0.07, 0.038), K.PAPER, center + Vector3(-2.3 + j * 0.50, 1.47, -2.645))
+				K.cyl(self, 0.028, 0.036, 0.034, K.GOLD, center + Vector3(-2.3 + j * 0.50, 1.35, -2.641), Vector3(90, 0, 0), 8)
+			K.box(self, Vector3(2.17, 1.07, 0.39), K.WOOD, center + Vector3(-1.56, 0.58, -2.81))
+			K.box(self, Vector3(2.22, 0.11, 0.45), K.WOOD_LIGHT, center + Vector3(-1.56, 1.18, -2.78))
+		elif point == "school" and i in [1, 2, 3, 6, 8]:
 			K.box(self, Vector3(2.1,0.15,0.6), K.WOOD_LIGHT, center + Vector3(0,0.7,-2.6))
-		elif point == "mortuary":
+			for x in [-0.88, 0.88]:
+				K.box(self, Vector3(0.12, 0.62, 0.46), K.WOOD, center + Vector3(x, 0.36, -2.6))
+		elif point == "mortuary" and i in [1, 5, 6, 10]:
 			K.box(self, Vector3(1.9,0.65,0.7), K.WOOD, center + Vector3(0,0.4,-2.5))
 			K.box(self, Vector3(1.6,1.0,0.05), K.mat(Color("#c9c5b8")), center + Vector3(0,1.9,-2.86))
-		else:
-			for sx in [-1,1]: K.cyl(self, 0.13, 0.16, 2.1, K.LACQUER, center + Vector3(sx * 2.5,1.05,-2.4))
+		elif point in ["taoist_temple","city_god"] and i in [0, 3, 4, 6]:
+			for sx in [-1, 1]:
+				K.cyl(self, 0.13, 0.16, 2.1, K.LACQUER, center + Vector3(sx * 2.5, 1.05, -2.4))
 		# Place recognizable, nonblocking local architecture along each zone's edge.
 		match point:
 			"rice_ruin":
-				K.box(self, Vector3(1.9,0.12,0.7), K.WOOD_LIGHT, center + Vector3(1.5,0.8,-2.5))
-				K.box(self, Vector3(0.12,0.8,0.5), K.WOOD, center + Vector3(0.7,0.4,-2.5))
+				if i in [1, 2, 6]:
+					K.box(self, Vector3(1.9, 0.12, 0.7), K.WOOD_LIGHT, center + Vector3(1.5, 0.8, -2.5))
+					K.box(self, Vector3(0.12, 0.8, 0.5), K.WOOD, center + Vector3(0.7, 0.4, -2.5))
 			"city_god":
-				K.box(self, Vector3(1.8,0.75,0.6), K.LACQUER, center + Vector3(0,0.38,-2.55))
-				K.cyl(self, 0.22,0.32,0.4, K.GOLD, center + Vector3(0,0.98,-2.5))
+				if i in [3, 5, 6]:
+					K.box(self, Vector3(1.8, 0.75, 0.6), K.LACQUER, center + Vector3(0, 0.38, -2.55))
+					K.cyl(self, 0.22, 0.32, 0.4, K.GOLD, center + Vector3(0, 0.98, -2.5))
 			"school":
-				for j in 3:
-					K.box(self, Vector3(0.45,0.1,0.3), K.PAPER, center + Vector3(-2.35,0.5+j*0.25,-2.5))
-				K.box(self, Vector3(2.2,0.5,0.1), K.WOOD, center + Vector3(0,1.5,-2.85))
+				if i in [1, 2, 3, 8]:
+					for j in 3:
+						K.box(self, Vector3(0.45, 0.1, 0.3), K.PAPER, center + Vector3(-2.35, 0.5 + j * 0.25, -2.5))
+					K.box(self, Vector3(2.2, 0.5, 0.1), K.WOOD, center + Vector3(0, 1.5, -2.85))
 			"pharmacy_ruin":
-				for j in 3:
-					K.cyl(self, 0.18,0.22,0.45,K.mat(Color("#766e59")),center + Vector3(-2.2+j*0.5,0.25,-2.55))
+				if i in [2, 4, 6, 8]:
+					Props.clay_jar(self, center + Vector3(-2.3, 0, -2.35), 0.50)
+					if i == 8:
+						Props.clay_jar(self, center + Vector3(-1.72, 0, -2.49), 0.38)
+				elif i in [1, 3]:
+					for x in [-0.60, 0.60]:
+						K.box(self, Vector3(0.14, 0.40, 0.25), K.WOOD, center + Vector3(x, 0.20, -2.41))
+					K.box(self, Vector3(1.60, 0.09, 0.32), K.WOOD_LIGHT, center + Vector3(0, 0.445, -2.41))
 			"lumber":
-				for j in 2:
-					K.box(self, Vector3(0.12,0.9,0.12),K.WOOD,center + Vector3(1.5+j*0.8,0.45,-2.5))
-				K.box(self, Vector3(1.2,0.12,0.12),K.WOOD_LIGHT,center + Vector3(1.9,0.9,-2.5))
+				if i in [1, 3, 5, 7]:
+					for j in 2:
+						K.box(self, Vector3(0.12, 0.9, 0.12), K.WOOD, center + Vector3(1.5 + j * 0.8, 0.45, -2.5))
+					K.box(self, Vector3(1.2, 0.12, 0.12), K.WOOD_LIGHT, center + Vector3(1.9, 0.9, -2.5))
 			"mortuary":
-				K.box(self, Vector3(0.8,0.12,1.8),K.WOOD_LIGHT,center + Vector3(2.4,0.8,-0.8))
-				K.box(self, Vector3(0.6,0.8,1.6),K.WOOD,center + Vector3(2.4,0.4,-0.8))
+				if i in [1, 6, 10]:
+					K.box(self, Vector3(0.8, 0.12, 1.8), K.WOOD_LIGHT, center + Vector3(2.4, 0.8, -0.8))
+					K.box(self, Vector3(0.6, 0.8, 1.6), K.WOOD, center + Vector3(2.4, 0.4, -0.8))
 			"granary":
-				for j in 3: K.box(self, Vector3(0.12,1.0,0.12),K.WOOD_LIGHT,center + Vector3(1.5+j*0.5,0.5,-2.55))
-				K.box(self, Vector3(1.2,0.1,0.12),K.WOOD,center + Vector3(2.0,0.9,-2.55))
+				if i in [2, 5, 6, 9]:
+					for j in 3: K.box(self, Vector3(0.12, 1.0, 0.12), K.WOOD_LIGHT, center + Vector3(1.5 + j * 0.5, 0.5, -2.55))
+					K.box(self, Vector3(1.2, 0.1, 0.12), K.WOOD, center + Vector3(2.0, 0.9, -2.55))
 			"taoist_temple":
-				K.box(self, Vector3(1.8,0.75,0.6),K.LACQUER,center + Vector3(0,0.38,-2.55))
-				for j in 3: K.cyl(self, 0.07,0.1,0.3,K.GOLD,center + Vector3(-0.5+j*0.5,0.92,-2.5))
+				if i in [2, 3, 5, 10]:
+					K.box(self, Vector3(1.8, 0.75, 0.6), K.LACQUER, center + Vector3(0, 0.38, -2.55))
+					for j in 3: K.cyl(self, 0.07, 0.1, 0.3, K.GOLD, center + Vector3(-0.5 + j * 0.5, 0.92, -2.5))
 		# Partial partitions create actual doorways and distinct connected rooms.
 		for dir in [Vector2i(1,0), Vector2i(0,-1)]:
 			var neighbor: Vector2i = cell + dir
@@ -268,15 +305,13 @@ func _expedition_layout() -> void:
 			var seam := center + Vector3(dir.x * CELL * 0.5,0,dir.y * CELL * 0.5)
 			var height := 0.9 if outdoor else 1.45
 			for side in [-1,1]:
-				var size := Vector3(0.20,height,1.35) if dir.x != 0 else Vector3(1.35,height,0.20)
 				var at := seam + (Vector3(0,height/2.0,side*2.325) if dir.x != 0 else Vector3(side*2.325,height/2.0,0))
-				K.solid(self,size,K.WOOD if outdoor else K.WALL_SHADE,at)
+				Craft.ruined_bay(self, at - Vector3.UP * height / 2.0, dir.x != 0, 1.35, height, outdoor, i + side)
 		for dir in dirs:
 			if cell + dir in cells: continue
 			var wall_center := center + Vector3(dir.x * CELL * 0.5, 0, dir.y * CELL * 0.5)
 			var height := 1.05 if outdoor or dir.y == 1 else 2.2
-			var size := Vector3(0.22,height,CELL) if dir.x != 0 else Vector3(CELL,height,0.22)
-			K.solid(self, size, K.WOOD if outdoor else K.WALL, wall_center + Vector3(0,height/2.0,0))
+			Craft.ruined_bay(self, wall_center, dir.x != 0, CELL, height, outdoor, i * 3 + dir.x - dir.y)
 	# A complete gate seals the only edge to the final room.
 	var across_x := absf(gate_normal.x) > 0.5
 	var gate_size := Vector3(0.26, 2.0, CELL) if across_x else Vector3(CELL, 2.0, 0.26)

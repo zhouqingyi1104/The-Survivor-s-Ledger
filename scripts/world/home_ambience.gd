@@ -114,10 +114,9 @@ static func _build_windows(group: Node3D, houses: Array, indices: Array, glow_ma
 			Vector3(0.0, float(h.rot), 0.0), "h%d" % int(i))
 		for win in _windows_of(h):
 			var p := K.node(hn, win.pos, Vector3(0.0, float(win.ry), 0.0))
-			# C0 纸窗中心在 d/2+.01、墙皮外沿在 d/2+.12（窗洞凹陷 0.08）；
-			# 发光纸片必须抬到墙皮之外，否则被前墙实体埋住（侧窗同理，节点 ry=90 后局部 +Z 朝外）。
+			# 灯纸在外格条后约一厘米；每扇窗的日间纸与夜间亮纸共用切向中心。
 			for sx in [-0.22, 0.22]:
-				K.box(p, Vector3(0.35, 0.55, 0.012), glow_mat, Vector3(sx, 0.0, 0.130))
+				K.box(p, Vector3(0.35, 0.55, 0.012), glow_mat, Vector3(sx, 0.0, 0.269))
 
 
 ## 永久结构：砖烟囱/顶帽（生火户）与晾衣木桩/横杆（晾衣户）。位置/形体/阴影与原
@@ -192,7 +191,17 @@ static func _build_laundry_frame(n: Node3D, h: Dictionary) -> void:
 
 ## 房前三件布衣：随昼/非大雪显隐；木桩横杆已在永久 fixtures。
 static func _build_laundry(group: Node3D, houses: Array, indices: Array) -> void:
-	var cloth_cols: Array = [Color("#3f5a7a"), Color("#d8d0bd"), Color("#7a3a2e")]
+	var cloth_cols: Array[Color] = [Color("#3f5a7a"), Color("#d8d0bd"), Color("#7a3a2e")]
+	var cloth := BoxMesh.new()
+	cloth.size = Vector3(0.52, 0.82, 0.010)
+	cloth.subdivide_width = 11
+	cloth.subdivide_height = 2
+	var dye: Array[Material] = []
+	for color in cloth_cols:
+		var linen := ShaderMaterial.new()
+		linen.shader = preload("res://scripts/world/hanging_linen.gdshader")
+		linen.set_shader_parameter("dye", color)
+		dye.append(linen)
 	for i in indices:
 		var h: Dictionary = houses[int(i)]
 		var w: float = h.w
@@ -203,8 +212,7 @@ static func _build_laundry(group: Node3D, houses: Array, indices: Array) -> void
 		var half := w * 0.22
 		for k in 3:
 			var xx := -half * 0.8 + float(k) * half * 0.8
-			K.box(n, Vector3(0.5, 0.82, 0.03), K.mat(cloth_cols[k], 0.95),
-				Vector3(xx, 1.4, fz), Vector3(0.0, float(k - 1) * 4.0, 0.0))
+			K._mesh(n, cloth, dye[k], Vector3(xx, 1.44, fz))
 
 
 ## 门前三短条踏乱的雪痕：深色薄贴片，全部贴地、朝街不朝核心。

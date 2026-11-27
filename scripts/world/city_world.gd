@@ -6,6 +6,7 @@ extends Node3D
 signal arrived(place: String)
 
 const K = preload("res://scripts/world/kit.gd")
+const Craft = preload("res://scripts/world/building_craft.gd")
 const Arch = preload("res://scripts/world/arch.gd")
 const YardMaterials = preload("res://scripts/world/yard_materials.gd")
 const HomeHouse = preload("res://scripts/world/home_house.gd")
@@ -66,29 +67,45 @@ func _ready() -> void:
 func _ground() -> void:
 	K.box(self, Vector3(160, 0.2, 120), Assets.pbr("snow_02", 6.5, Color("#edf2f6")), Vector3(0, -0.1, -10))
 	# 河与河岸
-	K.box(self, Vector3(160, 0.05, 6), K.mat(Color("#3f5f61"), 0.12), Vector3(0, 0.02, RIVER_Z))
-	for sz in [-1, 1]:
-		K.box(self, Vector3(160, 0.4, 0.6), K.STONE, Vector3(0, 0.15, RIVER_Z + sz * 3.2))
-	# 石拱桥
-	for k in 7:
-		var t := (k - 3) / 3.0
-		K.box(self, Vector3(3.2, 0.3, 1.25), K.STONE, Vector3(0, 0.9 * (1.0 - t * t), RIVER_Z + t * 3.6))
-	for sx in [-1, 1]:
-		K.box(self, Vector3(0.15, 0.5, 7.6), K.STONE_DARK, Vector3(sx * 1.6, 0.9, RIVER_Z))
+	var water := ShaderMaterial.new()
+	water.shader = preload("res://scripts/world/city_river.gdshader")
+	K.box(self, Vector3(160, 0.05, 6), water, Vector3(0, 0.02, RIVER_Z))
+	for bank in [-1, 1]:
+		K.box(self, Vector3(160, 0.40, 0.54), K.STONE_DARK, Vector3(0, 0.09, RIVER_Z + bank * 3.2))
+		# 近桥一段有清楚的错缝驳石，远街保留较粗的轮廓。
+		var pier := K.node(self, Vector3(0, -0.11, RIVER_Z + bank * 3.18))
+		Craft.courses(pier, 38.0, 0.45, 0.62)
+	Craft.bridge(self, Vector3(0, 0, RIVER_Z))
 	# 北岸长街、过桥到家的路、上山的石阶
 	var road := YardMaterials.street()
 	K.box(self, Vector3(96, 0.04, 3.6), road, Vector3(1, 0.03, -1.0))
 	K.box(self, Vector3(3.6, 0.04, 6), road, Vector3(0, 0.03, 11.0))
 	for k in 8:
 		K.box(self, Vector3(3.5, 0.4 * (k + 1), 0.9), K.STONE, Vector3(0, 0.2 * (k + 1), -9.6 - k * 0.85))
-	K.cyl(self, 9.0, 12.0, 3.2, K.mat(Color("#8c9187")), Vector3(0, 1.6, -22), Vector3.ZERO, 10)
+	# 青云观的台地沿阶道退台；平台前缘开口，石阶与山门接通。
+	for side in [-1, 1]:
+		var terrace := K.node(self, Vector3(side * 5.48, 0, -17.9))
+		Craft.courses(terrace, 7.15, 2.18, 0.76)
+		K.box(terrace, Vector3(7.3, 0.18, 0.93), K.STONE, Vector3(0, 2.24, 0))
+		var inner := K.node(self, Vector3(side * 4.7, 2.12, -18.47))
+		Craft.courses(inner, 5.62, 1.0, 0.62)
+	K.box(self, Vector3(16.7, 3.09, 8.0), K.STONE_DARK, Vector3(0, 1.54, -22.6))
+	K.box(self, Vector3(17.25, 0.15, 8.4), YardMaterials.ground(true, false), Vector3(0, 3.125, -22.5))
 	# 南岸河边一座凉亭（cs-studio）
-	Assets.building(self, "gazebo", Vector3(-8.5, 0, RIVER_Z + 6.2), 0.0, 0.5)
+	if Assets.building(self, "gazebo", Vector3(-8.5, 0, RIVER_Z + 6.2), 0.0, 0.5) == null:
+		var pavilion := Arch.hall(self, Vector3(-8.5, 0, RIVER_Z + 6.2), 0, 3.6, 2.8, 2.55, [], false)
+		for side in [-1, 1]:
+			K.cyl(pavilion.node, 0.11, 0.13, 2.55, K.WOOD, Vector3(side * 1.72, 1.275, -1.28))
+		K.box(pavilion.node, Vector3(3.2, 0.11, 0.41), K.WOOD_LIGHT, Vector3(0, 0.51, -1.15))
+		for x in [-1.35, 1.35]:
+			K.box(pavilion.node, Vector3(0.15, 0.47, 0.34), K.WOOD, Vector3(x, 0.26, -1.15))
 	# 南岸的树、远山
 	for x in [-12.0, -5.0, 6.0, 14.0]:
 		Props.plum_tree(self, Vector3(x, 0, RIVER_Z + 4.6))
-	for k in 7:
-		K.cyl(self, 0.0, 20.0, 14.0 + (k % 3) * 5.0, K.mat(Color("#7d8a96"), 1.0), Vector3(-72.0 + k * 24.0, 5.0, -62), Vector3.ZERO, 6)
+	for k in 4:
+		var ridge := K.node(self, Vector3(-79 + k * 49.0, -2.0, -63.0 - (k%2) * 9.0))
+		Craft.ridge(ridge, 80.0, 26.0, 27.0 + (k%3) * 5.0, 3 + k, k%2 == 0)
+
 
 
 func _building(id: String) -> void:
@@ -123,16 +140,38 @@ func _building(id: String) -> void:
 		if id == "temple":
 			K.cyl(root, 0.5, 0.6, 0.9, K.mat(Color("#6c5a3a"), 0.4), Vector3(0, 0.45, d / 2.0 + 1.6))
 	else:
-		var hall := Arch.hall(root, Vector3.ZERO, 0, w, d, h, ["back", "left", "right"])
+		# 半开粮铺、深柜当铺和高脊道观沿街有各自的尺度与檐深。
+		var size: Vector3 = {"rice_shop":Vector3(7.8, 3.35, 4.6),"market":Vector3(8.1, 3.1, 4.9),
+			"bookshop":Vector3(6.8, 3.65, 4.65),"pharmacy":Vector3(6.7, 3.65, 4.8),"smithy":Vector3(6.3, 3.15, 5.1),
+			"pawnshop":Vector3(6.35, 4.0, 4.9),"builder":Vector3(7.6, 3.5, 5.2)}.get(id, Vector3(w, h, d))
+		w = size.x
+		h = size.y
+		d = size.z
+		var hall := Arch.hall(root, Vector3.ZERO, 0, w, d, h, ["back", "left", "right"], id not in ["builder","market"])
+		Craft.shopfront(root, id, w, d, h)
 		if id == "temple":
-			for k in 3:
-				K.box(hall.node, Vector3(w + 0.4, 0.5, 0.4), K.LACQUER, Vector3(0, 0.25, -d / 2.0))
+			var shrine_wall := K.node(hall.node, Vector3(0, 0, -d / 2.0 + 0.27))
+			for wing in [-1, 1]:
+				HomeHouse.paper_window(shrine_wall, Vector3(wing * 2.81, 1.92, 0), 1.81, 1.74)
+				K.box(shrine_wall, Vector3(1.32, 2.84, 0.16), K.LACQUER, Vector3(wing * 0.68, 1.42, 0))
+			for x in [-1.42, 1.42]:
+				K.box(shrine_wall, Vector3(0.18, 3.15, 0.22), K.WOOD, Vector3(x, 1.575, 0.02))
+			K.box(shrine_wall, Vector3(3.12, 0.2, 0.26), K.WOOD_LIGHT, Vector3(0, 3.01, 0.03))
 			K.cyl(root, 0.5, 0.6, 0.9, K.mat(Color("#6c5a3a"), 0.4), Vector3(0, 0.45, d / 2.0 + 1.6))
-	# 匾额
-	var plaque := K.node(root, Vector3(0, h - 0.7, d / 2.0 + 0.05))
-	K.box(plaque, Vector3(3.2, 1.1, 0.12), K.mat(Color("#1f1a16"), 0.5), Vector3.ZERO)
-	K.box(plaque, Vector3(3.4, 1.25, 0.1), K.mat(K.GOLD, 0.4), Vector3(0, 0, -0.02))
-	var plaque_text := K.text3d(plaque, name_text, Vector3(0, 0, 0.08), 140, Color("#f0cf72"), false)
+	# 双吊耳挂住实木薄匾，保留铺内窗扇和柜台的视线。
+	var has_canopy := model == null and id in ["rice_shop", "market", "grocery", "bookshop"]
+	var board_w := clampf(0.59 * name_text.length() + 0.76, 1.90, 3.12)
+	var sign_z := d / 2.0 + (1.58 if has_canopy else 0.11)
+	var plaque := K.node(root, Vector3(0, h - (1.12 if has_canopy else 0.64), sign_z))
+	if has_canopy:
+		for side in [-1.0, 1.0]:
+			K.box(plaque, Vector3(0.044, 0.21, 0.052), K.mat(Color("#44433f"), 0.63), Vector3(side * board_w * 0.34, 0.43, 0))
+	var panel := Assets.pbr("brown_planks_09", 2.3, Color("#4b433d"))
+	K.box(plaque, Vector3(board_w, 0.66, 0.084), panel, Vector3.ZERO)
+	for side in [-1.0, 1.0]:
+		K.box(plaque, Vector3(board_w + 0.07, 0.045, 0.11), K.WOOD_LIGHT, Vector3(0, side * 0.329, 0))
+		K.box(plaque, Vector3(0.046, 0.62, 0.11), K.WOOD_LIGHT, Vector3(side * board_w * 0.49, 0, 0))
+	var plaque_text := K.text3d(plaque, name_text, Vector3(0, 0, 0.054), 87, Color("#e8cd98"), false)
 	plaque_text.outline_size = 0
 	if id != "pawnshop" or model == null:
 		_decor(id, root, w, d)
@@ -376,7 +415,7 @@ func _process(delta: float) -> void:
 		walker.face(to, 1.0)
 	# 过桥时跟着桥面起伏
 	var dz := walker.position.z - RIVER_Z
-	walker.position.y = 0.9 * maxf(0.0, 1.0 - pow(dz / 3.6, 2)) + 0.15 if absf(walker.position.x) < 1.6 and absf(dz) < 3.6 else 0.0
+	walker.position.y = Craft.bridge_height(dz) if absf(walker.position.x) < 1.6 else 0.0
 
 
 ## 鼠标点到的地点 id（没有返回空串）。

@@ -2,6 +2,7 @@ extends RefCounted
 ## C5 的独立室内空间。房间位于院外，楼层切换由界面显式完成。
 const K = preload("res://scripts/world/kit.gd")
 const HomeHouse = preload("res://scripts/world/home_house.gd")
+const Craft = preload("res://scripts/world/building_craft.gd")
 const Figure = preload("res://scripts/world/character.gd")
 
 const ORIGINS := {"cellar": Vector3(-40, 0, 0), "attic": Vector3(40, 0, 0), "guest_zhou": Vector3(0, 0, -40)}
@@ -47,11 +48,17 @@ static func build(parent: Node3D, floor_id: String) -> Dictionary:
 	lamp.light_energy = 1.7 if is_cellar else 2.4
 	root.add_child(lamp)
 	if is_cellar:
-		K.box(root, Vector3(8, 0.07, 7), K.STONE, Vector3(0, 0.04, 0))
+		K.box(root, Vector3(8, 0.07, 7), preload("res://scripts/world/yard_materials.gd").street(), Vector3(0, 0.04, 0))
 		for x in [-4.0, 4.0]:
-			K.solid(root, Vector3(0.24, 1.35, 7), K.STONE_DARK, Vector3(x, 0.675, 0))
+			K.collider(root, Vector3(0.24, 1.35, 7), Vector3(x, 0.675, 0))
+			Craft.courses(K.node(root, Vector3(x, 0, 0), Vector3(0, 90, 0)), 7.0, 1.35, 0.24, true)
 		for z in [-3.5, 3.5]:
-			K.solid(root, Vector3(8, 1.35, 0.24), K.STONE_DARK, Vector3(0, 0.675, z))
+			K.collider(root, Vector3(8, 1.35, 0.24), Vector3(0, 0.675, z))
+			Craft.courses(K.node(root, Vector3(0, 0, z)), 8.0, 1.35, 0.24, true)
+		for x in [-3.64, 3.64]:
+			K.box(root, Vector3(0.22, 2.15, 0.22), K.WOOD, Vector3(x, 1.075, -3.25))
+			K.box(root, Vector3(0.16, 0.68, 0.19), K.WOOD_LIGHT, Vector3(x - signf(x) * 0.20, 1.85, -3.25), Vector3(0, 0, -signf(x) * 42))
+		K.box(root, Vector3(7.62, 0.23, 0.26), K.WOOD, Vector3(0, 2.15, -3.25))
 		K.box(root, Vector3(1.4, 1.1, 0.45), K.WOOD, Vector3(-2.9, 0.55, -3.1))
 		K.box(root, Vector3(1.2, 0.08, 0.52), K.WOOD_LIGHT, Vector3(-2.9, 0.9, -3.1))
 	else:
@@ -91,7 +98,7 @@ static func _attic_shell(root: Node3D) -> void:
 		K.box(wall, Vector3(width, 0.09, 0.25), K.WOOD, Vector3(0, height + 0.04, 0))
 		if window_bay:
 			# 三扇纸窗沿折面接合，窗台包住窗龛，人在楼梯口就能辨出坐向。
-			K.box(wall, Vector3(width - 0.08, 1.2, 0.07), K.mat(Color("#f1d6a5"), 0.8, 0.20), Vector3(0, 1.55, 0))
+			HomeHouse.paper_window(wall, Vector3(0, 1.55, 0), width - 0.08, 1.2)
 			for share in [-0.48, 0.0, 0.48]:
 				K.box(wall, Vector3(0.075, 1.45, 0.13), K.WOOD, Vector3(width * share, 1.58, 0))
 			for y in [1.06, 1.77, 2.2]:
@@ -130,11 +137,16 @@ static func _build_guest(parent: Node3D) -> Dictionary:
 	backdrop.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	backdrop.albedo_color = Color("#262522")
 	K.box(root, Vector3(52, 0.02, 52), backdrop, Vector3(0, 0.005, 0))
-	K.box(root, Vector3(8, 0.07, 7), K.WOOD_LIGHT, Vector3(0, 0.04, 0))
-	for x in [-4.0, 4.0]:
-		K.solid(root, Vector3(0.24, 1.35, 7), K.WALL, Vector3(x, 0.675, 0))
+	HomeHouse.build_platform(root, PackedVector2Array([Vector2(-4, -3.5), Vector2(4, -3.5), Vector2(4, 3.5), Vector2(-4, 3.5)]), false)
+	for x in [-3.76, 3.76]:
+		for z in [-3.25, 3.25]:
+			K.box(root, Vector3(0.16, 1.53, 0.16), K.WOOD, Vector3(x, 0.80, z))
 	for z in [-3.5, 3.5]:
-		K.solid(root, Vector3(8, 1.35, 0.24), K.WALL, Vector3(0, 0.675, z))
+		K.box(root, Vector3(8.1, 0.12, 0.28), K.WOOD, Vector3(0, 1.38, z))
+	for x in [-4.0, 4.0]:
+		K.solid(root, Vector3(0.24, 1.35, 7), HomeHouse.plaster(), Vector3(x, 0.675, 0))
+	for z in [-3.5, 3.5]:
+		K.solid(root, Vector3(8, 1.35, 0.24), HomeHouse.plaster(), Vector3(0, 0.675, z))
 	var lamp := OmniLight3D.new()
 	lamp.position = Vector3(0, 3, 0)
 	lamp.light_color = Color("#ffe0aa")
@@ -148,11 +160,7 @@ static func _build_guest(parent: Node3D) -> Dictionary:
 		for z in [-2.8, -2.2]:
 			K.box(root, Vector3(0.12, 0.48, 0.12), K.WOOD, Vector3(x, 0.24, z))
 	# 一扇纸窗和墙边书架仅作居室陈设，不注册碰撞或拾取。
-	K.box(root, Vector3(1.5, 0.8, 0.08), K.WOOD, Vector3(-2.4, 0.94, -3.32))
-	K.box(root, Vector3(1.28, 0.6, 0.1), K.PAPER, Vector3(-2.4, 0.94, -3.25))
-	for x in [-2.8, -2.4, -2.0]:
-		K.box(root, Vector3(0.05, 0.64, 0.12), K.WOOD, Vector3(x, 0.94, -3.18))
-	K.box(root, Vector3(1.35, 0.05, 0.12), K.WOOD, Vector3(-2.4, 0.94, -3.18))
+	HomeHouse.paper_window(root, Vector3(-2.4, 1.15, -3.27), 1.64, 1.0)
 	K.box(root, Vector3(0.24, 1.05, 1.2), K.WOOD, Vector3(3.78, 0.58, -0.8))
 	for y in [0.32, 0.67, 1.02]:
 		K.box(root, Vector3(0.34, 0.06, 1.25), K.WOOD_LIGHT, Vector3(3.65, y, -0.8))

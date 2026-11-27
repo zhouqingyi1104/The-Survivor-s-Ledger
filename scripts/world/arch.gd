@@ -1,5 +1,5 @@
 extends RefCounted
-## 徽派建筑构件：屋顶、马头墙、厅堂、院墙、门楼、漏窗。全部用基本体拼。
+## 徽派建筑构件：屋顶、马头墙、厅堂、院墙、门楼、漏窗。
 ## 约定：Y 向上；局部 +Z 是"前"（开敞面 / 门面）。
 
 const K = preload("res://scripts/world/kit.gd")
@@ -13,7 +13,7 @@ const EAVE := 0.8
 static func roof(parent: Node3D, w: float, d: float, rise: float, base: Vector3, material: Material, eave := EAVE, tile_mat: Material = null) -> Node3D:
 	var r := K.node(parent, base)
 	K.prism(r, Vector3(d + eave * 2, rise, w + eave * 2), material, Vector3(0, rise / 2.0, 0), Vector3(0, 90, 0))
-	tiles(r, w + eave * 2, d / 2.0 + eave, rise, tile_mat if tile_mat != null else K.mat(Color("#4d535a"), 0.6))
+	tiles(r, w + eave * 2, d / 2.0 + eave, rise, tile_mat if tile_mat != null else HomeHouse.roof_tiles())
 	# 屋脊与两端起翘
 	K.box(r, Vector3(w + eave * 2 + 0.3, 0.2, 0.28), material, Vector3(0, rise + 0.05, 0))
 	for sx in [-1, 1]:
@@ -24,48 +24,71 @@ static func roof(parent: Node3D, w: float, d: float, rise: float, base: Vector3,
 	return r
 
 
-## 筒瓦：两面坡上沿坡向一条条排开（MultiMesh，一个屋顶一次画完）。
+## 一条瓦垄包含上下压茬的筒瓦、板瓦与露在屋檐的胎口。两坡一次实例化。
 static func tiles(parent: Node3D, length: float, half_depth: float, rise: float, material: Material) -> MultiMeshInstance3D:
-	var spacing := 0.3
-	var rows := int(length / spacing)
-	var slope_len := sqrt(half_depth * half_depth + rise * rise)
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = 0.065
-	mesh.bottom_radius = 0.065
-	mesh.height = slope_len
-	mesh.radial_segments = 6
-	mesh.rings = 1
+	var runs := maxi(1, roundi(length / 0.33))
+	var rows := clampi(roundi(half_depth / 0.68), 1, 5)
+	var width := length / runs
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var section := PackedVector2Array([Vector2(0, 0.070), Vector2(0.16, 0.047), Vector2(0.28, 0.004),
+		Vector2(0.76, 0.004), Vector2(0.88, 0.048), Vector2(1, 0.070)])
+	for row in rows:
+		var near := float(row) / rows
+		var far := float(row + 1) / rows
+		var bottom := Vector2(near * half_depth, near * rise + 0.055 + 0.075 * pow(1.0 - near, 5))
+		var top := Vector2(far * half_depth, far * rise + 0.030 + 0.075 * pow(1.0 - far, 5))
+		for j in section.size() - 1:
+			var a := section[j]
+			var b := section[j + 1]
+			var normal := Vector3(a.y - b.y, (b.x - a.x) * width, -rise / half_depth * (b.x - a.x) * width).normalized()
+			for st: Vector2 in [Vector2.ZERO, Vector2(1, 0), Vector2.ONE, Vector2.ZERO, Vector2.ONE, Vector2(0, 1)]:
+				var profile := a.lerp(b, st.x)
+				var along := bottom.lerp(top, st.y)
+				surface.set_normal(normal)
+				surface.set_uv(Vector2(0.039 + profile.x * 0.044, 0.870 + st.y * 0.060))
+				surface.add_vertex(Vector3(profile.x * width, along.y + profile.y, along.x))
+			if row > 0:
+				continue # 压茬背面埋在下片瓦中，仅为外檐封胎口。
+			for st: Vector2 in [Vector2.ZERO, Vector2(1, 0), Vector2.ONE, Vector2.ZERO, Vector2.ONE, Vector2(0, 1)]:
+				var profile := a.lerp(b, st.x)
+				surface.set_normal(Vector3.FORWARD)
+				surface.set_uv(Vector2(0.039 + profile.x * 0.044, 0.93 + st.y * 0.01))
+				surface.add_vertex(Vector3(profile.x * width, bottom.y + profile.y - (1.0 - st.y) * 0.028, bottom.x))
+	surface.generate_tangents()
+	surface.index()
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = mesh
-	mm.instance_count = rows * 2
-	var k := 0
-	for side in [1.0, -1.0]:
-		var up := Vector3(0, rise, -side * half_depth).normalized()
-		var normal := Vector3(0, half_depth, side * rise).normalized()
-		var basis := Basis(Vector3.RIGHT, up, Vector3.RIGHT.cross(up))
-		var mid := Vector3(0, rise / 2.0, side * half_depth / 2.0) + normal * 0.06
-		for i in rows:
-			var x := -length / 2.0 + spacing * (i + 0.5)
-			mm.set_instance_transform(k, Transform3D(basis, mid + Vector3(x, 0, 0)))
-			k += 1
-	var mi := MultiMeshInstance3D.new()
-	mi.multimesh = mm
-	mi.material_override = material
-	parent.add_child(mi)
-	return mi
+	mm.use_colors = true
+	mm.mesh = surface.commit()
+	mm.instance_count = runs * 2
+	for side in 2:
+		var turn := Basis(Vector3.UP, PI * side)
+		for i in runs:
+			var index := side * runs + i
+			mm.set_instance_transform(index, Transform3D(turn, turn * Vector3(i * width - length / 2.0, 0, -half_depth)))
+			var shade := 0.62 + 0.035 * posmod(i * 11 + side * 3, 5)
+			mm.set_instance_color(index, Color(shade * 0.90, shade * 0.95, shade))
+	var batch := MultiMeshInstance3D.new()
+	batch.multimesh = mm
+	batch.material_override = material
+	parent.add_child(batch)
+	return batch
 
 
 ## 马头墙：山墙在屋顶上方阶梯状升起，每阶压一道黛瓦。x 是山墙所在位置，d 是进深。
 static func ma_tou(parent: Node3D, x: float, z: float, d: float, eave_h: float, rise: float) -> void:
-	var steps := [[d * 0.36, eave_h + rise + 0.7], [d * 0.7, eave_h + rise * 0.55 + 0.4], [d + 0.2, eave_h + 0.3]]
-	for s in steps:
-		var sw: float = s[0]
-		var top: float = s[1]
-		K.box(parent, Vector3(0.32, top, sw), K.WALL, Vector3(x, top / 2.0, z))
-		K.box(parent, Vector3(0.5, 0.14, sw + 0.3), K.ROOF, Vector3(x, top + 0.07, z))
-		for sz in [-1, 1]:
-			K.box(parent, Vector3(0.46, 0.12, 0.34), K.ROOF, Vector3(x, top + 0.16, z + sz * (sw / 2.0 + 0.2)), Vector3(sz * 25, 0, 0))
+	var levels := [[0.0, d * 0.18, eave_h + rise + 0.62], [d * 0.18, d * 0.35, eave_h + rise * 0.55 + 0.38], [d * 0.35, d * 0.5 + 0.11, eave_h + 0.26]]
+	for level in levels:
+		var inner:float = level[0]
+		var outer:float = level[1]
+		var top:float = level[2]
+		for side in [-1.0, 1.0]:
+			var mid:float = z + side * (inner + outer) * 0.5
+			var span := outer - inner
+			K.box(parent, Vector3(0.32, top, span), HomeHouse.plaster(), Vector3(x, top / 2.0, mid))
+			K.box(parent, Vector3(0.46, 0.10, span + 0.10), K.ROOF, Vector3(x, top + 0.05, mid))
+			K.box(parent, Vector3(0.43, 0.075, 0.22), K.ROOF, Vector3(x, top + 0.105, z + side * (outer + 0.065)), Vector3(side * 18.0, 0, 0))
 
 
 ## 厅堂/廊屋。walls: "back"/"left"/"right" 里哪几面砌墙；前面开敞，只立柱。
@@ -73,13 +96,13 @@ static func ma_tou(parent: Node3D, x: float, z: float, d: float, eave_h: float, 
 static func hall(parent: Node3D, pos: Vector3, rot_y: float, w: float, d: float, h: float, walls: Array, gables := true) -> Dictionary:
 	var n := K.node(parent, pos, Vector3(0, rot_y, 0))
 	K.box(n, Vector3(w + 0.6, 0.1, d + 0.6), K.STONE_DARK, Vector3(0, 0.05, 0))
-	K.box(n, Vector3(w - 0.2, 0.02, d - 0.2), K.mat(Color("#7a6a58")), Vector3(0, 0.11, 0))
+	K.box(n, Vector3(w - 0.2, 0.02, d - 0.2), Assets.pbr("brown_planks_09", 2.3, Color("#aa8b70")), Vector3(0, 0.11, 0))
 	if "back" in walls:
-		K.solid(n, Vector3(w, h, 0.3), K.WALL, Vector3(0, h / 2.0, -d / 2.0))
+		K.solid(n, Vector3(w, h, 0.3), HomeHouse.plaster(), Vector3(0, h / 2.0, -d / 2.0))
 		K.box(n, Vector3(w, 0.5, 0.32), K.WALL_SHADE, Vector3(0, 0.25, -d / 2.0))
 	for side in [["left", -1], ["right", 1]]:
 		if side[0] in walls:
-			K.solid(n, Vector3(0.3, h, d), K.WALL, Vector3(side[1] * w / 2.0, h / 2.0, 0))
+			K.solid(n, Vector3(0.3, h, d), HomeHouse.plaster(), Vector3(side[1] * w / 2.0, h / 2.0, 0))
 	# 前檐柱 + 额枋 + 挂落
 	var bays := maxi(2, int(round(w / 3.0)))
 	for k in bays + 1:
@@ -94,7 +117,7 @@ static func hall(parent: Node3D, pos: Vector3, rot_y: float, w: float, d: float,
 	var roof_mat: BaseMaterial3D = Assets.pbr_unique("grey_roof_tiles", 1.6, Color(0.62, 0.64, 0.68))
 	if roof_mat == null:
 		roof_mat = K.unique_mat(K.ROOF.darkened(0.25), 0.8)
-	var tile_mat := K.unique_mat(Color("#3e4349"), 0.6)
+	var tile_mat := HomeHouse.roof_tiles().duplicate() as BaseMaterial3D
 	var r := roof(n, w, d, d * 0.42, Vector3(0, h, 0), roof_mat, EAVE, tile_mat)
 	if gables:
 		for sx in [-1, 1]:
@@ -126,7 +149,7 @@ static func wall(parent: Node3D, a: Vector3, b: Vector3, h := 3.0) -> void:
 static func gate(parent: Node3D, pos: Vector3, width := 2.6, h := 3.0) -> Dictionary:
 	var n := K.node(parent, pos)
 	for sx in [-1, 1]:
-		K.solid(n, Vector3(0.6, h + 0.6, 0.6), K.WALL, Vector3(sx * (width / 2.0 + 0.3), (h + 0.6) / 2.0, 0))
+		K.solid(n, Vector3(0.6, h + 0.6, 0.6), HomeHouse.plaster(), Vector3(sx * (width / 2.0 + 0.3), (h + 0.6) / 2.0, 0))
 		K.box(n, Vector3(0.22, 1.6, 0.02), K.CINNABAR, Vector3(sx * (width / 2.0 + 0.3), 1.9, 0.31))
 	K.box(n, Vector3(width + 1.4, 0.4, 0.5), K.WOOD, Vector3(0, h + 0.1, 0))
 	K.box(n, Vector3(1.1, 0.36, 0.06), K.ROOF_EDGE, Vector3(0, h - 0.25, 0.29))

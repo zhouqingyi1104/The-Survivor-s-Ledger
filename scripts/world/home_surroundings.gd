@@ -3,7 +3,7 @@ extends RefCounted
 ##
 ## build(parent, layout) 在 parent 下建名为 "surroundings" 的 Node3D，含 near / middle /
 ## far 三层；近景单独按材质合并（投影），中远景一起合并（关阴影），另加每户一条筒瓦
-## MultiMesh。所有形体都是基本体（盒 / 柱 / 棱柱 / 球），复用 K 色板与 Arch.roof /
+## MultiMesh。枝杈、窗棂与远山按观察距离选轮廓，屋面复用 Arch.roof /
 ## Arch.ma_tou（这两个函数不产生碰撞体）；绝不调用 Arch.wall/hall/gate（会生成
 ## StaticBody），不放 OmniLight / 交互脚本，也不调用带碰撞的 Props.*。
 ##
@@ -100,7 +100,6 @@ const FAR_WALLS: Array = [
 	[-62.0, -48.0, -62.0, -8.0], [-62.0, 8.0, -62.0, 48.0],
 	[62.0, -48.0, 62.0, -8.0], [62.0, 8.0, 62.0, 48.0],
 ]
-const PEAK_COLORS: Array = [Color("#6e7888"), Color("#5f6a7c"), Color("#7d8694")]
 
 
 # ---------- 对外工厂 ----------
@@ -302,17 +301,18 @@ static func _house(parent: Node3D, a: Dictionary) -> void:
 	# 台基
 	K.box(n, Vector3(w + 0.6, 0.3, d + 0.6), K.STONE_DARK, Vector3(0, 0.15, 0))
 	# 后墙 / 山墙
-	K.box(n, Vector3(w, h, 0.24), K.WALL, Vector3(0, h / 2.0, -d / 2.0))
-	K.box(n, Vector3(0.24, h, d), K.WALL, Vector3(-w / 2.0, h / 2.0, 0))
-	K.box(n, Vector3(0.24, h, d), K.WALL, Vector3(w / 2.0, h / 2.0, 0))
+	K.box(n, Vector3(w, h, 0.24), Arch.HomeHouse.plaster(), Vector3(0, h / 2.0, -d / 2.0))
+	K.box(n, Vector3(0.24, h, d), Arch.HomeHouse.plaster(), Vector3(-w / 2.0, h / 2.0, 0))
+	K.box(n, Vector3(0.24, h, d), Arch.HomeHouse.plaster(), Vector3(w / 2.0, h / 2.0, 0))
 	# 前墙：门凹在偏轴位置，门宽 1.5，门上方过梁
 	var dc: float = [-0.5, 0.5, 0.0, 0.4][style]
-	var seg := (w - 1.5) / 2.0
-	K.box(n, Vector3(seg, h, 0.24), K.WALL, Vector3(-(1.5 / 2.0 + seg / 2.0) + dc, h / 2.0, d / 2.0))
-	K.box(n, Vector3(seg, h, 0.24), K.WALL, Vector3(1.5 / 2.0 + seg / 2.0 + dc, h / 2.0, d / 2.0))
+	var west := (w - 1.5) * 0.5 + dc
+	var east := w - 1.5 - west
+	K.box(n, Vector3(west, h, 0.24), Arch.HomeHouse.plaster(), Vector3((west - w) / 2.0, h / 2.0, d / 2.0))
+	K.box(n, Vector3(east, h, 0.24), Arch.HomeHouse.plaster(), Vector3((w - east) / 2.0, h / 2.0, d / 2.0))
 	K.box(n, Vector3(1.9, 0.5, 0.26), K.WALL_SHADE, Vector3(dc, h - 0.25, d / 2.0))
 	# 门板（深色，凹进半寸）
-	K.box(n, Vector3(1.42, h - 0.6, 0.08), K.mat(Color("#3a271d"), 0.7),
+	K.box(n, Vector3(1.42, h - 0.6, 0.08), K.WOOD,
 		Vector3(dc, (h - 0.6) / 2.0, d / 2.0 - 0.02))
 	# 正面窗：暗板 + 纸窗格
 	for side in [-1.0, 1.0]:
@@ -333,41 +333,49 @@ static func _house(parent: Node3D, a: Dictionary) -> void:
 		var sx2 := -1.0 if style == 1 else 1.0
 		var ax := sx2 * (w / 2.0 + 1.15)
 		K.box(n, Vector3(2.2, 1.9, 2.0), K.WALL_SHADE, Vector3(ax, 0.95, 0.3))
-		K.box(n, Vector3(1.0, 1.5, 0.06), K.mat(Color("#3a271d"), 0.7), Vector3(ax, 0.75, 1.28))
+		K.box(n, Vector3(1.0, 1.5, 0.06), K.WOOD, Vector3(ax, 0.75, 1.28))
 		K.box(n, Vector3(3.0, 0.12, 2.6), K.ROOF, Vector3(ax, 2.2, 0.3), Vector3(0, 0, -sx2 * 11.0))
 		K.box(n, Vector3(2.9, 0.05, 2.5), K.SNOW, Vector3(ax, 2.26, 0.3), Vector3(0, 0, -sx2 * 11.0))
 
 
 static func _window(n: Node3D, pos: Vector3, rot_y: float) -> void:
 	var p := K.node(n, pos, Vector3(0, rot_y, 0))
-	K.box(p, Vector3(0.95, 0.75, 0.06), K.mat(Color("#241f1a"), 0.8), Vector3.ZERO)
-	K.box(p, Vector3(0.35, 0.55, 0.02), K.PAPER, Vector3(-0.22, 0, 0.02))
-	K.box(p, Vector3(0.35, 0.55, 0.02), K.PAPER, Vector3(0.22, 0, 0.02))
+	# 两扇透纸覆在木窗槛前，格条坐在窗扇上，夜间仍能读到棂影。
+	K.box(p, Vector3(0.94, 0.70, 0.15), K.WOOD, Vector3(0, 0, 0.077))
+	for x in [-0.22, 0.22]:
+		K.box(p, Vector3(0.35, 0.55, 0.02), Arch.HomeHouse.window_paper(), Vector3(x, 0, 0.159))
+	for x in [-0.435, 0.0, 0.435]:
+		K.box(p, Vector3(0.064, 0.67, 0.15), K.WOOD, Vector3(x, 0, 0.202))
+	for y in [-0.315, 0.09, 0.315]:
+		K.box(p, Vector3(0.93, 0.045, 0.13), K.WOOD, Vector3(0, y, 0.214))
+	K.box(p, Vector3(1.1, 0.095, 0.38), Arch.HomeHouse.TRIM, Vector3(0, -0.38, 0.146))
 
 
-## 冬树：深色枝干 + 雪团 / 少量残梅；无碰撞体（Props.plum_tree 带碰撞，背景不能用）。
+## 房对面的冬树也从枝杈长出侧枝。雪只积在真实树枝上。
 static func _winter_tree(parent: Node3D, pos: Vector3, blossom: bool, scale: float) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = int(absf(pos.x) * 131.0 + absf(pos.z) * 977.0) & 0x7fffffff
-	var n := K.node(parent, pos, Vector3(0, rng.randf_range(-8.0, 8.0), 0))
-	var bark := K.mat(Color("#3a2e27"))
-	K.cyl(n, 0.1 * scale, 0.18 * scale, 2.1 * scale, bark, Vector3(0, 1.05 * scale, 0), Vector3(0, 0, 5))
-	for b in 4:
-		var bx: float = rng.randf_range(-0.55, 0.55) * scale
-		var by: float = rng.randf_range(1.7, 2.5) * scale
-		var bz: float = rng.randf_range(-0.45, 0.45) * scale
-		K.cyl(n, 0.04 * scale, 0.08 * scale, 1.3 * scale, bark,
-			Vector3(bx, by, bz), Vector3(rng.randf_range(-35, 35), 0, rng.randf_range(-45, 45)))
-	var clumps := 12
-	var bloom := K.mat(Color("#d9536a"), 0.6, 0.12)
-	for i in clumps:
-		var p2 := Vector3(rng.randf_range(-1.1, 1.1), rng.randf_range(2.1, 3.4), rng.randf_range(-0.9, 0.9)) * scale
-		var mat = K.SNOW
-		if blossom and i % 3 == 0:
-			mat = bloom
-		elif i % 4 == 0:
-			mat = K.mat(Color("#4d5c43"))
-		K.sphere(n, rng.randf_range(0.22, 0.36) * scale, mat, p2)
+	var n := K.node(parent, pos, Vector3(0, fposmod(pos.x * 39.0 + pos.z * 71.0, 360), 0))
+	n.scale = Vector3.ONE * scale
+	if blossom:
+		preload("res://scripts/world/yard_planting.gd").plum_tree(n, Vector3.ZERO, false)
+		return
+	var bark := K.mat(Color("#504238"))
+	var crotch := Vector3(0.12, 1.43, -0.08)
+	_branch(n, Vector3.ZERO, crotch, 0.135, 0.10, bark)
+	for i in 5:
+		var dir := Vector3(cos(i * 2.4), 0, sin(i * 2.4))
+		var elbow := crotch + dir * (0.41 + 0.13 * (i%3)) + Vector3.UP * (0.46 + 0.17 * (i%2))
+		var tip := elbow + dir * 0.54 + Vector3.UP * 0.54
+		_branch(n, crotch, elbow, 0.076, 0.055, bark)
+		_branch(n, elbow, tip, 0.058, 0.014, bark)
+		_branch(n, tip - 0.20 * dir - 0.20 * Vector3.UP, tip + 0.32 * dir + Vector3.UP * 0.27, 0.026, 0.005, bark)
+		_branch(n, elbow, elbow + Vector3(-dir.z, 1.15, dir.x) * 0.37, 0.039, 0.007, bark)
+		_branch(n, elbow.lerp(tip, 0.13) + Vector3.UP * 0.041, elbow.lerp(tip, 0.66) + Vector3.UP * 0.028, 0.028, 0.016, K.mat(K.SNOW))
+
+
+static func _branch(root: Node3D, a: Vector3, b: Vector3, thick: float, thin: float, mat: Material) -> void:
+	var axis := b - a
+	var limb := K.cyl(root, thin, thick, axis.length(), mat, (a + b) * 0.5, Vector3.ZERO, 7)
+	limb.quaternion = Quaternion(Vector3.UP, axis.normalized())
 
 
 ## 柴堆：3 根横木 + 顶雪，全基本体，无脚本无碰撞。
@@ -403,7 +411,7 @@ static func _middle_house(parent: Node3D, a: Dictionary) -> void:
 	K.box(n, Vector3(0.8, 0.6, 0.05), K.mat(Color("#2b2722"), 0.85), Vector3(w * 0.28, 1.35, d / 2.0 + 0.02))
 	K.box(n, Vector3(0.8, 0.6, 0.05), K.mat(Color("#2b2722"), 0.85), Vector3(-w * 0.28, 1.35, d / 2.0 + 0.02))
 	var rise := d * 0.4
-	K.prism(n, Vector3(d + 0.9, rise, w + 0.9), K.ROOF, Vector3(0, h + rise / 2.0, 0), Vector3(0, 90, 0))
+	K.prism(n, Vector3(d + 0.9, rise, w + 0.9), K.Assets.pbr("grey_roof_tiles", 2.1, Color("#909ba3")), Vector3(0, h + rise / 2.0, 0), Vector3(0, 90, 0))
 	for sz in [-1.0, 1.0]:
 		K.box(n, Vector3(w + 1.0, 0.05, 0.2), K.SNOW, Vector3(0, h + 0.03, sz * (d / 2.0 + 0.38)))
 	K.box(n, Vector3(w + 0.9, 0.1, 0.12), K.ROOF_EDGE, Vector3(0, h + rise + 0.02, 0))
@@ -432,18 +440,13 @@ static func _tower(parent: Node3D, pos: Vector3, h: float) -> void:
 
 
 static func _peak(parent: Node3D, a: Dictionary) -> void:
-	# 转 90-ang：棱柱本地 ±Z（拉伸方向）对准锚点径向，XY 三角形截面沿切向展开，
-	# 玩家沿径向看进来是三角山面；旧写法 -ang 看到的是长条平顶盒侧。
+	# 将山梁宽面沿切向展开，在院内能看见鞍部与坡脊。
 	var n := K.node(parent, Vector3(float(a.x), 0, float(a.z)), Vector3(0, 90.0 - float(a.ang), 0))
 	var ph: float = a.ph
 	var tw: float = a.tw
-	# 颜色按山脊索引稳定取
+	# 每道山脊保持固定的地形种子
 	var idx := int(round((float(a.ang) - 11.0) / 22.5))
-	var mat: Material = K.mat(PEAK_COLORS[idx % PEAK_COLORS.size()], 1.0)
-	# 棱柱截面在 XY（切向宽 tw × 高 ph），沿本地 Z（径向）厚 18m。
-	K.prism(n, Vector3(tw, ph, 18.0), mat, Vector3(0, ph / 2.0, 0))
-	if bool(a.snow):
-		K.prism(n, Vector3(tw * 0.55, ph * 0.32, 10.0), K.SNOW, Vector3(0, ph * 0.82, 0))
+	preload("res://scripts/world/building_craft.gd").ridge(n, tw, 16.0, ph * 1.30, idx, bool(a.snow))
 
 
 static func _set_cast_shadow(n: Node, on: bool) -> void:

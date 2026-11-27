@@ -284,7 +284,7 @@ static func _wall_bay(room: Node3D, left: float, right: float, back: float, h: f
 	wall_base(root, width, sill * 0.80, masonry)
 	if has_window:
 		_wall_span(root, -width * 0.5, offset - pane * 0.5, sill, top, 0, lime)
-		_window(root, Vector3(offset, (sill + top) * 0.5, 0), pane, top - sill)
+		paper_window(root, Vector3(offset, (sill + top) * 0.5, 0), pane, top - sill)
 		_wall_span(root, offset + pane * 0.5, width * 0.5, sill, top, 0, lime)
 	else:
 		_wall_span(root, -width * 0.5, width * 0.5, sill, top, 0, lime)
@@ -323,6 +323,10 @@ static func _post(room: Node3D, point: Vector2, h: float) -> void:
 	K.cyl(room, 0.145, 0.18, 0.12, _dressed_stone(), foot + Vector3.UP * 0.15, Vector3(0, 22.5, 0), 8)
 	K.box(room, Vector3(0.18, h - 0.20, 0.18), K.WOOD, foot + Vector3.UP * (h + 0.20) * 0.5)
 	K.box(room, Vector3(0.42, 0.13, 0.28), TRIM, foot + Vector3.UP * (h - 0.12))
+	# 柱头的替木承额枋，端部逐层出挑，露出的榫头贴住横梁。
+	K.box(room, Vector3(0.29, 0.11, 0.25), TIMBER, foot + Vector3.UP * (h - 0.23))
+	for side in [-1.0, 1.0]:
+		K.box(room, Vector3(0.115, 0.22, 0.16), TRIM, foot + Vector3(side * 0.16, h - 0.19, 0), Vector3(0, 0, -side * 37.0))
 	K.collider(room, Vector3(0.30, h, 0.30), foot + Vector3.UP * h * 0.5)
 
 
@@ -348,7 +352,7 @@ static func _window_seat(room: Node3D, a: Vector2, b: Vector2, center_y: float) 
 	var center := (a + b) * 0.5
 	var wall := K.node(room, Vector3(center.x - 0.18, center_y, center.y), Vector3(0, -90, 0))
 	var length := a.distance_to(b)
-	_window(wall, Vector3.ZERO, length, 0.82)
+	paper_window(wall, Vector3.ZERO, length, 0.82)
 	K.box(wall, Vector3(length + 0.12, 0.11, 0.28), TRIM, Vector3(0, 0.46, 0))
 
 
@@ -419,16 +423,20 @@ static func _wall_span(room: Node3D, left: float, right: float, low: float, high
 		K.box(room, Vector3(right - left, high - low, 0.27), lime, Vector3((right + left) * 0.5, (high + low) * 0.5, z))
 
 
-static func _window(room: Node3D, mid: Vector3, width: float, height: float) -> void:
-	# 纸窗缩进墙体，深窗台和透木疏格在侧视、俯视下均有厚度。
-	K.box(room, Vector3(width, height, 0.075), TIMBER, mid)
+static func window_paper() -> ShaderMaterial:
 	if not _finishes.has("window_paper"):
 		var sheet := ShaderMaterial.new()
 		sheet.shader = WINDOW_PAPER
 		sheet.set_shader_parameter("paper", PAPER)
 		sheet.set_shader_parameter("fiber_relief", preload("res://assets/third_party/polyhaven/textures/white_stucco/white_stucco_nor.jpg"))
 		_finishes["window_paper"] = sheet
-	K.box(room, Vector3(width - 0.14, height - 0.13, 0.088), _finishes["window_paper"], mid)
+	return _finishes["window_paper"]
+
+
+static func paper_window(room: Node3D, mid: Vector3, width: float, height: float) -> void:
+	# 纸窗缩进墙体，深窗台和透木疏格在侧视、俯视下均有厚度。
+	K.box(room, Vector3(width, height, 0.075), TIMBER, mid)
+	K.box(room, Vector3(width - 0.14, height - 0.13, 0.088), window_paper(), mid)
 	for x in [-0.25, 0.0, 0.25]:
 		K.box(room, Vector3(0.045, height - 0.05, 0.115), TIMBER, mid + Vector3.RIGHT * x * width)
 	K.box(room, Vector3(width, 0.05, 0.12), TIMBER, mid + Vector3.UP * height * 0.16)
@@ -506,6 +514,11 @@ static func _tool_board(room: Node3D, w: float, d: float, h: float) -> void:
 		K.box(room, Vector3(0.065, 0.41, 0.05), TRIM, mid + Vector3(x, 0.04, 0.10))
 	K.box(room, Vector3(0.61, 0.06, 0.05), Color("#a5aaa3"), mid + Vector3(0.35, -0.10, 0.10))
 	K.box(room, Vector3(0.61, 0.05, 0.05), TRIM, mid + Vector3(0.35, 0.17, 0.10))
+
+
+## 板瓦与筒瓦共用的陶胎表面。
+static func roof_tiles() -> BaseMaterial3D:
+	return _mapped("grey_roof_tiles")
 
 
 ## 院墙也用正屋的弧面瓦，墙帽在两边滴水。
