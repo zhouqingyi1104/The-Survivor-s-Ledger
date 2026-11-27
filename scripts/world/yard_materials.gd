@@ -21,7 +21,7 @@ static func ground(flagstone: bool, courtyard := true) -> ShaderMaterial:
 		mat.shader = GROUND
 		mat.set_shader_parameter("flagstone", flagstone)
 		mat.set_shader_parameter("courtyard", courtyard)
-		mat.set_shader_parameter("surface_color", load(prefix + "diff.jpg"))
+		mat.set_shader_parameter("surface_color", load(prefix + "diff.jpg") if flagstone else Assets.PACKED_EARTH)
 		mat.set_shader_parameter("surface_normal", load(prefix + "nor.jpg"))
 		mat.set_shader_parameter("surface_arm", load(prefix + "arm.jpg"))
 		mat.set_shader_parameter("snow_color", SNOW)

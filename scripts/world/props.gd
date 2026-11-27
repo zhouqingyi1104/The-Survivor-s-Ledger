@@ -147,7 +147,7 @@ static func stove(parent: Node3D, pos: Vector3, rot_y: float, double: bool) -> N
 		K.box(n,Vector3(pier_width,0.29,0.26),K.BRICK,Vector3(side*(w-pier_width)*0.5,0.295,0.37))
 	if double:
 		K.box(n,Vector3(0.58,0.29,0.26),K.BRICK,Vector3(0,0.295,0.37))
-	K.box(n, Vector3(w + 0.1, 0.08, 1.1), _surface(STONE), Vector3(0, 0.88, 0))
+	K.box(n, Vector3(w + 0.1, 0.08, 1.1), _worktop(), Vector3(0, 0.88, 0))
 	var holes := [-0.5, 0.5] if double else [0.0]
 	if _wok_mesh == null:
 		_wok_mesh = _turned_vessel(PackedVector2Array([Vector2(0.001, 0), Vector2(0.14, 0.017),
@@ -448,12 +448,16 @@ static func device(container: Node3D, id: String, pos: Vector3, index: int) -> v
 
 # ---------- 院中陈设（让院子有人住过的样子） ----------
 
-static func stone_table(parent: Node3D, pos: Vector3) -> Node3D:
-	var n := K.node(parent, pos)
+static func _worktop() -> ShaderMaterial:
 	if _table_stone == null:
 		_table_stone = _surface(STONE).duplicate()
 		_table_stone.set_shader_parameter("polished", 0.85)
-	var stone := _table_stone
+	return _table_stone
+
+
+static func stone_table(parent: Node3D, pos: Vector3) -> Node3D:
+	var n := K.node(parent, pos)
+	var stone := _worktop()
 	K.cyl(n, 0.61, 0.52, 0.08, stone, Vector3(0, 0.73, 0), Vector3.ZERO, 28)
 	K.cyl(n, 0.59, 0.61, 0.07, stone, Vector3(0, 0.80, 0), Vector3.ZERO, 28)
 	K.cyl(n, 0.22, 0.3, 0.69, stone, Vector3(0, 0.345, 0), Vector3.ZERO, 16)
@@ -481,8 +485,10 @@ static func clay_jar(parent: Node3D, pos: Vector3, s := 1.0) -> Node3D:
 		# 从露胎的圈足向上收肩、卷唇，再向内折回釉面，俯视可见真实罐口。
 		_jar_mesh = _turned_vessel(PackedVector2Array([
 			Vector2(0.18, 0.012), Vector2(0.19, 0.045), Vector2(0.19, 0.065),
-			Vector2(0.27, 0.16), Vector2(0.345, 0.30), Vector2(0.37, 0.45),
-			Vector2(0.35, 0.56), Vector2(0.29, 0.65), Vector2(0.20, 0.71),
+			Vector2(0.232, 0.113), Vector2(0.27, 0.16), Vector2(0.315, 0.23),
+			Vector2(0.345, 0.30), Vector2(0.364, 0.38), Vector2(0.37, 0.445),
+			Vector2(0.365, 0.50), Vector2(0.35, 0.56), Vector2(0.324, 0.611),
+			Vector2(0.29, 0.65), Vector2(0.244, 0.682), Vector2(0.20, 0.71),
 			Vector2(0.178, 0.755), Vector2(0.187, 0.772), Vector2(0.214, 0.786),
 			Vector2(0.216, 0.808), Vector2(0.203, 0.826), Vector2(0.178, 0.822),
 			Vector2(0.158, 0.80), Vector2(0.150, 0.754), Vector2(0.20, 0.675),

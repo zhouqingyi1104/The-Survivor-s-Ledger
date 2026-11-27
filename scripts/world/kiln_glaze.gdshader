@@ -9,16 +9,19 @@ void fragment() {
 	float height = UV.y;
 	float drip = 0.019 * sin(angle * 5.0 + 0.8) + 0.014 * cos(angle * 9.0);
 	float glazed = smoothstep(0.15 + drip, 0.174 + drip, height);
-	float throwing = 0.5 + 0.5 * sin(height * 218.0 + 0.6 * cos(2.0 * angle));
-	float soft = 1.0 - smoothstep(0.5, 2.0, fwidth(height * 218.0));
-	// A little iron in the glaze breaks the highlight along the thrown clay.
-	// The same deposited grains carry colour and roughness across each vessel.
+	// A shallow finger mark turns around the shoulder. The glass covers most of
+	// the ridges below it, leaving a continuous reflection over the belly.
+	float shoulder = smoothstep(0.50, 0.76, height) * (1.0 - smoothstep(0.88, 0.95, height));
+	float throwing = sin(height * 145.0 + cos(2.0 * angle) + .6*sin(height*18.0));
+	float soft = 1.0 - smoothstep(0.65, 2.6, fwidth(height * 145.0));
 	float oxides = texture(mineral_grain, UV * vec2(3.0, 1.0)).g;
-	float iron_spots = smoothstep(0.68,0.85,oxides);
-	float ash = 0.50 + 0.26 * sin(angle * 2.0 + height * 4.0) + 0.13 * cos(angle * 5.0 - height * 7.0);
-	vec3 slip = glaze.rgb * (0.73 + ash * 0.53 + (throwing - 0.5) * 0.09 * soft);
-	slip = mix(slip, slip * vec3(0.73,0.56,0.43), iron_spots * 0.49);
-	ALBEDO = mix(bare_clay.rgb * (0.72 + 0.42*oxides), slip, glazed);
-	ROUGHNESS = mix(0.93, 0.25 + 0.13 * ash + 0.10 * oxides + 0.08 * throwing * soft, glazed);
+	float ash = 0.50 + 0.26 * sin(angle * 2.0 + height * 3.0) + 0.13 * cos(angle * 3.0 - height * 5.0);
+	float pool = smoothstep(.4,.82,ash + .14 * oxides) * smoothstep(.12,.43,height);
+	float lip = smoothstep(.93,.997,height);
+	vec3 slip = glaze.rgb * mix(vec3(1.06,.96,.80),vec3(.62,.78,.69),pool);
+	slip *= 1.0 + throwing * shoulder * soft * .018;
+	slip = mix(slip,bare_clay.rgb,lip*.22);
+	ALBEDO = mix(bare_clay.rgb * (0.88 + 0.18*oxides), slip, glazed);
+	ROUGHNESS = mix(0.91, 0.38 - .13 * pool + .035 * oxides + .025 * throwing * shoulder * soft, glazed);
 	SPECULAR = mix(0.20, 0.58, glazed);
 }

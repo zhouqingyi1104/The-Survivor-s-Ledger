@@ -4,6 +4,7 @@ extends RefCounted
 
 const PH_MODELS := "res://assets/third_party/polyhaven/models/%s/%s.gltf"
 const PH_TEX := "res://assets/third_party/polyhaven/textures/%s/%s_%s.jpg"
+const PACKED_EARTH := preload("res://assets/materials/packed_earth.webp")
 const BUILDINGS := "res://assets/models/buildings/%s.glb"
 
 static var _scenes := {}
@@ -26,11 +27,15 @@ static func pbr(id: String, size := 2.0, tint := Color.WHITE) -> BaseMaterial3D:
 		return null
 	var m := ORMMaterial3D.new()
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-	m.albedo_texture = load(diff)
+	m.albedo_texture = PACKED_EARTH if id == "brown_mud_dry" else load(diff)
 	m.albedo_color = tint
 	m.normal_enabled = true
 	m.normal_texture = load(PH_TEX % [id, id, "nor"])
-	m.normal_scale = 1.0
+	# Loose grains and cut stone keep their broad forms at the overhead camera distance.
+	if id == "brown_mud_dry":
+		m.normal_scale = 0.42
+	elif id == "rock_01":
+		m.normal_scale = 0.58
 	m.orm_texture = load(PH_TEX % [id, id, "arm"])
 	m.uv1_triplanar = true
 	m.uv1_world_triplanar = true

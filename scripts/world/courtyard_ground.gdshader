@@ -44,7 +44,7 @@ void fragment() {
 		vec3 snow = texture(snow_color, yard_pos / 4.7).rgb * vec3(0.94, 1.02, 1.09);
 		ALBEDO = mix(soil * (1.0 - 0.24 * wet), snow, frost);
 		ROUGHNESS = mix(0.72 + 0.27 * arm.g - 0.17 * wet, 0.96, frost);
-		strength = mix(0.52, 0.08, frost);
+		strength = mix(0.30, 0.08, frost);
 	}
 	// The scan is projected along world XZ, including on the merged and rotated treads.
 	vec3 up = VIEW_MATRIX[1].xyz;

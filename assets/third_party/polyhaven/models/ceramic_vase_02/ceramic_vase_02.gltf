@@ -23,7 +23,8 @@
       "doubleSided": true,
       "name": "ceramic_vase_02",
       "normalTexture": {
-        "index": 0
+        "index": 0,
+        "scale": 0.38
       },
       "pbrMetallicRoughness": {
         "baseColorTexture": {
