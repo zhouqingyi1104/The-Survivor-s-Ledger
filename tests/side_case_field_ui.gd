@@ -7,6 +7,46 @@ const Pack = preload("res://scripts/core/save_pack.gd")
 const Visitor = preload("res://scripts/world/chronicle_visitor.gd")
 const Ruins = preload("res://scripts/world/ruin_world.gd")
 const Station = preload("res://scripts/world/side_case_scene.gd")
+const WALK_KEYS := {KEY_W: "move_up", KEY_S: "move_down", KEY_A: "move_left", KEY_D: "move_right"}
+var held_walk: Key = KEY_NONE
+
+
+func key_event(code: Key, pressed: bool) -> void:
+	if code in WALK_KEYS:
+		held_walk = code if pressed else KEY_NONE
+	super.key_event(code, pressed)
+	Input.flush_buffered_events()
+
+
+func _physics_process(_delta: float) -> void:
+	# Windows 切走焦点会清空引擎的按住状态。保留真实 WASD 事件与胶囊碰撞来走路。
+	if held_walk != KEY_NONE and not Input.is_action_pressed(WALK_KEYS[held_walk]):
+		key_event(held_walk, true)
+
+
+func click(button: Button) -> void:
+	if not check(is_instance_valid(button) and not button.disabled, "界面没有可用按钮"): return
+	var clip := get_viewport().get_visible_rect()
+	var parent := button.get_parent()
+	while parent != null:
+		if parent is ScrollContainer:
+			parent.ensure_control_visible(button)
+			await frames(3)
+			clip = clip.intersection(parent.get_global_rect())
+		parent = parent.get_parent()
+	var visible := clip.intersection(button.get_global_rect())
+	if not check(visible.has_area(), "按钮滚动后仍被裁切：" + button.text): return
+	var motion := InputEventMouseMotion.new()
+	motion.position = visible.get_center()
+	get_viewport().push_input(motion)
+	# 同一次点击的按下与抬起打在同一可见像素，避免两者之间窗口收到别处的光标移动。
+	for down in [true, false]:
+		var edge := InputEventMouseButton.new()
+		edge.button_index = MOUSE_BUTTON_LEFT
+		edge.position = motion.position
+		edge.pressed = down
+		get_viewport().push_input(edge)
+	await frames(6)
 
 
 func button_named(modal: String, meta: String, value: String) -> Button:
