@@ -66,18 +66,18 @@ static func _book(body: VBoxContainer) -> void:
 			body.add_child(UI.para("掌柜用指甲顺着纸上的燕尾划了一下。「缺口朝哪家，米就送哪家。我那会儿才这么高。」他拿手比了比柜沿。", 18, UI.INK))
 			body.add_child(UI.para("「孩子肩窄，担子就锯短些。进了巷子也别喊人，照着记号走，谁家断炊，街坊不用都知道。」他从门后拎出两个书篮，让你挑一样本事学。", 17))
 			body.add_child(UI.sep())
-			body.add_child(UI.para("本世只能选一门，各需 1 个时辰。", 16, UI.CINNABAR))
+			body.add_child(UI.para("这一世只能选一门，各需 1 个时辰。", 16, UI.CINNABAR))
 			var issue := Story.lesson_issue(Game.run)
 			if issue != "":
 				body.add_child(UI.para(issue, 16, UI.CINNABAR))
-			_lesson_row(body, "carry", "学挑担", "本世气血上限 +5，当前气血 +5。", issue)
-			_lesson_row(body, "marks", "认燕尾记", "本世搜寻经验 +10。搜寻等级越高，翻找时外泄的阳气越少。", issue)
+			_lesson_row(body, "carry", "学挑担", "这一世气血上限 +5，当前气血 +5。", issue)
+			_lesson_row(body, "marks", "认燕尾记", "这一世搜寻经验 +10。搜寻等级越高，翻找时外泄的阳气越少。", issue)
 		"carry":
 			body.add_child(UI.para("你挑起书篮，跟着掌柜绕过巷口。回来时书还是那些书，担头已经不再磕门框了。", 18, UI.INK))
-			body.add_child(UI.para("本世气血上限 +5，当前气血 +5。如今气血上限为 %d。" % State.attr_max(Game.run, "hp"), 16, UI.CINNABAR))
+			body.add_child(UI.para("这一世气血上限 +5，当前气血 +5。如今气血上限为 %d。" % State.attr_max(Game.run, "hp"), 16, UI.CINNABAR))
 		"marks":
 			body.add_child(UI.para("你一路认出门槛、墙角的燕尾。走到第三家，掌柜收回指路的手，让你带他走完了后半程。", 18, UI.INK))
-			body.add_child(UI.para("本世搜寻经验 +10。如今搜寻熟练为 %d 级。" % State.prof_level(Game.run, "search"), 16, UI.CINNABAR))
+			body.add_child(UI.para("这一世搜寻经验 +10。如今搜寻熟练为 %d 级。" % State.prof_level(Game.run, "search"), 16, UI.CINNABAR))
 	if stage in ["carry", "marks"]:
 		body.add_child(UI.para("临走，掌柜说：「米行的旧账簿也该翻个面了。那帮孩子写字，专拣人家不用的地方。」", 16))
 

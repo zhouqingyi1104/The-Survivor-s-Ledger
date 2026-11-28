@@ -60,10 +60,10 @@ static func learn(run: Dictionary, choice: String) -> String:
 	if choice == "carry":
 		run.attrs.hp_max = State.attr_max(run, "hp") + 5
 		State.add_attr(run, "hp", 5)
-		result = "学会了挑担换肩。本世气血上限和当前气血各加 5。"
+		result = "学会了挑担换肩。这一世气血上限和当前气血各加 5。"
 	else:
 		State.add_xp(run, "search", 10)
-		result = "学会了认燕尾路标。本世搜寻经验增加 10 点。"
+		result = "学会了认燕尾路标。这一世搜寻经验增加 10 点。"
 	State.note(run, result + "书肆掌柜说，米行那本旧账簿，背页也写过字。")
 	return ""
 
