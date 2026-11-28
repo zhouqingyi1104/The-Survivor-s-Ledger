@@ -3,6 +3,8 @@ extends RefCounted
 const K = preload("res://scripts/world/kit.gd")
 const Props = preload("res://scripts/world/props.gd")
 const House = preload("res://scripts/world/home_house.gd")
+const Linens = preload("res://scripts/world/attic_housewares.gd")
+const Field = preload("res://scripts/world/field_props.gd")
 const FLOOR_Y := 0.132
 const BED := Vector3(-0.10, 0, -0.14)
 const SCREEN := Vector3(-0.19, 0, -1.47)
@@ -10,6 +12,9 @@ const TRUNK := Vector3(-0.13, 0, 1.28)
 const BEDSIDE := Vector3(0.69, 0, -1.03)
 const CHAIR := Vector3(0.585, 0.028, 0.055)
 const TABLE := Vector3(-0.46, 0.028, -0.035)
+const FOOTSTOOL := Vector3(-0.27, 0.025, 0.76)
+const BASIN := Vector3(-0.35, 0, 0.15)
+const RAIL := Vector3(0.20, 0, -0.33)
 
 
 static func build_group(group: String, parent: Node3D) -> void:
@@ -19,6 +24,9 @@ static func build_group(group: String, parent: Node3D) -> void:
 			_sleeping_corner(floor)
 		"sewing":
 			_sewing_corner(floor)
+		"washstand":
+			Linens.basin_stand(K.node(floor, BASIN))
+			Linens.clothes_rail(K.node(floor, RAIL))
 	House.finish_joinery(floor)
 	K.merge_static(floor, [])
 
@@ -27,25 +35,36 @@ static func build_group(group: String, parent: Node3D) -> void:
 static func block_group(group: String, parent: Node3D) -> void:
 	match group:
 		"berth":
-			_block(parent, BED, Vector2(2.27, 0.96), 90.0)
+			var bed := _block(parent, BED, Vector2(2.27, 1.10), 90.0)
+			bed.name = "BedBody"
+			bed.set_meta("spot", "floor_bed")
 			_block(parent, SCREEN, Vector2(1.31, 0.15), -4.0, 1.4)
 			_block(parent, TRUNK, Vector2(1.05, 0.45))
 			_block(parent, BEDSIDE, Vector2(0.48, 0.46), -7.0)
 		"sewing":
 			_block(parent, TABLE, Vector2(0.94, 0.94), 3.0)
 			_block(parent, CHAIR, Vector2(0.66, 0.61), -104.0)
+			_block(parent, FOOTSTOOL, Vector2(0.68, 0.34), -8.0)
+		"washstand":
+			_block(parent, BASIN, Vector2(0.76, 0.74))
+			_block(parent, RAIL, Vector2(1.27, 0.45))
 
 
-static func _block(parent: Node3D, at: Vector3, size: Vector2, turn := 0.0, height := 1.05) -> void:
+static func _block(parent: Node3D, at: Vector3, size: Vector2, turn := 0.0, height := 1.05) -> StaticBody3D:
 	var body := K.collider(parent, Vector3(size.x, height, size.y), at + Vector3.UP * (FLOOR_Y + height * 0.5))
 	body.rotation_degrees.y = turn
+	return body
 
 
 static func _sleeping_corner(floor: Node3D) -> void:
+	var rush := K.node(floor, Vector3(0.81, 0, 0.16), Vector3(0, 90, 0))
+	rush.scale.z = 0.71
+	House._woven_mat(rush, Vector3.UP * 0.013, 1.92)
 	var bed := K.node(floor, BED, Vector3(0, 90, 0))
 	K.Assets.prop(bed, "chinese_sofa", Vector3.ZERO, 0.0, 1.0, false)
 	var head := K.node(bed, Vector3(0, 0.49, 0), Vector3(0, 180, 0))
 	Props.bedding(head, Vector3.ZERO, 0.82)
+	Linens.bed_curtains(K.node(floor, BED))
 	# 床头半屏隔开身后的书架，东侧敞开，床脚留换衣的矮箱。
 	var screen := K.node(floor, SCREEN, Vector3(0, -4, 0))
 	screen.scale = Vector3(1.05, 0.92, 0.86)
@@ -89,7 +108,10 @@ static func _reading_lamp(parent: Node3D, pos: Vector3) -> void:
 
 
 static func _sewing_corner(floor: Node3D) -> void:
-	House._woven_mat(floor, Vector3(-0.02, 0.014, 0), 2.05)
+	Linens.floor_rug(K.node(floor, Vector3(-0.03, 0.015, 0.03), Vector3(0, -3, 0)))
+	var bench := K.node(floor, FOOTSTOOL, Vector3(0, -8, 0))
+	var seat := Props._fitted(bench, "chinese_stool", Vector3(0.61, 0.40, 0.34))
+	Field.book(bench, Vector3(0, K.Assets.local_aabb(seat).end.y, 0), 12.0)
 	var chair := K.node(floor, CHAIR, Vector3(0, -104, 0))
 	Props._fitted(chair, "chinese_armchair", Vector3(0.67, 1.24, 0.66))
 	var table := K.node(floor, TABLE, Vector3(0, 3, 0))

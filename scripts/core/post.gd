@@ -1116,10 +1116,16 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 
 # ---------- 行动 ----------
 
-static func act_rest(run: Dictionary) -> String:
-	if Floors.current(run) != "courtyard":
+static func rest_block(run: Dictionary, at_attic_bed := false) -> String:
+	if not _at_bed(run, at_attic_bed):
 		return "先回院里的床榻歇息。"
-	var err := can_act(run, 0)
+	if at_attic_bed and (in_night(run) or not run.get("fight", {}).is_empty()):
+		return "夜袭还没结束。"
+	return can_act(run, 0)
+
+
+static func act_rest(run: Dictionary, at_attic_bed := false) -> String:
+	var err := rest_block(run, at_attic_bed)
 	if err != "":
 		return err
 	_start(run, "rest")
@@ -1128,19 +1134,23 @@ static func act_rest(run: Dictionary) -> String:
 
 
 ## 就寝：一直睡到天亮。天黑以后，或者累坏了才能睡。
-static func sleep(run: Dictionary) -> String:
-	if Floors.current(run) != "courtyard":
+static func sleep(run: Dictionary, at_attic_bed := false) -> String:
+	if not _at_bed(run, at_attic_bed):
 		return "先回院里的床榻就寝。"
 	var err := can_act(run, 0)
 	if err != "":
 		return err
-	if in_night(run):
+	if in_night(run) or (at_attic_bed and not run.get("fight", {}).is_empty()):
 		return "尸潮还在街上，这时候躺下就再也起不来了。"
 	if not is_night(run) and State.attr(run, "energy") >= 30:
 		return "天还亮着，睡不着。（可以小憩）"
 	run.sleeping = true
 	State.note(run, "吹了灯，躺下了。")
 	return ""
+
+
+static func _at_bed(run: Dictionary, attic: bool) -> bool:
+	return Floors.current(run) == ("attic" if attic else "courtyard")
 
 
 static func act_read(run: Dictionary, book_id: String) -> String:

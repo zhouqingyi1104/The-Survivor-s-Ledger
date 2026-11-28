@@ -98,6 +98,89 @@ func check_sorting_table_change(screen: Control) -> void:
 	check(flat(screen.player.global_position, screen.world.spot_info("floor_use").stand) < 1.0, "玩家没有抵达恢复的分拣台")
 
 
+## 点日用陈设时，先实走到可操作的一侧；陈设给玩家家具让位后必须同时撤销热点。
+func check_living_spot(screen: Control, id: String) -> void:
+	var floor_id := Floors.current(Game.run)
+	var original: Dictionary = Game.run.duplicate(true)
+	var info: Dictionary = screen.world.spot_info(id)
+	if not check(not info.is_empty(), floor_id + " 缺少 " + id): return
+	var target: Vector3 = screen.world.spot_nodes[id].global_position
+	var origin: Vector3 = screen.world.floor_origin()
+	screen.rig.snap()
+	await frames()
+	var pixel := pick_spot(info.tag, id)
+	if not check(pixel.x >= 0, id + " 模型未接物理拾取"): return
+	await click(pixel)
+	var until := Time.get_ticks_msec() + 12000
+	while screen.player.is_walking() and Time.get_ticks_msec() < until:
+		await get_tree().process_frame
+	await frames(6)
+	check(flat(screen.player.global_position, info.stand) < 0.9, id + " 没有走到陈设跟前")
+	if id == "floor_storage":
+		if not check(main.has_modal("inventory"), "单击地窖柜未打开存货"): return
+		await key(KEY_ESCAPE)
+	else:
+		if not check(screen._menu.visible and screen._menu_spot == id, "单击阁楼床未出现休息菜单"): return
+		var sleep_button := button("就寝", screen._menu)
+		check(sleep_button != null and sleep_button.disabled, "白天精神充沛仍能就寝")
+		if not await choose("小憩"): return
+		check(Game.run.busy.get("kind") == "rest" and screen.player.figure.lying, "未在阁楼床上小憩")
+		check(flat(screen.player.figure.global_position, info.feet) < 0.15, "人物躺到了院中床或床外")
+		check(flat(screen.player.global_position, info.stand) < 0.15 and Post.floor_block(Game.run,"courtyard") != "", "小憩时人物或楼层不稳定")
+		Game.run = original.duplicate(true)
+		Game.run.t = (int(Game.run.pday) - 1) * Post.DAY + Post.DUSK_AT + 5
+		Game.refresh()
+		await frames()
+		pixel = pick_spot(info.tag, id)
+		if not check(pixel.x >= 0, "入夜后无法选中阁楼床"): return
+		await click(pixel)
+		until = Time.get_ticks_msec() + 12000
+		while screen.player.is_walking() and Time.get_ticks_msec() < until:
+			await get_tree().process_frame
+		await frames(4)
+		if not await choose("就寝"): return
+		check(Game.run.sleeping and screen.player.figure.lying, "平安夜未能在阁楼上床就寝")
+		check(flat(screen.player.figure.global_position, info.feet) < 0.15, "夜里就寝没有使用阁楼卧榻")
+		var watch := original.duplicate(true)
+		watch.t = (int(watch.pday) - 1) * Post.DAY + Post.DUSK_AT + 5
+		watch.night = {"done": false}
+		check(Post.sleep(watch, true) != "" and Post.act_rest(watch, true) != "", "阁楼床绕过夜袭限制")
+		watch.night = {}
+		watch.home_floor = "cellar"
+		check(Post.sleep(watch, true) != "" and Post.act_rest(watch, true) != "", "隔层仍可使用阁楼床")
+		Game.run = original.duplicate(true)
+		Game.refresh()
+		await frames()
+	# 中途重新布置时，本次点击对应的物件已经离场。
+	screen.player.global_position = screen.world.floor_spawn(floor_id)
+	screen.rig.snap()
+	await frames()
+	info = screen.world.spot_info(id)
+	pixel = pick_spot(info.tag, id)
+	if not check(pixel.x >= 0, "无法再次选中 " + id): return
+	await click(pixel)
+	var placed := Home.add(Game.run, "rice_jar", target.x - origin.x, target.z - origin.z, 0, floor_id)
+	screen.world.sync(Game.run)
+	await frames()
+	check(not screen.world.spot_nodes.has(id) and screen.world.spot_info(id).is_empty(), id + " 让位后留下热点")
+	until = Time.get_ticks_msec() + 12000
+	while screen.player.is_walking() and Time.get_ticks_msec() < until:
+		await get_tree().process_frame
+	check(not main.has_modal("inventory") and not screen._menu.visible, id + " 消失后旧操作仍执行")
+	screen.player.global_position = screen.world.floor_spawn(floor_id)
+	Home.remove(Game.run, placed.uid)
+	screen.world.sync(Game.run)
+	await frames()
+	check(screen.world.spot_nodes.has(id) and not screen.world.spot_info(id).is_empty(), id + " 挪空后热点未复原")
+	# 离开楼层时取消已经排队的操作，隐藏楼层的陈设不能再响应。
+	screen.do_at(id, func(): check(false, id + " 跨层执行旧操作"))
+	screen._change_floor("courtyard")
+	await frames()
+	check(not screen._pending.is_valid() and not screen.world.spot_nodes.has(id) and screen.world.spot_info(id).is_empty(), id + " 切层后仍有效")
+	screen._change_floor(floor_id)
+	await frames()
+
+
 func choose(prefix: String) -> bool:
 	var screen: Control = main._screen
 	var b := button(prefix, screen._menu)
@@ -340,6 +423,7 @@ func _ready() -> void:
 	await get_tree().create_timer(1.5).timeout
 	Game.speed = 0
 	check(int(Game.run.t) > clock_before and float(Game.run.attrs.water) < water_before, "地窖正常运行时钟/水分未推进")
+	await check_living_spot(screen, "floor_storage")
 	await check_sorting_table_change(screen)
 	await walk(screen.world.spot_info("floor_use").stand, "地窖整理台")
 	await drink_from_room()
@@ -369,6 +453,7 @@ func _ready() -> void:
 	if not await open_spot("floor_attic"): get_tree().quit(1); return
 	if not await choose("进入阁楼"): get_tree().quit(1); return
 	if not check(Floors.current(Game.run) == "attic" and screen.world._floor == "attic", "阁楼未进入"): get_tree().quit(1); return
+	await check_living_spot(screen, "floor_bed")
 	await walk(screen.world.floor_origin() + Vector3(0, 0, -1.9), "阁楼整理台")
 	var attic_f := await place_furniture("圈椅", "armchair")
 	await inspect_furniture(attic_f)

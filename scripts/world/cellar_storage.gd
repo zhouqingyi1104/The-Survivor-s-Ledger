@@ -23,7 +23,9 @@ static func build_group(group: String, parent: Node3D) -> void:
 		"delivery":
 			_receiving_platform(parent)
 		"carrier":
-			_carrying_yoke(parent)
+			_handcart(parent)
+		"bins":
+			_dry_bins(parent)
 	House.finish_joinery(parent)
 	K.merge_static(parent, [])
 	if STOCK_CAPACITY.has(StringName(group)):
@@ -77,6 +79,43 @@ static func _sorting_table(table: Node3D) -> void:
 	var measure := K.node(table, Vector3(0.55, 0.986, -0.146), Vector3(0, -12, 0))
 	_grain_measure(measure)
 	Field.book(table, Vector3(0.43, 0.987, 0.275), 10.0)
+	_winnowing_sieve(table)
+
+
+static func _winnowing_sieve(table: Node3D) -> void:
+	# 笸箩朝过道斜靠矮架，上口稍收向桌底，下缘落在台脚前。
+	var tray := K.node(table, Vector3(-0.39, 0.409, 0.396), Vector3(-14, 0, -11))
+	var rim := TorusMesh.new()
+	rim.inner_radius = 0.294
+	rim.outer_radius = 0.327
+	rim.rings = 48
+	rim.ring_segments = 8
+	K._mesh(tray, rim, K.mat(Color("#a67b48"), 0.87), Vector3(0, 0, 0.044), Vector3(90, 0, 0))
+	for axis in 2:
+		var reeds := SurfaceTool.new()
+		reeds.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for row in range(-7, 8):
+			var last := PackedVector3Array()
+			for step in 25:
+				var edge := PackedVector3Array()
+				for side: float in [-1.0, 1.0]:
+					var across := row * 0.040 + side * 0.013
+					var along := (step / 12.0 - 1.0) * sqrt(0.305 ** 2 - across ** 2)
+					var point := Vector2(along, across) if axis == 0 else Vector2(-across, along)
+					var lift := cos(PI * (along / 0.040 + row)) * (0.0035 if axis == 0 else -0.0035)
+					edge.append(Vector3(point.x, point.y, point.length_squared() * 0.48 + lift))
+				if step > 0:
+					for p: Vector3 in [last[0], last[1], edge[1], last[0], edge[1], edge[0]]:
+						reeds.set_normal(Vector3(-p.x * 0.96, -p.y * 0.96, 1).normalized())
+						reeds.add_vertex(p)
+				last = edge
+		reeds.index()
+		var bamboo := Color("#cbab75") if axis == 0 else Color("#b39260")
+		K._mesh(tray, reeds.commit(), K.mat(bamboo, 0.90), Vector3.ZERO)
+	for i in 7:
+		var radial := Vector3(cos(i * TAU / 7.0), sin(i * TAU / 7.0), 0)
+		_line(tray, radial * 0.293 + Vector3.BACK * 0.047, radial * 0.324 + Vector3.BACK * 0.053,
+			0.006, K.mat(Color("#80613f"), 0.94))
 
 
 static func _steelyard(stand: Node3D) -> void:
@@ -286,64 +325,118 @@ static func _basket_stock(display: Node3D, pos: Vector3, size: float, count: int
 			basket.add_child(head)
 
 
-static func _carrying_yoke(parent: Node3D) -> void:
-	# 两桶暂搁梯口，扁担卧在桶沿上，提梁折向外侧。
-	var gear := K.node(parent, Vector3(0, 0.103, 0), Vector3(0, 8, 0))
-	var iron := K.mat(Color("#554f43"), 0.57)
+## 三只相联的防潮柜脚架高，正面拉签登记空仓种类。右格揭盖便于取用。
+static func _dry_bins(parent: Node3D) -> void:
+	var iron := K.mat(Color("#4f4d42"), 0.56)
+	var hemp := K.mat(Color("#b79b72"), 0.91)
+	for x: float in [-0.82, 0.82]:
+		for z: float in [-0.31, 0.31]:
+			K.box(parent, Vector3(0.125, 0.30, 0.13), House.TIMBER, Vector3(x, 0.252, z))
+	for z: float in [-0.31, 0.31]:
+		K.box(parent, Vector3(1.81, 0.116, 0.10), House.TIMBER, Vector3(0, 0.355, z))
+	for i in 5:
+		K.box(parent, Vector3(1.78, 0.058, 0.139), House.TRIM, Vector3(0, 0.421, (i - 2) * 0.143))
+	for x: float in [-0.882, -0.293, 0.293, 0.882]:
+		for i in 3:
+			K.box(parent, Vector3(0.040, 0.178, 0.693), House.TRIM, Vector3(x, 0.534 + i * 0.18, 0))
+		for z: float in [-0.345, 0.345]:
+			K.box(parent, Vector3(0.072, 0.597, 0.076), House.TIMBER, Vector3(x, 0.704, z))
+	for i in 3:
+		var x := (i - 1) * 0.588
+		for level in 3:
+			for side: float in [-1.0, 1.0]:
+				K.box(parent, Vector3(0.548, 0.173, 0.035), House.TRIM if level != 1 else K.WOOD_LIGHT,
+					Vector3(x, 0.539 + level * 0.179, side * 0.335))
+		# 右格开盖，另外两格合拢；板条沿木料方向拼接，有独立的包边和铰轴。
+		var hinge := K.node(parent, Vector3(x, 0.989, -0.349), Vector3(-64 if i == 2 else 0, 0, 0))
+		for board in 4:
+			K.box(hinge, Vector3(0.139, 0.045, 0.688), House.TRIM, Vector3((board - 1.5) * 0.143, 0, 0.340))
+		for z: float in [0.111, 0.557]:
+			K.box(hinge, Vector3(0.536, 0.031, 0.052), House.TIMBER, Vector3(0, -0.035, z))
+		for dx: float in [-0.181, 0.181]:
+			K.box(hinge, Vector3(0.046, 0.016, 0.13), iron, Vector3(dx, 0.030, 0.051))
+			K.cyl(hinge, 0.023, 0.023, 0.08, iron, Vector3(dx, 0.011, 0.003), Vector3(0, 0, 90), 12)
+		var tag := K.node(parent, Vector3(x + 0.024, 0.680, 0.375), Vector3(-3, 0, 4 - i * 4))
+		var peg := Vector3(-0.025, 0.153, 0.0)
+		K.cyl(tag, 0.024, 0.024, 0.048, iron, peg, Vector3(90, 0, 0), 12)
+		K.box(tag, Vector3(0.229, 0.121, 0.014), K.mat(Color("#bfb297"), 0.90), Vector3.ZERO)
+		for dx: float in [-0.075, 0.075]:
+			_line(tag, peg + Vector3(0, 0, 0.016), Vector3(dx, 0.047, 0.010), 0.0045, hemp)
+		var name_card := K.text3d(tag, ["干货", "空袋", "量具"][i], Vector3(0, -0.004, 0.009), 42, Color("#47443a"), false, 0.0019)
+		name_card.outline_size = 0
+		name_card.double_sided = false
+	# 空柜只搁套叠竹量筒，展示有深度的隔仓且不虚报存货。
+	_basket(parent, Vector3(0.58, 0.45, 0), 0.63)
+	_basket(parent, Vector3(0.58, 0.524, 0), 0.61)
+	# 中格上搭一条擦斗的靛布，布头压在盖上，余幅垂过箱口。
+	var cloth := Pieces.place(parent, &"Cloth0", Vector3(-0.125, 1.036, 0.370))
+	cloth.scale = Vector3(0.45, 0.28, 0.33)
+	var turn := Pieces.place(parent, &"Cloth0", Vector3(-0.125, 1.037, 0.367))
+	turn.rotation.x = PI * 0.5
+	turn.scale = Vector3(0.45, 0.45, 0.21)
+	_line(parent, Vector3(0.837, 0.936, 0.170), Vector3(0.837, 1.323, -0.187), 0.013, iron)
+
+
+static func _handcart(parent: Node3D) -> void:
+	var bed := K.node(parent, Vector3(0, 0.104, 0))
+	var iron := K.mat(Color("#55544c"), 0.54)
+	var tire := TorusMesh.new()
+	tire.inner_radius = 0.282
+	tire.outer_radius = 0.319
+	tire.rings = 36
+	tire.ring_segments = 8
+	var felloe := TorusMesh.new()
+	felloe.inner_radius = 0.241
+	felloe.outer_radius = 0.300
+	felloe.rings = 32
+	felloe.ring_segments = 8
+	K.cyl(bed, 0.044, 0.044, 0.948, iron, Vector3(0.27, 0.32, 0), Vector3(90, 0, 0), 14)
 	for side: float in [-1.0, 1.0]:
-		var bucket := K.node(gear, Vector3(side * 0.51, 0, 0), Vector3(0, side * 12, 0))
-		var shell := Props._turned_vessel(PackedVector2Array([Vector2(0.182, 0.015), Vector2(0.245, 0.524),
-			Vector2(0.241, 0.531), Vector2(0.217, 0.529), Vector2(0.155, 0.054), Vector2(0.001, 0.054)]), true)
-		K._mesh(bucket, shell, House._mapped("brown_planks_09"), Vector3.ZERO)
-		# 桶壁由各自顺纹的楔形拼板围住内胆，桶箍贴住拼板的斜度。
-		for i in 16:
-			var stave := K.node(bucket, Vector3.ZERO, Vector3(0, 22.5 * i, 0))
-			K.box(stave, Vector3(0.099, 0.531, 0.023), House.TRIM if i % 5 else K.WOOD_LIGHT,
-				Vector3(0, 0.265, 0.220), Vector3(7.0, 0, 0))
-		for y: float in [0.093, 0.39]:
-			var r := 0.209 + 0.124 * y
-			var band := Props._turned_vessel(PackedVector2Array([Vector2(r - 0.004, 0), Vector2(r + 0.001, 0),
-				Vector2(r + 0.006, 0.036), Vector2(r + 0.001, 0.036)]))
-			K._mesh(bucket, band, iron, Vector3.UP * y)
-		var pivot := Vector3(0, 0.482, 0)
-		var last := pivot + Vector3.RIGHT * 0.254
-		for i in range(1, 13):
-			var a := PI * i / 12.0
-			var next := pivot + Vector3(cos(a) * 0.254, sin(a) * 0.076, -sin(a) * side * 0.237)
-			_line(bucket, last, next, 0.013, iron)
-			last = next
-		for end: float in [-1.0, 1.0]:
-			K.cyl(bucket, 0.027, 0.027, 0.051, iron, pivot + Vector3.RIGHT * end * 0.250, Vector3(0, 0, 90), 12)
-	# 肩位厚且平顺，梢端随削形收窄。整条担身共用一个连续的木纹切片。
-	var s := SurfaceTool.new()
-	s.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var sections: Array[PackedVector3Array] = []
-	for i in 17:
-		var t := (i - 8) / 8.0
-		var center := Vector3(t * 0.823, 0.54 + 0.076 * pow(1.0 - absf(t), 2.0), 0)
-		var half_width := 0.065 - 0.038 * absf(t)
-		var half_height := 0.026 - 0.010 * absf(t)
-		var profile := PackedVector3Array()
-		for p: Vector2 in [Vector2(1, .55), Vector2(.81, 1), Vector2(-.81, 1), Vector2(-1, .55),
-				Vector2(-1, -.55), Vector2(-.81, -1), Vector2(.81, -1), Vector2(1, -.55)]:
-			profile.append(center + Vector3(0, p.y * half_height, p.x * half_width))
-		sections.append(profile)
-	for i in sections.size() - 1:
-		for edge in 8:
-			var next := (edge + 1) % 8
-			for p: Vector3 in [sections[i][edge], sections[i + 1][next], sections[i + 1][edge],
-					sections[i][edge], sections[i][next], sections[i + 1][next]]:
-				s.set_uv(Vector2(p.x * 0.42 + 0.45, 0.556 + p.z * 0.29))
-				s.set_color(Color("#c9ad81"))
-				s.add_vertex(p)
-	for index in [0, 16]:
-		var ring := sections[index]
-		for edge in range(1, 7):
-			for p: Vector3 in ([ring[0], ring[edge+1], ring[edge]] if index == 0 else [ring[0], ring[edge], ring[edge+1]]):
-				s.set_uv(Vector2(0.4 + p.z * 0.29, 0.55 + p.y * 0.08))
-				s.set_color(Color("#b49b75"))
-				s.add_vertex(p)
-	s.generate_normals()
-	s.generate_tangents()
-	s.index()
-	K._mesh(gear, s.commit(), House._mapped("brown_planks_09"), Vector3.ZERO)
+		var wheel := K.node(bed, Vector3(0.27, 0.32, 0.447 * side))
+		K._mesh(wheel, tire, iron, Vector3.ZERO, Vector3(90, 0, 0))
+		K._mesh(wheel, felloe, K.mat(House.TRIM), Vector3.ZERO, Vector3(90, 0, 0))
+		for spoke in 4:
+			K.box(wheel, Vector3(0.040, 0.543, 0.043), House.TRIM, Vector3.ZERO, Vector3(0, 0, spoke * 45 + 14))
+		K.cyl(wheel, 0.071, 0.080, 0.11, K.WOOD, Vector3.ZERO, Vector3(90, 0, 0), 16)
+		K.cyl(wheel, 0.038, 0.038, 0.024, iron, Vector3(0, 0, side * 0.059), Vector3(90, 0, 0), 14)
+		var z := side * 0.305
+		K.box(bed, Vector3(1.94, 0.082, 0.081), House.TIMBER, Vector3(-0.047, 0.515, z), Vector3(0, 0, -7))
+		K.cyl(bed, 0.061, 0.061, 0.22, K.WOOD_LIGHT, Vector3(-0.927, 0.623, z), Vector3(0, 0, 83), 16)
+		for band in 4:
+			K.cyl(bed, 0.064, 0.064, 0.012, K.mat(Color("#ac9270"), 0.93), Vector3(-0.987 + band * 0.031, 0.631 - band * 0.004, z), Vector3(0, 0, 83), 14)
+		K.box(bed, Vector3(0.069, 0.51, 0.070), House.TIMBER, Vector3(-0.297, 0.251, z), Vector3(0, 0, -8))
+		K.box(bed, Vector3(1.10, 0.13, 0.047), K.WOOD_LIGHT, Vector3(0.295, 0.715, side * 0.339))
+		for x: float in [-0.225, 0.82]:
+			K.box(bed, Vector3(0.073, 0.347, 0.062), House.TIMBER, Vector3(x, 0.683, side * 0.333))
+	for i in 5:
+		K.box(bed, Vector3(1.19, 0.05, 0.126), House.TRIM, Vector3(0.299, 0.565, (i - 2) * 0.13))
+	for h: float in [0.65, 0.813]:
+		K.box(bed, Vector3(0.043, 0.123, 0.65), K.WOOD_LIGHT, Vector3(0.835, h, 0))
+	var bucket := K.node(bed, Vector3(0.50, 0.588, -0.01), Vector3(0, -14, 0))
+	_bucket(bucket, iron)
+	_folded_sacks(bed, Vector3(0.006, 0.589, 0.004), 4)
+
+
+static func _bucket(bucket: Node3D, iron: Material) -> void:
+	var shell := Props._turned_vessel(PackedVector2Array([Vector2(0.182, 0.015), Vector2(0.245, 0.524),
+		Vector2(0.241, 0.531), Vector2(0.217, 0.529), Vector2(0.155, 0.054), Vector2(0.001, 0.054)]), true)
+	K._mesh(bucket, shell, House._mapped("brown_planks_09"), Vector3.ZERO)
+	# 桶壁由各自顺纹的楔形拼板围住内胆，桶箍贴住拼板的斜度。
+	for i in 16:
+		var stave := K.node(bucket, Vector3.ZERO, Vector3(0, 22.5 * i, 0))
+		K.box(stave, Vector3(0.099, 0.531, 0.023), House.TRIM if i % 5 else K.WOOD_LIGHT,
+			Vector3(0, 0.265, 0.220), Vector3(7.0, 0, 0))
+	for y: float in [0.093, 0.39]:
+		var r := 0.209 + 0.124 * y
+		var band := Props._turned_vessel(PackedVector2Array([Vector2(r - 0.004, 0), Vector2(r + 0.001, 0),
+			Vector2(r + 0.006, 0.036), Vector2(r + 0.001, 0.036)]))
+		K._mesh(bucket, band, iron, Vector3.UP * y)
+	var pivot := Vector3(0, 0.482, 0)
+	var last := pivot + Vector3.RIGHT * 0.254
+	for i in range(1, 13):
+		var a := PI * i / 12.0
+		var next := pivot + Vector3(cos(a) * 0.254, sin(a) * 0.076, -sin(a) * 0.237)
+		_line(bucket, last, next, 0.013, iron)
+		last = next
+	for end: float in [-1.0, 1.0]:
+		K.cyl(bucket, 0.027, 0.027, 0.051, iron, pivot + Vector3.RIGHT * end * 0.250, Vector3(0, 0, 90), 12)

@@ -141,6 +141,8 @@ func _sync_floor() -> void:
 	_pending = Callable()
 	_pending_spot = ""
 	_close_menu()
+	player.figure.lying = false
+	player.figure.position = Vector3.ZERO
 	Game.placing = ""
 	Game.moving_uid = -1
 	if world._floor == "courtyard" and target != "courtyard" and is_equal_approx(rig.dist, COURTYARD_DISTANCE):
@@ -168,6 +170,8 @@ func _process(delta: float) -> void:
 	if world == null or Game.run.is_empty() or Game.run.phase != "post":
 		return
 	var run: Dictionary = Game.run
+	if _menu.visible and _menu_spot in ["floor_bed", "floor_storage"] and world.spot_info(_menu_spot).is_empty():
+		_close_menu()
 	var ui_blocked := modal_open() or _show != null or _menu.visible
 	player.enabled = not ui_blocked and not run.sleeping and not Post.is_busy(run)
 	rig.input_enabled = not modal_open() and _show == null
@@ -420,6 +424,13 @@ func _update_pose(run: Dictionary) -> void:
 	if resting:
 		Sfx.play("cloth", -4.0)
 		player.stop()
+		if world._floor == "attic":
+			var berth: Dictionary = world.spot_info("floor_bed")
+			if not berth.is_empty():
+				player.global_position = berth.stand
+				fig.position = player.to_local(berth.feet)
+				fig.rotation.y = 0.0
+			return
 		# 人先走到榻前（镜头跟过去），模型再躺到榻上
 		var bed := Home.core(run, "bed")
 		if bed.is_empty():
@@ -432,7 +443,7 @@ func _update_pose(run: Dictionary) -> void:
 	else:
 		fig.position = Vector3.ZERO
 		var bed := Home.core(run, "bed")
-		if not bed.is_empty():
+		if world._floor == "courtyard" and not bed.is_empty():
 			player.global_position = Home.stand(bed)
 
 
@@ -692,7 +703,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if id != "":
 			var info := _spot_info(id)
 			if not info.is_empty():
-				open_menu(id, rig.cam.unproject_position(info.tag))
+				_interact_spot(id, rig.cam.unproject_position(info.tag))
 	elif event.is_action_pressed("speed_pause"):
 		Game.speed = 1 if Game.speed == 0 else 0
 		Game.refresh()
@@ -754,11 +765,35 @@ func _click(pos: Vector2) -> void:
 		return
 	var hit: Dictionary = world.pick(rig.cam, pos)
 	if hit.has("spot"):
-		open_menu(hit.spot, pos)
+		_interact_spot(hit.spot, pos)
 	elif hit.has("ground") and player.enabled:
 		_pending = Callable()
 		world.prepare_navigation()
 		player.walk_to(hit.ground)
+
+
+func _interact_spot(id: String, pos: Vector2) -> void:
+	if id == "floor_storage":
+		do_at(id, Dialogs.inventory)
+	elif id == "floor_bed":
+		do_at(id, func():
+			var info := _spot_info(id)
+			if not info.is_empty(): open_menu(id, rig.cam.unproject_position(info.tag)))
+	else:
+		open_menu(id, pos)
+
+
+func _bed_actions(attic: bool) -> Array:
+	var run: Dictionary = Game.run
+	var block := Post.rest_block(run, attic)
+	var sleep_block := block
+	if sleep_block == "":
+		if Post.in_night(run):
+			sleep_block = "尸潮还在街上"
+		elif not Post.is_night(run) and State.attr(run, "energy") >= 30:
+			sleep_block = "天还亮着"
+	return [["就寝（睡到天亮）", _act(func(): return Post.sleep(Game.run, attic)), sleep_block],
+		["小憩两个时辰", _act(func(): return Post.act_rest(Game.run, attic)), block]]
 
 
 ## 物件能做的事：[文字, 回调, 做不了的原因]
@@ -771,6 +806,8 @@ func actions_for(id: String) -> Array:
 		return [["进入阁楼", func(): _change_floor("attic"), Post.floor_block(run, "attic")]]
 	if id == "floor_exit":
 		return [["返回宅院", func(): _change_floor("courtyard"), Post.floor_block(run, "courtyard")]]
+	if id == "floor_bed":
+		return _bed_actions(true) if not world.spot_info(id).is_empty() else []
 	if id == "floor_use":
 		if Floors.current(run) == "guest_zhou":
 			return []
@@ -810,10 +847,7 @@ func actions_for(id: String) -> Array:
 		"well":
 			return [["打水（15 分钟）", _act(func(): return Post.draw_water(Game.run)), Post.water_block(run)]]
 		"bed":
-			var sleep_block := Post.can_act(run, 0)
-			if sleep_block == "" and not Post.is_night(run) and State.attr(run, "energy") >= 30:
-				sleep_block = "天还亮着"
-			return [["就寝（睡到天亮）", _act(func(): return Post.sleep(Game.run)), sleep_block], ["小憩两个时辰", _act(func(): return Post.act_rest(Game.run)), Post.can_act(run, 0)]]
+			return _bed_actions(false)
 		"shrine":
 			return [["上香求签…", Dialogs.omens, ""]]
 		"desk":
@@ -956,6 +990,9 @@ func do_at(id: String, cb: Callable) -> void:
 	var stand: Vector3 = info.stand
 	var flat := Vector3(player.global_position.x, 0, player.global_position.z)
 	if flat.distance_to(stand) < 0.8:
+		player.stop()
+		_pending = Callable()
+		_pending_spot = ""
 		_face(id)
 		cb.call()
 		return

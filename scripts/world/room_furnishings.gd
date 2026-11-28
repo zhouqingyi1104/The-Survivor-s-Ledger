@@ -8,20 +8,23 @@ const Attic = preload("res://scripts/world/attic_living.gd")
 const AREAS := {
 	"cellar": {
 		"sorting": Rect2(-2.73, -0.86, 1.82, 1.12),
-		"pantry": Rect2(1.125, -2.20, 2.05, 1.04),
+		"pantry": Rect2(1.30, -2.52, 2.05, 1.04),
 		"delivery": Rect2(-3.00, 1.11, 1.84, 1.14),
-		"carrier": Rect2(1.70, 1.35, 1.70, 0.70),
+		"bins": Rect2(0.72, -0.58, 1.92, 0.94),
+		"carrier": Rect2(1.02, 1.31, 2.18, 1.14),
 	},
 	"attic": {
 		"berth": Rect2(-3.50, -1.98, 2.20, 3.20),
-		"sewing": Rect2(0.80, -0.36, 2.12, 1.32),
+		"sewing": Rect2(0.35, -0.72, 2.40, 2.00),
+		"washstand": Rect2(0.93, -2.92, 1.76, 1.24),
 	},
 }
 const CELLAR_BODIES := {
 	"sorting": Vector3(1.76, 0.89, 0.96),
 	"pantry": Vector3(1.98, 1.88, 0.81),
 	"delivery": Vector3(1.76, 0.68, 1.04),
-	"carrier": Vector3(1.65, 0.63, 0.67),
+	"carrier": Vector3(2.06, 1.18, 1.04),
+	"bins": Vector3(1.84, 0.91, 0.79),
 }
 const SORTING_STAND := Vector3(1.50, 0, 0.0)
 const SORTING_TAG := Vector3(0.42, 1.55, 0.16)
@@ -98,6 +101,12 @@ func _build(room: Node3D, floor_id: String, id: String, center: Vector2) -> Node
 		if id == "sorting":
 			body.set_meta("spot", "floor_use")
 			K.text3d(group, "整理台", Vector3(0.57, 1.91, -0.10), 44, Color("#f2d89c"), true, 0.005)
+		elif id == "bins":
+			body.name = "StorageBody"
+			body.set_meta("spot", "floor_storage")
+			# 单独贴合右格揭起的盖子，另两格上方仍可点到后方的地面。
+			var lid := K.collider(group, Vector3(0.566, 0.072, 0.69), Vector3(0.588, 1.295, -0.20), {"spot": "floor_storage"})
+			lid.rotation_degrees.x = -64.0
 	else:
 		Attic.build_group(id, group)
 		Attic.block_group(id, group)

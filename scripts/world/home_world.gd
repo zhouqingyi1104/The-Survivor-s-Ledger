@@ -309,15 +309,26 @@ func set_floor(id: String) -> void:
 		_outside_visibility.clear()
 	for floor_id in _floor_rooms:
 		_floor_rooms[floor_id].root.visible = floor_id == _floor
+	_refresh_room_spots()
+
+
+func _refresh_room_spots() -> void:
 	spot_nodes.erase("floor_exit")
 	spot_nodes.erase("floor_use")
 	spot_nodes.erase("guest_talk")
+	spot_nodes.erase("floor_bed")
+	spot_nodes.erase("floor_storage")
 	if _floor != "courtyard":
-		spot_nodes["floor_exit"] = _floor_rooms[_floor].floor_exit
+		var room: Dictionary = _floor_rooms[_floor]
+		spot_nodes["floor_exit"] = room.floor_exit
 		if _floor == "guest_zhou":
-			spot_nodes["guest_talk"] = _floor_rooms[_floor].guest_talk
+			spot_nodes["guest_talk"] = room.guest_talk
 		else:
-			spot_nodes["floor_use"] = _floor_rooms[_floor].floor_use
+			spot_nodes["floor_use"] = room.floor_use
+			if _floor == "cellar" and room.layout.groups.has("bins"):
+				spot_nodes["floor_storage"] = room.layout.groups.bins
+			if _floor == "attic" and room.layout.groups.has("berth"):
+				spot_nodes["floor_bed"] = room.layout.groups.berth
 
 
 ## 路径查询前提交刚烘焙的楼层网格，避免切层首击使用旧地图。
@@ -389,6 +400,8 @@ func _spot_on_floor(id: String) -> bool:
 		return _floor == "guest_zhou"
 	if id == "floor_use":
 		return _floor in ["cellar", "attic"]
+	if id in ["floor_bed", "floor_storage"]:
+		return spot_nodes.has(id)
 	if id == "floor_exit":
 		return _floor != "courtyard"
 	return _floor == "courtyard"
@@ -537,7 +550,7 @@ func _sync_floor_furnishings(run: Dictionary) -> bool:
 		if FloorWorld.sync_furnishings(floor_id, room, run, people):
 			changed = true
 			if _floor == floor_id:
-				spot_nodes["floor_use"] = room.floor_use
+				_refresh_room_spots()
 		waiting = waiting or room.layout.waiting_for_clearance
 	set_physics_process(waiting)
 	return changed
@@ -999,7 +1012,9 @@ func nearest_spot(pos: Vector3, radius := 1.8) -> String:
 	var best := ""
 	var best_d := radius
 	if _floor != "courtyard":
-		for id in (["floor_exit", "guest_talk"] if _floor == "guest_zhou" else ["floor_exit", "floor_use"]):
+		for id in ["floor_exit", "floor_use", "guest_talk", "floor_storage", "floor_bed"]:
+			if not spot_nodes.has(id):
+				continue
 			var info := spot_info(id)
 			var p: Vector3 = info.stand
 			var d := Vector2(pos.x - p.x, pos.z - p.z).length()

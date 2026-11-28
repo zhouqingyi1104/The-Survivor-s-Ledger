@@ -231,6 +231,15 @@ static func info(floor_id: String, id: String, room: Dictionary) -> Dictionary:
 		return {"name": "返回宅院", "stand": origin + Vector3(0, 0, 1.5), "tag": origin + Vector3(0, 1.4, 2.85)}
 	if id == "guest_talk" and floor_id == "guest_zhou":
 		return {"name": "老周", "stand": origin + Vector3(0, 0, -1.0), "tag": origin + Vector3(0, 2.2, -2.2)}
+	if id == "floor_storage" and floor_id == "cellar" and room.layout.groups.has("bins"):
+		var bins: Node3D = room.layout.groups.bins
+		return {"name": "地窖储物柜", "stand": bins.to_global(Vector3(-0.94, 0, 0.78)),
+			"tag": bins.to_global(Vector3(0, 0.85, 0))}
+	if id == "floor_bed" and floor_id == "attic" and room.layout.groups.has("berth"):
+		var berth: Node3D = room.layout.groups.berth
+		var center: Vector3 = berth.to_global(RoomFurnishings.Attic.BED)
+		return {"name": "阁楼卧榻", "stand": berth.to_global(Vector3(1.04, 0, 0.12)),
+			"tag": center + Vector3.UP * 0.74, "feet": center + Vector3(0, 0.035, 0.82)}
 	if id == "floor_use":
 		if floor_id == "guest_zhou": return {}
 		if floor_id == "cellar" and room.floor_use != room.wall_desk:

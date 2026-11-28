@@ -109,6 +109,17 @@ func _ready() -> void:
 		world.prepare_navigation()
 		var path := NavigationServer3D.map_get_path(map, start, end, true)
 		check(not path.is_empty() and path[-1].distance_to(end) < 0.8, floor_id + ": no path to use: " + str(path))
+		var extra_spot := "floor_storage" if floor_id == "cellar" else "floor_bed"
+		var extra := world.spot_info(extra_spot)
+		check(not extra.is_empty(), floor_id + ": missing usable furniture " + extra_spot)
+		if not extra.is_empty():
+			var to_item := NavigationServer3D.map_get_path(map, start, extra.stand, true)
+			# 封装寻路的体素网格高于脚底 0.5 米；跟实际点选到达一样测地面 XZ 距离。
+			check(to_item.size() >= 2 and Vector2(to_item[-1].x - extra.stand.x, to_item[-1].z - extra.stand.z).length() < 0.35,
+				floor_id + ": stairs cannot reach the working side of %s: %s, target %s" % [extra_spot, to_item, extra.stand])
+			var to_desk := NavigationServer3D.map_get_path(map, extra.stand, end, true)
+			check(to_desk.size() >= 2 and Vector2(to_desk[-1].x - end.x, to_desk[-1].z - end.z).length() < 0.35,
+				floor_id + ": new furniture blocks the way to the sorting desk: %s, target %s" % [to_desk, end])
 		var hero := Player.new()
 		world.add_child(hero)
 		hero.setup("scholar")
