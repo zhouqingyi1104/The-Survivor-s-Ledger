@@ -15,6 +15,7 @@ const Pre = preload("res://scripts/core/pre.gd")
 const PrepWork = preload("res://scripts/ui/dialogs/prep_work.gd")
 const TradeMarks = preload("res://scripts/ui/travel_marks.gd")
 const RiceStory = preload("res://scripts/ui/dialogs/rice_story.gd")
+const ApothecaryStory = preload("res://scripts/ui/dialogs/apothecary_story.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
@@ -384,6 +385,7 @@ func _social_trade(body: VBoxContainer) -> void:
 	body.add_child(tabs)
 	var content := UI.vbox(10)
 	var who := Trade.contact(run, _trade_actor)
+	ApothecaryStory.trade_entry(content, _trade_actor)
 	content.add_child(UI.label("%s · 信任 %+d · 欠你的人情 %d · 失约未补 %d（前后共 %d）" % [who.name, int(who.trust), int(who.favors), int(who.breaches), int(who.breach_total)], 18, UI.GOLD))
 	content.add_child(UI.para("最近人情变化：" + str(who.get("last_change", "尚无人情往来")), 15))
 	content.add_child(UI.para("信任高，报价好、能赊欠；人情能换当天的现货；失约会涨价，还清账后还要赔礼才补得上。", 15))
@@ -1199,6 +1201,8 @@ func _shop(body: VBoxContainer) -> void:
 		body.add_child(UI.sep())
 	elif id == "bookshop":
 		RiceStory.add_book_entry(body)
+	elif id == "pharmacy":
+		ApothecaryStory.shop_entry(body)
 	match s.kind:
 		"goods":
 			_goods(body, run, id)

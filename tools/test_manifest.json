@@ -12,6 +12,24 @@
       "success_regex": "(?m)^\\[scanned_model_materials\\] materials=[1-9][0-9]* failures=0\\r?$"
     },
     {
+      "id": "apothecary_story",
+      "entry": "tests/apothecary_story.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[apothecary_story\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
+      "id": "apothecary_story_ui",
+      "entry": "tests/apothecary_story_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[apothecary_story_ui\\] checks=[1-9][0-9]* failures=0\\r?$"
+    },
+    {
       "id": "rice_story",
       "entry": "tests/rice_story.gd",
       "kind": "script",
