@@ -74,6 +74,7 @@ func _ready() -> void:
 	check(Home.find(run, jar_uid).job.is_empty(), "completed jar job not cleared")
 	SaveFile.forget(path)
 	test_drying()
+	test_harvest_clock()
 	_finish()
 
 func test_drying() -> void:
@@ -113,6 +114,39 @@ func test_drying() -> void:
 	run.attrs.mood = 20
 	check(Post.use_item(run, "millet_cake") == "" and run.attrs.food == 53 and run.attrs.mood == 20, "饼沿用库存食用，偏饱腹")
 	check(Post.use_item(run, "pickles") == "" and run.attrs.food == 61 and run.attrs.mood == 23, "咸菜沿用库存食用，兼顾心神")
+
+func test_harvest_clock() -> void:
+	var run := State.new_run("scholar", State.new_meta(), 512)
+	Pre.start_disaster(run)
+	Post.Neighbor.state(run).stage = "closed"
+	Post.Director.state(run).enabled = false
+	run.home = {"rice": 1, "millet": 1, "cabbage": 2, "salt": 1, "firewood": 1}
+	var jar := Home.add(run, "pickle_jar", -4, 3, 0)
+	var rack := Home.add(run, "smoke_rack", 4, -1, 0)
+	var trap := Home.add(run, "rat_trap", 4, 4, 0)
+	Home.bait_traps(run)
+	check(not trap.get("baited", false) and Inv.count(run.home, "millet") == 1, "空笼不擅用家粮")
+	check(Home.pickle(run, jar.uid, "cabbage", 2) == "" and Home.fill_trap(run, trap.uid) == "", "封坛和分饵")
+	check(Inv.count(run.home, "rice") == 1 and not run.home.has("millet") and trap.bait_left == 6, "先用一斗杂粮分六晚")
+	check(Home.fill_trap(run, trap.uid) != "" and Inv.count(run.home, "rice") == 1, "已有饵不能重复扣米")
+	run.t = Post.CURFEW_AT - 1
+	Post.advance(run, 1)
+	check(trap.baited and trap.bait_left == 5, "21:00 真实时钟放一次饵")
+	Home.bait_traps(run)
+	check(trap.bait_left == 5, "已经落饵不可重扣")
+	run.t = Post.DAY - 1
+	while not Post.Rng.chance(run.duplicate(true), Home.TRAP_CHANCE):
+		run.rng_n += 1
+	check(Post.advance(run, 1) == "dawn" and Inv.count(run.home, "rat") == 1 and not trap.baited, "第一天晨报真实收笼")
+	check(not run.report.night.filter(func(line): return "鲜鼠肉" in line).is_empty() and Inv.count(run.home, "pickles") == 0, "晨报列收获，未腌足两天不入库")
+	Post.ack_dawn(run)
+	check(Home.smoke(run, rack.uid, "rat", 1) == "" and not run.home.has("rat") and not run.home.has("firewood"), "用实捕鼠肉开熏，一次扣清")
+	run.t = Post.DAY * 2 - 1
+	check(Post.advance(run, 1) == "dawn" and Inv.count(run.home, "pickles") == 2 and Inv.count(run.home, "smoked_rat") == 1, "同晨两个真实家具任务分别入库")
+	check(Home.harvest_dawn(run).is_empty() and Inv.count(run.home, "smoked_rat") == 1, "重看晨报没有新产物")
+	Post.ack_dawn(run)
+	run.attrs.food = 10
+	check(Post.use_item(run, "smoked_rat") == "" and run.attrs.food == 29 and not run.home.has("smoked_rat"), "熏肉干从真实存粮食用")
 
 func _finish() -> void:
 	print("[C2_PROCESSING] ", passed, "/", passed + failed, " failed=", failed)

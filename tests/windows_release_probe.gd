@@ -129,11 +129,11 @@ func _start() -> void:
 			return
 		if not _roundtrip(game, "post"):
 			return
-		print("[windows_release_probe] HEADLESS PASS: template/release/offline; difficulty wave multipliers 0.85/1/3.6/4.1 and day11 counts 20/24/86/98; 20 tables; 57 textures/55 atlas; 2 fonts actual 400/700; 2 OFL; 72 events/60 active/49 new; first-day 08:00 offline decision resolved; 07:30 departure/08:30 arrival/09:30 return; saved remaining travel; default save roundtrip; Memory=user://")
+		print("[windows_release_probe] HEADLESS PASS: template/release/offline; difficulty wave multipliers 0.85/1/3.6/4.1 and day11 counts 20/24/86/98; 20 tables; 59 textures/57 atlas; 2 fonts actual 400/700; 2 OFL; 72 events/60 active/49 new; first-day 08:00 offline decision resolved; 07:30 departure/08:30 arrival/09:30 return; saved remaining travel; default save roundtrip; Memory=user://")
 	else:
 		if not await _visual(game):
 			return
-		print("[windows_release_probe] VISUAL PASS: four difficulty cards with real multipliers/descriptions; title mouse quick-start; first-day 08:00 offline event mouse choice; visible remaining travel/08:30 arrival/09:30 return; courtyard HUD/clock; 57 inventory cards; 6 screenshots; default save roundtrip")
+		print("[windows_release_probe] VISUAL PASS: four difficulty cards with real multipliers/descriptions; title mouse quick-start; first-day 08:00 offline event mouse choice; visible remaining travel/08:30 arrival/09:30 return; courtyard HUD/clock; 59 inventory cards; 6 screenshots; default save roundtrip")
 	_completed = true
 	print("[windows_release_probe] COMPLETE PASS only=%s checks=%d" % [_only, _checks])
 	quit(0)
@@ -214,7 +214,7 @@ func _resources() -> bool:
 	var actual: Array = art.ids()
 	expected.sort()
 	actual.sort()
-	if not _require(expected.size() == 57 and actual == expected, "57 item textures must exactly match packaged items"):
+	if not _require(expected.size() == 59 and actual == expected, "59 item textures must exactly match packaged items"):
 		return false
 	var atlases := 0
 	for id in expected:
@@ -225,7 +225,7 @@ func _resources() -> bool:
 			if not _require(texture.atlas != null and texture.filter_clip and texture.region.has_area(), "invalid atlas texture: " + id):
 				return false
 			atlases += 1
-	if not _require(atlases == 55, "55 atlas regions required"):
+	if not _require(atlases == 57, "57 atlas regions required"):
 		return false
 	return true
 
@@ -508,7 +508,7 @@ func _visual(game) -> bool:
 	if not await _shot("courtyard-hud"):
 		return false
 	var data = load("res://scripts/core/data.gd")
-	if not _require(data != null and data.table("items").size() == 57, "inventory fixture needs the actual packaged 57 items"):
+	if not _require(data != null and data.table("items").size() == 59, "inventory fixture needs the actual packaged 59 items"):
 		return false
 	var stock := {}
 	for id in data.table("items"):
@@ -533,7 +533,7 @@ func _visual(game) -> bool:
 			if not _require(control.texture != null and control.texture.get_width() > 0, "inventory control has an empty texture"):
 				return false
 			illustrations[str(control.get_meta("inventory_art"))] = true
-	if not _require(cards.size() == 57 and illustrations.size() == 57, "rendered inventory must construct all 57 illustrated item cards"):
+	if not _require(cards.size() == 59 and illustrations.size() == 59, "rendered inventory must construct all 59 illustrated item cards"):
 		return false
 	if not await _shot("inventory"):
 		return false

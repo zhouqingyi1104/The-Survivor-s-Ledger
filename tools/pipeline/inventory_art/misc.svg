@@ -136,4 +136,41 @@
     <path d="M59 60 L64 56 M66 48 L70 51" fill="none" stroke="#dfb982" stroke-width="1.3"/>
     <path d="M74 63 l5 -2 l4 4 l-6 3Z M39 68 l3 -3 l4 2 l-2 3Z" fill="#5e5141"/>
   </g>
+  <g id="rat" transform="translate(288 96)">
+    <!-- A small fresh cut rests on a folded green leaf; the contrasting white fat stays legible at 44 px. -->
+    <path d="M9 54 Q12 36 31 27 Q55 18 83 29 Q83 48 71 63 Q53 82 28 77 Q14 73 9 54Z"
+      fill="#819778" stroke="#525e4c" stroke-width="2"/>
+    <path d="M12 55 Q35 48 52 39 Q68 31 81 30 M29 74 Q44 64 56 49 M17 60 Q31 59 40 53"
+      fill="none" stroke="#b1b38b" stroke-width="1.7"/>
+    <path d="M24 49 Q26 41 37 36 Q49 29 62 34 Q72 38 74 46 L70 58 Q63 64 52 63
+      Q44 62 39 62 Q29 60 24 55Z" fill="#a85f51" stroke="#724539" stroke-width="2"/>
+    <path d="M27 47 Q40 34 52 33 Q64 32 71 42 Q65 40 59 42 Q52 44 45 47 Q34 51 27 47Z"
+      fill="#d38b78"/>
+    <path d="M30 50 Q41 54 51 48 Q62 41 71 45 L69 50 Q60 50 52 53 Q40 60 30 54Z"
+      fill="#ead0af"/>
+    <path d="M29 57 Q39 62 50 56 M55 55 Q62 51 68 52" fill="none" stroke="#874b42" stroke-width="1.4"/>
+    <path d="M18 58 Q25 51 36 54 L44 61 L43 67 Q34 71 23 66 L17 63Z"
+      fill="#ba7462" stroke="#70463b" stroke-width="1.8"/>
+    <path d="M20 58 Q29 54 35 57 L39 61 Q28 63 20 60Z" fill="#dfa68e"/>
+    <path d="M21 62 Q29 65 36 63" fill="none" stroke="#e6c4a4" stroke-width="1.6"/>
+  </g>
+  <g id="smoked_rat" transform="translate(0 192)">
+    <!-- Three dried strips hang from a single hemp loop, with cross-grain folds in the browned rind. -->
+    <path d="M30 37 C31 21 42 13 50 14 C58 15 60 24 60 34 M49 17 Q43 20 39 25"
+      fill="none" stroke="#6d593b" stroke-width="3.6"/>
+    <path d="M30 36 C34 20 43 14 50 15 C57 17 58 24 59 33" fill="none" stroke="#d6b77b" stroke-width="1.5"/>
+    <path d="M57 32 L66 29 L74 37 L72 49 L75 56 L70 68 L60 72 L56 64 L57 52 L54 42Z"
+      fill="#754530" stroke="#4a392e" stroke-width="2"/>
+    <path d="M62 34 L67 33 L70 39 L67 54 L69 60 L64 65 L62 57 L62 44Z" fill="#ad7350"/>
+    <path d="M42 34 L50 29 L59 36 L60 49 L56 57 L57 69 L50 78 L39 75 L39 67 L42 58 L38 48Z"
+      fill="#8c5035" stroke="#54392f" stroke-width="2"/>
+    <path d="M47 35 L51 34 L55 39 L54 49 L49 59 L51 65 L46 72 L46 60 L48 51 L44 44Z" fill="#b47b53"/>
+    <path d="M25 32 L34 29 L43 36 L42 47 L37 57 L38 65 L31 72 L22 68 L22 57 L26 46 L22 39Z"
+      fill="#9f6442" stroke="#5c4031" stroke-width="2"/>
+    <path d="M26 36 L32 33 L37 37 L34 46 L30 53 L29 60 L25 63 L26 52 L29 46Z" fill="#c28c60"/>
+    <path d="M27 48 L34 44 M25 60 L31 56 M43 55 L48 52 M48 67 L54 63 M61 47 L68 43 M62 61 L69 56"
+      fill="none" stroke="#69422f" stroke-width="1.8"/>
+    <path d="M25 35 Q33 40 41 35 M42 37 Q51 41 58 36 M56 36 Q64 39 71 35"
+      fill="none" stroke="#d5b685" stroke-width="2.5"/>
+  </g>
 </svg>

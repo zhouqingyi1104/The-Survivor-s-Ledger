@@ -13,7 +13,7 @@ const ITEMS := {
 	"food": ["flatbread", "pickles", "jerky", "egg", "cabbage", "radish", "chive", "lingzhi", "water", "congee", "millet_cake", "veg_soup", "fried_rice", "rice_cake", "egg_soup", "eight_treasure"],
 	"supplies": ["firewood", "charcoal", "lamp_oil", "diesel", "salve", "plague_powder", "mugwort", "calm_soup", "talisman", "dog_blood", "caltrops", "ink_line", "bagua", "talisman_paper", "cinnabar", "salt"],
 	"tools": ["wood", "cart", "barrow", "donkey_cart", "chopper", "peach_sword", "iron_lock", "seed_cabbage", "seed_radish", "seed_chive", "seed_lingzhi", "book_farm", "book_cook", "book_guard", "book_build", "book_daoist"],
-	"misc": ["millet", "glutinous", "inkstone", "jade", "bracelet", "lingzhi_soup", "burnt"],
+	"misc": ["millet", "glutinous", "inkstone", "jade", "bracelet", "lingzhi_soup", "burnt", "rat", "smoked_rat"],
 }
 const COLUMNS := 4
 const ROWS := 4

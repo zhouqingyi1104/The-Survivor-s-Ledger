@@ -46,7 +46,7 @@ func test_coverage() -> void:
 	var actual: Array = Art.ids()
 	var unique := {}
 	for id in actual: unique[id] = true
-	check(expected.size() == 57, "物品表不再是本批验收的 57 件")
+	check(expected.size() == 59, "物品表不再是本批验收的 59 件")
 	check(actual.size() == unique.size(), "插画 ID 重复")
 	expected.sort()
 	actual.sort()
@@ -87,7 +87,7 @@ func test_regions() -> void:
 		check(not occupied.has(key), "区域重复映射：%s 与 %s" % [id, str(occupied.get(key, ""))])
 		occupied[key] = id
 		sheets[atlas.atlas.resource_path] = true
-	check(occupied.size() == 55, "新增插画的唯一图集区域不是 55 个")
+	check(occupied.size() == 57, "新增插画的唯一图集区域不是 57 个")
 	check(sheets.size() == 4, "新增插画没有使用四张图集")
 	for i in Art.FURNITURE.size():
 		var id: String = Art.FURNITURE[i]

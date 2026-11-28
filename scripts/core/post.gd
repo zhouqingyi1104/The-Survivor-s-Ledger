@@ -286,6 +286,7 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 		HEAT_AT:
 			_heat(run)
 		CURFEW_AT:
+			Home.bait_traps(run)
 			if not run.explore.is_empty():
 				# 翻找和调查会跨时推进；需要记住宵禁，等待药柜选择或现场工作结束后返程。
 				run.explore["curfew_due"] = true
@@ -381,6 +382,9 @@ static func _dawn(run: Dictionary) -> void:
 	run.dawn_due = true
 	# 同院的人天亮各干一件事（先收口粮），动静放进天亮报告
 	var help := Companion.dawn(run)
+	for line in Home.harvest_dawn(run):
+		run.night_lines.append(line)
+		State.note(run, line)
 	for line in help:
 		State.note(run, line)
 	run.report = {"day": run.pday, "night": run.night_lines.duplicate(), "help": help, "settle": Ledger.settle(run)}

@@ -1025,7 +1025,9 @@ func nearest_spot(pos: Vector3, radius := 1.8) -> String:
 				best = id
 				best_d = d
 	for f in _current_run.get("furniture", []):
-		if str(f.get("floor", "courtyard")) != "courtyard" or not Home.is_core(_current_run, f):
+		if str(f.get("floor", "courtyard")) != "courtyard":
+			continue
+		if f.id not in ["pickle_jar", "smoke_rack", "rat_trap"] and not Home.is_core(_current_run, f):
 			continue
 		var p := Home.stand(f)
 		var d := Vector2(pos.x - p.x, pos.z - p.z).length()

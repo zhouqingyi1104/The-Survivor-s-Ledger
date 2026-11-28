@@ -789,6 +789,9 @@ func actions_for(id: String) -> Array:
 		list.append(["拆掉（退一半料）", _act(func(): return Post.act_unfurnish(Game.run, uid)), can])
 		if str(f.id) == "planter":
 			list.push_front(["播种 / 查看菜畦…", Dialogs.garden, ""])
+		if str(f.id) in ["pickle_jar", "smoke_rack", "rat_trap"]:
+			var captions := {"pickle_jar": "装坛 / 查看腌菜…", "smoke_rack": "上架 / 查看熏肉…", "rat_trap": "装饵 / 查看鼠笼…"}
+			list.push_front([captions[f.id], func(): preload("res://scripts/ui/dialogs/food_storage.gd").open(uid), ""])
 		return list
 	if Floors.current(run) != "courtyard":
 		return []

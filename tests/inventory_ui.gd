@@ -1,5 +1,5 @@
 extends Node
-## 真实 1280×720 窗口：57 张插画逐类截图、鼠标吃喝用药和既有边界。
+## 真实 1280×720 窗口：59 张插画逐类截图、鼠标吃喝用药和既有边界。
 ## 隔离 APPDATA/LOCALAPPDATA 运行；截图与像素检查不代表玩家辨识验收。
 const Demo = preload("res://scripts/dev/demo.gd")
 const Data = preload("res://scripts/core/data.gd")
@@ -180,7 +180,7 @@ func _ready() -> void:
 
 func test_gallery() -> void:
 	await fixture(stock_all())
-	if not check(illustrations().size() == 57 and cards().size() == 57, "全部库存未显示 57 张插画卡片"): return
+	if not check(illustrations().size() == 59 and cards().size() == 59, "全部库存未显示 59 张插画卡片"): return
 	var art := illustrations()
 	check(art.rice.texture.resource_path == "res://assets/ui/inventory/rice.png", "米袋原插画路径改变")
 	check(art.nails.texture.resource_path == "res://assets/ui/inventory/nails.png", "铁钉原插画路径改变")
@@ -227,9 +227,9 @@ func test_gallery() -> void:
 			await frames()
 			page += 1
 			if not check(page < 12, "分类滚动无法到达底部：" + category): return
-	check(captured.size() == 57, "逐类截图仅完整覆盖 %d/57 张插画" % captured.size())
+	check(captured.size() == 59, "逐类截图仅完整覆盖 %d/59 张插画" % captured.size())
 	await click(button("全部"))
-	check(cards().size() == 57, "返回全部未恢复完整物品列表")
+	check(cards().size() == 59, "返回全部未恢复完整物品列表")
 	finished += 1
 
 func test_use_refresh() -> void:

@@ -5,6 +5,8 @@
   "flatbread":      {"name": "炊饼", "unit": "张", "cat": "食", "price": 40, "weight": 1, "eat": {"food": 18}, "desc": "放得住的干粮，冷着也能啃。"},
   "pickles":        {"name": "咸菜", "unit": "坛", "cat": "食", "price": 60, "weight": 2, "eat": {"food": 8, "mood": 3}, "desc": "就着什么都下饭。"},
   "jerky":          {"name": "腊肉", "unit": "条", "cat": "菜", "price": 260, "weight": 2, "desc": "年前熏好的腊肉，炒饭最香。"},
+  "rat":            {"name": "鲜鼠肉", "unit": "块", "cat": "菜", "price": 0, "weight": 1, "desc": "捕鼠笼收来的生肉。挂在熏架上，一捆柴能熏一到四块。"},
+  "smoked_rat":     {"name": "熏肉干", "unit": "块", "cat": "食", "price": 0, "weight": 0.5, "eat": {"food": 19}, "desc": "慢火熏干的鼠肉。挂上一天即可出架，收下来就能吃。"},
   "egg":            {"name": "鸡蛋", "unit": "枚", "cat": "菜", "price": 15, "weight": 0.2, "desc": "做蛋花汤用。"},
   "cabbage":        {"name": "白菜", "unit": "颗", "cat": "菜", "price": 20, "weight": 2, "eat": {"food": 8, "water": 4}, "desc": "生吃也行，煮汤更好。"},
   "radish":         {"name": "萝卜", "unit": "根", "cat": "菜", "price": 15, "weight": 1.5, "eat": {"food": 10, "water": 3}, "desc": "冬天的萝卜赛人参。"},

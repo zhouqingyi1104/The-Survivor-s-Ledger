@@ -42,6 +42,7 @@ const PICKLE_VEG := ["cabbage", "radish", "mustard", "chive", "spinach"]
 const PICKLE_DAYS := 2.0
 const SMOKE_DAYS := 1.0
 const TRAP_CHANCE := 0.4
+const BAIT_NIGHTS := 6
 
 static var _room_outlines: Array[PackedVector2Array] = []
 
@@ -396,32 +397,56 @@ static func night_heat(run: Dictionary) -> String:
 	return "炭盆烧得通红，屋里暖烘烘的。"
 
 
-## 21:00 捕鼠笼自取一把粮作饵。
+## 一斗粮分六次放饵；只用玩家拨出的存粮。
+static func fill_trap(run: Dictionary, uid: int) -> String:
+	var trap := find(run, uid)
+	if trap.is_empty() or trap.id != "rat_trap": return "找不到这只笼子。"
+	if Floors.current(run) == "guest_zhou" or str(trap.get("floor", "courtyard")) != Floors.current(run):
+		return "先到自家的鼠笼旁。"
+	if int(trap.get("bait_left", 0)) > 0: return "笼边还有分好的饵。"
+	var taken := Inv.take_any(run.home, ["millet", "rice"], 1)
+	if taken.is_empty(): return "要一斗杂粮或米作饵。"
+	trap.bait_left = BAIT_NIGHTS
+	State.note(run, "将%s分成六包鼠饵，亥初放饵，次日清晨收笼。" % Data.describe_items(taken))
+	return ""
+
+
+## 21:00 从分好的饵里取一包。
 static func bait_traps(run: Dictionary) -> void:
 	for f in list(run, "rat_trap"):
-		if f.get("baited", false):
-			continue
-		var taken := Inv.take_any(run.home, ["millet", "beans", "rice"], 1)
-		f.baited = not taken.is_empty()
+		if not f.get("baited", false) and int(f.get("bait_left", 0)) > 0:
+			f.bait_left = int(f.bait_left) - 1
+			f.baited = true
 
 
-## 6:00 天亮：腌菜、熏肉出坛下架，捕鼠笼收笼，香炉、摆设给心神。返回夜报的句子。
-static func dawn(run: Dictionary) -> Array:
+## 6:00 天亮：坛架成品实际入库，鼠笼收饵。清空已结算批次，重复读夜报不会多得。
+static func harvest_dawn(run: Dictionary) -> Array:
 	var lines := []
 	for f in run.get("furniture", []):
+		if f.id not in ["pickle_jar", "smoke_rack"]: continue
 		var job: Dictionary = f.get("job", {})
 		if not job.is_empty() and int(run.t) >= int(job.done_t):
 			Inv.add_all(run.home, job.out)
 			lines.append("%s里取出%s。" % [data(f.id).name, Data.describe_items(job.out)])
 			f.job = {}
+	var checked := 0
 	var caught := 0
 	for f in list(run, "rat_trap"):
-		if f.get("baited", false) and Rng.chance(run, TRAP_CHANCE):
-			caught += 1
-		f.baited = false
+		if f.get("baited", false):
+			checked += 1
+			if Rng.chance(run, TRAP_CHANCE): caught += 1
+			f.baited = false
 	if caught > 0:
 		Inv.add(run.home, "rat", caught)
-		lines.append("捕鼠笼里逮到 %d 只老鼠。" % caught)
+		lines.append("收笼得鲜鼠肉 ×%d，可在熏架上制成肉干。" % caught)
+	elif checked > 0:
+		lines.append("今晨鼠笼里空空的，只剩几粒碎饵。")
+	return lines
+
+
+## 家具的清晨结算，含香炉与摆设。
+static func dawn(run: Dictionary) -> Array:
+	var lines := harvest_dawn(run)
 	if count(run, "incense") > 0:
 		State.add_attr(run, "mood", 3)
 		run.today["merit"] = int(run.today.get("merit", 0)) + 1
