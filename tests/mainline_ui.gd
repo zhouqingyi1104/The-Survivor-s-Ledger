@@ -301,6 +301,23 @@ func _ready() -> void:
 	add_child(main)
 	get_tree().create_timer(170).timeout.connect(func(): get_tree().quit(1))
 	Game.no_save = false
+	# Real HUD, daylight timer, saved reply and branch choice.
+	await fresh()
+	await set_time(12)
+	await open_story()
+	await choose("lane_signal", true)
+	await advance_work(30)
+	await set_time(13)
+	Game.save_game()
+	Game.continue_game()
+	await frames(7)
+	await open_story()
+	check(labels_in(modal()).contains("娘走不动了"), "Missing next-day letter after reload")
+	await snapshot("lane-letter")
+	var before_window := int(Game.run.window.max)
+	await choose("lane_shelter")
+	await advance_work(90)
+	check(int(Game.run.window.max) == before_window + 15, "Visible invitation did not apply the promised reinforcement")
 	# Rejection and visible alternative, with no inherited-proof shortcut.
 	await fresh()
 	await open_story()

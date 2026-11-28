@@ -40,6 +40,18 @@ static func _mainline(body: VBoxContainer) -> void:
 	content.add_child(UI.label(str(view.get("title", "尸劫来历")), 22, UI.GOLD))
 	content.add_child(UI.para("当前目标：" + str(view.get("goal", "暂守宅院")), 19))
 	content.add_child(UI.para(str(view.get("summary", "")), 17))
+	var letter := Mainline.Lane.prompt(Mainline.state(run), int(run.t))
+	if letter != "":
+		var lane := UI.vbox(5)
+		lane.add_child(UI.para(letter, 17, UI.INK))
+		for row in Mainline.lane_options(run):
+			lane.add_child(UI.para(str(row.hint), 16))
+			var reason := str(row.block)
+			var choice := UI.button(str(row.label), _mainline_do.bind(str(row.id), str(view.token)), reason != "", reason)
+			choice.set_meta("mainline_action", row.id)
+			lane.add_child(choice)
+			if reason != "": lane.add_child(UI.para(reason, 15, UI.CINNABAR))
+		content.add_child(UI.panel(lane))
 	var identity_entry := UI.button("身份与前世 · 查看专属解法", Dialogs.identity_paths)
 	identity_entry.set_meta("identity_entry", "mainline")
 	content.add_child(identity_entry)

@@ -4,6 +4,7 @@ const State = preload("res://scripts/core/state.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
+const Lane = preload("res://scripts/core/lane_lantern.gd")
 const CONTACT_END := 11 * 1440 + 720 # Day12 18:00.
 const FINAL_END := 18 * 1440 + 720 # Day19 18:00.
 const ESCAPE_OPEN := 17 * 1440 + 120 # Day18 08:00.
@@ -66,6 +67,14 @@ static func poll(run: Dictionary) -> String:
 		s.work = {}
 		facts.append(_fact(run, "interrupted", "%s被打断，没做成；花掉的东西和精力不退，期限前还能再来。" % str(work.get("label", "调查"))))
 	var now := int(run.get("t", 0))
+	if s.get("lane_lantern", {}).get("stage", "") == "lit":
+		var lane_stage := Lane.status(s, now)
+		if lane_stage == "missed":
+			s.lane_lantern.stage = "missed"
+			facts.append(_fact(run, "lane_missed", Lane.prompt(s, now)))
+		elif lane_stage == "reply" and not s.lane_lantern.get("notified", false):
+			s.lane_lantern["notified"] = true
+			facts.append(_fact(run, "lane_reply", Lane.prompt(s, now)))
 	if s.stage == "waiting" and now >= (int(s.start_day) - 1) * 1440 + 120:
 		s.stage = "contact" if now < CONTACT_END else "fallback"
 		facts.append(_fact(run, "contact", "游方道士带来义庄和七盏灯的消息。第 12 日 18:00 前可以接待他；拒绝或错过了，也能自己去查。" if s.stage == "contact" else "道士已经离开；第 5 日起可付米 1 自行打听义庄的路。"))
@@ -175,6 +184,20 @@ static func _start(run: Dictionary, action: String, label: String, minutes: int,
 
 static func act(run: Dictionary, action: String, token: String) -> String:
 	if token != _token(run): return "情况已经变了，请重新看一遍。"
+	if Lane.ACTIONS.has(action):
+		var access := _access(run)
+		if access != "": return access
+		var story := state(run)
+		var reason := Lane.block(run, story, action)
+		if reason != "": return reason
+		var option: Dictionary = Lane.ACTIONS[action]
+		if option.minutes == 0:
+			_fact(run, action, Lane.complete(run, story, action))
+		else:
+			Inv.take_all(run.home, option.cost)
+			State.add_attr(run, "energy", -int(option.energy))
+			_start(run, action, option.label, option.minutes)
+		return ""
 	var blocked := _action_block(run, action)
 	if blocked != "": return blocked
 	var s := state(run)
@@ -302,6 +325,9 @@ static func complete(run: Dictionary, data: Dictionary) -> String:
 	if (action == "host" and now >= CONTACT_END) or (action != "host" and now >= FINAL_END and not (action == "escape" and now == FINAL_END)):
 		_reset_spot(run, work)
 		return _fact(run, "late_completion", "%s没赶在期限前做完。" % work.label)
+	if Lane.ACTIONS.has(action):
+		var result := Lane.complete(run, s, action)
+		return _fact(run, action, result) if result != "" else ""
 	match action:
 		"host":
 			if s.stage != "contact": return ""
@@ -341,7 +367,7 @@ static func complete(run: Dictionary, data: Dictionary) -> String:
 			if s.get("escape_method", "normal") == "convoy" and not _identity_cap(run, "early_convoy"): return _fact(run, "invalid_method", "用不上旧路经验，没法提早出城。")
 			if s.get("escape_method", "normal") == "light" and not _identity_cap(run, "light_escape"): return _fact(run, "invalid_method", "轻装更道没探好，没法这样撤离。")
 			s.stage = "closed"
-			s.ending = _ending_data("escape")
+			s.ending = _ending_with_neighbors(s, "escape")
 			run.phase = "ending"
 			return _fact(run, action, "走了 %d 分钟，你沿着查到的出路离开了这座城。第 20 夜不用再守，守满二十日的奖励也就没有了，这座宅院也回不去了。" % int(work.end_t - work.start_t))
 		"search_mortuary", "search_temple", "search_ritual":
@@ -404,7 +430,16 @@ static func wave_effect(run: Dictionary, day: int) -> Dictionary:
 		out.remove_mods.append("blood_moon")
 		out.count_mul = 0.8
 		out.reason = "七星灯已封，血月没了，来的也少两成；残潮还得守。"
+	if day == 20 and s.get("lane_lantern", {}).get("stage", "") == "ferry":
+		out.count_mul *= 0.9
+		out.reason = (str(out.reason) + " 渡船的灯漂往下游，引开一成尸群。").strip_edges()
 	return out
+
+static func _ending_with_neighbors(story: Dictionary, kind: String) -> Dictionary:
+	var outcome := _ending_data(kind)
+	var closing := Lane.epilogue(story, kind)
+	if closing != "": outcome.text += "\n" + closing
+	return outcome
 
 static func _ending_data(kind: String) -> Dictionary:
 	if kind == "escape": return {"kind": kind, "title": "离城余生", "text": "你带着查到的后山出路，收拾行装离开了。第 20 夜还没来，这座宅院留在身后；你得到的是离城后的余生。", "bonus": 0, "can_continue": false}
@@ -415,7 +450,7 @@ static func finish_dawn(run: Dictionary) -> bool:
 	if run.get("phase", "") != "post" or run.get("endless", false) or _day(run) < 21: return false
 	var s := state(run)
 	var ritual: bool = s.stage == "sealed" and s.route == "ritual" and int(s.interventions.ritual_t) >= 0 and int(s.interventions.ritual_t) < FINAL_END
-	s.ending = _ending_data("ritual" if ritual else "hold")
+	s.ending = _ending_with_neighbors(s, "ritual" if ritual else "hold")
 	if not ritual: s.route = "hold"
 	s.stage = "closed"
 	run.phase = "ending"
@@ -443,7 +478,23 @@ static func continued(run: Dictionary) -> String:
 
 static func summary(run: Dictionary) -> String:
 	var s := state(run)
-	return str(STAGES.get(str(s.stage), "尸劫来历")) + " · " + ("已取今世义庄证据" if s.evidence.mortuary else "义庄尚待取证") + " · " + ("已取今世青云证据" if s.evidence.temple else "青云尚待取证")
+	var summary_text := str(STAGES.get(str(s.stage), "尸劫来历")) + " · " + ("已取今世义庄证据" if s.evidence.mortuary else "义庄尚待取证") + " · " + ("已取今世青云证据" if s.evidence.temple else "青云尚待取证")
+	if run.get("phase", "") == "post":
+		match Lane.status(s, int(run.t)):
+			"offer": return "巷口有人求灯 · " + summary_text
+			"reply": return "船匠捎来回信 · " + summary_text
+	return summary_text
+
+static func lane_options(run: Dictionary) -> Array:
+	var story := state(run)
+	var rows := []
+	var access := _access(run)
+	for action: String in Lane.choices(story, int(run.t)):
+		var row: Dictionary = Lane.ACTIONS[action].duplicate()
+		row["id"] = action
+		row["block"] = access if access != "" else Lane.block(run, story, action)
+		rows.append(row)
+	return rows
 
 static func view(run: Dictionary) -> Dictionary:
 	var s := state(run)
