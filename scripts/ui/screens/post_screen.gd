@@ -798,7 +798,7 @@ func actions_for(id: String) -> Array:
 		"stove":
 			if "stove" in run.get("broken", []):
 				return _fix_menu("stove")
-			return [["生火做饭…", Dialogs.cook, can]]
+			return [["生火做饭…", Dialogs.cook, Post.can_act(run, 0)]]
 		"garden":
 			var tend := can
 			if tend == "" and run.plots.all(func(p): return not Post.plot_on_floor(run, p) or p.crop == ""):

@@ -156,6 +156,15 @@
       "success_regex": "(?m)^\\[bundled_fonts\\] [1-9][0-9]* 项检查，完成 3/3，失败 0；[1-9][0-9]* 个源码/数据文件，[1-9][0-9]* 个非控制字符\\r?$"
     },
     {
+      "id": "food_drying_ui",
+      "entry": "tests/food_drying_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[food_drying_ui\\] checks=[1-9][0-9]* failures=0\\r?$"
+    },
+    {
       "id": "c2_processing",
       "entry": "tests/c2_processing.tscn",
       "kind": "scene",

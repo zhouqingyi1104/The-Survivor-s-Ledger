@@ -17,6 +17,7 @@ const Expedition = preload("res://scripts/core/expedition.gd")
 const SiteJourney = preload("res://scripts/core/site_journey.gd")
 const NightFight = preload("res://scripts/core/night_fight.gd")
 const Home = preload("res://scripts/core/home.gd")
+const Drying = preload("res://scripts/core/food_drying.gd")
 const Expansion = preload("res://scripts/core/home_expansion.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
@@ -189,6 +190,8 @@ static func advance(run: Dictionary, minutes: int) -> String:
 		_check_busy(run)
 		if run.phase != "post":
 			return "ending" if run.phase == "ending" else "dead"
+		if run.has("drying_batch"):
+			Drying.notify_ready(run, int(run.t) - step)
 		var stop := _checkpoint(run, m + step)
 		if stop != "":
 			return stop
@@ -1212,6 +1215,28 @@ static func act_cook(run: Dictionary, recipe_id: String) -> String:
 	_start(run, "cook", {"recipe": recipe_id})
 	State.note(run, "生火做%s。" % r.name)
 	return ""
+
+
+static func drying_block(run: Dictionary, action: String, kind := "") -> String:
+	if not Drying.ENERGY.has(action): return "晒匾没有这道工序。"
+	var err := can_act(run, int(Drying.ENERGY[action]))
+	if err != "": return err
+	if Floors.current(run) != "courtyard": return "晒匾在自家院里的灶房。"
+	if "stove" in run.get("broken", []): return "先把灶台修好。"
+	return Drying.block(run, action, kind, _drying_fuel(run, action, kind))
+
+
+static func _drying_fuel(run: Dictionary, action: String, kind: String) -> Dictionary:
+	if action == "start" and int(Drying.RECIPES.get(kind, {}).get("fuel", 0)) > 0:
+		return fuel_plan(run, 1)
+	return {}
+
+
+static func act_drying(run: Dictionary, action: String, kind := "") -> String:
+	var err := drying_block(run, action, kind)
+	if err == "":
+		Drying.apply(run, action, kind, _drying_fuel(run, action, kind))
+	return err
 
 
 ## 院内菜畦和各层花盆分别可操作；失去家具的孤儿菜槽不归属任何空间。

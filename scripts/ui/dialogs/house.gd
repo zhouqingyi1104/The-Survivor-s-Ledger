@@ -22,9 +22,13 @@ static func cook() -> void:
 
 static func _cook(body: VBoxContainer) -> void:
 	var run: Dictionary = Game.run
-	body.add_child(UI.para("柴 %d 捆 · 木炭 %d 筐（没柴时一筐炭顶两捆）　庖厨 %d 级　每锅另加 %d 份" % [
+	var stove := UI.hbox(8)
+	var fuel := UI.para("柴 %d 捆 · 木炭 %d 筐（没柴时一筐炭顶两捆）　庖厨 %d 级　每锅另加 %d 份" % [
 		Inv.count(run.home, "firewood"), Inv.count(run.home, "charcoal"), State.prof_level(run, "cook"),
-		Post.cook_servings(run, "congee") - int(Data.table("recipes").congee.out)], 16))
+		Post.cook_servings(run, "congee") - int(Data.table("recipes").congee.out)], 16)
+	stove.add_child(UI.expand(fuel))
+	stove.add_child(UI.button("晒匾 · " + Post.Drying.summary(run), func(): UI.open_modal("drying", "灶边晒匾", _drying, true, 690)))
+	body.add_child(stove)
 	var recipes: Dictionary = Data.table("recipes")
 	for rid in recipes:
 		var r: Dictionary = recipes[rid]
@@ -41,6 +45,39 @@ static func _cook(body: VBoxContainer) -> void:
 			block = Post.can_act(run)
 		Kit.action(h, "下锅（一个时辰）", func(): Kit.start("cook", func(): return Post.act_cook(Game.run, rid)), block)
 		body.add_child(h)
+
+
+static func _drying(body: VBoxContainer) -> void:
+	var run: Dictionary = Game.run
+	var batch: Dictionary = run.get("drying_batch", {})
+	if batch.is_empty():
+		body.add_child(UI.para("家里只有这一面竹匾。薄片先干；到时可先收，也可把厚片翻面，多留一天收全。", 17))
+		for kind: String in Post.Drying.RECIPES:
+			var recipe: Dictionary = Post.Drying.RECIPES[kind]
+			body.add_child(UI.sep())
+			var row := UI.hbox(8)
+			row.add_child(UI.icon(recipe.item, 44))
+			row.add_child(UI.expand(UI.label(recipe.name, 20)))
+			var reason := Post.drying_block(run, "start", kind)
+			Kit.action(row, "铺匾（精力 4）", func(): Kit.act(func(): return Post.act_drying(Game.run, "start", kind)), reason)
+			body.add_child(row)
+			var needs := Kit.req_text(run.home, recipe.needs)
+			if int(recipe.fuel) > 0: needs += "、柴 1 捆或炭 1 筐"
+			body.add_child(UI.para("用料：%s\n%d 日后收%s ×%d，翻晒一日共得 %d。每份%s。" % [needs, recipe.days,
+				Data.item_name(recipe.item), recipe.first, recipe.full, Kit.fx_text(Data.item(recipe.item).eat)], 16))
+		return
+	var recipe: Dictionary = Post.Drying.RECIPES[batch.kind]
+	body.add_child(UI.label(Post.Drying.summary(run), 21))
+	var amount := int(recipe.full if batch.turned else recipe.first)
+	var offer := "翻晒过的厚片干透后，一起收进柜里。" if batch.turned else "若肯再占一天竹匾，翻面后共可收 %d 份。" % recipe.full
+	body.add_child(UI.para("这批可收%s ×%d。%s 暂时留在匾上也不会少，收起后才能另铺。" % [Data.item_name(recipe.item), amount, offer], 17))
+	var take := UI.hbox(8)
+	Kit.action(take, "收进存货", func(): Kit.act(func(): return Post.act_drying(Game.run, "take")), Post.drying_block(run, "take"))
+	body.add_child(take)
+	if not batch.turned:
+		var turn := UI.hbox(8)
+		Kit.action(turn, "翻晒一天（精力 2）", func(): Kit.act(func(): return Post.act_drying(Game.run, "turn")), Post.drying_block(run, "turn"))
+		body.add_child(turn)
 
 
 # ---------- 菜畦 ----------
