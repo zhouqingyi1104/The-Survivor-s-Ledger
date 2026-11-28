@@ -157,7 +157,15 @@ func _scenario_recovery_backup() -> void:
 	_put(Game.save_path, "bad main")
 	Game.run = {}
 	_block_tmp(Game.save_path)
+	var target := Game.save_path + SaveFile.TMP
+	var probe := FileAccess.open(target, FileAccess.WRITE)
+	var open_error := FileAccess.get_open_error()
+	check(probe == null and open_error != OK, "临时目录未触发预期的存档写入故障")
+	print("[rewind_safety] blocked recovery begins at %s (%d)" % [target, open_error])
 	check(Game.continue_game() and Game._recovering_backup, "备份恢复夹具无效")
+	print("[rewind_safety] blocked recovery ends")
+	check(FileAccess.get_file_as_string(Game.save_path) == "bad main", "失败的恢复写入改变了原档")
+	check(FileAccess.get_file_as_string(Game.save_path + SaveFile.BAK) == valid, "失败的恢复写入破坏了备份")
 	_unblock_tmp(Game.save_path)
 	_block_tmp(Game.save_path)
 	Game.rewind()

@@ -38,14 +38,22 @@ CLEANUP_ERRORS = (
     re.compile(r"^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$"),
 )
 ERROR_LINE = re.compile(r"\b(?:SCRIPT ERROR|ParseError|Parse Error|ERROR)\b", re.I)
-# The recovery fixture brackets one intentionally failed write. Match its precise
-# diagnostic and host error code without exempting any other line from inspection.
-BLOCKED_RECOVERY_WRITE = re.compile(
-    r"^\[continue_safety\] blocked write begins \(([1-9][0-9]*)\)\r?\n"
-    r"(?P<diagnostic>ERROR: 存档写入失败：write（错误 \1）)\r?\n"
-    r"(?:[ \t]+[^\r\n]*\r?\n)*"
-    r"^\[continue_safety\] blocked write ends\r?$", re.M
-)
+# Each recovery fixture brackets one deliberately failed write. Only the
+# diagnostic itself may be exempted; its stack and every other line are checked.
+BLOCKED_WRITE_DIAGNOSTIC = r"(?P<diagnostic>ERROR: 存档写入失败：write（错误 \1）)\r?\n"
+BLOCKED_RECOVERY_WRITES = {
+    "continue_safety": re.compile(
+        r"^\[continue_safety\] blocked write begins \(([1-9][0-9]*)\)\r?\n"
+        + BLOCKED_WRITE_DIAGNOSTIC + r"(?:[ \t]+[^\r\n]*\r?\n)*"
+        r"^\[continue_safety\] blocked write ends\r?$", re.M
+    ),
+    "rewind_safety": re.compile(
+        r"^\[rewind_safety\] blocked recovery begins at user://rewind_test_save\.json\.tmp \(([1-9][0-9]*)\)\r?\n"
+        + BLOCKED_WRITE_DIAGNOSTIC + r"(?:[ \t]+[^\r\n]*\r?\n)*"
+        r"[ \t]+\[\d+\] _scenario_recovery_backup \(res://tests/rewind_safety\.gd:\d+\)\r?\n"
+        r"(?:[ \t]+[^\r\n]*\r?\n)*^\[rewind_safety\] blocked recovery ends\r?$", re.M
+    ),
+}
 BLOCKED_REPORT_COPY = re.compile(
     r"^\[playtest_export\] blocked copy begins: (?P<target>(?P<directory>[^\r\n]+/reports/copy-fail-test)/"
     r"(?P<filename>report_test_save\.json\.bak|Memory\.md))\r?\n"
@@ -182,8 +190,9 @@ def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: 
     warnings = []
     failure = None
     expected_offsets = set()
-    if case.get("id") == "continue_safety":
-        matches = list(BLOCKED_RECOVERY_WRITE.finditer(output))
+    recovery_fault = BLOCKED_RECOVERY_WRITES.get(case.get("id"))
+    if recovery_fault:
+        matches = list(recovery_fault.finditer(output))
         if len(matches) == 1 and marker and matches[0].end() < marker.start():
             expected_offsets.add(matches[0].start("diagnostic"))
     elif case.get("id") == "playtest_export" and marker and data_home is not None:
@@ -212,7 +221,7 @@ def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: 
         return "FAIL", f"Process exited with code {exit_code}", warnings
     if case.get("success_regex") and marker is None:
         return "FAIL", "Required completion marker was not printed", warnings
-    if case.get("id") == "continue_safety" and not expected_offsets:
+    if recovery_fault and not expected_offsets:
         return "FAIL", "Missing or ambiguous diagnostic for the blocked recovery write", warnings
     if case.get("id") == "playtest_export" and not expected_offsets:
         return "FAIL", "Missing or ambiguous diagnostics for the two blocked report copies", warnings

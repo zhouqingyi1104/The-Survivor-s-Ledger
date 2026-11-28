@@ -154,6 +154,32 @@ class ClassificationTests(RunnerTests):
                 self.assertEqual(self.runner.classify_result(recovery, 0, False, transcript)[0], "FAIL")
         self.assertEqual(self.runner.classify_result(case(), 0, False, block + marker)[0], "FAIL")
 
+    def test_rewind_fault_requires_the_blocked_path_code_and_recovery_context_once(self):
+        recovery = case("rewind_safety")
+        marker = "[fixture] complete: 0 failures\n"
+        target = "user://rewind_test_save.json.tmp"
+        begin = f"[rewind_safety] blocked recovery begins at {target} (12)\n"
+        error = "ERROR: 存档写入失败：write（错误 12）\n"
+        stack = "       [4] _scenario_recovery_backup (res://tests/rewind_safety.gd:160)\n"
+        end = "[rewind_safety] blocked recovery ends\n"
+        block = begin + error + stack + end
+        for transcript in (block + marker, (block + marker).replace("\n", "\r\n")):
+            self.assertEqual(self.runner.classify_result(recovery, 0, False, transcript)[0], "PASS")
+        for transcript in (
+            marker, error + marker, block, marker + block, block * 2 + marker,
+            error + block + marker, block + error + marker, block + marker + error,
+            block.replace(error, error * 2) + marker, block.replace("错误 12", "错误 13") + marker,
+            block.replace(target, "user://save.json.tmp") + marker, block.replace(stack, "") + marker,
+            block.replace("_scenario_recovery_backup", "_scenario_meta_failure") + marker,
+            block.replace("res://tests/rewind_safety.gd", "res://tests/continue_safety.gd") + marker,
+            block.replace(end, "    SCRIPT ERROR: unexpected\n" + end) + marker,
+        ):
+            with self.subTest(transcript=transcript):
+                self.assertEqual(self.runner.classify_result(recovery, 0, False, transcript)[0], "FAIL")
+        self.assertEqual(self.runner.classify_result(case("continue_safety"), 0, False, block + marker)[0], "FAIL")
+        self.assertEqual(self.runner.classify_result(recovery, 1, False, block + marker)[0], "FAIL")
+        self.assertEqual(self.runner.classify_result(recovery, 0, True, block + marker)[0], "FAIL")
+
     def test_only_clean_completion_passes(self):
         status, _, warnings = self.runner.classify_result(
             case(), 0, False, "[fixture] complete: 0 failures\n")
