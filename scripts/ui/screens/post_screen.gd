@@ -1627,9 +1627,9 @@ func _update_live() -> void:
 		pl.visible = Game.placing != ""
 		if pl.visible:
 			var fd: Dictionary = Home.data(Game.placing)
-			pl.text = "%s %s · %s · 左键确认 · %s 转向 · %s 取消" % [
+			pl.text = "%s %s · %s · 朝向 %d° · 左键确认 · %s 转向 · %s 取消" % [
 				"挪动" if Game.moving_uid >= 0 else "摆放", fd.get("name", ""), "可放下" if _place_reason == "" else _place_reason,
-				_live.rotate_key, _live.cancel_key]
+				Game.placing_rot, _live.rotate_key, _live.cancel_key]
 	if _live.has("agenda_status"):
 		var sm := Agenda.summary(run)
 		var line := "待办 %s 小时 · 到 22:00 余 %s 小时" % [Agenda.hours_text(int(sm.need)), Agenda.hours_text(int(sm.left))]

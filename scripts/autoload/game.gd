@@ -337,6 +337,7 @@ func rewind() -> void:
 		toast.emit("翻不回去了。")
 		return
 	if no_save:
+		_clear_placement()
 		run = back
 		snapshots = candidate_snaps
 		meta = candidate_meta
