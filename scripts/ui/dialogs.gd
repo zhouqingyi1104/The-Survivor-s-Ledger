@@ -355,7 +355,9 @@ func _crisis_when(t: int) -> String:
 	return Inquiry._crisis_when(t)
 
 
-func social_trade() -> void:
+func social_trade(actor := "") -> void:
+	if Trade.ACTORS.has(actor):
+		_trade_actor = actor
 	# 到期事实即使此前没有打开窗口，也先结算再展示，并走统一存档入口。
 	Game.act(func(): return Post.trade_refresh(Game.run))
 	UI.open_modal("social_trade", "纸鹤往来 · 交易与欠账", _social_trade, true, 850)

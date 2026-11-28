@@ -1507,9 +1507,53 @@ func _set_speed(k: int) -> void:
 ## 等一刻：把时间直接推到下一个节点（天黑、烧炭、尸潮、溃兵、天亮、夜战轮次）。
 ## 白天常有几百分钟没有该做的事，让玩家干坐着看时间走不是节奏，是罚站。
 func _wait_turn() -> void:
+	if modal_open():
+		return
 	var mins := Post.minutes_to_next_stop(Game.run)
 	if mins <= 0:
 		Game.toast.emit("手头有事，等不了。")
+		return
+	if not Brief.expiring_promises(Game.run, int(Game.run.t) + mins).is_empty():
+		UI.open_modal("wait_promises", "约定快到时了", _wait_promises, true, 600)
+		return
+	_advance_wait()
+
+
+func _wait_promises(body: VBoxContainer) -> void:
+	var run := Game.run
+	var mins := Post.minutes_to_next_stop(run)
+	var at := (Post.clock(run) + mins) % Post.DAY
+	body.add_child(UI.para("你打算等到 %02d:%02d，手头还有约定没办。" % [at / 60, at % 60], 17))
+	for promise in Brief.expiring_promises(run, int(run.t) + mins):
+		body.add_child(UI.para(str(promise.text), 16))
+		var caption := str(promise.label)
+		if Floors.current(run) == "guest_zhou":
+			caption = "回院" + caption
+		body.add_child(UI.button(caption, _open_promise.bind(str(promise.actor))))
+	body.add_child(UI.sep())
+	body.add_child(UI.button("照常等到 %02d:%02d" % [at / 60, at % 60], _advance_wait))
+
+
+func _open_promise(actor: String) -> void:
+	UI.close_modal("wait_promises")
+	if Floors.current(Game.run) == "guest_zhou":
+		_change_floor("courtyard")
+		if Floors.current(Game.run) != "courtyard":
+			return
+	if actor != "":
+		Dialogs.social_trade(actor)
+	elif Game.run.get("neighbor", {}).get("stage", "") == "carrying":
+		Game.act(func():
+			Neighbor.poll(Game.run)
+			return "")
+	else:
+		Dialogs.neighbor()
+
+
+func _advance_wait() -> void:
+	UI.close_modal("wait_promises")
+	var mins := Post.minutes_to_next_stop(Game.run)
+	if mins <= 0:
 		return
 	Game.speed = 1 if Game.speed == 0 else Game.speed
 	advance(mins)
@@ -1601,7 +1645,7 @@ func _update_live() -> void:
 			var mins := Post.minutes_to_next_stop(run)
 			if mins > 0:
 				var at := (Post.clock(run) + mins) % 1440
-				s = "空档 → %02d:%02d" % [at / 60, at % 60]
+				s = "等到 %02d:%02d" % [at / 60, at % 60]
 		(_live.speed_status as Label).text = s
 
 

@@ -24,6 +24,7 @@ func _initialize() -> void:
 	test_broken_surface()
 	test_wave_tonight()
 	test_cold_without_fuel()
+	test_expiring_promises()
 	test_no_food_or_water()
 	test_cap_and_order()
 	test_countdown()
@@ -177,6 +178,33 @@ func test_no_food_or_water() -> void:
 
 
 # ---------- 七、条数与顺序 ----------
+
+func test_expiring_promises() -> void:
+	var run := _calm_day()
+	run.pday = 4
+	run.t = 3 * 1440 + 655
+	var deadline: int = run.t + 65
+	run.trade = {"debt": {"due_t": deadline, "actor": "traveler", "req": {"rice": 3}, "overdue": false}}
+	run.neighbor = {"stage": "fetch"}
+	var before: Dictionary = run.duplicate(true)
+	check(Brief.expiring_promises(run, deadline - 1).is_empty(), "未跨期限不应打断跳时")
+	var pending := Brief.expiring_promises(run, deadline)
+	check(pending.size() == 2 and run == before, "要能并列读出两份承诺，且保留原始存档")
+	var guide := _join(Brief.lines(run))
+	check(guide.contains("过路客") and guide.contains("米 ×3") and guide.contains("阿宁") and guide.contains("18:00"), "今日日志没有交代对象、货款与期限")
+	run.neighbor.stage = "carrying"
+	check(_join(Brief.lines(run)).contains("药就在身上"), "已经取回药时不该再让玩家出门")
+	run.trade.debt.overdue = true
+	run.neighbor.stage = "aftermath"
+	check(Brief.expiring_promises(run, deadline).is_empty(), "已经逾期或收尾的约定不应该再拦跳时")
+	run.trade.debt.overdue = false
+	run.t = deadline
+	check(Brief.expiring_promises(run, deadline + 60).is_empty(), "期限已经过去的瞬间不能叫玩家再去还")
+	run.erase("trade")
+	run.erase("neighbor")
+	var legacy := run.duplicate(true)
+	check(Brief.expiring_promises(run, deadline + 1440).is_empty() and run == legacy, "旧存档没有承诺，提示也不该补写")
+
 
 func test_cap_and_order() -> void:
 	var run := _wave_day()

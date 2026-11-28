@@ -13,6 +13,9 @@ const Inv = preload("res://scripts/core/inv.gd")
 const Defense = preload("res://scripts/core/defense.gd")
 const Post = preload("res://scripts/core/post.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
+const Trade = preload("res://scripts/core/social_trade.gd")
+const Neighbor = preload("res://scripts/core/neighbor.gd")
+const Data = preload("res://scripts/core/data.gd")
 
 ## 危急（今天不管就会死）/ 要紧（会在几日内咬人）/ 提醒（知道就好）
 const ALARM := 2
@@ -54,6 +57,27 @@ static func progress(run: Dictionary) -> float:
 	return value
 
 
+## 只读已经应下的约定，起点不含、终点包含；查询本身不能结算欠账或唤醒旧档的支线。
+static func expiring_promises(run: Dictionary, until_t: int) -> Array:
+	var rows := []
+	if run.get("phase") != "post":
+		return rows
+	var now := int(run.t)
+	var debt: Dictionary = run.get("trade", {}).get("debt", {})
+	var due := int(debt.get("due_t", 0))
+	var actor := str(debt.get("actor", ""))
+	if now < due and due <= until_t and not debt.get("overdue", false) and Trade.ACTORS.has(actor):
+		var req: Dictionary = debt.get("req", {})
+		var name_text := str(Trade.ACTORS[actor])
+		rows.append({"actor": actor, "label": "找%s还账" % name_text,
+			"text": "18:00 前要还%s一笔账（%s）。过时记一次失约，信任最多降 2。" % [name_text, Data.describe_items(req)]})
+	var stage := str(run.get("neighbor", {}).get("stage", ""))
+	if stage in ["fetch", "carrying"] and now < Neighbor.DEADLINE and Neighbor.DEADLINE <= until_t:
+		var action := "先去废弃药铺取药，回院交药" if stage == "fetch" else "药就在身上，回院答复阿宁"
+		rows.append({"actor": "", "label": "查看隔墙求药", "text": "答应在 18:00 前给阿宁送药。%s；过时就误了约。" % action})
+	return rows
+
+
 ## 今天该注意的事。按 level 降序，最多 MAX_LINES 条。
 static func lines(run: Dictionary) -> Array:
 	if run.is_empty() or str(run.get("phase", "")) != "post":
@@ -61,6 +85,8 @@ static func lines(run: Dictionary) -> Array:
 	var out := []
 	var wave := Defense.wave_for_run(run, int(run.get("pday", 0)))
 	var has_wave := not wave.is_empty()
+	for promise in expiring_promises(run, int(run.pday) * Post.DAY):
+		out.append({"level": WARN, "text": promise.text})
 
 	# 一、已经砸穿到 0 的面：尸群可以直接进院子
 	var broken := []

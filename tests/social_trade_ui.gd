@@ -214,4 +214,74 @@ func _ready() -> void:
 		var option := action_button(action)
 		check(option == null or option.disabled, "Night boundary left actionable daily option: " + action)
 	await snapshot("ledger-social-trade-unavailable")
+	await wait_with_debt()
 	await finish()
+
+
+func wait_with_debt() -> void:
+	main.close_modal("social_trade")
+	main.close_modal("journal")
+	Game.no_save = true
+	var run := State.new_run("scholar", State.new_meta(), 9201)
+	Pre.start_disaster(run)
+	run.dawn_due = false
+	run.plan_due = false
+	run.home = {"rice": 30, "water": 5, "firewood": 6}
+	Neighbor.state(run).stage = "closed"
+	for day in [2, 3, 4]:
+		run.pday = day
+		run.t = (day - 1) * 1440 + 150
+		var quote := Trade.quote(run, "traveler")
+		var order := "credit" if day == 4 else "cash"
+		check(Trade.act(run, "traveler", order, str(quote.id)) == "", "签一张游戏内真实欠单")
+	run.pday = 6
+	run.t = 5 * 1440 + 655
+	run.neighbor_home = {"knocked": true}
+	run.home_floor = "guest_zhou"
+	var before: Dictionary = run.duplicate(true)
+	Game.run = run
+	Game.refresh()
+	await frames()
+	await click(button_with("等一刻", main._screen.hud))
+	var reminder: Node = main._modals.get("wait_promises")
+	if not check(is_instance_valid(reminder), "16:55 等一刻直接跳过了今日 18:00 到期的欠账"): return
+	check(run.t == before.t and int(Trade.contact(run, "traveler").breaches) == 0, "弹窗出现前已经走时或判失约")
+	check(labels_in(reminder).contains("米 ×3") and labels_in(reminder).contains("18:00"), "未显示直接后果")
+	var output := OS.get_environment("TEMP")
+	if not output.is_empty():
+		RenderingServer.force_draw()
+		check(get_viewport().get_texture().get_image().save_png(output.path_join("before-waiting.png")) == OK, "跳时提醒截图未写入")
+	await click(button_with("回院找过路客还账", reminder))
+	if not check(is_instance_valid(modal()) and run.home_floor == "courtyard" and action_button("repay").get_meta("trade_actor", "") == "traveler", "还账入口没有返回自家并选中实际债主"): return
+	var rice := Inv.count(run.home, "rice")
+	await click(action_button("repay"))
+	check(Trade.state(run).debt.is_empty() and Inv.count(run.home, "rice") == rice - 3, "从提醒进入的清偿没有实际扣米销账")
+	main.close_modal("social_trade")
+	Game.run = before
+	Game.refresh()
+	await frames()
+	await click(button_with("等一刻", main._screen.hud))
+	await click(button_with("照常等到", main._modals.get("wait_promises")))
+	Game.speed = 0
+	check(Game.run.t >= 5 * 1440 + 720 and Trade.state(Game.run).debt.overdue and int(Trade.contact(Game.run, "traveler").breaches) == 1, "主动继续等后应保留真实逾期后果")
+	# 同日送药承诺的入口取决于药在柜里，还是在人物手上。
+	for stage in ["carrying", "fetch"]:
+		for key in main._modals.keys():
+			main.close_modal(key)
+		var patient := State.new_run("herbalist", State.new_meta(), 9203)
+		Pre.start_disaster(patient)
+		patient.pday = 4
+		patient.t = 3 * 1440 + 150
+		patient.dawn_due = false
+		patient.plan_due = false
+		Neighbor.state(patient).stage = stage
+		patient.neighbor.medicine = stage == "carrying"
+		Game.run = patient
+		Game.refresh()
+		await frames()
+		await click(button_with("等一刻", main._screen.hud))
+		await click(button_with("查看隔墙求药", main._modals.get("wait_promises")))
+		if stage == "carrying":
+			check(patient.pending_event == "n_delivery" and main.has_modal("event"), "已取药应直接打开交药选择")
+		else:
+			check(main.has_modal("neighbor") and button_with("出门去", main._modals.get("neighbor")) != null, "尚未取药应直达有出门按钮的求药面板")
