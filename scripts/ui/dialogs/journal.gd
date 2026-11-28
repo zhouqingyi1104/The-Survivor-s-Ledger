@@ -14,6 +14,7 @@ const UI = preload("res://scripts/ui/ui_kit.gd")
 const Brief = preload("res://scripts/core/brief.gd")
 const Director = preload("res://scripts/core/director.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
+const Notebook = preload("res://scripts/core/story_notebook.gd")
 
 
 static func open() -> void:
@@ -125,11 +126,56 @@ static func _fill_journal_now(page: VBoxContainer) -> void:
 	var opening_entry := UI.button("这一世的开局 · 行囊、人情与风声", Dialogs.opening_info)
 	opening_entry.set_meta("opening_entry", "journal")
 	entries.add_child(UI.expand(opening_entry))
+	if not Notebook.pages(run).is_empty():
+		entries.add_child(UI.expand(UI.button("旧物手记", _open_notebook)))
 	page.add_child(entries)
 	var lines: Array = run.get("log", [])
 	var s := UI.scroll(UI.log_view(lines, lines.size(), 17), 180)
 	_journal_log_scroll = s
 	page.add_child(s)
+
+
+static func _open_notebook() -> void:
+	var bookmark := {"title": ""}
+	UI.open_modal("story_notebook", "旧物手记", _fill_notebook.bind(bookmark), true, 740)
+
+
+static func _fill_notebook(body: VBoxContainer, bookmark: Dictionary) -> void:
+	var pages := Notebook.pages(Game.run)
+	var spread := UI.hbox(20)
+	var index := UI.fixed_width(UI.vbox(6), 160)
+	var leaves := UI.vbox(0)
+	spread.add_child(index)
+	spread.add_child(UI.expand(leaves))
+	body.add_child(spread)
+	var buttons := ButtonGroup.new()
+	var current := -1
+	for i in pages.size():
+		if pages[i].title == bookmark.title:
+			current = i
+			break
+		if current < 0 and pages[i].next != "":
+			current = i
+	current = maxi(current, 0)
+	for i in pages.size():
+		var page := pages[i]
+		var leaf := UI.vbox(10)
+		leaf.add_child(UI.label(page.place, 15, UI.INK_FAINT))
+		leaf.add_child(UI.heading(page.title, 24, UI.INK))
+		leaf.add_child(UI.sep())
+		leaf.add_child(UI.para(page.note, 18, UI.INK))
+		if page.next != "":
+			leaf.add_child(UI.para(page.next, 16, UI.GOLD))
+		leaves.add_child(leaf)
+		leaf.visible = i == current
+		var turn := UI.button(page.title, func():
+			bookmark.title = page.title
+			for other in leaves.get_children():
+				other.visible = other == leaf)
+		turn.toggle_mode = true
+		turn.button_group = buttons
+		turn.set_pressed_no_signal(leaf.visible)
+		index.add_child(turn)
 
 
 ## 人：邻里的事、货郎的账、邻人自己的打算。
