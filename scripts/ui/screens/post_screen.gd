@@ -849,6 +849,9 @@ func actions_for(id: String) -> Array:
 				list.append(["关门（闩上就不出去了）" if bool(run.door_open) else "开门（出去打，也会放它们进来）",
 					func(): _toggle_gate(), ""])
 			list.append(["出门搜寻…", Dialogs.explore_pick, out])
+			var letter_stage := Mainline.Lane.status(run.get("mainline", {}), int(run.t))
+			var messages := {"offer": "看看巷口的白布…", "waiting": "查看巷口的灯…", "reply": "读船匠的回信…"}
+			if messages.has(letter_stage): list.append([messages[letter_stage], Dialogs.mainline, ""])
 			if Floors.unlocked(run, "guest_zhou"):
 				list.append(["拜访老周家", func(): _change_floor("guest_zhou"), Post.floor_block(run, "guest_zhou")])
 			return list

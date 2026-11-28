@@ -165,6 +165,15 @@
       "success_regex": "(?m)^\\[food_drying_ui\\] checks=[1-9][0-9]* failures=0\\r?$"
     },
     {
+      "id": "courtyard_work_ui",
+      "entry": "tests/courtyard_work_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 150,
+      "success_regex": "(?m)^\\[courtyard_work_ui\\] checks=[1-9][0-9]* failures=0\\r?$"
+    },
+    {
       "id": "food_storage_ui",
       "entry": "tests/food_storage_ui.tscn",
       "kind": "scene",

@@ -23,6 +23,7 @@ const FloorFittings = preload("res://scripts/world/floor_fittings.gd")
 const DecorationWorld = preload("res://scripts/world/home_decoration.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const Figure = preload("res://scripts/world/character.gd")
+const CourtyardWork = preload("res://scripts/world/courtyard_work.gd")
 const Surroundings = preload("res://scripts/world/home_surroundings.gd")
 # C1 邻宅氛围工厂运行期加载（缺失不影响宅院本体；由 C1 契约守底）。
 const AmbiencePath := "res://scripts/world/home_ambience.gd"
@@ -93,8 +94,9 @@ func _ready() -> void:
 	for floor_id in ["cellar", "attic", "guest_zhou"]:
 		_floor_rooms[floor_id] = FloorWorld.build(self, floor_id)
 		_floor_rooms[floor_id].root.visible = false
-	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration", "lookout"]:
+	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration", "lookout", "drying_tray", "lane_letter"]:
 		_dynamic[key] = K.node(self, Vector3.ZERO, Vector3.ZERO, key)
+	_dynamic.lane_letter.position = WINDOW_POS + Vector3(-0.33, 1.23, 0)
 	# 菜畦整块的拾取碰撞（菜苗每次重画，碰撞固定在这里；大小随画出来的畦数变，见 _fit_garden）
 	var garden_root := K.node(self, Vector3.ZERO, Vector3.ZERO, "spot_garden")
 	_garden_body = K.collider(garden_root, Vector3.ONE, Vector3.ZERO, {"spot": "garden"})
@@ -499,6 +501,7 @@ func sync(run: Dictionary) -> void:
 	_rebuild_devices(run)
 	_rebuild_extras(run)
 	_rebuild_furniture(run)
+	CourtyardWork.sync_tray(_dynamic.drying_tray, run)
 	var fittings_changed := _sync_floor_furnishings(run)
 	_update_gate(run)
 	_update_window(run)
@@ -926,6 +929,7 @@ func _update_window(run: Dictionary) -> void:
 
 ## 按钟点给光：5-8 晨、8-16 午、16-19 暮、19-5 夜。
 func set_time(run: Dictionary) -> void:
+	CourtyardWork.sync_letter(_dynamic.lane_letter, run)
 	var cold := int(State.weather(run).cold) if int(run.get("pday", 0)) > 0 else 10
 	var snow := 250 + cold * 30
 	var c := Post.clock(run) if run.has("t") else 720
