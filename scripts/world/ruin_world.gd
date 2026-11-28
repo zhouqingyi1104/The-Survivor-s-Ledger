@@ -7,6 +7,7 @@ const Assets = preload("res://scripts/world/assets.gd")
 const K = preload("res://scripts/world/kit.gd")
 const Props = preload("res://scripts/world/props.gd")
 const FieldProps = preload("res://scripts/world/field_props.gd")
+const CaseScene = preload("res://scripts/world/side_case_scene.gd")
 const SkyKit = preload("res://scripts/world/sky.gd")
 const Figure = preload("res://scripts/world/character.gd")
 const Data = preload("res://scripts/core/data.gd")
@@ -75,6 +76,7 @@ var locked_spot_index := -1
 var _spot_positions: Array = []
 var _gate_body: StaticBody3D
 var _gate_mesh: Node3D
+var _feature_markers: Node3D
 var _unlocked := false
 
 func _cell_center(c: Vector2i) -> Vector3:
@@ -119,6 +121,9 @@ func _choose_positions(spots: Array) -> void:
 		used.append(choice)
 	for i in spots.size():
 		var spot: Dictionary = spots[i]
+		if spot.has("side_case"):
+			_spot_positions.append(Vector3.INF)
+			continue
 		var is_signature := str(spot.get("name", "")) == str(Explore.SITE_SPOTS.get(point, "")) and not spot.has("mainline") and not spot.has("neighbor")
 		if is_signature:
 			locked_spot_index = i
@@ -136,6 +141,26 @@ func _choose_positions(spots: Array) -> void:
 		_spot_positions.append(choice)
 		used.append(choice)
 	_choose_journey_positions(cells, used)
+	# 先给原有搜点、现场行动、机关留足位置；同行调查另外找一间可直接走到的屋子。
+	for i in spots.size():
+		if spots[i].has("side_case"):
+			_spot_positions[i] = _case_position(cells.slice(0, cells.size() - 1), used)
+
+
+func _case_position(cells: Array, occupied: Array) -> Vector3:
+	var result := Vector3.ZERO
+	var best := -1.0
+	for cell in cells:
+		var center := _cell_center(cell)
+		for offset in [Vector3.ZERO, Vector3(1.15, 0, 0), Vector3(-1.15, 0, 0), Vector3(0, 0, 1.15), Vector3(0, 0, -1.15)]:
+			var pos: Vector3 = center + offset
+			var clearance := INF
+			for other in occupied:
+				clearance = minf(clearance, _flat_distance(pos, other))
+			if clearance > best:
+				best = clearance
+				result = pos
+	return result
 
 func _choose_journey_positions(cells: Array, used: Array) -> void:
 	var stages: Array = SiteJourney.profile(point).get("stages", [])
@@ -178,7 +203,7 @@ func setup(pid: String, spots: Array) -> void:
 	_choose_positions(spots)
 	_room()
 	for k in spots.size():
-		_spot_prop(k, spots[k].name)
+		_spot_prop(k, spots[k])
 	var p: Dictionary = Data.table("map_points")[pid]
 	for k in maxi(1, int(p.danger) - 1):
 		var f: Node3D = Figure.new()
@@ -324,12 +349,13 @@ func _expedition_layout() -> void:
 	_gate_mesh = K.node(self, gate_center)
 	FieldProps.gate(_gate_mesh, CELL, across_x)
 	var profile: Dictionary = Expedition.profile(point)
+	_feature_markers = K.node(self)
 	for key in ["clue_0", "clue_1", "gate"]:
 		var at: Vector3 = feature_positions[key]
 		var label := str(profile.get("title", "机关")) if key == "gate" else str(profile.get("clues", [])[0 if key == "clue_0" else 1].get("title", "线索"))
 		FieldProps.clue(K.node(self, at), point, key)
-		K.text3d(self, label, at + Vector3(0,1.35,0), 50, Color("#e7cd8a"), true, 0.005)
-		K.light(self, Color("#d6b879"), 0.5, 2.5, at + Vector3(0,1,0))
+		K.text3d(_feature_markers, label, at + Vector3(0,1.35,0), 50, Color("#e7cd8a"), true, 0.005)
+		K.light(_feature_markers, Color("#d6b879"), 0.5, 2.5, at + Vector3(0,1,0))
 
 
 func _make_journey_obstacle() -> void:
@@ -391,10 +417,17 @@ func _exit_marker() -> void:
 
 
 ## 一处可翻的地方：按名字挑道具，脚下一圈金光，头上写名字。
-func _spot_prop(k: int, spot_name: String) -> void:
+func _spot_prop(k: int, spot: Dictionary) -> void:
 	var pos: Vector3 = _spot_positions[k]
 	var n := K.node(self, pos)
-	FieldProps.spot(n, spot_name)
+	var spot_name := str(spot.name)
+	var scene: CaseScene
+	if spot.has("side_case"):
+		scene = CaseScene.new()
+		n.add_child(scene)
+		scene.setup(spot)
+	else:
+		FieldProps.spot(n, spot_name)
 	K.collider(n, Vector3(1.2, 1.0, 1.0), Vector3(0, 0.5, 0))
 	var glow := K.node(n)
 	var ring := TorusMesh.new()
@@ -409,7 +442,10 @@ func _spot_prop(k: int, spot_name: String) -> void:
 	glow.add_child(ring_mi)
 	K.light(glow, Color("#ffe5c6"), 0.82, 3.1, Vector3(0, 1.4, 0))
 	var label := K.text3d(n, spot_name, Vector3(0, 1.8, 0), 56, Color("#ffe3a0"), true, 0.005)
-	_spots.append({"pos": pos, "glow": glow, "label": label, "name": spot_name})
+	if scene != null:
+		label.position.y = 2.85
+		label.font_size = 46
+	_spots.append({"pos": pos, "glow": glow, "label": label, "name": spot_name, "case_scene": scene})
 
 
 func sync(run: Dictionary) -> void:
@@ -418,6 +454,7 @@ func sync(run: Dictionary) -> void:
 		return
 	_unlocked = bool(Expedition.state(run).get("unlocked", false))
 	_journey_enabled = not bool(ex.get("only_investigate", false))
+	_feature_markers.visible = _journey_enabled or not ex.spots.any(func(spot: Dictionary) -> bool: return spot.has("side_case"))
 	var journey: Dictionary = SiteJourney.state(run)
 	for id in journey_obstacles:
 		var cleared := str(journey.get("completed", {}).get(id, "")) == "careful"
@@ -431,6 +468,15 @@ func sync(run: Dictionary) -> void:
 		_gate_body.set_collision_layer_value(1, not _unlocked)
 	for k in mini(_spots.size(), ex.spots.size()):
 		var done: bool = ex.spots[k].done or ex.caught
+		var scene: CaseScene = _spots[k].case_scene
+		if scene != null:
+			var busy: Dictionary = run.get("busy", {})
+			var in_progress: bool = busy.get("kind") == "case_search" and busy.get("data", {}).get("id") == ex.spots[k].side_case
+			scene.sync(in_progress, bool(ex.spots[k].done), bool(ex.caught))
+			_spots[k].glow.visible = not done
+			var state := "（已取证）" if ex.spots[k].done else ("（合查中）" if in_progress else "")
+			_spots[k].label.text = "%s · 同行\n%s%s" % [ex.spots[k].person, _spots[k].name, state]
+			continue
 		var marker := str(ex.spots[k].get("mainline", ""))
 		var work: Dictionary = run.get("mainline", {}).get("work", {})
 		var working: bool = marker != "" and str(work.get("action", "")) == "search_" + marker and not ex.caught
@@ -471,6 +517,10 @@ func _visible_from(pos: Vector3, target: Vector3, allow_target_body := false) ->
 	# Search props have their own small collider; walls cannot be bypassed by E.
 	return allow_target_body and (hit.position as Vector3).distance_to(to) < 0.9
 
+func spot_position(idx: int) -> Vector3:
+	return _spot_positions[idx]
+
+
 func nearest(pos: Vector3) -> int:
 	var flat := Vector3(pos.x, 0, pos.z)
 	if flat.distance_to(ENTRY) < 1.6 and _visible_from(flat, ENTRY): return -2
@@ -485,6 +535,7 @@ func nearest(pos: Vector3) -> int:
 	return best
 
 func nearest_feature(pos: Vector3) -> String:
+	if not _feature_markers.visible: return ""
 	var best := ""
 	var best_d := 1.35
 	for key in ["clue_0", "clue_1", "gate"]:

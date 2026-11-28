@@ -73,6 +73,11 @@ func build() -> void:
 	tail.alignment = BoxContainer.ALIGNMENT_CENTER
 	if run.get("hundred_days") is Dictionary:
 		tail.add_child(UI.button("翻看街坊旧信", Dialogs.chronicle))
+		var settled := preload("res://scripts/core/side_cases.gd").list_cases(run).filter(func(entry): return entry.stage == "done")
+		if not settled.is_empty():
+			var latest: Dictionary = settled.back()
+			t.text += "\n" + str(latest.epilogue)
+			tail.add_child(UI.button("街坊的去向（%d）" % settled.size(), Dialogs.street_cases))
 	tail.add_child(UI.button("导出试玩报告", _export_report, false,
 		"把这一局的种子、死因构成、最后几十条记录和存档打包成一个文件夹，方便发给开发者。"))
 	tail.add_child(choose)

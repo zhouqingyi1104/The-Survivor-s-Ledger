@@ -25,6 +25,7 @@ const Assets = preload("res://scripts/world/assets.gd")
 const Figure = preload("res://scripts/world/character.gd")
 const CourtyardWork = preload("res://scripts/world/courtyard_work.gd")
 const ChronicleVisitor = preload("res://scripts/world/chronicle_visitor.gd")
+const CaseScene = preload("res://scripts/world/side_case_scene.gd")
 const Chronicle = preload("res://scripts/core/chronicle_story.gd")
 const Surroundings = preload("res://scripts/world/home_surroundings.gd")
 # C1 邻宅氛围工厂运行期加载（缺失不影响宅院本体；由 C1 契约守底）。
@@ -33,6 +34,8 @@ const AmbiencePath := "res://scripts/world/home_ambience.gd"
 const GATE_Z := 7.0
 const WINDOW_POS := Vector3(5.6, 1.7, 7.0)
 const SPAWN := Vector3(0, 0, 3.0)
+const CASE_TABLE := Vector3(0.34, 0, 3.55)
+const CASE_STAND := Vector3(-0.54, 0, 4.05)
 
 ## 可交互物：名称、站位（人走到哪儿做事）、头顶标签的位置
 const SPOTS := {
@@ -54,6 +57,7 @@ var nav_region: NavigationRegion3D
 var _room_nav := {}
 var _window: Node3D
 var _dynamic: Dictionary = {}
+var _case_work_key := ""
 var _night := false
 var _baked := false
 var _garden_body: StaticBody3D
@@ -96,7 +100,7 @@ func _ready() -> void:
 	for floor_id in ["cellar", "attic", "guest_zhou"]:
 		_floor_rooms[floor_id] = FloorWorld.build(self, floor_id)
 		_floor_rooms[floor_id].root.visible = false
-	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration", "lookout", "drying_tray", "lane_letter", "chronicle_guest"]:
+	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration", "lookout", "drying_tray", "lane_letter", "chronicle_guest", "case_work"]:
 		_dynamic[key] = K.node(self, Vector3.ZERO, Vector3.ZERO, key)
 	_dynamic.lane_letter.position = WINDOW_POS + Vector3(-0.33, 1.23, 0)
 	# 菜畦整块的拾取碰撞（菜苗每次重画，碰撞固定在这里；大小随画出来的畦数变，见 _fit_garden）
@@ -355,6 +359,8 @@ func spot_info(id: String) -> Dictionary:
 	if _floor != "courtyard":
 		return FloorWorld.info(_floor, id, _floor_rooms[_floor])
 	match id:
+		"case_work":
+			return {"name": "院中合办", "stand": CASE_STAND, "tag": CASE_TABLE + Vector3.UP}
 		ChronicleVisitor.SPOT:
 			var visitor: ChronicleVisitor = spot_nodes.get(id)
 			return {} if visitor == null else {"name": visitor.caption, "stand": ChronicleVisitor.STAND, "tag": visitor.tag, "event": visitor.event_id}
@@ -949,6 +955,7 @@ func _update_window(run: Dictionary) -> void:
 func set_time(run: Dictionary) -> void:
 	CourtyardWork.sync_letter(_dynamic.lane_letter, run)
 	_sync_chronicle_guest(run)
+	_sync_case_work(run)
 	var cold := int(State.weather(run).cold) if int(run.get("pday", 0)) > 0 else 10
 	var snow := 250 + cold * 30
 	var c := Post.clock(run) if run.has("t") else 720
@@ -1005,6 +1012,8 @@ func _sync_chronicle_guest(run: Dictionary) -> void:
 	var letter := {}
 	if _floor == "courtyard" and Chronicle.enabled(run) and not Post.is_night(run) and run.get("fight", {}).is_empty():
 		letter = Chronicle.current_event(run)
+		if run.get("busy", {}).get("kind") == "case_work" and str(letter.get("person", "")).get_slice("、", 0) == run.busy.data.get("person"):
+			letter = {}
 	var visitor: ChronicleVisitor = spot_nodes.get(ChronicleVisitor.SPOT)
 	if visitor != null:
 		if visitor.event_id == str(letter.get("id", "")):
@@ -1016,6 +1025,26 @@ func _sync_chronicle_guest(run: Dictionary) -> void:
 		_dynamic.chronicle_guest.add_child(next)
 		next.setup(letter)
 		spot_nodes[ChronicleVisitor.SPOT] = next
+
+
+func _sync_case_work(run: Dictionary) -> void:
+	var busy: Dictionary = run.get("busy", {})
+	var work: Dictionary = busy.get("data", {}) if busy.get("kind") == "case_work" else {}
+	var key := ""
+	if ChronicleVisitor.PEOPLE.has(work.get("person", "")) and CaseScene.ANIMATIONS.has(work.get("prop", "")):
+		key = "%s/%s" % [work.id, work.choice]
+	if _case_work_key == key:
+		return
+	_case_work_key = key
+	K.clear(_dynamic.case_work)
+	if key == "":
+		return
+	var station := CaseScene.new()
+	_dynamic.case_work.add_child(station)
+	station.position = CASE_TABLE
+	station.setup(work)
+	station.sync(true, false, false)
+	K.text3d(station, "%s · 合办" % work.person, Vector3(0.85, 2.05, -0.44), 40, Color("#e6d5ac"), true, 0.0045)
 
 
 func _set_lanterns(lit: bool) -> void:

@@ -418,6 +418,8 @@ func _update_pose(run: Dictionary) -> void:
 	fig.working = Post.is_busy(run) and not resting
 	if fig.working:
 		fig.work_anim = WORK_ANIMS.get(run.busy.kind, "Interact")
+		if run.busy.kind == "case_work":
+			fig.work_anim = preload("res://scripts/world/side_case_scene.gd").ANIMATIONS.get(run.busy.get("data", {}).get("prop", ""), "Interact")
 	if resting == fig.lying:
 		return
 	fig.lying = resting
@@ -1036,6 +1038,18 @@ func _face(id: String) -> void:
 	player.figure.face(to, 1.0)
 
 
+func begin_case_work(id: String, choice: String) -> void:
+	var cases := preload("res://scripts/core/side_cases.gd")
+	var block: String = cases.settle_block(Game.run, id, choice)
+	if block != "":
+		Game.toast.emit(block)
+		return
+	if Floors.current(Game.run) != "courtyard":
+		_change_floor("courtyard")
+		if Floors.current(Game.run) != "courtyard": return
+	do_at("case_work", func(): Game.act(func(): return cases.settle(Game.run, id, choice)))
+
+
 ## 差事单上的一行：走到地方再做（跟点物件一个规矩）。既有行动转给各自的物件菜单或弹窗。
 func agenda_do(idx: int) -> void:
 	if Floors.current(Game.run) != "courtyard":
@@ -1377,7 +1391,19 @@ func _right_top(run: Dictionary) -> void:
 	texts.add_child(day)
 	if run.get("hundred_days") is Dictionary:
 		var letter := preload("res://scripts/core/chronicle_story.gd").current_event(run)
-		var street := Hud.button("百日街坊" if letter.is_empty() else "百日街坊 · 有来信", Dialogs.chronicle)
+		var caption := "百日街坊"
+		if not letter.is_empty():
+			caption += " · 有来信"
+		else:
+			var cases := preload("res://scripts/core/side_cases.gd").list_cases(run)
+			var current := preload("res://scripts/core/side_cases.gd").active(run)
+			if current.get("stage") == "returned":
+				caption += " · 有证物"
+			elif current.get("stage") == "field":
+				caption += " · 待查访"
+			elif current.is_empty() and cases.any(func(row): return row.stage == "offered"):
+				caption += " · 有邀约"
+		var street := Hud.button(caption, Dialogs.chronicle)
 		street.set_meta("chronicle_entry", true)
 		texts.add_child(street)
 	var w := State.weather(run)

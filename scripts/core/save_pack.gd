@@ -10,6 +10,7 @@ extends RefCounted
 
 const Migrate = preload("res://scripts/core/migrate.gd")
 const Data = preload("res://scripts/core/data.gd")
+const SideCases = preload("res://scripts/core/side_cases.gd")
 
 const FORMAT := "jieshi-save"
 ## 信封自己的版本，和 run.version（存档结构版本）不是一回事
@@ -138,6 +139,7 @@ static func _playable_run(value: Dictionary) -> bool:
 		if not chronicle is Dictionary or not chronicle.get("choices") is Dictionary: return false
 		if not chronicle.get("shifts", {}) is Dictionary: return false
 		if not chronicle.get("first_route", "") in ["", "hold", "ritual", "escape"]: return false
+	if not SideCases.valid_saved(value): return false
 	if value.has("furniture") and not value.furniture is Array: return false
 	return true
 

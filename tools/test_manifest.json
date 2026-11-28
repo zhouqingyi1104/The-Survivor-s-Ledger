@@ -3,6 +3,33 @@
   "engine_version": "4.7.2",
   "cases": [
     {
+      "id": "side_case_campaign",
+      "entry": "tests/side_case_campaign.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 240,
+      "success_regex": "(?m)^\\[side_case_campaign\\] 两卷百日，失败 0 处\\r?$"
+    },
+    {
+      "id": "side_case_rules",
+      "entry": "tests/side_case_rules.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[side_case_rules\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
+      "id": "side_case_field_ui",
+      "entry": "tests/side_case_field_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 240,
+      "success_regex": "(?m)^\\[side_case_field_ui\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
       "id": "hundred_days_visitor",
       "entry": "tests/hundred_days_visitor.tscn",
       "kind": "scene",

@@ -4,6 +4,7 @@ const UI = preload("res://scripts/ui/ui_kit.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Story = preload("res://scripts/core/chronicle_story.gd")
 const Post = preload("res://scripts/core/post.gd")
+const Cases = preload("res://scripts/core/side_cases.gd")
 
 static func open() -> void:
 	if not Story.enabled(Game.run):
@@ -40,7 +41,18 @@ static func _fill(body: VBoxContainer) -> void:
 			body.add_child(UI.sep())
 			body.add_child(UI.label("第 %d 日回音　·　%s" % [last.day, last.title], 19, UI.JADE))
 			body.add_child(UI.para(str(last.result), 17))
-		body.add_child(UI.button("翻看旧信（%d）" % pages.size(), _open_archive))
+	var cases := Cases.list_cases(run)
+	if not pages.is_empty() or not cases.is_empty():
+		var row := UI.hbox(8)
+		if not pages.is_empty():
+			row.add_child(UI.expand(UI.button("翻看旧信（%d）" % pages.size(), _open_archive)))
+		if not cases.is_empty():
+			var active := Cases.active(run)
+			var caption := "街坊同行" if active.is_empty() else "街坊同行 · " + str(active.title)
+			var b := UI.button(caption, Dialogs.street_cases)
+			b.set_meta("street_cases_entry", true)
+			row.add_child(UI.expand(b))
+		body.add_child(row)
 	for id in Story.SHIFTS:
 		if Story.unlocked(run, id) and run.get("phase") == "post" and not run.dawn_due:
 			var job: Dictionary = Story.SHIFTS[id]

@@ -17,6 +17,7 @@ const TradeMarks = preload("res://scripts/ui/travel_marks.gd")
 const RiceStory = preload("res://scripts/ui/dialogs/rice_story.gd")
 const ApothecaryStory = preload("res://scripts/ui/dialogs/apothecary_story.gd")
 const Chronicle = preload("res://scripts/ui/dialogs/chronicle.gd")
+const Casebook = preload("res://scripts/ui/dialogs/side_cases.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
@@ -103,6 +104,10 @@ func journal() -> void:
 
 func chronicle() -> void:
 	Chronicle.open()
+
+
+func street_cases() -> void:
+	Casebook.open()
 
 
 ## 劫余录里的两处延后回调还要一个节点实例，所以这两个壳留在 Dialogs 上，内容在 Journal 里。
@@ -703,12 +708,15 @@ func _explore_pick(body: VBoxContainer) -> void:
 		info.add_child(UI.para(p.desc, 15))
 		var trail_note := SiteJourney.Trails.map_note(run, pid)
 		if trail_note != "": info.add_child(UI.para(trail_note, 16, UI.GOLD))
-		var investigation_only := int(run.points.get(pid, {}).get("looted_until", 0)) > int(run.pday) and not Mainline.objective(run, pid).is_empty()
+		var case_file := Casebook.Cases.at_site(run, pid)
+		if not case_file.is_empty():
+			info.add_child(UI.para("%s等你同行 · %s" % [case_file.person, case_file.route.spot], 16, UI.JADE))
+		var investigation_only := Explore.investigation_only(run, pid)
 		if not investigation_only:
 			var journey: Dictionary = SiteJourney.profile(str(pid))
 			var grades := {"easy": "简单", "medium": "中等", "hard": "困难"}
 			info.add_child(UI.para("%s · 完整现场约%s（游戏时间）" % [grades.get(str(journey.get("grade", "")), "探索"), str(journey.get("estimated", ""))], 15, UI.GOLD))
-		var site_tip := "当前仅开放今世调查，普通物资尚未恢复。" if investigation_only else "现场特色：" + Explore.site_brief(str(pid)) + " 先查找两处线索，解开机关进入后区。"
+		var site_tip := "此行只沿线索查访，不开放普通搜寻。" if investigation_only else "现场特色：" + Explore.site_brief(str(pid)) + " 先查找两处线索，解开机关进入后区。"
 		info.add_child(UI.para(site_tip, 15, UI.GOLD))
 		if not investigation_only:
 			var possible := []

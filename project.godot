@@ -12,7 +12,7 @@ config_version=5
 
 config/name="劫余录"
 config/description="古风尸变生存模拟（原型）"
-config/version="0.12.0"
+config/version="0.13.0"
 config/icon="res://assets/ui/application-icon.svg"
 boot_splash/image="res://assets/ui/boot-book.png"
 boot_splash/fullsize=false

@@ -28,7 +28,8 @@ const Home = preload("res://scripts/core/home.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 
 ## v22：百日卷有独立剧情进度，旧卷及快照继续依二十日规则。
-const VERSION := 22
+## v23：可选同行调查加入在途证物与工时，旧百日卷从已有选择接续。
+const VERSION := 23
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],

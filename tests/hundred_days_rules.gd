@@ -81,7 +81,7 @@ func _ready() -> void:
 	var old := State.new_run("scholar", State.new_meta(), 123)
 	old.version = 21
 	var migrated := Migrate.save({"run": old, "snapshots": {"1": old.duplicate(true)}})
-	check(migrated.run.version == 22 and not migrated.run.has("hundred_days") and not migrated.snapshots["1"].has("hundred_days"), "旧卷及快照升级后仍为二十日")
+	check(migrated.run.version == Migrate.VERSION and not migrated.run.has("hundred_days") and not migrated.snapshots["1"].has("hundred_days"), "旧卷及快照升级后仍为二十日")
 	var corrupt := held.duplicate(true)
 	corrupt.hundred_days.choices = []
 	check(not Pack.validate_data({"run": held, "snapshots": {"21": corrupt}}).ok, "损坏的百日回溯档在导入时拦截")

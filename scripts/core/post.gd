@@ -29,6 +29,7 @@ const Crisis = preload("res://scripts/core/crisis.gd")
 const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
 const ChronicleStory = preload("res://scripts/core/chronicle_story.gd")
+const SideCases = preload("res://scripts/core/side_cases.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
 const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
 const DeathReport = preload("res://scripts/core/death_report.gd")
@@ -294,6 +295,9 @@ static func _checkpoint(run: Dictionary, m: int) -> String:
 			if not run.explore.is_empty():
 				# 翻找和调查会跨时推进；需要记住宵禁，等待药柜选择或现场工作结束后返程。
 				run.explore["curfew_due"] = true
+				if run.busy.get("kind") == "case_search":
+					run.busy = {}
+					State.note(run, "宵禁的梆子响了，来不及取证，与街坊约好改日再来。")
 				return "curfew"
 			# 今夜有尸潮：先让玩家定守夜方针，再放时间走
 			if not Defense.wave_for_run(run, int(run.pday)).is_empty() and int(run.wave_day) != int(run.pday) and str(run.get("night_policy", "")) == "":
@@ -801,6 +805,18 @@ static func _street_supplies(run: Dictionary) -> void:
 			"escape": share["flatbread"] = 4
 			"ritual": share["talisman"] = 1
 			"hold": share["wood"] = int(share.get("wood", 0)) + 2
+		var neighbors := []
+		if SideCases.completed_choice(run, "raft_measure") == "mark_tare":
+			share["millet"] = 1
+			neighbors.append("渡口按实重拨的杂粮")
+		if SideCases.completed_choice(run, "mixed_seed") == "keep_seed":
+			share["radish"] = 1
+			neighbors.append("公畦头茬的萝卜")
+		if SideCases.completed_choice(run, "rain_spout") == "catch":
+			share.water += 1
+			neighbors.append("檐槽接下的清水")
+		if not neighbors.is_empty():
+			State.note(run, "这一趟还捎来了" + "、".join(neighbors) + "。")
 	Inv.add_all(run.home, share)
 	State.note(run, "街坊从公灶分来%s，已送进自家储藏间。" % Data.describe_items(share))
 
@@ -1047,6 +1063,7 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 			if str(data.get("direction", "")) == "return":
 				run.erase("neighbor_travel")
 				State.note(run, "返程走完，回到宅院。")
+				SideCases.finish_return(run, data)
 			else:
 				State.note(run, "已抵达，可以开始搜寻。")
 		"neighbor_wall":
@@ -1064,6 +1081,10 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 			Agenda.complete(run, data)
 		"street_shift":
 			ChronicleStory.finish_shift(run, str(data.get("id", "")))
+		"case_search":
+			SideCases.finish_search(run, data)
+		"case_work":
+			SideCases.finish_work(run, data)
 		"cycle_inquiry":
 			var result := Cycle.complete(run, data)
 			if result != "": Director.note_choice(run, "轮回调查 · 工作完成", result)
@@ -1073,6 +1094,8 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 		"mainline":
 			var result := Mainline.complete(run, data)
 			if result != "": Director.note_choice(run, "主线行动完成", result)
+			if str(data.get("action", "")).begins_with("return_"):
+				SideCases.finish_return(run, data)
 		"crisis":
 			var result := Crisis.complete(run, data)
 			if result != "": Director.note_choice(run, "危机行动完成", result)
@@ -1731,6 +1754,10 @@ static func search(run: Dictionary, idx: int, option_id := "") -> Dictionary:
 	var prepaid := false
 	var reserved_gain := -1
 	var spot: Dictionary = run.explore.spots[idx]
+	if spot.has("side_case"):
+		var result := Explore.search(run, idx, option_id)
+		if result.get("caught", false): State.check_death(run, "同街坊调查时被尸群追上，没能回到家。")
+		return result
 	if option_id == "site" and (spot.has("mainline") or spot.has("neighbor")):
 		return {"blocked": "这里不能使用地点特色。"}
 	if not spot.has("mainline") and not spot.has("neighbor"):
@@ -1788,6 +1815,7 @@ static func _expedition_spend(run: Dictionary, minutes: int) -> String:
 static func _expedition_available(run: Dictionary) -> String:
 	var ex: Dictionary = run.get("explore", {})
 	if ex.is_empty() or Expedition.profile(str(ex.get("point", ""))).is_empty(): return "这里没有可调查的机关。"
+	if ex.get("only_investigate", false) and ex.spots.any(func(s): return s.has("side_case")): return "这趟由街坊带路，只能在约好的地方调查。"
 	if ex.get("curfew_due", false) or ex.get("caught", false) or blocked(run) or is_busy(run) or run.get("sleeping", false) or not run.get("fight", {}).is_empty(): return "现在无法调查机关。"
 	return ""
 
@@ -1896,10 +1924,15 @@ static func finish_explore(run: Dictionary) -> Dictionary:
 	var field_state: Dictionary = run.explore.duplicate(true)
 	var summary := Explore.finish(run)
 	if run.phase == "post":
-		if Mainline.begin_return(run, field_state): return summary
+		var cargo := "" if field_state.get("caught", false) else str(field_state.get("case_cargo", ""))
+		var detail: bool = field_state.get("case_detail", false)
+		if Mainline.begin_return(run, field_state):
+			if cargo != "": run.busy.data.merge({"case_cargo": cargo, "case_detail": detail, "point": field_state.point}, true)
+			return summary
 		run["neighbor_travel"] = true
 		run.busy = {"kind": "travel", "label": "返家赶路", "start": int(run.t),
 			"end": int(run.t) + int(ACTIONS.travel[1]), "data": {"direction": "return", "point": str(field_state.point)}}
+		if cargo != "": run.busy.data.merge({"case_cargo": cargo, "case_detail": detail})
 		advance(run, int(ACTIONS.travel[1]))
 		Neighbor.poll(run)
 	return summary

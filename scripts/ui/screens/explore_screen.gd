@@ -10,6 +10,7 @@ const CamRig = preload("res://scripts/world/cam_rig.gd")
 const K = preload("res://scripts/world/kit.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const Cases = preload("res://scripts/core/side_cases.gd")
 const InputCfg = preload("res://scripts/core/input_cfg.gd")
 const Expedition = preload("res://scripts/core/expedition.gd")
 const RiceStory = preload("res://scripts/ui/dialogs/rice_story.gd")
@@ -82,7 +83,7 @@ func _process(delta: float) -> void:
 		return
 	# 废墟里时间照走（正常速度），到酉时（21:00）必须回家
 	if not blocked and not _fleeing and not Post.blocked(Game.run) and Game.speed > 0:
-		var rate := Post.BUSY_RATE if Game.run.busy.get("kind", "") == "travel" else 4.0
+		var rate := Post.BUSY_RATE if Game.run.busy.get("kind", "") in ["travel", "case_search"] else 4.0
 		_acc += rate * delta
 		if _acc >= 1.0:
 			var mins := int(_acc)
@@ -107,7 +108,15 @@ func _process(delta: float) -> void:
 	if is_instance_valid(_work_label):
 		_work_label.visible = Post.is_busy(Game.run)
 		if Post.is_busy(Game.run): _work_label.text = "%s中 · 还需 %d 分钟" % ["赶路" if Game.run.busy.get("kind", "") == "travel" else str(Game.run.busy.get("label", "调查")), maxi(0, int(Game.run.busy.get("end", 0)) - int(Game.run.t))]
-	player.enabled = not blocked
+	var job: Dictionary = Game.run.busy
+	var idx := int(job.get("data", {}).get("idx", -1)) if job.get("kind") == "case_search" else -1
+	var investigating: bool = idx >= 0 and idx < Game.run.explore.spots.size() and Game.run.explore.spots[idx].has("side_case")
+	player.enabled = not blocked and not investigating
+	player.figure.working = investigating
+	if investigating:
+		var prop: String = Game.run.explore.spots[idx].prop
+		player.figure.work_anim = RuinWorld.CaseScene.ANIMATIONS.get(prop, "Interact")
+		player.figure.face(world.spot_position(idx) - player.global_position)
 	rig.input_enabled = not blocked
 	player.cam_yaw = rig.yaw
 	var feature: String = "" if blocked else world.nearest_feature(player.global_position)
@@ -123,7 +132,7 @@ func _process(delta: float) -> void:
 
 func _update_hint() -> void:
 	var ex: Dictionary = Game.run.explore
-	if Post.is_busy(Game.run) and Game.run.busy.get("kind", "") in ["mainline", "travel"]:
+	if Post.is_busy(Game.run) and Game.run.busy.get("kind", "") in ["mainline", "travel", "case_search"]:
 		_hint.visible = true
 		var left := maxi(0, int(Game.run.busy.get("end", 0)) - int(Game.run.t))
 		_hint_label.text = "仍在赶路 · 还需 %d 分钟；抵达后才能继续行动。" % left if Game.run.busy.get("kind", "") == "travel" else "%s中 · 还需 %d 分钟；完成后才能继续翻找或返程。" % [str(Game.run.busy.get("label", "调查")), left]
@@ -153,7 +162,9 @@ func _update_hint() -> void:
 		_hint_label.text = "[%s] 回家（背着 %.1f 斤）" % [ek, Inv.weight(ex.bag)]
 	elif _near >= 0 and _near < ex.spots.size():
 		var s: Dictionary = ex.spots[_near]
-		if s.done and not s.has("mainline") and not s.has("neighbor"):
+		if s.has("side_case"):
+			_hint_label.text = "[%s] %s · %s" % [ek, "回看证物" if s.done else "与%s一起调查" % s.person, s.name]
+		elif s.done and not s.has("mainline") and not s.has("neighbor"):
 			_hint_label.text = "[%s] 查看 · %s（可整理背囊）" % [ek, s.name]
 		else:
 			var verb := "调查" if s.has("mainline") or s.has("neighbor") else "查看选择"
@@ -413,6 +424,10 @@ func search(idx: int) -> void:
 	if ex.is_empty() or ex.caught or idx < 0 or idx >= ex.spots.size():
 		return
 	var spot: Dictionary = ex.spots[idx]
+	if spot.has("side_case"):
+		if not _feature_blocked():
+			UI.open_modal("side_case_site", str(spot.name), _case_site_panel.bind(idx, str(spot.side_case)), true, 660)
+		return
 	if spot.done:
 		if not spot.has("mainline") and not spot.has("neighbor"):
 			_open_loot(idx)
@@ -424,6 +439,53 @@ func search(idx: int) -> void:
 			_execute_search(idx, "normal")
 		return
 	_execute_search(idx, "")
+
+
+func _case_site_panel(body: VBoxContainer, idx: int, id: String) -> void:
+	var ex: Dictionary = Game.run.explore
+	if idx < 0 or idx >= ex.get("spots", []).size() or ex.spots[idx].get("side_case") != id:
+		UI.close_modal("side_case_site")
+		return
+	var entry := Cases.view(Game.run, id)
+	if entry.is_empty():
+		UI.close_modal("side_case_site")
+		return
+	body.add_child(UI.label("%s　·　%s" % [entry.person, entry.title], 19, UI.JADE))
+	if ex.spots[idx].done:
+		body.add_child(UI.para(str(entry.route.clue), 18))
+		if ex.get("case_detail", false) and entry.route.has("inspection"):
+			body.add_child(UI.para(str(entry.route.inspection.finding), 17, UI.GOLD))
+		body.add_child(UI.para("带回家后，再和街坊商量证物的去向。", 16, UI.GOLD))
+		return
+	body.add_child(UI.para(str(entry.lead), 18))
+	var inspection: Dictionary = entry.route.get("inspection", {})
+	if not inspection.is_empty():
+		body.add_child(UI.para(str(inspection.observation), 18))
+		body.add_child(UI.para("%s（细查另需 %d 分钟，额外外泄 +%d）" % [inspection.question, inspection.extra_minutes, inspection.extra_risk], 16, UI.GOLD))
+		for answer in inspection.answers:
+			var pick := UI.button(str(answer.label), _begin_case_search.bind(idx, id, "inspect:" + str(answer.id)))
+			pick.set_meta("side_case_inspect", str(answer.id))
+			body.add_child(pick)
+	body.add_child(UI.para("调查需 %d 分钟，阳气外泄 +%d。取到证物后还要走完返程。" % [entry.route.minutes, entry.route.risk], 16, UI.GOLD))
+	var caption := "与%s动手查验" % entry.person if inspection.is_empty() else "先收下眼前的证物"
+	var begin := UI.seal_button(caption, _begin_case_search.bind(idx, id, ""))
+	begin.set_meta("side_case_search", id)
+	body.add_child(begin)
+
+
+func _begin_case_search(idx: int, id: String, technique: String) -> void:
+	var ex: Dictionary = Game.run.explore
+	if idx < 0 or idx >= ex.get("spots", []).size() or ex.spots[idx].get("side_case") != id:
+		return
+	var result = Game.act(func(): return Post.search(Game.run, idx, technique))
+	if result is Dictionary and not str(result.get("blocked", "")).is_empty():
+		Game.toast.emit(str(result.blocked))
+		return
+	UI.close_modal("side_case_site")
+	if result is Dictionary and result.get("started", false):
+		player.stop()
+		Game.toast.emit(str(result.text))
+	_near = -99
 
 
 ## 先让玩家看清收益与代价。关闭或按 Esc 不会开始搜寻。
@@ -480,7 +542,7 @@ func _execute_search(idx: int, option_id: String) -> void:
 		if str(res.get("blocked", "")) != "":
 			Game.toast.emit(str(res.blocked))
 			return
-		if res.get("mainline", false):
+		if res.get("mainline", false) or res.get("side_case", false):
 			Game.toast.emit(str(res.get("text", "已开始调查，完成后再返程。")))
 			_near = -99
 			return
@@ -512,7 +574,7 @@ func _open_loot(idx: int) -> void:
 	var ex: Dictionary = Game.run.get("explore", {})
 	if not is_inside_tree() or Game.screen != "explore" or ex.is_empty() or ex.get("caught", false) or ex.get("curfew_due", false) or Post.is_busy(Game.run) or Post.blocked(Game.run) or idx < 0 or idx >= ex.spots.size(): return
 	var spot: Dictionary = ex.spots[idx]
-	if not spot.done or spot.has("mainline") or spot.has("neighbor"): return
+	if not spot.done or spot.has("mainline") or spot.has("neighbor") or spot.has("side_case"): return
 	UI.open_modal("explore_loot", "搜寻 · " + str(spot.name), _loot_panel.bind(idx), true, 760)
 
 
@@ -607,16 +669,17 @@ func build_hud() -> void:
 		if trail_note != "": v.add_child(UI.wrap_line(trail_note, 15, UI.GOLD, 300))
 	_budget_label = UI.label("距 21:00 还有 %d 分钟 · 返程 %d 分钟" % [maxi(0, Post.CURFEW_AT - Post.day_minute(run)), int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT)
 	v.add_child(_budget_label)
-	var profile: Dictionary = Expedition.profile(str(ex.point))
-	var progress: Dictionary = Expedition.state(run)
-	var found: Array = progress.get("clues", [])
-	var clue_count := 0
-	for known in found:
-		if bool(known): clue_count += 1
-	v.add_child(UI.wrap_line("探索 · %s：线索 %d/%d · %s" % [str(profile.get("title", "现场")), clue_count, profile.get("clues", []).size(), "通路已开" if progress.get("unlocked", false) else "通路待解"], 15, UI.GOLD, 300))
-	var journal := UI.button("查看已发现线索", func(): _open_expedition("journal"))
-	journal.set_meta("expedition_journal", true)
-	v.add_child(journal)
+	if not ex.get("only_investigate", false):
+		var profile: Dictionary = Expedition.profile(str(ex.point))
+		var progress: Dictionary = Expedition.state(run)
+		var found: Array = progress.get("clues", [])
+		var clue_count := 0
+		for known in found:
+			if bool(known): clue_count += 1
+		v.add_child(UI.wrap_line("探索 · %s：线索 %d/%d · %s" % [str(profile.get("title", "现场")), clue_count, profile.get("clues", []).size(), "通路已开" if progress.get("unlocked", false) else "通路待解"], 15, UI.GOLD, 300))
+		var journal := UI.button("查看已发现线索", func(): _open_expedition("journal"))
+		journal.set_meta("expedition_journal", true)
+		v.add_child(journal)
 	v.add_child(UI.stat_row("气血", State.attr(run, "hp"), State.attr_max(run, "hp"), UI.CINNABAR, 44))
 	v.add_child(UI.stat_row("精力", State.attr(run, "energy"), 100, UI.INK_SOFT, 44))
 	v.add_child(UI.label("背囊 %.1f / %d 斤" % [Inv.weight(ex.bag), int(Explore.carry(run))], 16))
@@ -625,7 +688,7 @@ func build_hud() -> void:
 	var site_target := ""
 	for i in ex.spots.size():
 		var spot: Dictionary = ex.spots[i]
-		if spot.has("mainline") or spot.has("neighbor"): continue
+		if spot.has("mainline") or spot.has("neighbor") or spot.has("side_case"): continue
 		ordinary += 1
 		if spot.done: searched += 1
 		elif Explore.site_options(run, i).size() > 1: site_target = str(spot.name)
@@ -645,6 +708,12 @@ func build_hud() -> void:
 	v.add_child(UI.wrap_line(Mainline.summary(run), 15, UI.GOLD, 300))
 	if not objective.is_empty():
 		v.add_child(UI.wrap_line("要查的：" + str(objective.name), 15, UI.GOLD, 300))
+	var case_file := Cases.at_site(run, str(ex.point))
+	if not case_file.is_empty():
+		var hint := "和%s找%s" % [case_file.person, case_file.route.spot]
+		if ex.get("case_cargo", "") == case_file.id:
+			hint = "%s已收好，回宅后可以商量怎么办。" % case_file.route.spot
+		v.add_child(UI.wrap_line(hint, 16, UI.JADE, 300))
 	_work_label = UI.label("", 15, UI.GOLD)
 	v.add_child(_work_label)
 	corner_panel(v, Control.PRESET_TOP_LEFT)
@@ -658,6 +727,8 @@ func build_hud() -> void:
 	e.add_child(row)
 	var risk := Explore.exposure_range(run, str(ex.point))
 	var tip := "被尸群嗅到了！快逃！" if ex.caught else "翻找基础外泄 +%d～%d；具体行动耗时与风险见现场选择。21:00 后返程需 %d 分钟。" % [risk.x, risk.y, int(Post.ACTIONS.travel[1])]
+	if not case_file.is_empty() and ex.get("only_investigate", false) and not ex.caught:
+		tip = "现场查证外泄 +%d。若被尸群追上，来不及带走证物。" % case_file.route.risk
 	e.add_child(UI.label(tip, 15, UI.CINNABAR if ex.caught else UI.INK_SOFT))
 	corner_panel(e, Control.PRESET_CENTER_TOP, 14, 0.9)
 

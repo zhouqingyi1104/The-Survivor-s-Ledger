@@ -59,7 +59,7 @@ static func target_locked(run: Dictionary, idx: int) -> bool:
 	var ex: Dictionary = run.get("explore", {})
 	if ex.is_empty() or idx < 0 or idx >= ex.get("spots", []).size(): return false
 	var spot: Dictionary = ex.spots[idx]
-	if spot.has("mainline") or spot.has("neighbor"): return false
+	if spot.has("mainline") or spot.has("neighbor") or spot.has("side_case"): return false
 	var pid := str(ex.get("point", ""))
 	if not PROFILES.has(pid): return false
 	return str(spot.get("name", "")) == str(SIGNATURES.get(pid, "")) and not bool(state(run).get("unlocked", false))

@@ -26,6 +26,15 @@ var caption := ""
 var tag := Vector3.ZERO
 
 
+static func spawn_actor(parent: Node3D, person: String) -> Figure:
+	var look: Array = PEOPLE[person]
+	var actor := Figure.new()
+	parent.add_child(actor)
+	actor.setup(look[1], look[2])
+	actor.scale = Vector3.ONE * float(look[3])
+	return actor
+
+
 func setup(event: Dictionary) -> void:
 	event_id = str(event.id)
 	# 末日三人同来，由排在称呼首位的洪菱传话。
@@ -35,10 +44,7 @@ func setup(event: Dictionary) -> void:
 	position = PLACE
 	var height := float(look[3])
 	tag = PLACE + Vector3.UP * (2.05 * height)
-	var actor := Figure.new()
-	add_child(actor)
-	actor.setup(look[1], look[2])
-	actor.scale = Vector3.ONE * height
+	var actor := spawn_actor(self, person)
 	actor.face(STAND - PLACE)
 	match str(look[4]):
 		"bucket":

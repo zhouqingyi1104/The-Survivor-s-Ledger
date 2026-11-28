@@ -8,6 +8,7 @@ const Rng = preload("res://scripts/core/rng.gd")
 const State = preload("res://scripts/core/state.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const SideCases = preload("res://scripts/core/side_cases.gd")
 const Expedition = preload("res://scripts/core/expedition.gd")
 
 const EXPOSURE_MAX := 100
@@ -53,14 +54,24 @@ static func point_block(run: Dictionary, pid: String) -> String:
 	if p.has("unlock_flag") and not State.flag(run, p.unlock_flag): return "还没找到进山的路，先把义庄那边查清。"
 	if run.pday < int(p.get("unlock_day", 0)):
 		return "第 %d 日后才打听到这里" % p.unlock_day
-	if p.has("fall_day") and run.pday >= int(p.fall_day):
+	var side_trip := not SideCases.at_site(run, pid).is_empty()
+	if p.has("fall_day") and run.pday >= int(p.fall_day) and not side_trip:
 		return "已沦陷，尸群占了这里"
 	var until := int(run.points.get(pid, {}).get("looted_until", 0))
-	if until > run.pday:
+	if until > run.pday and not side_trip:
 		var objective := Mainline.objective(run, pid)
 		if objective.is_empty(): return "被搜空了，还要 %d 日才缓得过来" % (until - run.pday)
 		if str(objective.get("block", "")) != "": return str(objective.block)
 	return ""
+
+
+static func investigation_only(run: Dictionary, pid: String) -> bool:
+	var place: Dictionary = Data.table("map_points").get(pid, {})
+	if place.is_empty(): return false
+	var side_trip := not SideCases.at_site(run, pid).is_empty()
+	if place.has("fall_day") and int(run.pday) >= int(place.fall_day):
+		return side_trip
+	return int(run.points.get(pid, {}).get("looted_until", 0)) > int(run.pday) and (side_trip or not Mainline.objective(run, pid).is_empty())
 
 
 static func fall_warning(run: Dictionary, pid: String) -> String:
@@ -81,7 +92,7 @@ static func begin(run: Dictionary, pid: String) -> void:
 	var p: Dictionary = Data.table("map_points")[pid]
 	var n := mini(p.spots.size(), 3 + (1 if State.prof_level(run, "search") >= 2 else 0))
 	var spots := []
-	var only_investigate := int(run.points.get(pid, {}).get("looted_until", 0)) > int(run.pday) and not Mainline.objective(run, pid).is_empty()
+	var only_investigate := investigation_only(run, pid)
 	if not only_investigate:
 		var selected: Array = Rng.shuffled(run, p.spots).slice(0, n)
 		var signature := str(SITE_SPOTS.get(pid, ""))
@@ -89,8 +100,10 @@ static func begin(run: Dictionary, pid: String) -> void:
 			selected[selected.size() - 1] = signature
 		for s in selected:
 			spots.append({"name": s, "done": false})
-	Neighbor.add_objective(run, pid, spots)
-	Mainline.add_objective(run, pid, spots)
+	if not (p.has("fall_day") and int(run.pday) >= int(p.fall_day)):
+		Neighbor.add_objective(run, pid, spots)
+		Mainline.add_objective(run, pid, spots)
+	SideCases.add_objective(run, pid, spots)
 	run.explore = {"point": pid, "spots": spots, "exposure": 0, "bag": {}, "caught": false, "notes": [], "only_investigate": only_investigate}
 	State.add_attr(run, "energy", -6)
 	if not pid in run.points:
@@ -147,7 +160,7 @@ static func site_options(run: Dictionary, idx: int) -> Array:
 	var ex: Dictionary = run.get("explore", {})
 	if ex.is_empty() or idx < 0 or idx >= ex.get("spots", []).size(): return []
 	var spot: Dictionary = ex.spots[idx]
-	if spot.get("done", false) or spot.has("mainline") or spot.has("neighbor") or ex.get("caught", false) or ex.get("curfew_due", false): return []
+	if spot.get("done", false) or spot.has("mainline") or spot.has("neighbor") or spot.has("side_case") or ex.get("caught", false) or ex.get("curfew_due", false): return []
 	var pid := str(ex.get("point", ""))
 	var range := exposure_range(run, pid)
 	var normal := {"id": "normal", "title": "翻找", "description": "20 分钟，精力 -4，阳气外泄增加 %d–%d；物资随机留在现场。" % [range.x, range.y], "block": ""}
@@ -174,6 +187,13 @@ static func search(run: Dictionary, idx: int, option_id := "", reserved_gain := 
 		return {}
 	if Expedition.target_locked(run, idx):
 		return {"blocked": "道路被机关封住；先查找两处线索，再解开机关。"}
+	if spot.has("side_case"):
+		if not run.busy.is_empty() or ex.get("curfew_due", false): return {"blocked": "先处理眼前的事。"}
+		var result := SideCases.search(run, idx, option_id)
+		if result.get("started", false) and int(ex.exposure) >= EXPOSURE_MAX:
+			result["caught"] = true
+			_caught(run, Data.table("map_points")[ex.point])
+		return result
 	if spot.has("mainline"):
 		if option_id not in ["", "normal"]: return {"blocked": "要查的地方不能用这里的特别做法。"}
 		var result := Mainline.search_objective(run, spot)
@@ -249,7 +269,7 @@ static func take(run: Dictionary, idx: int, item_id: String, amount: int) -> int
 	if ex.is_empty() or ex.get("caught", false) or ex.get("curfew_due", false) or run.get("pending_event", "") != "" or idx < 0 or idx >= ex.spots.size() or amount <= 0:
 		return 0
 	var spot: Dictionary = ex.spots[idx]
-	if not spot.get("done", false) or spot.has("mainline") or spot.has("neighbor"):
+	if not spot.get("done", false) or spot.has("mainline") or spot.has("neighbor") or spot.has("side_case"):
 		return 0
 	var loot: Dictionary = spot.get("loot", {})
 	var qty := mini(amount, Inv.count(loot, item_id))
@@ -272,7 +292,7 @@ static func put_back(run: Dictionary, idx: int, item_id: String, amount: int) ->
 	if ex.is_empty() or ex.get("caught", false) or ex.get("curfew_due", false) or run.get("pending_event", "") != "" or idx < 0 or idx >= ex.spots.size() or amount <= 0:
 		return 0
 	var spot: Dictionary = ex.spots[idx]
-	if not spot.get("done", false) or spot.has("mainline") or spot.has("neighbor"):
+	if not spot.get("done", false) or spot.has("mainline") or spot.has("neighbor") or spot.has("side_case"):
 		return 0
 	var qty := mini(amount, Inv.count(ex.bag, item_id))
 	if qty <= 0:
@@ -291,7 +311,9 @@ static func _caught(run: Dictionary, p: Dictionary) -> void:
 	for spot in ex.spots:
 		spot.erase("loot")
 	if ex.get("journey", null) is Dictionary: ex.journey["caches"] = {}
-	if str(run.get("busy", {}).get("kind", "")) == "mainline": run.busy = {}
+	if str(run.get("busy", {}).get("kind", "")) in ["mainline", "case_search"]: run.busy = {}
+	ex.erase("case_cargo")
+	ex.erase("case_detail")
 	Mainline.lost_cargo(run)
 	ex.erase("mainline_cargo")
 	var dmg := 8 + int(p.danger) * 4
@@ -326,10 +348,10 @@ static func finish(run: Dictionary) -> Dictionary:
 	var p: Dictionary = Data.table("map_points")[pid]
 	var searched := 0
 	for s in ex.spots:
-		if s.has("mainline") or s.has("neighbor"): continue
+		if s.has("mainline") or s.has("neighbor") or s.has("side_case"): continue
 		if s.done:
 			searched += 1
-	var ordinary: int = ex.spots.filter(func(s): return not s.has("mainline") and not s.has("neighbor")).size()
+	var ordinary: int = ex.spots.filter(func(s): return not s.has("mainline") and not s.has("neighbor") and not s.has("side_case")).size()
 	var all_done: bool = searched == ordinary
 	var journey_done: bool = ex.get("journey", {}).get("completed", {}).size() > 0
 	if searched > 0 or journey_done:
