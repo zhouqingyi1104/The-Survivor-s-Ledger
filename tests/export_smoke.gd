@@ -33,10 +33,24 @@ func _ready() -> void:
 	check(Game.memory_path_for(true) == "user://Memory.md", "只读时档案路径不是 user://")
 	check(Game.memory_path_for(false) == "res://Memory.md", "可写时档案路径不是项目根")
 
-	# 2. 实例上的解析结果要和判定对得上
+	# 未挂进场景树的实例保留正式默认值；不触发 _ready，也不会读写玩家存档。
+	var defaults := preload("res://scripts/autoload/game.gd").new()
+	check(defaults.resolved_memory_path() == Game.memory_path_for(readonly), "默认实例的档案路径与只读判定不一致")
+	defaults.free()
+	# 源码的测试单例已在启动时隔离。导出件继续检验真正的单例默认路径。
 	var resolved: String = Game.resolved_memory_path()
 	print("[export_smoke] 档案实际落在：%s" % resolved)
-	check(resolved == Game.memory_path_for(readonly), "档案路径与只读判定不一致：%s" % resolved)
+	var test_scene_arg := Array(OS.get_cmdline_args()).any(func(arg): return "res://tests/" in arg)
+	if test_scene_arg and not OS.has_feature("template"):
+		var scratch := OS.get_temp_dir().path_join("ledger_test_%d" % OS.get_process_id())
+		check(resolved == scratch.path_join("Memory.md"), "测试档案没有落在本进程的临时目录：%s" % resolved)
+		check(Game.save_path == scratch.path_join("save.json") and Game.meta_path == scratch.path_join("meta.json"), "测试存档与底稿没有一起隔离")
+		var player_paths := [Game.SAVE_PATH, Game.META_PATH, "user://Memory.md", "res://Memory.md"].map(
+				func(path): return ProjectSettings.globalize_path(path).simplify_path().to_lower())
+		for path: String in [Game.save_path, Game.meta_path, resolved]:
+			check(not path.simplify_path().to_lower() in player_paths, "测试路径与玩家文件重合：%s" % path)
+	else:
+		check(resolved == Game.memory_path_for(readonly), "档案路径与只读判定不一致：%s" % resolved)
 
 	# 2b. 打包版不连世情服务。是不是导出的包看 project.binary（导出时 project.godot 变成它），
 	# 不看 readonly：便携包的 res:// 是包所在的普通文件夹，写探针写得进去
