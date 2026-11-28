@@ -277,6 +277,22 @@ func _ready() -> void:
 	screen.player.global_position = Vector3(8.5, 0, 4.5)
 	screen.rig.snap()
 	await frames(10)
+	# The near wall covers part of the floor at the default angle. Check the exposed
+	# strip, then tilt the camera with the same right-button drag a player uses.
+	check(not ground_at(Vector3(14.25, 0, 3.75)).is_empty(), "默认视角无法点到侧院露出的地面")
+	var start := get_viewport().get_visible_rect().get_center()
+	var drag := InputEventMouseMotion.new()
+	drag.relative = Vector2(0, 80)
+	drag.position = start + drag.relative
+	drag.button_mask = MOUSE_BUTTON_MASK_RIGHT
+	for down in [true, false]:
+		var right := InputEventMouseButton.new()
+		right.button_index = MOUSE_BUTTON_RIGHT
+		right.position = start if down else drag.position
+		right.pressed = down
+		get_viewport().push_input(right)
+		if down: get_viewport().push_input(drag)
+	await frames(5)
 	var target := Vector3(14.25, 0, 4.5)
 	var pick := ground_at(target)
 	if check(not pick.is_empty(), "侧院地面无法鼠标拾取"):
