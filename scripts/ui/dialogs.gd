@@ -694,6 +694,8 @@ func _explore_pick(body: VBoxContainer) -> void:
 			head.add_child(UI.tag("未到访", UI.DAI))
 		info.add_child(head)
 		info.add_child(UI.para(p.desc, 15))
+		var trail_note := SiteJourney.Trails.map_note(run, pid)
+		if trail_note != "": info.add_child(UI.para(trail_note, 16, UI.GOLD))
 		var investigation_only := int(run.points.get(pid, {}).get("looted_until", 0)) > int(run.pday) and not Mainline.objective(run, pid).is_empty()
 		if not investigation_only:
 			var journey: Dictionary = SiteJourney.profile(str(pid))

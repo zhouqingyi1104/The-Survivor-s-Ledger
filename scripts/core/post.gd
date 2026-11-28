@@ -1756,6 +1756,23 @@ static func site_journey_put_back(run: Dictionary, stage_id: String, item: Strin
 	return SiteJourney.transfer(run, stage_id, item, amount, false)
 
 
+static func supply_trail_action(run: Dictionary, stage: String, action: String) -> Dictionary:
+	var err := _expedition_available(run)
+	if err != "": return {"blocked": err}
+	var source := SiteJourney.Trails.at_stage(run, stage)
+	if source == "": return {"blocked": "这里没有这条旧运单的线索。"}
+	err = SiteJourney.Trails.block(run, source, action)
+	if err != "": return {"blocked": err}
+	err = _expedition_spend(run, SiteJourney.Trails.minutes(source, action))
+	if err != "": return {"blocked": err}
+	return {"text": SiteJourney.Trails.settle(run, source, action)}
+
+
+static func supply_trail_take(run: Dictionary, stage: String, item: String) -> int:
+	if _expedition_available(run) != "": return 0
+	return SiteJourney.Trails.take_one(run, stage, item)
+
+
 static func expedition_answer(run: Dictionary, choice_id: String) -> Dictionary:
 	var err := _expedition_available(run)
 	if err != "": return {"blocked": err, "text": err, "unlocked": false}

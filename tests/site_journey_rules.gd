@@ -29,6 +29,68 @@ func fixture(pid: String, skilled := false) -> Dictionary:
 	check(Post.act_explore(run, pid) == "", "departure " + pid)
 	return run
 
+
+func supply_routes() -> void:
+	for source: String in Journey.Trails.TRAILS:
+		var trail: Dictionary = Journey.Trails.TRAILS[source]
+		var stage := str(trail.source_stage)
+		var run := fixture(source)
+		check(Post.supply_trail_action(run, stage, "mark").has("blocked"), source + " first search scene")
+		Post.site_journey_action(run, stage, "careful")
+		check(Journey.Trails.record(run, source).status == "found" and not Journey.Trails.map_note(run, source).is_empty(), source + " clue discovered")
+		var before := int(run.t)
+		check(Post.supply_trail_action(run, stage, "mark").has("blocked") and int(run.t) == before, source + " missing material costs no time")
+		var item := str(trail.cost.keys()[0])
+		check(Post.site_journey_take(run, stage, item, 1) == 1, source + " entire stake available at scene")
+		var keep := run.duplicate(true)
+		check(not Post.supply_trail_action(keep, stage, "keep").has("blocked") and Inv.has_all(keep.explore.bag, trail.small), source + " immediate supplies enter bag")
+		check(int(keep.t) == before + 5 and Post.supply_trail_action(keep, stage, "mark").has("blocked") and Post.supply_trail_action(keep, stage, "keep").has("blocked"), source + " immediate branch irreversible")
+		var late := run.duplicate(true)
+		late.t = 6 * 1440 + Post.CURFEW_AT - 1
+		check(Post.supply_trail_action(late, stage, "mark").has("blocked") and Journey.Trails.record(late, source).status == "found" and Inv.has_all(late.explore.bag, trail.cost), source + " interrupted mark preserves stake")
+		var morning := run.duplicate(true)
+		morning.t = 6 * 1440 + Post.EVENT_AT - 2
+		check(Post.supply_trail_action(morning, stage, "mark").has("blocked") and morning.pending_event != "" and Inv.has_all(morning.explore.bag, trail.cost) and Journey.Trails.record(morning, source).status == "found", source + " event before finish cancels work without taking payment")
+		run.erase("supply_trails")
+		check(not Post.supply_trail_action(run, stage, "mark").has("blocked") and int(run.t) == before + int(trail.mark_time) and Inv.count(run.explore.bag, item) == 0, source + " old mid-trip save can mark, spends time and actual item")
+		check(Post.supply_trail_action(run, stage, "keep").has("blocked") and Post.supply_trail_action(run, stage, "open").has("blocked"), source + " neither small reward nor early opening")
+		Post.finish_explore(run)
+		var path := "user://supply-trail-%s-%d.json" % [source, OS.get_process_id()]
+		check(SaveFile.write(path, {"run": run, "snapshots": {}}).ok, source + " save between places")
+		run = Migrate.save(SaveFile.read(path).data).run
+		SaveFile.forget(path)
+		check(Journey.Trails.map_note(run, trail.dest).contains(trail.landmark) and Post.act_explore(run, trail.dest) == "", source + " revisit on saved directions")
+		if source == "pharmacy_ruin":
+			var fallen := run.duplicate(true)
+			fallen.pday = 16
+			check(Journey.Trails.map_note(fallen, trail.dest).contains("已沦陷") and Explore.point_block(fallen, trail.dest) != "", "expired temple directions explain loss")
+		before = int(run.t)
+		check(Post.supply_trail_action(run, "s0", "open").has("blocked") and int(run.t) == before, source + " wrong landmark cannot open")
+		run.explore.only_investigate = true
+		check(Post.supply_trail_action(run, trail.dest_stage, "open").has("blocked"), source + " no ordinary supplies on story-only trip")
+		run.explore.only_investigate = false
+		var interrupted := run.duplicate(true)
+		interrupted.t = 6 * 1440 + Post.CURFEW_AT - 1
+		check(Post.supply_trail_action(interrupted, trail.dest_stage, "open").has("blocked") and Journey.Trails.record(interrupted, source).status == "marked", source + " interrupted opening leaves seal")
+		check(not Post.supply_trail_action(run, trail.dest_stage, "open").has("blocked") and int(run.t) == before + int(trail.open_time), source + " opens only at second real place")
+		check(Post.supply_trail_action(run, trail.dest_stage, "open").has("blocked") and run.explore.bag.is_empty(), source + " opening grants no automatic carry")
+		var reward := str(trail.goods.keys()[0])
+		run.explore.bag = {"rice": 100}
+		check(Post.supply_trail_take(run, trail.dest_stage, reward) == 0 and Journey.Trails.record(run, source).remaining == trail.goods, source + " full bag keeps goods in box")
+		run.explore.bag = {}
+		check(Post.supply_trail_take(run, trail.dest_stage, reward) == 1 and Inv.count(run.explore.bag, reward) == 1 and Journey.Trails.map_note(run, trail.dest).contains("还有"), source + " partial physical transfer")
+		run.explore.caught = true
+		check(Post.supply_trail_take(run, trail.dest_stage, str(trail.goods.keys()[1])) == 0, source + " caught cannot claim")
+		run.explore.caught = false
+		var home := Inv.count(run.home, reward)
+		Post.finish_explore(run)
+		check(Inv.count(run.home, reward) == home + 1, source + " selected cargo delivered by return trip")
+		check(Post.act_explore(run, trail.dest) == "", source + " remaining cargo can be revisited")
+		for goods: String in trail.goods:
+			for i in int(trail.goods[goods]) - (1 if goods == reward else 0):
+				check(Post.supply_trail_take(run, trail.dest_stage, goods) == 1, source + " withdraw remainder")
+		check(Journey.Trails.record(run, source).status == "empty" and Post.supply_trail_take(run, trail.dest_stage, reward) == 0 and Post.supply_trail_action(run, trail.dest_stage, "open").has("blocked"), source + " exhausted forever")
+
 func _ready() -> void:
 	var answers := {"rice_ruin":"west", "city_god":"water", "school":"know", "pharmacy_ruin":"ginseng", "lumber":"red", "mortuary":"west", "granary":"jia", "taoist_temple":"east"}
 	for pid in answers:
@@ -154,5 +216,6 @@ func _ready() -> void:
 			check(not result.has("blocked") and Journey.state(run).completed.has("s0") and Post.site_journey_action(run, "s1", "careful").has("blocked"), "event at completion settles but blocks next action")
 			break
 	check(saw_boundary, "completion event fixture")
+	supply_routes()
 	print("Site journey: %d checks, %d failures" % [checks, failures])
 	get_tree().quit(1 if failures else 0)

@@ -147,6 +147,8 @@ func _update_hint() -> void:
 		var stage := _journey_stage(_near_journey)
 		var done: bool = SiteJourney.state(Game.run).get("completed", {}).has(_near_journey)
 		_hint_label.text = "[%s] %s · %s" % [ek, "回看现场" if done else "查看现场行动", str(stage.get("title", "探索"))]
+		var source := SiteJourney.Trails.at_stage(Game.run, _near_journey)
+		if source != "": _hint_label.text += " · " + str(SiteJourney.Trails.TRAILS[source].name)
 	elif _near == -2:
 		_hint_label.text = "[%s] 回家（背着 %.1f 斤）" % [ek, Inv.weight(ex.bag)]
 	elif _near >= 0 and _near < ex.spots.size():
@@ -281,6 +283,7 @@ func _journey_panel(body: VBoxContainer, id: String) -> void:
 	var completed: Dictionary = s.get("completed", {})
 	var contents := UI.vbox(6)
 	contents.add_child(UI.para(str(stage.text), 17))
+	_supply_trail_controls(contents, id)
 	if not completed.has(id):
 		contents.add_child(UI.para("距 21:00 还有 %d 分钟；返程另需 %d 分钟。时间不足或途中遇事可能中断行动。" % [maxi(0, Post.CURFEW_AT - Post.day_minute(Game.run)), int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT))
 		contents.add_child(UI.para("本次到访此处只能选择一种处理方式，完成后不可改选；取消不消耗时间。", 15, UI.GOLD))
@@ -300,7 +303,7 @@ func _journey_panel(body: VBoxContainer, id: String) -> void:
 			var cache: Dictionary = caches[id]
 			var bag: Dictionary = ex.get("bag", {})
 			contents.add_child(UI.label("背囊 %.1f / %.1f 斤" % [Inv.weight(bag), Explore.carry(Game.run)], 17, UI.GOLD))
-			contents.add_child(UI.para("现场物资本次回家后不能带回；可在此取物或放回背囊物资。", 15))
+			contents.add_child(UI.para("本次翻找留下的物资只保留到离场。可在此取物或放回背囊物资。", 15))
 			contents.add_child(UI.heading("此处物资", 18, UI.GOLD))
 			if cache.is_empty(): contents.add_child(UI.label("这里已经空了。", 15))
 			for raw_id in cache.keys():
@@ -331,10 +334,65 @@ func _journey_panel(body: VBoxContainer, id: String) -> void:
 	body.add_child(UI.button("先离开", func(): UI.close_modal("site_journey")))
 
 
+func _supply_trail_controls(contents: VBoxContainer, stage: String) -> void:
+	var run: Dictionary = Game.run
+	var source := SiteJourney.Trails.at_stage(run, stage)
+	if source == "": return
+	var trail: Dictionary = SiteJourney.Trails.TRAILS[source]
+	var rec := SiteJourney.Trails.record(run, source)
+	var status := str(rec.get("status", "found"))
+	contents.add_child(UI.heading(str(trail.name), 19, UI.GOLD))
+	if run.explore.point == source:
+		if status == "found":
+			contents.add_child(UI.para(str(trail.clue), 16))
+			contents.add_child(UI.para("取舍只此一回。今日可得%s；留记耗去%s，下趟去%s可得%s。" % [Data.describe_items(trail.small), Data.describe_items(trail.cost), SiteJourney.Trails.destination(source), Data.describe_items(trail.goods)], 15, UI.GOLD))
+			var dest: Dictionary = Data.table("map_points")[trail.dest]
+			if dest.has("fall_day"):
+				contents.add_child(UI.para("第 %d 日此地沦陷，记得在此前取回。" % int(dest.fall_day), 15))
+			elif dest.has("unlock_day"):
+				contents.add_child(UI.para("第 %d 日起可前往取回。" % int(dest.unlock_day), 15))
+			for action in ["keep", "mark"]: _trail_button(contents, stage, source, action)
+		elif status == "kept":
+			contents.add_child(UI.para("你已经拿走了眼前的物资。", 15))
+		elif status == "empty":
+			contents.add_child(UI.para("这批物资已经取尽。", 15))
+		else:
+			contents.add_child(UI.para("去向已记入日志：" + SiteJourney.Trails.destination(source), 15))
+	elif status == "marked":
+		contents.add_child(UI.para("旧记号对上了。箱中存着%s，可按负重取走。余货留在原处。" % Data.describe_items(trail.goods), 16))
+		_trail_button(contents, stage, source, "open")
+	elif status == "open":
+		contents.add_child(UI.para("背囊 %.1f / %.1f 斤。未拿走的物资留在原处。" % [Inv.weight(run.explore.bag), Explore.carry(run)], 16))
+		for item: String in rec.remaining:
+			var full := SiteJourney.Trails.room_left(run, item) < 1
+			var title := "取 1 · %s（%.1f 斤，剩 %d）" % [Data.item(item).name, float(Data.item(item).weight), int(rec.remaining[item])]
+			var take := UI.button(title, _take_trail_item.bind(stage, item), full, "背囊放不下" if full else "")
+			take.set_meta("trail_take", item)
+			contents.add_child(take)
+	else:
+		contents.add_child(UI.para("箱已取空。", 15))
+
+
+func _trail_button(contents: VBoxContainer, stage: String, source: String, action: String) -> void:
+	var block := SiteJourney.Trails.block(Game.run, source, action)
+	var title := "%s · %d 分钟" % [SiteJourney.Trails.TRAILS[source][action], SiteJourney.Trails.minutes(source, action)]
+	var button := UI.button(title, _choose_journey.bind(stage, action), block != "", block)
+	button.set_meta("trail_action", action)
+	contents.add_child(button)
+	if block != "": contents.add_child(UI.para(block, 15, UI.INK_SOFT))
+
+
+func _take_trail_item(stage: String, item: String) -> void:
+	var amount: int = Game.act(func(): return Post.supply_trail_take(Game.run, stage, item))
+	Game.toast.emit("收进背囊：" + Data.describe_items({item: 1}) if amount == 1 else "眼下取不了这件物资。")
+
+
 func _choose_journey(id: String, choice: String) -> void:
 	UI.close_modal("site_journey")
 	if _feature_blocked(): return
-	var result: Dictionary = Game.act(func(): return Post.site_journey_action(Game.run, id, choice))
+	var result: Dictionary = Game.act(func():
+		if choice in ["keep", "mark", "open"]: return Post.supply_trail_action(Game.run, id, choice)
+		return Post.site_journey_action(Game.run, id, choice))
 	var message := str(result.get("blocked", result.get("text", "")))
 	if message != "": Game.toast.emit(message)
 	if not is_inside_tree() or Game.screen != "explore" or _feature_blocked(): return
@@ -545,6 +603,8 @@ func build_hud() -> void:
 		v.add_child(UI.label("含走动、机关与翻找；不含返程", 14, UI.INK_SOFT))
 		v.add_child(UI.label("耗时为参考，随选择与走动变化", 14, UI.INK_SOFT))
 		v.add_child(UI.label("现场行动 %d / %d 处" % [done.size(), journey_profile.get("stages", []).size()], 15, UI.INK_SOFT))
+		var trail_note := SiteJourney.Trails.map_note(run, str(ex.point))
+		if trail_note != "": v.add_child(UI.wrap_line(trail_note, 15, UI.GOLD, 300))
 	_budget_label = UI.label("距 21:00 还有 %d 分钟 · 返程 %d 分钟" % [maxi(0, Post.CURFEW_AT - Post.day_minute(run)), int(Post.ACTIONS.travel[1])], 15, UI.INK_SOFT)
 	v.add_child(_budget_label)
 	var profile: Dictionary = Expedition.profile(str(ex.point))

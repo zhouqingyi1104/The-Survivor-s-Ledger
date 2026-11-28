@@ -3,6 +3,7 @@ extends RefCounted
 const Data = preload("res://scripts/core/data.gd")
 const Inv = preload("res://scripts/core/inv.gd")
 const State = preload("res://scripts/core/state.gd")
+const Trails = preload("res://scripts/core/supply_trails.gd")
 
 # title, situation, careful action, item, careful effect
 const CONTENT := {
@@ -125,6 +126,7 @@ static func settle(run: Dictionary, stage_id: String, c: Dictionary) -> Dictiona
 			message += " 障碍已清除。" if str(c.id) == "careful" else " 障碍仍在，需绕行。"
 			break
 	ex.notes.append(message)
+	Trails.discover(run, stage_id)
 	return {"text": message}
 
 

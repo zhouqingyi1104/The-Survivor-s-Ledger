@@ -942,6 +942,15 @@
       "success_regex": "(?m)^Site\\ journey\\ UI:\\ [1-9][0-9]*\\ checks,\\ PASS\\r?$"
     },
     {
+      "id": "supply_trails_ui",
+      "entry": "tests/supply_trails_ui.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 240,
+      "success_regex": "(?m)^Supply trails UI: [1-9][0-9]* checks, PASS\\r?$"
+    },
+    {
       "id": "social_trade_ui",
       "entry": "tests/social_trade_ui.tscn",
       "kind": "scene",
