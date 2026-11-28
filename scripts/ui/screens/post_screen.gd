@@ -1366,6 +1366,11 @@ func _right_top(run: Dictionary) -> void:
 	var day := Hud.title("第 %d 日" % run.pday, 38, Color.WHITE)
 	day.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	texts.add_child(day)
+	if run.get("hundred_days") is Dictionary:
+		var letter := preload("res://scripts/core/chronicle_story.gd").current_event(run)
+		var street := Hud.button("百日街坊" if letter.is_empty() else "百日街坊 · 有来信", Dialogs.chronicle)
+		street.set_meta("chronicle_entry", true)
+		texts.add_child(street)
 	var w := State.weather(run)
 	var sub := Hud.text("%s · %s · 残页 %d" % [w.name, Brief.countdown(run), run.rebirths_left], 13, Hud.SUB)
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

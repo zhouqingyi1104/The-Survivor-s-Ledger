@@ -28,6 +28,7 @@ const Trade = preload("res://scripts/core/social_trade.gd")
 const Crisis = preload("res://scripts/core/crisis.gd")
 const Npcs = preload("res://scripts/core/npc_autonomy.gd")
 const Mainline = preload("res://scripts/core/mainline.gd")
+const ChronicleStory = preload("res://scripts/core/chronicle_story.gd")
 const Identity = preload("res://scripts/core/identity_paths.gd")
 const Cycle = preload("res://scripts/core/cycle_inquiry.gd")
 const DeathReport = preload("res://scripts/core/death_report.gd")
@@ -187,7 +188,10 @@ static func advance(run: Dictionary, minutes: int) -> String:
 		if (State.attr(run, "hp") <= 0 or run.phase == "dead") and State.check_death(run, DeathReport.verdict(run)):
 			_interrupt_targeted_device(run)
 			return "dead"
+		var previous_day := int(run.pday)
 		_check_busy(run)
+		if int(run.pday) != previous_day:
+			return "arrival"
 		if run.phase != "post":
 			return "ending" if run.phase == "ending" else "dead"
 		if run.has("drying_batch"):
@@ -393,10 +397,11 @@ static func _dawn(run: Dictionary) -> void:
 static func ack_dawn(run: Dictionary) -> void:
 	if not run.dawn_due:
 		return
+	if run.get("hundred_days") is Dictionary and not ChronicleStory.current_event(run).is_empty():
+		return
 	run.dawn_due = false
 	run.report = {}
-	if int(run.pday) >= State.STORY_DAYS and not run.endless:
-		Mainline.finish_dawn(run)
+	if int(run.pday) >= State.STORY_DAYS and not run.endless and Mainline.finish_dawn(run):
 		return
 	begin_day(run)
 
@@ -773,6 +778,8 @@ static func begin_day(run: Dictionary) -> void:
 	run.door_open = false
 	run.night_lines = []
 	run.event_result = ""
+	if run.get("hundred_days") is Dictionary and int(run.pday) > State.STORY_DAYS and not run.endless:
+		_street_supplies(run)
 	Ledger.draw_omens(run)
 	Ledger.pick_wish(run)
 	var w := State.weather(run)
@@ -781,6 +788,21 @@ static func begin_day(run: Dictionary) -> void:
 		State.note(run, line)
 	trade_refresh(run)
 	Agenda.build(run, agenda_offers(run))
+
+
+## 潮退后由街坊共用井灶。底粮留在家里，玩家仍需进食、补齐粮水与防务。
+static func _street_supplies(run: Dictionary) -> void:
+	var share := {"flatbread": 1, "water": 1, "firewood": 1}
+	if (int(run.pday) - 21) % 3 == 0:
+		share["rice"] = 2
+		share["wood"] = 1
+	if (int(run.pday) - 21) % 5 == 0:
+		match str(run.hundred_days.get("first_route", "")):
+			"escape": share["flatbread"] = 4
+			"ritual": share["talisman"] = 1
+			"hold": share["wood"] = int(share.get("wood", 0)) + 2
+	Inv.add_all(run.home, share)
+	State.note(run, "街坊从公灶分来%s，已送进自家储藏间。" % Data.describe_items(share))
 
 
 # ---------- 今日差事 ----------
@@ -835,6 +857,20 @@ static func ensure_agenda(run: Dictionary) -> void:
 		return
 	if int(Agenda.state(run).day) != int(run.pday):
 		Agenda.build(run, agenda_offers(run))
+
+
+static func street_shift_block(run: Dictionary, id: String) -> String:
+	var blocked_reason := can_act(run, 5)
+	if blocked_reason != "": return blocked_reason
+	if in_night(run) or not run.get("fight", {}).is_empty(): return "先守住眼前这一轮。"
+	return ChronicleStory.shift_block(run, id)
+
+
+static func street_shift(run: Dictionary, id: String) -> String:
+	var blocked_reason := street_shift_block(run, id)
+	if blocked_reason != "": return blocked_reason
+	ChronicleStory.begin_shift(run, id)
+	return ""
 
 
 ## 做单子上的一件差事（既有行动走各自的函数，这里只管 chore）。
@@ -998,6 +1034,9 @@ static func _check_busy(run: Dictionary) -> void:
 	_complete(run, b.kind, b.data)
 	run.today.actions.append(b.kind)
 	Ledger.check_wish(run, "action", b.kind)
+	if b.kind == "mainline" and run.get("hundred_days") is Dictionary and run.hundred_days.get("first_route") == "escape" and int(run.pday) < 21:
+		run.pday = State.STORY_DAYS
+		begin_day(run)
 
 
 ## 做完了，见成果。
@@ -1023,6 +1062,8 @@ static func _complete(run: Dictionary, kind: String, data: Dictionary) -> void:
 				State.note(run, "侧院已清理，可以备料。" if expected == "survey" else "东侧小院施工完成。")
 		"chore":
 			Agenda.complete(run, data)
+		"street_shift":
+			ChronicleStory.finish_shift(run, str(data.get("id", "")))
 		"cycle_inquiry":
 			var result := Cycle.complete(run, data)
 			if result != "": Director.note_choice(run, "轮回调查 · 工作完成", result)

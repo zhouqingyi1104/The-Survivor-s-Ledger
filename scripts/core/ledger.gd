@@ -134,6 +134,8 @@ const ENDING_BONUS := 10
 static func ending_bonus(run: Dictionary) -> int:
 	if run.is_empty() or run.get("phase", "") != "ending" or int(run.get("pday", 0)) < State.STORY_DAYS: return 0
 	var ending := Mainline.ending(run)
+	if ending.get("kind") == "hundred_days":
+		return ENDING_BONUS if run.get("hundred_days") is Dictionary and int(run.pday) >= State.CHRONICLE_DAYS else 0
 	return ENDING_BONUS if ending.get("kind", "") in ["hold", "ritual"] else 0
 
 

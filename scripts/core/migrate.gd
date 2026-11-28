@@ -27,7 +27,8 @@ const Past = preload("res://scripts/core/past_lives.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 
-const VERSION := 21
+## v22：百日卷有独立剧情进度，旧卷及快照继续依二十日规则。
+const VERSION := 22
 ## v2 新加的字段
 const ADDED := {
 	"t": 0, "busy": {}, "sleeping": false, "heated": false, "night_lines": [],
@@ -194,5 +195,7 @@ static func upgrade(run: Dictionary) -> Dictionary:
 			run["hp_log"] = {}
 		if not run.get("last_hurt") is Dictionary:
 			run["last_hurt"] = {}
+	if v < 22:
+		run.erase("hundred_days")
 	run.version = VERSION
 	return run

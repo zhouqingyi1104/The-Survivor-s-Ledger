@@ -18,7 +18,7 @@ const LOG_TAIL := 40
 const QUESTIONS := [
 	"最烦的三件事（哪一步让你想关掉游戏）：",
 	"最看不懂的三处（不知道为什么要做、不知道做了会发生什么）：",
-	"二十天是长了还是短了？从第几天开始觉得重复：",
+	"这一卷的长度合适吗？从第几天开始觉得重复，或者还想跟着谁继续玩？",
 ]
 const FEEDBACK_KEYS := ["annoying", "unclear", "pacing"]
 const MAX_FEEDBACK_CHARS := 4000
@@ -68,6 +68,8 @@ static func _run_section(run: Dictionary) -> Array:
 	var phase := str(run.get("phase", ""))
 	var alive := phase == "post" or phase == "pre"
 	var mode := []
+	if run.get("hundred_days") is Dictionary:
+		mode.append("百日剧情")
 	if bool(run.get("endless", false)):
 		mode.append("守到死")
 	if Past.daily(run):

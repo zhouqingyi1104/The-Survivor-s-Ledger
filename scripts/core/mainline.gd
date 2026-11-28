@@ -5,6 +5,7 @@ const Inv = preload("res://scripts/core/inv.gd")
 const Data = preload("res://scripts/core/data.gd")
 const Past = preload("res://scripts/core/past_lives.gd")
 const Lane = preload("res://scripts/core/lane_lantern.gd")
+const ChronicleStory = preload("res://scripts/core/chronicle_story.gd")
 const CONTACT_END := 11 * 1440 + 720 # Day12 18:00.
 const FINAL_END := 18 * 1440 + 720 # Day19 18:00.
 const ESCAPE_OPEN := 17 * 1440 + 120 # Day18 08:00.
@@ -225,6 +226,11 @@ static func options(run: Dictionary) -> Array:
 	if str(state(run).get("escape_method", "normal")) != "normal":
 		var spec := _escape_spec(run)
 		hints.escape = "%d 分钟、精力 %d；%s起可以动身，第 19 日 18:00 前走完。走了就回不来这座宅院，也拿不到守满二十日的奖励。" % [int(spec[1]), int(spec[2]), "第 17 日 08:00" if state(run).escape_method == "convoy" else "第 18 日 08:00"]
+	if run.has("hundred_days"):
+		var travel := _escape_spec(run)
+		hints.prepare_escape = "米 ×3、清水 ×3、木料 ×2、铁钉 ×1，90 分钟、精力 8。备船护送街坊出城，错过第二十夜的守城，潮退再乘船回来。"
+		hints.prepare_convoy = "米 ×4、清水 ×4、木料 ×1、铁钉 ×1，120 分钟、精力 12。趟子手第 17 日即可护送街坊出城，潮退再回。"
+		hints.escape = "用时 %d 分钟、精力 %d。第 19 日 18:00 前动身走完；船队在乡渡避过尸潮，第 21 日回城接应。" % [int(travel[1]), int(travel[2])]
 	for action in _allowed(str(state(run).stage), run):
 		rows.append({"id": action, "text": labels[action], "hint": hints[action], "block": _action_block(run, action)})
 	return rows
@@ -367,6 +373,10 @@ static func complete(run: Dictionary, data: Dictionary) -> String:
 			if s.get("escape_method", "normal") == "convoy" and not _identity_cap(run, "early_convoy"): return _fact(run, "invalid_method", "用不上旧路经验，没法提早出城。")
 			if s.get("escape_method", "normal") == "light" and not _identity_cap(run, "light_escape"): return _fact(run, "invalid_method", "轻装更道没探好，没法这样撤离。")
 			s.stage = "closed"
+			if run.get("hundred_days") is Dictionary:
+				run.hundred_days["first_route"] = "escape"
+				s.interventions["escape_t"] = now
+				return _fact(run, action, "你沿后山道护送街坊出城，在乡渡避过第二十夜。水势一平，船队便送你和头一批口粮回城接应。")
 			s.ending = _ending_with_neighbors(s, "escape")
 			run.phase = "ending"
 			return _fact(run, action, "走了 %d 分钟，你沿着查到的出路离开了这座城。第 20 夜不用再守，守满二十日的奖励也就没有了，这座宅院也回不去了。" % int(work.end_t - work.start_t))
@@ -450,6 +460,26 @@ static func finish_dawn(run: Dictionary) -> bool:
 	if run.get("phase", "") != "post" or run.get("endless", false) or _day(run) < 21: return false
 	var s := state(run)
 	var ritual: bool = s.stage == "sealed" and s.route == "ritual" and int(s.interventions.ritual_t) >= 0 and int(s.interventions.ritual_t) < FINAL_END
+	if run.get("hundred_days") is Dictionary:
+		if int(run.pday) == State.STORY_DAYS:
+			s.route = "ritual" if ritual else "hold"
+			run.hundred_days["first_route"] = s.route
+			s.stage = "closed"
+			_fact(run, "first_chapter", "七灯熄了，街坊沿山路回城，邀你接手下一班哨。" if ritual else "你守住了宅门。天亮后，街坊抬来第一张长凳，要在院里搭伙过日子。")
+			return false
+		if int(run.pday) != State.CHRONICLE_DAYS or int(run.t) < State.CHRONICLE_DAYS * 1440 or not ChronicleStory.current_event(run).is_empty():
+			return false
+		var rows: Array = ChronicleStory.journal(run)
+		var seal := ""
+		if not rows.is_empty():
+			seal = str(rows.back().get("result", ""))
+		var origin := str(run.hundred_days.get("first_route", "hold"))
+		var memory := str({"escape": "当年同船离城的人又坐到你身边。", "ritual": "当年看见七灯熄灭的人在灯下给你留了个座。", "hold": "守过第二十夜的那扇院门，今天从早开到晚。"}.get(origin, "街坊陆续回到了老街。"))
+		s.ending = {"kind": "hundred_days", "title": "百日之后", "text": memory + "\n" + seal, "bonus": 10, "can_continue": false}
+		s.stage = "closed"
+		run.phase = "ending"
+		_fact(run, "hundred_days", str(s.ending.text))
+		return true
 	s.ending = _ending_with_neighbors(s, "ritual" if ritual else "hold")
 	if not ritual: s.route = "hold"
 	s.stage = "closed"
@@ -478,6 +508,8 @@ static func continued(run: Dictionary) -> String:
 
 static func summary(run: Dictionary) -> String:
 	var s := state(run)
+	if run.get("hundred_days") is Dictionary and run.hundred_days.has("first_route"):
+		return "首卷已结 · %s" % str({"hold": "守住了宅院", "ritual": "封住七灯", "escape": "护送船队离城"}.get(run.hundred_days.first_route, "街坊重聚"))
 	var summary_text := str(STAGES.get(str(s.stage), "尸劫来历")) + " · " + ("已取今世义庄证据" if s.evidence.mortuary else "义庄尚待取证") + " · " + ("已取今世青云证据" if s.evidence.temple else "青云尚待取证")
 	if run.get("phase", "") == "post":
 		match Lane.status(s, int(run.t)):
@@ -500,6 +532,9 @@ static func view(run: Dictionary) -> Dictionary:
 	var s := state(run)
 	var target := "mortuary" if s.stage == "mortuary" else ("taoist_temple" if s.stage in ["temple", "ritual_ready"] else "")
 	var goals := {"waiting": "第 3 日 08:00 起留意道士的消息。", "contact": "接待道士，或拒绝后自己寻路。", "fallback": "第 5 日起付米 1 自行打听义庄的路。", "mortuary": "去义庄查运尸簿，查完还要走 60 分钟回家。", "mortuary_choice": "断运能让往后的夜里没有铜甲；抄录省料；封存就定下坚守。", "temple": "亲自去青云观取回七灯图和后山道图，带回家才能定出路。", "routes": "第 12 日起，在坚守、撤离、破阵里定一条；备好就改不了。", "escape_ready": "第 18 日 08:00 至第 19 日 18:00 之间动身，撤离要 120 分钟。", "ritual_ready": "亲自上青云观，在阵眼做 90 分钟，第 19 日 18:00 前做完。", "sealed": "灯已熄，第 20 夜的残潮弱了些；活到第 21 日天亮。", "hold": "保留物资，守过第 20 夜，第 21 日天亮进入坚守结局。", "failed": "错过最后期限，转守宅院；日子照样能过下去。", "closed": "这一世的事已了结，可查看结局与调查、施工的记录。", "endless": "日子还在过下去，结局不会让这一轮停下。"}
+	if run.get("hundred_days") is Dictionary:
+		goals.hold = "守过第二十夜，天亮同街坊搭伙，续写百日。"
+		goals.closed = "首卷的去路已定。后来的街坊约定可在「百日街坊」查看。"
 	var costs := []
 	for row in options(run): costs.append(str(row.hint))
 	var escape_spec := _escape_spec(run)

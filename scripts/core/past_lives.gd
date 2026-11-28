@@ -406,6 +406,12 @@ static func _identity_recent(b: Dictionary) -> Array:
 			var sealed_at := int(story.interventions.ritual_t)
 			if story.evidence.mortuary and story.evidence.temple and sealed_at >= 0 and sealed_at < mini(18 * 1440 + 720, int(summary.day) * 1440): tags.append("sealed_lamps")
 			if story.evidence.mortuary and story.evidence.temple and story.stage == "closed" and story.route == "escape" and story.ending.get("kind", "") == "escape" and story.ending.get("title", "") == "离城余生" and summary.get("outcome", "") == "离城余生" and (int(summary.day) in [18, 19] or (int(summary.day) == 17 and story.get("escape_method", "") == "convoy")): tags.append("escaped_city")
+			if story.evidence.mortuary and story.evidence.temple and story.stage == "closed" and story.route == "escape" and int(summary.day) >= 21:
+				var escaped_at := int(story.interventions.get("escape_t", -1))
+				for receipt in story.history:
+					if receipt.action == "escape" and int(receipt.t) == escaped_at and int(receipt.day) == 1 + escaped_at / 1440:
+						tags.append("escaped_city")
+						break
 		var facts = life.get("facts", [])
 		if facts is Array and facts.size() <= KEEP_FACTS:
 			for fact in facts:
@@ -460,6 +466,10 @@ static func mainline_snapshot(value) -> Dictionary:
 	if not interventions is Dictionary or not _trade_integer(interventions.get("disrupt_t"), -1, 144000000) or not _trade_integer(interventions.get("ritual_t"), -1, 144000000): return {}
 	var result := {"schema": 1, "start_day": int(value.start_day), "stage": value.stage, "evidence": {"mortuary": evidence.mortuary, "temple": evidence.temple},
 		"route": value.route, "interventions": {"disrupt_t": int(interventions.disrupt_t), "ritual_t": int(interventions.ritual_t)}, "ending": {}, "work": {}, "history": []}
+	if interventions.has("escape_t"):
+		var open := (16 if value.get("escape_method") == "convoy" else 17) * 1440 + 120
+		if not _trade_integer(interventions.escape_t, open, 18 * 1440 + 720): return {}
+		result.interventions["escape_t"] = int(interventions.escape_t)
 	if value.has("escape_method"):
 		if not value.escape_method in ["normal", "light", "convoy"]: return {}
 		result["escape_method"] = value.escape_method
@@ -469,7 +479,7 @@ static func mainline_snapshot(value) -> Dictionary:
 	var ending = value.get("ending", {})
 	if not ending is Dictionary: return {}
 	if not ending.is_empty():
-		if not ending.get("kind", "") in ["hold", "escape", "ritual"] or not ending.get("title") is String or ending.title.is_empty() or ending.title.length() > 40 or not ending.get("text") is String or ending.text.is_empty() or ending.text.length() > 240: return {}
+		if not ending.get("kind", "") in ["hold", "escape", "ritual", "hundred_days"] or not ending.get("title") is String or ending.title.is_empty() or ending.title.length() > 40 or not ending.get("text") is String or ending.text.is_empty() or ending.text.length() > 240: return {}
 		if not _trade_integer(ending.get("bonus"), 0, 10) or not ending.get("can_continue") is bool or ending.bonus != (0 if ending.kind == "escape" else 10) or ending.can_continue != (ending.kind == "hold"): return {}
 		result.ending = {"kind": ending.kind, "title": ending.title, "text": ending.text, "bonus": int(ending.bonus), "can_continue": ending.can_continue}
 	var work = value.get("work", {})

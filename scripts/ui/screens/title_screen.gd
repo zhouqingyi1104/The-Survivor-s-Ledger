@@ -125,9 +125,10 @@ func build() -> void:
 		menu.add_child(_item(_continue_label(), Game.continue_game, true))
 	# 第一次玩的人只该点一下就进城：身份、难度、誓约、开局筹备都收进「自选开局」
 	menu.add_child(_item("新开一卷", _new_game.bind(true), true,
-		"寻常年景、%s、不立愿，直接进城备劫。" % _quick_role_name()))
+		"百日剧情 · 寻常年景，%s进城备荒三日，再与街坊度过一百日。" % _quick_role_name()))
+	menu.add_child(_tiny("百日剧情 · 三日备荒，五幕街坊事"))
 	menu.add_child(_item("自选开局", _new_game.bind(false), false,
-		"自己挑身份、难度、誓约、同院的人与开局筹备。"))
+		"选百日剧情或二十日短篇，自定身份、难度、誓约与同院的人。"))
 	menu.add_child(_item("心法 · 道心 %d" % int(meta.daoxin), func(): Game.go("talents")))
 	menu.add_child(_item("残卷 %d / %d" % [meta.clues.size(), Data.table("clues").size()], _show_clues))
 	menu.add_child(_item("玩法说明", func(): Dialogs.manual()))

@@ -16,6 +16,7 @@ const PrepWork = preload("res://scripts/ui/dialogs/prep_work.gd")
 const TradeMarks = preload("res://scripts/ui/travel_marks.gd")
 const RiceStory = preload("res://scripts/ui/dialogs/rice_story.gd")
 const ApothecaryStory = preload("res://scripts/ui/dialogs/apothecary_story.gd")
+const Chronicle = preload("res://scripts/ui/dialogs/chronicle.gd")
 const Home = preload("res://scripts/core/home.gd")
 const Floors = preload("res://scripts/core/home_floor.gd")
 const Neighbor = preload("res://scripts/core/neighbor.gd")
@@ -98,6 +99,10 @@ static func req_text(store: Dictionary, req: Dictionary) -> String:
 
 func journal() -> void:
 	Journal.open()
+
+
+func chronicle() -> void:
+	Chronicle.open()
 
 
 ## 劫余录里的两处延后回调还要一个节点实例，所以这两个壳留在 Dialogs 上，内容在 Journal 里。
@@ -758,7 +763,7 @@ func _night_plan(body: VBoxContainer) -> void:
 	var mods := Defense.mod_names(wave)
 	body.add_child(UI.para("更鼓敲过二更。街那头铜锣响了，门缝里透进一片火把的光——今夜要来 %d 只%s，分三轮撞门、窗、院墙。" % [
 		total, ("（%s）" % mods) if mods != "" else ""], 18, UI.INK))
-	body.add_child(UI.para("每漏进来一只，那一面就掉 %d 点耐久。选「稳守」或「亲战」，轮与轮之间的事替你料理；选「亲自调度」，就全由你定。" % Defense.leak_damage(int(run.pday)), 16))
+	body.add_child(UI.para("每漏进来一只，那一面就掉 %d 点耐久。选「稳守」或「亲战」，轮与轮之间的事替你料理；选「亲自调度」，就全由你定。" % Defense.leak_damage(int(run.pday), run), 16))
 	var forecast := Defense.preview_night(run, wave)
 	var bonuses := []
 	for sid in Defense.SURFACES:
@@ -1136,7 +1141,10 @@ func _dawn_report(body: VBoxContainer) -> void:
 	body.add_child(UI.label("今日积功德 %d，共 %d" % [rep.settle.total, rep.settle.merit], 18))
 	var row := UI.hbox()
 	row.add_child(UI.spacer())
-	row.add_child(UI.seal_button("翻过这一页", func(): _act(_ack_dawn)))
+	if Chronicle.Story.current_event(run).is_empty():
+		row.add_child(UI.seal_button("翻过这一页", func(): _act(_ack_dawn)))
+	else:
+		row.add_child(UI.seal_button("先回街坊的信", chronicle))
 	body.add_child(row)
 
 
@@ -1283,7 +1291,7 @@ func checklist() -> void:
 
 func _checklist(body: VBoxContainer) -> void:
 	var run := _run()
-	body.add_child(UI.para("按二十日的用度估算。家里的和车上的都算。", 15))
+	body.add_child(UI.para("先估头二十日的用度。家里的和车上的都算。", 15))
 	var g := UI.grid(3, 16, 4)
 	for row in Pre.checklist(run):
 		g.add_child(UI.label(row.name, 18))

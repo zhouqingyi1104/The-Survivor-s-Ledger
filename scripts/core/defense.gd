@@ -22,6 +22,13 @@ const SURFACES := ["gate", "window", "wall"]
 ## 每轮之间隔多久（分钟）；尸潮在 22:00（当天第 960 分钟）开始
 const WAVE_AT := 960
 const ROUND_GAP := 40
+## 退潮之后的几次夜防。数量是未乘难度与夜象的基础值。
+const CHRONICLE_WAVES := {
+	26: [19, ["dark"]], 33: [25, ["pincer"]], 40: [32, ["armored"]],
+	48: [22, ["horde"]], 56: [29, ["dark"]], 64: [36, ["pincer"]],
+	72: [30, ["armored"]], 80: [36, ["dark", "pincer"]],
+	87: [29, ["horde"]], 94: [40, ["armored"]], 100: [42, ["pincer"]]
+}
 const ENDLESS_MODS := [["horde"], ["armored"], ["dark", "pincer"], ["armored", "horde"]]
 ## 出门迎战的野战效率：武力 × 精力系数 × 1.5，再除以每只消耗。比守在家里低，但能主动削下一轮。
 const FIELD_MUL := 1.5
@@ -29,7 +36,9 @@ const FIELD_HP_PER_KILL := 0.9
 const FIELD_HP_BASE := 2
 
 
-static func leak_damage(day: int) -> int:
+static func leak_damage(day: int, run: Dictionary = {}) -> int:
+	if run.get("hundred_days") is Dictionary and day > State.STORY_DAYS and not run.get("endless", false):
+		day = State.STORY_DAYS
 	return LEAK_BASE + int((maxi(0, day) - 1) / LEAK_STEP_DAYS)
 
 
@@ -53,7 +62,15 @@ static func wave_for_run(run: Dictionary, day: int) -> Dictionary:
 	var night: Dictionary = run.get("night", {})
 	if not night.is_empty() and int(night.get("wave", {}).get("day", -1)) == day:
 		return night.wave.duplicate(true)
-	var base := wave_for_day(day, float(State.diff(run).wave_mul))
+	var mul := float(State.diff(run).wave_mul)
+	var base: Dictionary
+	if run.get("hundred_days") is Dictionary and day > State.STORY_DAYS and not run.get("endless", false):
+		if not CHRONICLE_WAVES.has(day): return {}
+		var spec: Array = CHRONICLE_WAVES[day]
+		if run.hundred_days.get("first_route") == "ritual": mul *= 0.9
+		base = _scaled({"day": day, "count": int(spec[0]), "mods": spec[1]}, mul)
+	else:
+		base = wave_for_day(day, mul)
 	if base.is_empty(): return {}
 	var wave: Dictionary = base.duplicate(true)
 	var effect := Mainline.wave_effect(run, day)
@@ -341,7 +358,7 @@ static func preview_round(run: Dictionary, wave: Dictionary, idx: int, extra := 
 	var counts := round_split(wave, idx)
 	var cut: Dictionary = run.get("night", {}).get("sortie", {})
 	var cost := _cost(wave)
-	var leak := leak_damage(int(run.pday))
+	var leak := leak_damage(int(run.pday), run)
 	var out := {"surfaces": {}, "killed": 0, "enter": 0, "hp": 0}
 	for sid in SURFACES:
 		var n := int(counts[sid]) - int(cut.get(sid, 0)) - int(extra.get(sid, 0))
@@ -411,7 +428,7 @@ static func resolve_round(run: Dictionary, idx: int) -> Dictionary:
 	var wave: Dictionary = run.night.wave
 	var counts := round_split(wave, idx)
 	var cost := _cost(wave)
-	var leak := leak_damage(int(run.pday))
+	var leak := leak_damage(int(run.pday), run)
 	var rep := {
 		"round": idx, "name": mod_names(wave), "count": 0, "killed": 0, "left": 0,
 		"enter": 0, "hp_loss": 0, "poisoned": false, "broke": [], "breached": false,
@@ -529,7 +546,7 @@ static func finish_night(run: Dictionary) -> Dictionary:
 		"worn": worn, "posture": "三面守夜" if not broke.is_empty() else "三面守夜·未破",
 		"lamp": bool(run.night.get("lamp", false)), "cost": _cost(run.night.wave),
 		"power": snappedf(total_power(run), 0.1), "lines": [],
-		"leak": leak_damage(int(run.pday)), "door_dmg": 0, "win_dmg": 0,
+		"leak": leak_damage(int(run.pday), run), "door_dmg": 0, "win_dmg": 0,
 		"cracked": false, "broken": worn, "level_up": "",
 	}
 	run.night = {}

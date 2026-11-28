@@ -194,12 +194,12 @@ func role_unlocked(role_id: String) -> bool:
 	return true
 
 
-func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = [], endless := false, daily := false, companions: Array = [], opening_id := "plain") -> String:
+func new_game(role_id: String, difficulty_id := "normal", goals: Array = [], boons: Array = [], vows: Array = [], endless := false, daily := false, companions: Array = [], opening_id := "plain", hundred_days := false) -> String:
 	if _rewind_pending():
 		_ensure_rewind_resolved()
 		return "先处理未完成的回溯，再重新开局。"
 	# Validate and apply on a candidate. A stale/invalid selection cannot replace a life.
-	var candidate := State.new_run(role_id, meta, daily_seed() if daily else randi(), difficulty_id, goals, boons, vows)
+	var candidate := State.new_run(role_id, meta, daily_seed() if daily else randi(), difficulty_id, goals, boons, vows, hundred_days and not endless and not daily)
 	# 守到死：Post.ack_dawn 看 run.endless —— 第 20 日天亮照常开新的一天，不进结局
 	candidate.endless = endless
 	if daily:
@@ -236,7 +236,7 @@ func quick_start() -> String:
 	var role_id := quick_role()
 	if role_id == "":
 		return "没有可用的身份。"
-	return new_game(role_id)
+	return new_game(role_id, "normal", [], [], [], false, false, [], "plain", true)
 
 
 ## 快速开局用的身份：身份表里第一个已解锁的。
@@ -551,12 +551,13 @@ func restart_from_cover(expected_life := "") -> void:
 	if opening_id == "": opening_id = "plain"
 	if not _persist_before_settlement(): return
 	if not bool(end_run(Ledger.ending_bonus(run)).get("saved", false)): return
-	var result := new_game(role_id, d, [], [], [], endless, daily, mates, opening_id)
+	var hundred_days: bool = run.get("hundred_days") is Dictionary
+	var result := new_game(role_id, d, [], [], [], endless, daily, mates, opening_id, hundred_days)
 	if result == "新一世保存失败，请检查存档目录后重试；旧卷仍在。":
 		toast.emit(result)
 		return
 	if result != "":
-		var fallback := new_game(role_id, d, [], [], [], endless, daily, mates, "plain")
+		var fallback := new_game(role_id, d, [], [], [], endless, daily, mates, "plain", hundred_days)
 		if fallback != "":
 			toast.emit(fallback)
 			return
@@ -571,7 +572,7 @@ func choose_next_opening(expected_life := "") -> void:
 	if not _same_life(expected_life) or not run.get("phase", "") in ["dead", "ending"]: return
 	var role_id := str(run.role)
 	var difficulty_id := str(run.get("difficulty", "normal"))
-	var setup := {"endless": bool(run.get("endless", false)), "daily": Past.daily(run), "mates": (run.get("companions", []) as Array).duplicate()}
+	var setup := {"hundred_days": run.get("hundred_days") is Dictionary, "endless": bool(run.get("endless", false)), "daily": Past.daily(run), "mates": (run.get("companions", []) as Array).duplicate()}
 	if not _persist_before_settlement(): return
 	if not bool(end_run(Ledger.ending_bonus(run)).get("saved", false)): return
 	if not _delete_save(): return

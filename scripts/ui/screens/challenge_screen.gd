@@ -16,6 +16,7 @@ var _vows: Array = []
 ## 开局模式：守到死（不设终局）、每日一局（种子按日期）。两个都可以不选。
 var _endless := false
 var _daily := false
+var _hundred_days := true
 ## 同院的人：带谁回来搭伙（最多 2 人）。不是誓约也不是凭仗，不改道心倍率。
 var _mates: Array = []
 var _opening_id := "plain"
@@ -30,6 +31,7 @@ func build() -> void:
 		var setup: Dictionary = Game.pending_opening_setup
 		_endless = bool(setup.get("endless", false))
 		_daily = bool(setup.get("daily", false))
+		_hundred_days = bool(setup.get("hundred_days", true))
 		_mates = setup.get("mates", []).duplicate()
 		Game.pending_opening_setup = {}
 	_normalize_opening()
@@ -46,6 +48,13 @@ func build() -> void:
 			r.name, State.diff_name({"difficulty": Game.pending_difficulty})], 16))
 	# 开局模式：两件事都不属于"立愿/凭仗/誓约"，单独放一行，选了才展开说明
 	var modes := UI.hbox(10)
+	var length_pick := UI.button("剧情 · 百日五幕" if _hundred_days else "剧情 · 二十日短篇", func():
+		_hundred_days = not _hundred_days
+		_redraw(), _endless or _daily, "切换本卷长度。每日一局沿用原挑战日历。")
+	length_pick.set_meta("opening_mode", "story_length")
+	if _endless or _daily:
+		length_pick.text = "挑战日历"
+	modes.add_child(length_pick)
 	var endless_pick := UI.button("□ 守到死（不设终局）" if not _endless else "■ 守到死（不设终局）", func(): _toggle_mode(true))
 	endless_pick.set_meta("opening_mode", "endless")
 	modes.add_child(endless_pick)
@@ -300,7 +309,7 @@ func _start(with_picks: bool) -> void:
 	var boons: Array = _boons.duplicate() if with_picks else []
 	var vows: Array = _vows.duplicate() if with_picks else []
 	_starting = true
-	var result: String = Game.new_game(role_id, Game.pending_difficulty, goals, boons, vows, _endless, _daily, _mates.duplicate(), _opening_id if with_picks else "plain")
+	var result: String = Game.new_game(role_id, Game.pending_difficulty, goals, boons, vows, _endless, _daily, _mates.duplicate(), _opening_id if with_picks else "plain", _hundred_days and not _endless and not _daily)
 	if result == "":
 		Game.pending_role = ""
 	else:

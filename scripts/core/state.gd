@@ -16,6 +16,15 @@ const OPEN_HOUR := 3     # 卯时开市
 const CURFEW_HOUR := 9   # 酉时宵禁
 const PRE_DAYS := 3
 const STORY_DAYS := 20
+const CHRONICLE_DAYS := 100
+## 过了首卷，霜冻与春汛按日历推移；无尽与旧卷沿用原天气表。
+const CHRONICLE_WEATHER := [
+	{"from": 21, "to": 35, "name": "冰凌", "cold": 18, "desc": "屋瓦还挂着冰，正午的水沟先化开了。"},
+	{"from": 36, "to": 52, "name": "解冻", "cold": 10, "desc": "河沿的薄冰一片片松动，井绳上滴着水。"},
+	{"from": 53, "to": 70, "name": "春汛", "cold": 5, "desc": "屋檐水连成线，渡口传来试水深的竹竿声。"},
+	{"from": 71, "to": 86, "name": "倒春寒", "cold": 15, "desc": "花刚开，北风又来。入夜仍要护住炉火。"},
+	{"from": 87, "to": 100, "name": "谷雨", "cold": 0, "desc": "新芽冒出了土，夜里也听得见屋外蛙声。"}
+]
 const LOG_LIMIT := 300
 
 
@@ -50,14 +59,14 @@ static func daily_seed() -> int:
 	return int(d.year) * 10000 + int(d.month) * 100 + int(d.day)
 
 
-static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal", goals: Array = [], boons: Array = [], vows: Array = []) -> Dictionary:
+static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficulty_id: String = "normal", goals: Array = [], boons: Array = [], vows: Array = [], hundred_days := false) -> Dictionary:
 	var role_data: Dictionary = Data.table("roles")[role_id]
 	var talents: Array = meta.get("talents", []).duplicate()
 	var d: Dictionary = diff_params(difficulty_id)
 	var hp_max: int = int(round(float(role_data.hp_max) * float(d.get("hp_mul", 1.0))))
 	var silver: int = int(round(float(role_data.silver) * float(d.get("silver_mul", 1.0))))
 	var run := {
-		"version": 21, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
+		"version": 22, "seed": seed_value, "rng_n": 0, "role": role_id, "talents": talents,
 		"cycle_inquiry": {},
 		"opening": {},
 		"identity": {},
@@ -95,6 +104,8 @@ static func new_run(role_id: String, meta: Dictionary, seed_value: int, difficul
 		## 扣血账本：来源 → 本世累计失血；最后一笔单独记着（生死簿残页的复盘读这两项）
 		"hp_log": {}, "last_hurt": {},
 	}
+	if hundred_days:
+		run["hundred_days"] = {"choices": {}}
 	for shop_id in Data.table("shops"):
 		run.shops[shop_id] = Data.table("shops")[shop_id].get("stock", {}).duplicate()
 	if "talisman" in talents:
@@ -264,7 +275,15 @@ static func fight(run: Dictionary) -> float:
 	return f
 
 
+static func story_days(run: Dictionary) -> int:
+	return CHRONICLE_DAYS if run.get("hundred_days") is Dictionary else STORY_DAYS
+
+
 static func weather(run: Dictionary) -> Dictionary:
+	if run.get("hundred_days") is Dictionary and not run.get("endless", false):
+		for season in CHRONICLE_WEATHER:
+			if int(run.pday) >= int(season.from) and int(run.pday) <= int(season.to):
+				return season
 	for w in Data.table("weather"):
 		if run.pday >= w["from"] and run.pday <= w["to"]:
 			return w

@@ -33,27 +33,28 @@ static func goal(run: Dictionary) -> String:
 		return "这一世已结束，可在生死簿查看后续选择。"
 	if str(run.get("phase", "")) == "ending":
 		var ending: Dictionary = run.get("mainline", {}).get("ending", {})
+		if ending.get("kind") == "hundred_days": return str(ending.title) + "，百日已满。"
 		return "已经撤离，这一世到此了结。" if ending.get("kind", "") == "escape" else "已守过第二十夜，这一世到此了结。"
 	if bool(run.get("endless", false)):
 		return "守到死：没有终点，能撑多久算多久。"
 	if str(run.get("phase", "")) == "pre":
 		return "备劫第 %d / %d 日：尸劫之后要活过 %d 日。" % [
-			int(run.get("day", 1)), State.PRE_DAYS, State.STORY_DAYS]
-	var left: int = State.STORY_DAYS - int(run.get("pday", 0))
+			int(run.get("day", 1)), State.PRE_DAYS, State.story_days(run)]
+	var left: int = State.story_days(run) - int(run.get("pday", 0))
 	if left > 0:
-		return "距劫满还有 %d 日（共 %d 日）。" % [left, State.STORY_DAYS]
-	if bool(run.get("dawn_due", false)) and int(run.get("t", 0)) >= State.STORY_DAYS * Post.DAY:
-		return "第二十夜已过，翻阅天亮结算后进入结局。"
-	return "第 %d 日：守过今晚，到天亮才算劫满。" % State.STORY_DAYS
+		return "距劫满还有 %d 日（共 %d 日）。" % [left, State.story_days(run)]
+	if bool(run.get("dawn_due", false)) and int(run.get("t", 0)) >= State.story_days(run) * Post.DAY:
+		return "第一百夜已过，翻阅天亮结算后进入结局。" if run.has("hundred_days") else "第二十夜已过，翻阅天亮结算后进入结局。"
+	return "第 %d 日：守过今晚，到天亮才算劫满。" % State.story_days(run)
 
 
 ## 进度：0..1，用在进度条或"HUD 上的那句距离"。
 static func progress(run: Dictionary) -> float:
 	if run.is_empty() or bool(run.get("endless", false)):
 		return 0.0
-	var value := clampf(float(run.get("pday", 0)) / float(State.STORY_DAYS), 0.0, 1.0)
+	var value := clampf(float(run.get("pday", 0)) / float(State.story_days(run)), 0.0, 1.0)
 	if str(run.get("phase", "")) != "ending":
-		value = minf(value, float(State.STORY_DAYS - 1) / float(State.STORY_DAYS))
+		value = minf(value, float(State.story_days(run) - 1) / float(State.story_days(run)))
 	return value
 
 
@@ -167,9 +168,9 @@ static func countdown(run: Dictionary) -> String:
 		return "守到死"
 	if str(run.get("phase", "")) == "pre":
 		return "%d 日后尸劫" % maxi(1, State.PRE_DAYS + 1 - int(run.get("day", 1)))
-	var left: int = State.STORY_DAYS - int(run.get("pday", 0))
+	var left: int = State.story_days(run) - int(run.get("pday", 0))
 	if left > 0:
 		return "距劫满 %d 日" % left
-	if bool(run.get("dawn_due", false)) and int(run.get("t", 0)) >= State.STORY_DAYS * Post.DAY:
+	if bool(run.get("dawn_due", false)) and int(run.get("t", 0)) >= State.story_days(run) * Post.DAY:
 		return "待天亮结算"
-	return "守过第 20 夜"
+	return "守过第 %d 夜" % State.story_days(run)

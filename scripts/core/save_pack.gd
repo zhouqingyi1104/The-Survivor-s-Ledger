@@ -133,6 +133,11 @@ static func _playable_run(value: Dictionary) -> bool:
 		if value.has(key) and not value[key] is Dictionary: return false
 	for plot in value.plots:
 		if not plot is Dictionary: return false
+	if value.has("hundred_days"):
+		var chronicle = value.hundred_days
+		if not chronicle is Dictionary or not chronicle.get("choices") is Dictionary: return false
+		if not chronicle.get("shifts", {}) is Dictionary: return false
+		if not chronicle.get("first_route", "") in ["", "hold", "ritual", "escape"]: return false
 	if value.has("furniture") and not value.furniture is Array: return false
 	return true
 

@@ -3,6 +3,42 @@
   "engine_version": "4.7.2",
   "cases": [
     {
+      "id": "chronicle_letters",
+      "entry": "tests/chronicle_letters.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[chronicle_letters\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
+      "id": "hundred_days_rules",
+      "entry": "tests/hundred_days_rules.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 120,
+      "success_regex": "(?m)^\\[hundred_days_rules\\] [1-9][0-9]* 项检查，失败 0 处\\r?$"
+    },
+    {
+      "id": "hundred_days_journey",
+      "entry": "tests/hundred_days_journey.gd",
+      "kind": "script",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 240,
+      "success_regex": "(?m)^\\[hundred_days_journey\\] 百日实走 100 日，失败 0 处\\r?$"
+    },
+    {
+      "id": "chronicle_window",
+      "entry": "tests/chronicle_window.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[chronicle_window\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
       "id": "scanned_model_materials",
       "entry": "tests/scanned_model_materials.gd",
       "kind": "script",

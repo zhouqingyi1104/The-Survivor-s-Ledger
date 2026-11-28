@@ -121,6 +121,8 @@ static func _fill_journal_now(page: VBoxContainer) -> void:
 	for promise in d.promises:
 		page.add_child(UI.para("第 %d 日 · %s 约定送来 %s" % [promise.day, Director.ACTORS[promise.actor], Director.describe(promise.give)], 16))
 	var entries := UI.grid(2, 8, 6)
+	if run.get("hundred_days") is Dictionary:
+		entries.add_child(UI.expand(UI.button("百日街坊 · 来信与旧事", Dialogs.chronicle)))
 	entries.add_child(UI.expand(UI.button("尸劫来历 · 调查与出路", Dialogs.mainline)))
 	entries.add_child(UI.expand(UI.button("风声与危机 · 查验与筹备", Dialogs.crisis)))
 	var opening_entry := UI.button("这一世的开局 · 行囊、人情与风声", Dialogs.opening_info)
