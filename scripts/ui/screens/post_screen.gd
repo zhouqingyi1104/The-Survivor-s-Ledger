@@ -1438,6 +1438,8 @@ func _right_bottom(run: Dictionary) -> void:
 		tags.add_child(Hud.tag("心神大乱", Hud.RED))
 	if tags.get_child_count() > 0:
 		v.add_child(tags)
+	else:
+		tags.free()
 	var rows := VBoxContainer.new()
 	rows.add_theme_constant_override("separation", 4)
 	_live.bars = {}

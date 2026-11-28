@@ -380,6 +380,27 @@ func check_room_shortcuts() -> void:
 	check(int(Game.run.home.get("water", 0)) == water_before and not bool(Game.run.well_used), "室内快捷行为改变院井资源")
 	Game.run.attrs.energy = 100
 
+func check_hud_warning_rows(screen: Control) -> void:
+	var before := Node.get_orphan_node_ids()
+	var warmth := State.attr(Game.run, "warmth")
+	Game.run.attrs.warmth = 20
+	Game.refresh()
+	await frames(3)
+	var cold := false
+	for label: Label in screen.hud.find_children("*", "Label", true, false):
+		if label.text == "受冻" and label.is_visible_in_tree():
+			cold = true
+	check(cold, "人物受冻时缺少状态标签")
+	Game.run.attrs.warmth = warmth
+	Game.refresh()
+	await frames(3)
+	var leaked := false
+	for id in Node.get_orphan_node_ids():
+		if id not in before and instance_from_id(id) is HBoxContainer:
+			leaked = true
+			break
+	check(not leaked, "健康状态重建 HUD 后留下未释放的标签行")
+
 func _ready() -> void:
 	Game.no_save = true
 	Game.save_path = "user://c5_ui_save.json"
@@ -403,6 +424,7 @@ func _ready() -> void:
 	get_tree().create_timer(240).timeout.connect(func(): get_tree().quit(1))
 	await frames(50)
 	var screen: Control = main._screen
+	await check_hud_warning_rows(screen)
 	if not await open_bench(): get_tree().quit(1); return
 	var cellar_entry := button("进入地窖", screen._menu)
 	check(cellar_entry == null or cellar_entry.disabled, "没有地窖资格时入口可用")
