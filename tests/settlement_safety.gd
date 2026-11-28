@@ -49,20 +49,29 @@ func _test_action(action: String) -> void:
 	_prepare()
 	var before_run := Game.run.duplicate(true)
 	var before_meta := Game.meta.duplicate(true)
+	var before_meta_file := FileAccess.get_file_as_string(good_meta)
 	var before_save := FileAccess.get_file_as_string(save)
 	var before_backup := FileAccess.get_file_as_string(save + SaveFile.BAK)
 	var before_memory := FileAccess.get_file_as_string(memory)
 	var life := str(Game.run.past_lives.id)
 	# An absent parent reliably forces the write failure while the actual save is writable.
 	Game.meta_path = "user://nonexistent-settlement-dir/meta.json"
+	var target := Game.meta_path + SaveFile.TMP
+	var probe := FileAccess.open(target, FileAccess.WRITE)
+	var open_error := FileAccess.get_open_error()
+	check(probe == null and open_error != OK, action + ": fixture did not block the meta write")
 	for retry in 2:
 		notices.clear()
+		print("[settlement_safety] %s %d blocked write begins at %s (%d)" % [action, retry + 1, target, open_error])
 		_call_action(action, life)
+		print("[settlement_safety] %s %d blocked write ends" % [action, retry + 1])
 		check(Game.run == before_run and Game.meta == before_meta, action + ": failed attempt changed in-memory life or rewards")
+		check(FileAccess.get_file_as_string(good_meta) == before_meta_file, action + ": failed attempt changed the persisted archive")
 		check(FileAccess.get_file_as_string(save) == before_save and FileAccess.get_file_as_string(save + SaveFile.BAK) == before_backup, action + ": failed attempt deleted/changed save or backup")
 		check(FileAccess.get_file_as_string(memory) == before_memory, action + ": failed attempt changed Memory.md")
 		check(Game.screen == "dead", action + ": failed attempt left the life screen")
 		check(notices.any(func(message: String): return message.contains("底稿保存失败") and message.contains("重试")), action + ": failed attempt omitted actionable notice")
+		check(Game.save_notice.contains("未合卷") and notices.has(Game.save_notice), action + ": failed attempt did not preserve its visible settlement notice")
 	Game.meta_path = good_meta
 	_call_action(action, life)
 	check(Game.save_notice == "", action + ": resolved failure notice was left on screen")

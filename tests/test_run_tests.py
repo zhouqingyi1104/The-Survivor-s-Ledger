@@ -180,6 +180,39 @@ class ClassificationTests(RunnerTests):
         self.assertEqual(self.runner.classify_result(recovery, 1, False, block + marker)[0], "FAIL")
         self.assertEqual(self.runner.classify_result(recovery, 0, True, block + marker)[0], "FAIL")
 
+    def test_settlement_faults_require_two_retries_for_each_matching_action(self):
+        recovery = case("settlement_safety")
+        marker = "[fixture] complete: 0 failures\n"
+        target = "user://nonexistent-settlement-dir/meta.json.tmp"
+        error = "ERROR: 存档写入失败：write（错误 7）\n"
+        actions = (("close", "close_book"), ("choose", "choose_next_opening"), ("restart", "restart_from_cover"))
+        blocks = []
+        for action, method in actions:
+            for attempt in (1, 2):
+                label = f"[settlement_safety] {action} {attempt}"
+                blocks.append(f"{label} blocked write begins at {target} (7)\n" + error
+                              + "    [1] end_run (res://scripts/autoload/game.gd:520)\n"
+                              + f"    [2] {method} (res://scripts/autoload/game.gd:590)\n"
+                              + "    [3] _call_action (res://tests/settlement_safety.gd:83)\n"
+                              + f"{label} blocked write ends\n")
+        all_six = "".join(blocks)
+        for transcript in (all_six + marker, (all_six + marker).replace("\n", "\r\n")):
+            self.assertEqual(self.runner.classify_result(recovery, 0, False, transcript)[0], "PASS")
+        for transcript in (
+            marker, all_six, marker + all_six, "".join(blocks[1:]) + marker, blocks[0] + all_six + marker,
+            "".join(reversed(blocks)) + marker, all_six.replace("close 2", "close 1") + marker,
+            all_six.replace(target, "user://meta.json.tmp", 1) + marker,
+            all_six.replace("错误 7", "错误 12", 1) + marker, all_six.replace("end_run", "save_game", 1) + marker,
+            all_six.replace("close_book", "choose_next_opening", 1) + marker,
+            all_six.replace("close 1 blocked write ends", "close 2 blocked write ends", 1) + marker,
+            all_six.replace(error, error * 2, 1) + marker, all_six + error + marker,
+            all_six.replace(error, error + "    SCRIPT ERROR: unexpected\n", 1) + marker,
+        ):
+            with self.subTest(transcript=transcript):
+                self.assertEqual(self.runner.classify_result(recovery, 0, False, transcript)[0], "FAIL")
+        self.assertEqual(self.runner.classify_result(case("rewind_safety"), 0, False, all_six + marker)[0], "FAIL")
+        self.assertEqual(self.runner.classify_result(recovery, 1, False, all_six + marker)[0], "FAIL")
+
     def test_only_clean_completion_passes(self):
         status, _, warnings = self.runner.classify_result(
             case(), 0, False, "[fixture] complete: 0 failures\n")

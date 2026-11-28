@@ -40,20 +40,33 @@ CLEANUP_ERRORS = (
 ERROR_LINE = re.compile(r"\b(?:SCRIPT ERROR|ParseError|Parse Error|ERROR)\b", re.I)
 # Each recovery fixture brackets one deliberately failed write. Only the
 # diagnostic itself may be exempted; its stack and every other line are checked.
-BLOCKED_WRITE_DIAGNOSTIC = r"(?P<diagnostic>ERROR: 存档写入失败：write（错误 \1）)\r?\n"
+BLOCKED_WRITE_DIAGNOSTIC = r"(?P<diagnostic>ERROR: 存档写入失败：write（错误 (?P=code)）)\r?\n"
 BLOCKED_RECOVERY_WRITES = {
     "continue_safety": re.compile(
-        r"^\[continue_safety\] blocked write begins \(([1-9][0-9]*)\)\r?\n"
+        r"^\[continue_safety\] blocked write begins \((?P<code>[1-9][0-9]*)\)\r?\n"
         + BLOCKED_WRITE_DIAGNOSTIC + r"(?:[ \t]+[^\r\n]*\r?\n)*"
         r"^\[continue_safety\] blocked write ends\r?$", re.M
     ),
     "rewind_safety": re.compile(
-        r"^\[rewind_safety\] blocked recovery begins at user://rewind_test_save\.json\.tmp \(([1-9][0-9]*)\)\r?\n"
+        r"^\[rewind_safety\] blocked recovery begins at user://rewind_test_save\.json\.tmp \((?P<code>[1-9][0-9]*)\)\r?\n"
         + BLOCKED_WRITE_DIAGNOSTIC + r"(?:[ \t]+[^\r\n]*\r?\n)*"
         r"[ \t]+\[\d+\] _scenario_recovery_backup \(res://tests/rewind_safety\.gd:\d+\)\r?\n"
         r"(?:[ \t]+[^\r\n]*\r?\n)*^\[rewind_safety\] blocked recovery ends\r?$", re.M
     ),
 }
+SETTLEMENT_ATTEMPTS = [(action, str(attempt), method) for action, method in
+                       (("close", "close_book"), ("choose", "choose_next_opening"), ("restart", "restart_from_cover"))
+                       for attempt in (1, 2)]
+BLOCKED_SETTLEMENT_WRITE = re.compile(
+    r"^\[settlement_safety\] (?P<action>close|choose|restart) (?P<attempt>[12]) blocked write begins at "
+    r"user://nonexistent-settlement-dir/meta\.json\.tmp \((?P<code>[1-9][0-9]*)\)\r?\n"
+    + BLOCKED_WRITE_DIAGNOSTIC + r"(?:[ \t]+[^\r\n]*\r?\n)*"
+    r"[ \t]+\[\d+\] end_run \(res://scripts/autoload/game\.gd:\d+\)\r?\n"
+    r"[ \t]+\[\d+\] (?P<method>\w+) \(res://scripts/autoload/game\.gd:\d+\)\r?\n"
+    r"[ \t]+\[\d+\] _call_action \(res://tests/settlement_safety\.gd:\d+\)\r?\n"
+    r"(?:[ \t]+[^\r\n]*\r?\n)*"
+    r"^\[settlement_safety\] (?P=action) (?P=attempt) blocked write ends\r?$", re.M
+)
 BLOCKED_REPORT_COPY = re.compile(
     r"^\[playtest_export\] blocked copy begins: (?P<target>(?P<directory>[^\r\n]+/reports/copy-fail-test)/"
     r"(?P<filename>report_test_save\.json\.bak|Memory\.md))\r?\n"
@@ -195,6 +208,11 @@ def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: 
         matches = list(recovery_fault.finditer(output))
         if len(matches) == 1 and marker and matches[0].end() < marker.start():
             expected_offsets.add(matches[0].start("diagnostic"))
+    elif case.get("id") == "settlement_safety" and marker:
+        matches = list(BLOCKED_SETTLEMENT_WRITE.finditer(output))
+        attempts = [(m["action"], m["attempt"], m["method"]) for m in matches]
+        if attempts == SETTLEMENT_ATTEMPTS and matches[-1].end() < marker.start():
+            expected_offsets.update(m.start("diagnostic") for m in matches)
     elif case.get("id") == "playtest_export" and marker and data_home is not None:
         matches = list(BLOCKED_REPORT_COPY.finditer(output))
         if ([m["filename"] for m in matches] == ["report_test_save.json.bak", "Memory.md"]
@@ -223,6 +241,8 @@ def classify_result(case: dict, exit_code: int | None, timed_out: bool, output: 
         return "FAIL", "Required completion marker was not printed", warnings
     if recovery_fault and not expected_offsets:
         return "FAIL", "Missing or ambiguous diagnostic for the blocked recovery write", warnings
+    if case.get("id") == "settlement_safety" and not expected_offsets:
+        return "FAIL", "Missing or ambiguous diagnostics for the six blocked settlement writes", warnings
     if case.get("id") == "playtest_export" and not expected_offsets:
         return "FAIL", "Missing or ambiguous diagnostics for the two blocked report copies", warnings
     return ("PASS_WITH_WARNINGS" if warnings else "PASS"), "", warnings
