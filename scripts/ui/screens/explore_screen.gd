@@ -45,6 +45,7 @@ func build_world() -> void:
 	player = Player.new()
 	world.add_child(player)
 	player.setup(Game.run.role)
+	player.figure.position.y = RuinWorld.FLOOR_HEIGHT
 	player.figure.step_sound = "step_wood"
 	player.position = RuinWorld.ENTRY + Vector3(0, 0, -1.2)
 	player.figure.rotation.y = PI
@@ -116,7 +117,7 @@ func _process(delta: float) -> void:
 	if investigating:
 		var prop: String = Game.run.explore.spots[idx].prop
 		player.figure.work_anim = RuinWorld.CaseScene.ANIMATIONS.get(prop, "Interact")
-		player.figure.face(world.spot_position(idx) - player.global_position)
+		player.face_point(world.spot_position(idx))
 	rig.input_enabled = not blocked
 	player.cam_yaw = rig.yaw
 	var feature: String = "" if blocked else world.nearest_feature(player.global_position)

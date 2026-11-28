@@ -27,6 +27,7 @@ var _hunter: Node3D
 # Each site is a different connected footprint. The last cell is a dead-end
 # behind the gate, so the locked area cannot be reached by walking around it.
 const CELL := 6.0
+const FLOOR_HEIGHT := 0.06
 const FOOTPRINTS := {
 	"rice_ruin": [Vector2i(0,0), Vector2i(0,-1), Vector2i(-1,-1), Vector2i(-1,-2), Vector2i(1,0), Vector2i(1,-1), Vector2i(1,-2), Vector2i(0,-2), Vector2i(-2,-1)],
 	"city_god": [Vector2i(0,0), Vector2i(-1,0), Vector2i(1,0), Vector2i(0,-1), Vector2i(1,-1), Vector2i(1,-2), Vector2i(0,-2), Vector2i(-1,-2), Vector2i(-2,0)],
@@ -261,7 +262,7 @@ func _expedition_layout() -> void:
 	for i in cells.size():
 		var cell: Vector2i = cells[i]
 		var center := _cell_center(cell)
-		K.box(self, Vector3(CELL, 0.06, CELL), floor_material, center + Vector3(0, 0.03, 0))
+		K.box(self, Vector3(CELL, FLOOR_HEIGHT, CELL), floor_material, center + Vector3.UP * FLOOR_HEIGHT * 0.5)
 		K.text3d(self, str(names[i]), center + Vector3(0,2.1,-2.65), 45, Color("#d4c5a8"), true, 0.005)
 		# Regional motifs sit against the walls; central routes stay traversable.
 		if point == "lumber" and i in [1, 3, 6, 8]:

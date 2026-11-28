@@ -36,6 +36,7 @@ const WINDOW_POS := Vector3(5.6, 1.7, 7.0)
 const SPAWN := Vector3(0, 0, 3.0)
 const CASE_TABLE := Vector3(0.34, 0, 3.55)
 const CASE_STAND := Vector3(-0.54, 0, 4.05)
+const SOLE_SAMPLES := [Vector3.ZERO, Vector3(-0.09, 0, 0), Vector3(0.09, 0, 0), Vector3(0, 0, -0.09), Vector3(0, 0, 0.09)]
 
 ## 可交互物：名称、站位（人走到哪儿做事）、头顶标签的位置
 const SPOTS := {
@@ -69,6 +70,10 @@ var _side_stage := ""
 var _side_lantern := {}
 var _floor := "courtyard"
 var _floor_rooms := {}
+# 只给可见人物找鞋下的地面。碰撞和导航继续用各层平整的通行面。
+var _foot_surfaces := {}
+var _last_foot_point := Vector3.INF
+var _last_foot_height := 0.0
 var _furnishing_retry_in := 0.0
 var _outside_nodes: Array[Node3D] = []
 var _outside_visibility := {}
@@ -90,15 +95,18 @@ func _ready() -> void:
 	# C0 四周景物（近邻宅院/街巷、中景屋脊、远景城墙山脊）：视觉隔离根，不进核心合并，
 	# 无碰撞/无导航/无灯光；显式列入 merge_static 的 skip。
 	surroundings = Surroundings.build(self, {})
+	var ground_start := get_child_count()
 	_ground()
 	_side_yard = K.node(self, Vector3.ZERO, Vector3.ZERO, "side_yard")
 	_buildings()
+	_cache_foot_surfaces("courtyard", get_children().slice(ground_start))
 	_neighbor_wall()
 	_neighbor_visual = K.node(self, Vector3.ZERO, Vector3.ZERO, "neighbor_home_visual")
 	_furniture()
 	_decor()
 	for floor_id in ["cellar", "attic", "guest_zhou"]:
 		_floor_rooms[floor_id] = FloorWorld.build(self, floor_id)
+		_cache_foot_surfaces(floor_id, [_floor_rooms[floor_id].root])
 		_floor_rooms[floor_id].root.visible = false
 	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration", "lookout", "drying_tray", "lane_letter", "chronicle_guest", "case_work"]:
 		_dynamic[key] = K.node(self, Vector3.ZERO, Vector3.ZERO, key)
@@ -149,6 +157,52 @@ func _ground() -> void:
 	# 门外街道（青石）；街对面人家、后巷邻院、城墙山脊等四周景物统一由 home_surroundings 构建
 	K.box(self, Vector3(60, 0.04, 6), YardMaterials.street(), Vector3(0, 0.012, 11))
 	K.box(self, Vector3(60, 0.045, 1.2), K.SNOW, Vector3(0, 0.025, 13.6))
+
+
+## 在地面和房屋合批时取一次低矮网格，保留台阶、石面、席面实际轮廓和高度。
+## 使用独立的 TriangleMesh 作空间查询，模型不会变成新的碰撞体或导航障碍。
+func _cache_foot_surfaces(id: String, roots: Array) -> void:
+	var faces := PackedVector3Array()
+	var inverse := global_transform.affine_inverse()
+	for node in roots:
+		var meshes: Array = node.find_children("*", "MeshInstance3D", true, false)
+		if node is MeshInstance3D: meshes.append(node)
+		for mesh: MeshInstance3D in meshes:
+			if mesh.mesh == null: continue
+			var xf := inverse * mesh.global_transform
+			var bounds := xf * mesh.get_aabb()
+			if bounds.end.y <= 0.0 or bounds.end.y > 0.25: continue
+			for vertex: Vector3 in mesh.mesh.get_faces():
+				faces.append(xf * vertex)
+	_foot_surfaces.erase(id)
+	if not faces.is_empty():
+		var surface := TriangleMesh.new()
+		if surface.create_from_faces(faces):
+			_foot_surfaces[id] = surface
+	_last_foot_point = Vector3.INF
+
+
+func walking_height(at: Vector3) -> float:
+	var local := to_local(at)
+	local.y = 0.0
+	if local == _last_foot_point: return _last_foot_height
+	var keys := [_floor]
+	if _floor == "courtyard":
+		keys.append_array(["floor_finish", "side_yard"])
+	elif _floor == "attic":
+		keys.append("attic_rugs")
+	var high := 0.0
+	for key in keys:
+		var surface: TriangleMesh = _foot_surfaces.get(key)
+		if surface == null: continue
+		# 鞋宽跨过板缝和青石缝，以有承托的位置为准。
+		for offset: Vector3 in SOLE_SAMPLES:
+			var point := local + offset
+			var hit := surface.intersect_segment(point + Vector3.UP * 0.26, point + Vector3.DOWN * 0.02)
+			if not hit.is_empty(): high = maxf(high, hit.position.y)
+	_last_foot_point = local
+	_last_foot_height = to_global(Vector3(local.x, high, local.z)).y
+	return _last_foot_height
 
 
 func _pave(surface: SurfaceTool, rect: Rect2, columns: int, rows: int) -> void:
@@ -302,6 +356,7 @@ func set_floor(id: String) -> void:
 		return
 	var was_outside := _floor == "courtyard"
 	_floor = target
+	_last_foot_point = Vector3.INF
 	if was_outside and _floor != "courtyard":
 		_outside_visibility.clear()
 		for node in _outside_nodes:
@@ -496,6 +551,7 @@ func _sync_side_yard(run: Dictionary) -> bool:
 			K.box(_side_yard, Vector3(3.4, 0.025, 2.1), YardMaterials.ground(false, false), Vector3(13.5, 0.045, 4.6))
 			if stage == "ready":
 				Props.wood_pile(_side_yard, Vector3(13.5, 0.057, 4.42), 7, -7.0)
+	_cache_foot_surfaces("side_yard", [_side_yard])
 	return true
 
 
@@ -518,7 +574,11 @@ func sync(run: Dictionary) -> void:
 	_current_run = run
 	_sync_neighbor_visual(run)
 	var side_changed := _sync_side_yard(run)
+	var old_finish := str(_dynamic.decoration.get_meta("decoration_key", ""))
 	DecorationWorld.sync(_dynamic.decoration, run)
+	if old_finish != str(_dynamic.decoration.get_meta("decoration_key", "")):
+		var finish: Node3D = _dynamic.decoration.get_node_or_null("FloorFinish")
+		_cache_foot_surfaces("floor_finish", [finish] if finish != null else [])
 	var old_rows := _garden_rows
 	_rebuild_stock(run)
 	_rebuild_garden(run)
@@ -560,6 +620,14 @@ func _sync_floor_furnishings(run: Dictionary) -> bool:
 		var room: Dictionary = _floor_rooms[floor_id]
 		if FloorWorld.sync_furnishings(floor_id, room, run, people):
 			changed = true
+			if floor_id == "attic":
+				var rugs: Array[MeshInstance3D] = []
+				for group: Node3D in room.layout.groups.values():
+					for mesh: MeshInstance3D in group.find_children("*", "MeshInstance3D", true, false):
+						var mat := mesh.material_override as ShaderMaterial
+						if mat != null and mat.shader in [HomeHouse.RUSH_WEAVE, preload("res://scripts/world/attic_carpet.gdshader")]:
+							rugs.append(mesh)
+				_cache_foot_surfaces("attic_rugs", rugs)
 			if _floor == floor_id:
 				_refresh_room_spots()
 		waiting = waiting or room.layout.waiting_for_clearance

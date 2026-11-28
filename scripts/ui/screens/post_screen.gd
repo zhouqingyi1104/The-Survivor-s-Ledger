@@ -420,33 +420,35 @@ func _update_pose(run: Dictionary) -> void:
 		fig.work_anim = WORK_ANIMS.get(run.busy.kind, "Interact")
 		if run.busy.kind == "case_work":
 			fig.work_anim = preload("res://scripts/world/side_case_scene.gd").ANIMATIONS.get(run.busy.get("data", {}).get("prop", ""), "Interact")
-	if resting == fig.lying:
+	if not resting:
+		if fig.lying:
+			fig.lying = false
+			fig.position = Vector3.ZERO
+			var bed := Home.core(run, "bed")
+			if world._floor == "courtyard" and not bed.is_empty():
+				player.global_position = Home.stand(bed)
+		fig.position.y = maxf(0.0, world.walking_height(player.global_position) - player.global_position.y)
 		return
-	fig.lying = resting
-	if resting:
-		Sfx.play("cloth", -4.0)
-		player.stop()
-		if world._floor == "attic":
-			var berth: Dictionary = world.spot_info("floor_bed")
-			if not berth.is_empty():
-				player.global_position = berth.stand
-				fig.position = player.to_local(berth.feet)
-				fig.rotation.y = 0.0
-			return
-		# 人先走到榻前（镜头跟过去），模型再躺到榻上
-		var bed := Home.core(run, "bed")
-		if bed.is_empty():
-			return
-		player.global_position = Home.stand(bed)
-		var center := Vector3(float(bed.x), -0.09, float(bed.z))
-		var offset := Vector3(0.9, 0, 0).rotated(Vector3.UP, deg_to_rad(float(bed.rot)))
-		fig.position = player.to_local(center + offset)
-		fig.rotation.y = PI / 2.0 + deg_to_rad(float(bed.rot))
-	else:
-		fig.position = Vector3.ZERO
-		var bed := Home.core(run, "bed")
-		if world._floor == "courtyard" and not bed.is_empty():
-			player.global_position = Home.stand(bed)
+	if fig.lying: return
+	fig.lying = true
+	Sfx.play("cloth", -4.0)
+	player.stop()
+	if world._floor == "attic":
+		var berth: Dictionary = world.spot_info("floor_bed")
+		if not berth.is_empty():
+			player.global_position = berth.stand
+			fig.position = player.to_local(berth.feet)
+			fig.rotation.y = 0.0
+		return
+	# 人先走到榻前（镜头跟过去），模型再躺到榻上
+	var bed := Home.core(run, "bed")
+	if bed.is_empty():
+		return
+	player.global_position = Home.stand(bed)
+	var center := Vector3(float(bed.x), -0.09, float(bed.z))
+	var offset := Vector3(0.9, 0, 0).rotated(Vector3.UP, deg_to_rad(float(bed.rot)))
+	fig.position = player.to_local(center + offset)
+	fig.rotation.y = PI / 2.0 + deg_to_rad(float(bed.rot))
 
 
 # ---------- 时间 ----------
@@ -1033,9 +1035,7 @@ func _face(id: String) -> void:
 	var info := _spot_info(id)
 	if info.is_empty():
 		return
-	var to: Vector3 = info.tag - player.global_position
-	to.y = 0
-	player.figure.face(to, 1.0)
+	player.face_point(info.tag)
 
 
 func begin_case_work(id: String, choice: String) -> void:

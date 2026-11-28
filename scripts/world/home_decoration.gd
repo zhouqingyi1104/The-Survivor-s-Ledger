@@ -50,7 +50,7 @@ static func _wall(root: Node3D, choice: String, expanded: bool) -> void:
 static func _floor(root: Node3D, choice: String) -> void:
 	var stone := Assets.pbr("square_cobblestone", 3.4, Color("#a6b0b3"))
 	var brick := Assets.pbr("brick_wall_09", 2.9, Color("#c3a48a"))
-	K.box(root, Vector3(19.35, 0.02, 14.35), brick if choice == "brick" else stone, Vector3(0, 0.095, -0.5))
+	K.box(root, Vector3(19.35, 0.02, 14.35), brick if choice == "brick" else stone, Vector3(0, 0.095, -0.5)).name = "FloorFinish"
 
 
 static func _lamps(root: Node3D, choice: String) -> void:

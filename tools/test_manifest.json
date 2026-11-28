@@ -1248,6 +1248,15 @@
       "success_regex": "(?m)^\\[night_music\\] [1-9][0-9]* 项检查，完成 10/10，失败 0 处\\r?$"
     },
     {
+      "id": "player_motion",
+      "entry": "tests/player_motion.tscn",
+      "kind": "scene",
+      "tier": "core",
+      "mode": "headless",
+      "timeout_seconds": 90,
+      "success_regex": "(?m)^\\[player_motion\\] [1-9][0-9]* checks, 0 failures\\r?$"
+    },
+    {
       "id": "player_animation",
       "entry": "tests/player_animation.tscn",
       "kind": "scene",

@@ -58,7 +58,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
 	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
 		return
-	if modal_open() or world.walking:
+	if modal_open():
 		return
 	var id: String = world.pick(rig.cam, mb.position)
 	if id != "":
@@ -68,7 +68,11 @@ func _unhandled_input(event: InputEvent) -> void:
 ## 去某地（点建筑、点地名、测试都走这里）。
 func go_to(id: String, for_work := false) -> void:
 	var run: Dictionary = Game.run
-	if run.phase != "pre" or world.walking:
+	if run.phase != "pre":
+		return
+	if world.walking:
+		if id == run.loc:
+			world.finish_walk()
 		return
 	if id == run.loc:
 		if id == "home":
@@ -196,7 +200,8 @@ func _places(run: Dictionary) -> void:
 		var here: bool = run.loc == id
 		var title: String = "家" if id == "home" else ("★ " if Pre.shop(id).get("must", false) else "") + Pre.shop(id).name
 		var block := "" if here else Pre.travel_block(run, id)
-		var b := UI.button(title + ("（在此）" if here else ""), func(): go_to(id), block != "" and not here, block)
+		var suffix := ("（跳过赶路）" if world.walking else "（在此）") if here else ""
+		var b := UI.button(title + suffix, func(): go_to(id), block != "" and not here, block)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.custom_minimum_size.x = 150
 		h.add_child(Marks.on_button(b, id, 24))

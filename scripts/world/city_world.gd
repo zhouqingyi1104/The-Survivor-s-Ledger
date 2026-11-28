@@ -41,10 +41,15 @@ const PLACES := {
 	"temple":    [Vector3(0, 0, -9.0), 0.0, -1.0],
 }
 const RIVER_Z := 5.0
+const BRIDGE_HALF_WIDTH := 1.59
+const STREETS := [Rect2(-47.0, -2.8, 96.0, 3.6), Rect2(-1.8, 8.0, 3.6, 6.0)]
+const PAVING_TOP := 0.05
 
 var sky: Dictionary
-## 走路速度（米/秒，时间是压缩过的；测试时会调快）。
-var walk_speed := 11.0
+## 长街上可以跑开，进铺和过桥拐弯时收步。游戏内的赶路时辰由 Pre.travel 结算。
+var walk_speed := Figure.SPRINT_SPEED
+var _travel_speed := 0.0
+var _shop_facing := 0.0
 var walker: Node3D
 var walking := false
 var _crowds := {}
@@ -74,15 +79,19 @@ func _ground() -> void:
 	water.shader = preload("res://scripts/world/city_river.gdshader")
 	K.box(self, Vector3(160, 0.05, 6), water, Vector3(0, 0.02, RIVER_Z))
 	for bank in [-1, 1]:
-		K.box(self, Vector3(160, 0.40, 0.54), K.STONE_DARK, Vector3(0, 0.09, RIVER_Z + bank * 3.2))
-		# 近桥一段有清楚的错缝驳石，远街保留较粗的轮廓。
-		var pier := K.node(self, Vector3(0, -0.11, RIVER_Z + bank * 3.18))
-		Craft.courses(pier, 38.0, 0.45, 0.62)
+		# 驳岸从两侧接到桥缘，中间留出宽 3.18 米的斜桥面。
+		for side in [-1, 1]:
+			var bank_x: float = side * (80.0 + BRIDGE_HALF_WIDTH) * 0.5
+			K.box(self, Vector3(80.0 - BRIDGE_HALF_WIDTH, 0.40, 0.54), K.STONE_DARK, Vector3(bank_x, 0.09, RIVER_Z + bank * 3.2))
+			var stone_x: float = side * (19.0 + BRIDGE_HALF_WIDTH) * 0.5
+			var pier := K.node(self, Vector3(stone_x, -0.11, RIVER_Z + bank * 3.18))
+			Craft.courses(pier, 19.0 - BRIDGE_HALF_WIDTH, 0.45, 0.62)
 	Craft.bridge(self, Vector3(0, 0, RIVER_Z))
 	# 北岸长街、过桥到家的路、上山的石阶
 	var road := YardMaterials.street()
-	K.box(self, Vector3(96, 0.04, 3.6), road, Vector3(1, 0.03, -1.0))
-	K.box(self, Vector3(3.6, 0.04, 6), road, Vector3(0, 0.03, 11.0))
+	for street: Rect2 in STREETS:
+		var at := street.get_center()
+		K.box(self, Vector3(street.size.x, 0.04, street.size.y), road, Vector3(at.x, PAVING_TOP - 0.02, at.y))
 	for k in 8:
 		K.box(self, Vector3(3.5, 0.4 * (k + 1), 0.9), K.STONE, Vector3(0, 0.2 * (k + 1), -9.6 - k * 0.85))
 	# 青云观的台地沿阶道退台；平台前缘开口，石阶与山门接通。
@@ -385,9 +394,22 @@ func _sync_place(run: Dictionary, id: String) -> void:
 			f.moving = true
 
 
+func _street_height(pos: Vector3) -> float:
+	var height := Craft.bridge_height(pos.z - RIVER_Z) if absf(pos.x) <= BRIDGE_HALF_WIDTH else 0.0
+	for street: Rect2 in STREETS:
+		if street.has_point(Vector2(pos.x, pos.z)):
+			return maxf(height, PAVING_TOP)
+	return height
+
+
 func _place_walker(loc: String) -> void:
-	walker.position = PLACES[loc][0]
-	walker.rotation.y = deg_to_rad(float(PLACES[loc][1]) + 180.0)
+	var stand: Vector3 = PLACES[loc][0]
+	stand.y = _street_height(stand)
+	_shop_facing = deg_to_rad(float(PLACES[loc][1]) + 180.0)
+	if not walker.position.is_equal_approx(stand):
+		walker.position = stand
+		walker.rotation.y = _shop_facing
+	walker.move_speed = 0.0
 	walker.moving = false
 
 
@@ -408,8 +430,9 @@ func walk(from: String, dest: String) -> void:
 	_path.append(Vector3(b.x, 0, zb))
 	_path.append(b)
 	walker.position = a
+	walker.position.y = _street_height(a)
+	_travel_speed = 0.0
 	walking = true
-	walker.moving = true
 
 
 func _process(delta: float) -> void:
@@ -420,25 +443,42 @@ func _process(delta: float) -> void:
 			if f.moving:
 				f.position += Vector3(sin(t * 3.0 + f.get_index()), 0, cos(t * 2.0 + f.get_index())) * delta * 0.6
 	if not walking:
+		walker.face_travel(Vector3(sin(_shop_facing), 0.0, cos(_shop_facing)), delta)
 		return
-	if _path.is_empty():
-		walking = false
-		walker.moving = false
-		arrived.emit("")
-		return
-	var target: Vector3 = _path[0]
-	var to := target - walker.position
-	to.y = 0
-	var step := walk_speed * delta
-	if to.length() <= step:
-		walker.position = target
+	var flat := Vector3(walker.position.x, 0, walker.position.z)
+	while not _path.is_empty() and flat.is_equal_approx(_path[0]):
 		_path.pop_front()
-	else:
-		walker.position += to.normalized() * step
-		walker.face(to, 1.0)
+	if _path.is_empty():
+		finish_walk()
+		return
+	var to: Vector3 = _path[0] - flat
+	var distance := to.length()
+	var corner_speed := 0.0 if (_path[0] as Vector3).is_equal_approx(_path.back()) else walk_speed * 0.25
+	var braking := walk_speed * 5.5
+	var target_speed := minf(walk_speed, sqrt(corner_speed * corner_speed + 2.0 * braking * distance))
+	_travel_speed = move_toward(_travel_speed, target_speed, (braking if _travel_speed > target_speed else walk_speed * 3.6) * delta)
+	var step := minf(distance, _travel_speed * delta)
+	walker.position = flat + to.normalized() * step
+	walker.move_speed = step / maxf(delta, 0.00001)
+	walker.moving = walker.move_speed > 0.06
+	walker.face_travel(to, delta)
 	# 过桥时跟着桥面起伏
-	var dz := walker.position.z - RIVER_Z
-	walker.position.y = Craft.bridge_height(dz) if absf(walker.position.x) < 1.6 else 0.0
+	walker.position.y = _street_height(walker.position)
+
+
+## 再点一次目的地可略过步行演出。赶路时辰已经在出发时结算。
+func finish_walk() -> void:
+	if not walking:
+		return
+	if not _path.is_empty():
+		walker.position = _path.back()
+		walker.position.y = _street_height(walker.position)
+		_path.clear()
+	walking = false
+	walker.moving = false
+	walker.move_speed = 0.0
+	_travel_speed = 0.0
+	arrived.emit("")
 
 
 ## 鼠标点到的地点 id（没有返回空串）。

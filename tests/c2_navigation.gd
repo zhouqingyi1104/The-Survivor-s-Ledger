@@ -117,5 +117,45 @@ func _ready() -> void:
 		world.sync(run)
 		for i in 4: await get_tree().physics_frame
 	_paths(world, "three chairs")
+	_check_grounding(world, player, run)
 	print("[C2_NAV] ", checks - failed, "/", checks, " failed=", failed)
 	get_tree().quit(1 if failed else 0)
+
+
+func _check_grounding(world: World, player: Player, original: Dictionary) -> void:
+	var run := original.duplicate(true)
+	run.attic = {"stage": "complete"}
+	run.facilities.append("cellar")
+	world.sync(run)
+	var screen := preload("res://scripts/ui/screens/post_screen.gd").new()
+	screen.world = world
+	screen.player = player
+	# 0.078 的院路被窄石缝分开，鞋掌跨缝时不应落到 0.035 的夯土。
+	for sample in [
+		["courtyard", World.SPAWN, 0.078], ["courtyard", Vector3(2, 0, 5.5), 0.035],
+		["courtyard", Vector3(0, 0, -6), 0.131], ["courtyard", Vector3(-7, 0, -5.35), 0.122],
+		["courtyard", Vector3(-4.6, 0, 4.4), 0.082], ["cellar", Vector3(0, 0, 1.5), 0.101],
+		["attic", Vector3(0, 0, 1.5), 0.131], ["attic", Vector3(1.9, 0, -0.2), 0.147],
+		["attic", Vector3(-1.58, 0, -0.2), 0.159], ["guest_zhou", Vector3.ZERO, 0.131]]:
+		world.set_floor(sample[0])
+		var feet: Vector3 = world.floor_origin() + sample[1]
+		player.global_position = feet
+		screen._update_pose(run)
+		check(absf(player.figure.global_position.y - sample[2]) < 0.002, "%s shoes miss ground at %s" % [sample[0], feet])
+		check(player.global_position.is_equal_approx(feet), "visual grounding moved the collision capsule")
+	world.set_floor("attic")
+	var bed := world.spot_info("floor_bed")
+	run.sleeping = true
+	screen._update_pose(run)
+	screen._update_pose(run)
+	check(player.figure.lying and player.figure.global_position.is_equal_approx(bed.feet), "ground snapped sleeping hero off the attic bed")
+	run.sleeping = false
+	screen._update_pose(run)
+	check(absf(player.figure.global_position.y - world.walking_height(bed.stand)) < 0.002, "shoes missed attic floor on waking")
+	world.set_floor("courtyard")
+	run.decoration = {"floor": "brick"}
+	world.sync(run)
+	check(absf(world.walking_height(World.SPAWN) - 0.105) < 0.002, "shoes miss installed courtyard paving")
+	world.sync(original)
+	check(absf(world.walking_height(World.SPAWN) - 0.078) < 0.002, "shoes stay on removed courtyard paving")
+	screen.free()

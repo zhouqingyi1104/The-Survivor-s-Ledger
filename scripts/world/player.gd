@@ -8,7 +8,10 @@ const Figure = preload("res://scripts/world/character.gd")
 signal arrived
 
 ## 慢跑的速度（和 Jog_Fwd 动作原速的步子对上）
-const SPEED := 3.4
+const SPEED := Figure.JOG_SPEED
+const ACCELERATION := 16.0
+const BRAKING := 24.0
+const ARRIVAL_RADIUS := 0.32
 
 var figure: Node3D
 var cam_yaw := 0.0
@@ -20,6 +23,7 @@ var _path := PackedVector3Array()
 var _idx := 0
 var _walk_time := 0.0
 var _stuck_time := 0.0
+var _interaction_facing := Vector3.ZERO
 
 
 func setup(kind: String) -> void:
@@ -50,10 +54,20 @@ func walk_to(pos: Vector3) -> void:
 
 func stop() -> void:
 	_auto = false
+	_interaction_facing = Vector3.ZERO
+	velocity.x = 0.0
+	velocity.z = 0.0
+	if figure != null:
+		figure.moving = false
+		figure.move_speed = 0.0
 
 
 func is_walking() -> bool:
 	return _auto
+
+
+func face_point(point: Vector3) -> void:
+	_interaction_facing = Vector3(point.x - global_position.x, 0.0, point.z - global_position.z)
 
 
 func _physics_process(delta: float) -> void:
@@ -69,6 +83,7 @@ func _physics_process(delta: float) -> void:
 		if Input.is_action_pressed("move_right"):
 			input.x += 1
 	var dir := Vector3(input.x, 0, input.y).normalized().rotated(Vector3.UP, cam_yaw)
+	var target_speed := SPEED
 	if dir.length() > 0.1:
 		_auto = false
 	elif _auto and enabled:
@@ -78,27 +93,42 @@ func _physics_process(delta: float) -> void:
 		while _idx < _path.size() - 1 and _flat_dist(_path[_idx]) < waypoint_tolerance:
 			_idx += 1
 		# 到了；或者被挡住一秒多没挪窝、走了太久，就地算到
-		if _flat_dist(_goal) < 0.55 or _stuck_time > 1.2 or _walk_time > 10.0:
-			_auto = false
+		var remaining := _flat_dist(_goal)
+		if remaining < ARRIVAL_RADIUS or _stuck_time > 1.2 or _walk_time > 10.0:
+			stop()
 			arrived.emit()
 		else:
 			var next := _path[_idx]
 			dir = Vector3(next.x - global_position.x, 0, next.z - global_position.z).normalized()
-	velocity.x = dir.x * SPEED
-	velocity.z = dir.z * SPEED
+			target_speed = minf(SPEED, sqrt(2.0 * BRAKING * maxf(remaining - ARRIVAL_RADIUS + 0.02, 0.0)))
+			if _idx < _path.size() - 1:
+				var next_leg := _path[_idx + 1] - next
+				next_leg.y = 0
+				if dir.dot(next_leg.normalized()) < 0.8:
+					target_speed = minf(target_speed, sqrt(1.0 + 2.0 * BRAKING * _flat_dist(next)))
+	var planar := Vector3(velocity.x, 0.0, velocity.z)
+	var target := dir * target_speed
+	var rate := BRAKING if target.is_zero_approx() or planar.dot(target) < 0.0 else ACCELERATION
+	planar = planar.move_toward(target, rate * delta) if enabled else Vector3.ZERO
+	velocity.x = planar.x
+	velocity.z = planar.z
 	if not is_on_floor():
 		velocity.y -= 20.0 * delta
 	else:
 		velocity.y = 0.0
-	var before := global_position
 	move_and_slide()
-	if _auto and enabled and dir.length() > 0.1:
-		_stuck_time = _stuck_time + delta if before.distance_to(global_position) < SPEED * delta * 0.2 else 0.0
-	figure.moving = dir.length() > 0.1
 	var real := get_real_velocity()
-	figure.move_speed = Vector2(real.x, real.z).length()
+	var travel := Vector3(real.x, 0.0, real.z)
+	if _auto and enabled and dir.length() > 0.1:
+		_stuck_time = _stuck_time + delta if travel.length() < planar.length() * 0.2 else 0.0
+	figure.move_speed = travel.length()
+	figure.moving = figure.move_speed > 0.06 and enabled
 	if figure.moving:
-		figure.face(dir, minf(1.0, delta * 12.0))
+		_interaction_facing = Vector3.ZERO
+		var heading := dir if dir.dot(travel) < 0.0 else travel
+		figure.face_travel(heading, delta)
+	elif not _interaction_facing.is_zero_approx():
+		figure.face_travel(_interaction_facing, delta)
 
 
 func _flat_dist(p: Vector3) -> float:

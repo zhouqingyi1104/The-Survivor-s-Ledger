@@ -73,6 +73,14 @@ func _ready() -> void:
 	if not check(run.day == 2 and run.phase == "pre", "做完杂事后不能正常过日"): return
 	await click(button("备荒杂事", main._screen.hud))
 	if not check(main.has_modal("prep_work") and copy_in(main._modals.prep_work).count("已做过") == 2, "次日应能看到两处均已做过"): return
+	await click(button("合上", main._modals.prep_work))
+	var market := str(Pre.shop("market").name)
+	var before_trip := int(run.hour)
+	var fare := Pre.travel_cost(run, "market")
+	await click(button(market, main._screen.hud))
+	if not check(main._screen.world.walking and run.hour == before_trip + fare, "出发未走路或未结算路程"): return
+	await click(button(market + "（跳过赶路）", main._screen.hud))
+	if not check(not main._screen.world.walking and main.has_modal("shop") and run.hour == before_trip + fare, "略过行走应直接进店且只计算一次时辰"): return
 	main.queue_free()
 	await frames()
 	print("[prep_errands_ui] checks=%d failures=0" % checks)

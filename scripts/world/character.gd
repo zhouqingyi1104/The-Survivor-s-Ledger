@@ -8,6 +8,7 @@ const K = preload("res://scripts/world/kit.gd")
 const Gear = preload("res://scripts/world/character_gear.gd")
 const WEAVE := preload("res://assets/models/folk/dyed_weave.png")
 const WEAVE_NORMAL := preload("res://assets/models/folk/dyed_weave_normal.png")
+const HERO_LOCOMOTION := preload("res://assets/models/folk/hero_locomotion.res")
 
 const BODIES := {
 	"male_short": "res://assets/models/characters/male_short.glb",
@@ -21,7 +22,7 @@ const BODIES := {
 const ANIM_LIB := "res://assets/third_party/quaternius/ual/UAL1_Standard.glb"
 
 ## 两套骨骼：Quaternius 那套骨头叫 Head / spine_03 / pelvis，动作取 UAL 动画库；
-## 413games 那套是 Mixamo 骨头（冒号被 Godot 换成下划线），模型自带 Camp_ 动作。
+## 413games 那套是 Mixamo 骨头（冒号被 Godot 换成下划线），自带 Camp_ 待机/互动，主角移动另用重定向的 UAL。
 ## top_bone 有的话用来量头顶，省得手调 head_top；own_hair / own_dress 是说模型自己有头发和衣饰，别再往上堆。
 const RIGS := {
 	"q": {"head": "Head", "chest": "spine_03", "hips": "pelvis", "hand_l": "hand_l", "hand_r": "hand_r",
@@ -99,6 +100,8 @@ var _fallen := false
 var _last_pos := Vector3.INF
 var _measured := 0.0
 var _step_phase := -1
+var _hero_gaits := false
+var _silk_wind := 0.42
 ## 仙气装束的活件，每帧要动
 var _ribbons: Array = []
 var _dangles: Array = []
@@ -149,6 +152,16 @@ func setup(k: String, robe := Color(0, 0, 0, 0)) -> Node3D:
 		_model.add_child(_ap)
 		_ap.root_node = NodePath("..")
 		_ap.add_animation_library("", _anim_library())
+	_hero_gaits = hero and BODY_RIG.get(_look.body, "q") == "m"
+	if _hero_gaits:
+		_ap.add_animation_library("locomotion", HERO_LOCOMOTION)
+		# Camp_Idle and the working clips omit the toe and some upper-body tracks.
+		# Blend those bones back to rest when the run finishes.
+		_ap.deterministic = true
+		_rig = _rig.duplicate()
+		_rig.walk = "locomotion/Walk"
+		_rig.jog = "locomotion/Jog_Fwd"
+		_rig.sprint = "locomotion/Sprint"
 	_look.idle = _pick(str(_look.get("idle", "")), "idle")
 	_look.walk = _pick(str(_look.get("walk", "")), "walk")
 	# Imported clips (notably Camp_Walk / Camp_Idle) may be one-shot.
@@ -172,7 +185,7 @@ func setup(k: String, robe := Color(0, 0, 0, 0)) -> Node3D:
 	return self
 
 
-## 主角：换成女身，身份色往月白里提一提，走路用端正的步子。冠帽照旧，身份还认得出。
+## 主角：换成女身，身份色往月白里提一提。Quaternius 女身走端正步，Mixamo 女身用专有的三段步态。
 func _hero_look() -> void:
 	_look.fairy = true
 	_look.body = force_body if force_body != "" else HERO_BODY
@@ -519,13 +532,20 @@ func _process(delta: float) -> void:
 	_model.position.y = lerpf(_model.position.y, 0.0, delta * 10.0)
 	if moving:
 		var gait := _gait(move_speed if move_speed >= 0.0 else _measured)
-		_play(gait[0])
+		if _hero_gaits and _cur != gait[0]:
+			# All three loops open on the left lead. Keep the stance leg through a change of gait.
+			var phase := _ap.current_animation_position / _ap.current_animation_length if _cur.begins_with("locomotion/") else 0.0
+			_play(gait[0], 0.13)
+			_ap.seek(phase * _ap.current_animation_length)
+		else:
+			_play(gait[0])
 		_ap.speed_scale = gait[1]
 		_footstep()
 	elif working:
 		_play(_pick(work_anim, "work"))
 	else:
-		_play(_look.idle)
+		_play(_look.idle, 0.16 if _hero_gaits else 0.2)
+		if _hero_gaits: _step_phase = -1
 	_tick_fairy(delta, moving)
 
 
@@ -534,23 +554,26 @@ func _tick_fairy(delta: float, walking: bool) -> void:
 	_fix_bone_scale()
 	if _ribbons.is_empty() and _dangles.is_empty() and _motes == null:
 		return
-	var wind := 1.0 if walking else 0.42
+	var speed := move_speed if move_speed >= 0.0 else _measured
+	var wind := lerpf(0.42, 1.0, clampf(speed / JOG_SPEED, 0.0, 1.0)) if walking else 0.42
+	_silk_wind = lerpf(_silk_wind, wind, 1.0 - exp(-8.0 * delta))
 	for r in _ribbons:
-		r.tick(_t, wind)
+		r.tick(_t, _silk_wind)
 	for d in _dangles:
-		d.rotation.z = sin(_t * 2.1) * 0.22 * wind
-		d.rotation.x = sin(_t * 1.5 + 0.8) * 0.14 * wind
+		d.rotation.z = sin(_t * 2.1) * 0.22 * _silk_wind
+		d.rotation.x = sin(_t * 1.5 + 0.8) * 0.14 * _silk_wind
 	if _motes != null:
 		_motes.tick(_t, delta)
-	if _look.get("fairy", false) and not walking and not working:
-		# 仙气：站着的时候脚不离地，人轻轻浮着
-		_model.position.y = 0.05 + sin(_t * 1.1) * 0.035
 
 
 func _footstep() -> void:
 	if step_sound == "" or _ap.current_animation_length <= 0.0:
 		return
-	var phase := int(_ap.current_animation_position / (_ap.current_animation_length / 2.0))
+	var cycle := _ap.current_animation_position / _ap.current_animation_length
+	# The heel settles just after each half-cycle. An initial negative phase keeps
+	# starting the clock from making a footstep before a shoe touches down.
+	var phase := floori((cycle - 0.04) * 2.0) if _hero_gaits else floori(cycle * 2.0)
+	if _hero_gaits and phase < 0: return
 	if phase != _step_phase:
 		_step_phase = phase
 		Sfx.play(step_sound, -9.0, 0.08)
@@ -566,6 +589,13 @@ func _measure(delta: float) -> void:
 
 ## [动作, 播放速度]
 func _gait(v: float) -> Array:
+	if _hero_gaits:
+		# The custom clips' contact travel was fitted on the scaled 413 Games shoes.
+		if v >= (4.1 if _cur == _rig.sprint else 4.45):
+			return [_rig.sprint, v / SPRINT_SPEED]
+		if v >= (1.65 if _cur == _rig.jog else 1.95):
+			return [_rig.jog, v / JOG_SPEED]
+		return [_rig.walk, maxf(0.18, v / 1.25)]
 	if v < 1.9:
 		return [_look.walk, clampf(v / WALK_SPEED, 0.6, 1.9)]
 	if v < 4.2:
@@ -588,6 +618,15 @@ func face(dir: Vector3, weight := 1.0) -> void:
 	if dir.length() < 0.001:
 		return
 	rotation.y = lerp_angle(rotation.y, atan2(dir.x, dir.z), weight)
+
+
+## Travelling heroes have a finite turn rate, including when the next waypoint is behind them.
+func face_travel(dir: Vector3, delta: float) -> void:
+	if Vector2(dir.x, dir.z).length_squared() < 0.000001:
+		return
+	var target := atan2(dir.x, dir.z)
+	var eased := lerp_angle(rotation.y, target, 1.0 - exp(-14.0 * delta))
+	rotation.y = rotate_toward(rotation.y, eased, deg_to_rad(660.0) * delta)
 
 
 ## 披帛沿长度渐窄。七段骨骼共同带动一片连续的丝面，折边和下摆随着身体摆动。
