@@ -87,8 +87,8 @@ static func _run_section(run: Dictionary) -> Array:
 		out.append("挑战：誓约 %d 条、了愿 %d 条" % [vows.size(), goals.size()])
 	out.append("")
 	if alive:
-		out.append("**还在进行**：第 %d 日 · %s · 气血 %d/%d" % [
-			int(run.get("pday", 0)), _clock_text(run), int(State.attr(run, "hp")), int(State.attr_max(run, "hp"))])
+		out.append("**还在进行**：%s · 气血 %d/%d" % [
+			State.time_label(run), int(State.attr(run, "hp")), int(State.attr_max(run, "hp"))])
 		out.append("手头：%s" % (str(run.get("busy", {}).get("label", "")) if State.attr(run, "energy") >= 0 and not run.get("busy", {}).is_empty() else "空闲"))
 	else:
 		var end: Dictionary = Mainline.ending(run)
@@ -115,12 +115,6 @@ static func _opening_text(run: Dictionary) -> String:
 	if choice == "" or choice == "plain":
 		return "普通行囊"
 	return "%s（%s）" % [str(o.get("label", choice)), str(o.get("summary", "")).strip_edges()]
-
-
-static func _clock_text(run: Dictionary) -> String:
-	if str(run.get("phase", "")) == "pre":
-		return "备劫第 %d 日" % int(run.get("day", 1))
-	return State.time_label(run)
 
 
 # ---------- 失血构成 ----------
@@ -174,9 +168,11 @@ static func _meta_section(meta: Dictionary) -> Array:
 	var out := []
 	out.append("## 跨轮回底稿")
 	out.append("")
-	out.append("道心 %d　轮回 %d 次　身死 %d 次　劫满 %d 次　最久活到第 %d 日　残卷 %d 篇" % [
+	var best_day := int(meta.get("best_day", 0))
+	var best := "最久活到第 %d 日" % best_day if best_day > 0 else "尚无灾后存活日数纪录"
+	out.append("道心 %d　轮回 %d 次　身死 %d 次　劫满 %d 次　%s　残卷 %d 篇" % [
 		int(meta.get("daoxin", 0)), int(meta.get("runs", 0)), int(meta.get("deaths", 0)),
-		int(meta.get("endings", 0)), int(meta.get("best_day", 0)), (meta.get("clues", []) as Array).size()])
+		int(meta.get("endings", 0)), best, (meta.get("clues", []) as Array).size()])
 	var book: Dictionary = meta.get("past_lives", {}) if meta.get("past_lives") is Dictionary else {}
 	var count := int(book.get("count", 0))
 	if count > 0:
@@ -220,6 +216,8 @@ static func _settings_section(ctx: Dictionary) -> Array:
 
 ## 校验在创建导出目录之前执行；不截断、不把非文本值变成玩家回答。
 static func feedback_error(feedback: Dictionary) -> String:
+	if feedback.has("rating") and (not feedback.rating is int or feedback.rating < 1 or feedback.rating > 10):
+		return "可玩性评分须选 1 到 10 的整数，也可以留空。"
 	for i in range(FEEDBACK_KEYS.size()):
 		var answer = feedback.get(FEEDBACK_KEYS[i], "")
 		if not answer is String:
@@ -238,6 +236,8 @@ static func _questions_section(feedback: Variant) -> Array:
 	if not feedback is Dictionary or feedback_error(feedback) != "":
 		out.append("（回答格式不正确，未收录；请返回游戏检查后重新导出。）")
 		feedback = {}
+	out.append("整体可玩性评分（玩家自评）：%s" % ("%d/10" % feedback.rating if feedback.has("rating") else "未评分"))
+	out.append("")
 	for i in range(QUESTIONS.size()):
 		out.append("**%s**" % QUESTIONS[i])
 		out.append("")

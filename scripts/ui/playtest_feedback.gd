@@ -21,11 +21,27 @@ static func open() -> void:
 
 
 static func _build(body: VBoxContainer, draft: Draft) -> void:
-	body.add_child(UI.para("这三问都可以留空。回答写入本机报告，附件来源会在结果中说明；请先查看内容，再自行分享。", 16))
+	body.add_child(UI.para("评分和三道问题都可留空。回答写入本机报告，你可以查看后自行分享。", 16))
 	var content := UI.vbox(8)
 	var error := UI.para(Report.feedback_error(draft.answers), 15, UI.CINNABAR)
 	error.set_meta("feedback_error", true)
 	error.custom_minimum_size.y = 20
+	content.add_child(UI.para("整体可玩性，你给几分？（满分 10，选填）", 16))
+	var scale_row := HFlowContainer.new()
+	var group := ButtonGroup.new()
+	group.allow_unpress = true
+	for score in range(1, 11):
+		var button := Button.new()
+		button.text = str(score)
+		button.name = "Rating%d" % score
+		button.toggle_mode = true
+		button.button_group = group
+		button.custom_minimum_size.x = 45
+		button.set_pressed_no_signal(score == int(draft.answers.get("rating", 0)))
+		button.tooltip_text = "选择 %d 分，再点一次清除" % score
+		button.toggled.connect(_rated.bind(score, draft))
+		scale_row.add_child(button)
+	content.add_child(scale_row)
 	for i in range(Report.QUESTIONS.size()):
 		var key: String = Report.FEEDBACK_KEYS[i]
 		content.add_child(UI.para(Report.QUESTIONS[i], 16, UI.INK))
@@ -63,6 +79,13 @@ static func _build(body: VBoxContainer, draft: Draft) -> void:
 	draft.submit_ref = weakref(submit)
 	row.add_child(submit)
 	body.add_child(row)
+
+
+static func _rated(pressed: bool, score: int, draft: Draft) -> void:
+	if pressed:
+		draft.answers["rating"] = score
+	elif draft.answers.get("rating") == score:
+		draft.answers.erase("rating")
 
 
 static func _edited(editor: TextEdit, key: String, draft: Draft, count: Label, error: Label, normal_color: Color, error_color: Color) -> void:

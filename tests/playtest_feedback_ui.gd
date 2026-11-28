@@ -259,6 +259,10 @@ func test_draft_refresh_cancel() -> void:
 	var before := report_dirs()
 	var unchanged := facts()
 	await open_form()
+	await click(form().find_child("Rating6", true, false))
+	check((form().find_child("Rating6", true, false) as Button).button_pressed, "点击后未选中评分")
+	await click(form().find_child("Rating6", true, false))
+	check(not (form().find_child("Rating6", true, false) as Button).button_pressed, "评分不能撤回")
 	var answers := {"annoying": "找水很烦\n第二行", "unclear": "门为什么坏？\n# 原话", "pacing": "第八天开始重复。"}
 	await type_unicode(edits().annoying, answers.annoying)
 	check(edits().annoying.text == answers.annoying, "中文/换行键事件没有进入输入框")
@@ -290,6 +294,7 @@ func test_blank_export() -> void:
 	var report := FileAccess.get_file_as_string(created[0].path_join("report.md"))
 	check(report.count("未填写") >= 3, "空答报告没有明确三问未填写")
 	check(report.contains("当前没有在进行的局"), "标题空局报告虚称存在本局")
+	check(report.contains("整体可玩性评分（玩家自评）：未评分"), "空答导出成了数值")
 	check(facts() == unchanged, "空答导出改写了局面/底稿/告警")
 	finished += 1
 
@@ -300,6 +305,11 @@ func test_filled_export_duplicate() -> void:
 	var before := report_dirs()
 	var unchanged := facts()
 	await open_form()
+	await click(form().find_child("Rating4", true, false))
+	await click(form().find_child("Rating7", true, false))
+	Game.changed.emit()
+	await frames(6)
+	check((form().find_child("Rating7", true, false) as Button).button_pressed, "刷新丢失主动选择的分数")
 	var answers := {"annoying": "米不够了。\n```\n# 这只是玩家原话\n```", "unclear": "同院人的约定怎么看？", "pacing": "还没玩完，暂不判断。"}
 	for key in KEYS: await put(edits()[key], answers[key])
 	await shot("filled-form")
@@ -321,6 +331,7 @@ func test_filled_export_duplicate() -> void:
 	var report := FileAccess.get_file_as_string(created[0].path_join("report.md"))
 	for key in KEYS: check(report.contains(answers[key]), "导出丢失玩家原文：%s" % key)
 	check(report.contains("玩家自述"), "玩家回答与客观记录没有区分")
+	check(report.contains("整体可玩性评分（玩家自评）：7/10"), "落盘分数与玩家最后一次选择不符")
 	check(facts() == unchanged, "填写导出改变了原局/底稿/快照/告警")
 	check(not FileAccess.file_exists(Game.save_path) and not FileAccess.file_exists(Game.meta_path), "反馈导出写入了原存档路径")
 	await shot("export-result")

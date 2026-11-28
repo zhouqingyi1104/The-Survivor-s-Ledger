@@ -141,6 +141,14 @@ func test_feedback() -> void:
 	var blank := Report.build({}, State.new_meta())
 	check(blank.count("（未填写）") == 3, "空答没有逐题明确未填写")
 	check(blank.contains("玩家自述，未经核实"), "没有区分主观回答与客观事实")
+	check(blank.contains("整体可玩性评分（玩家自评）：未评分"), "空白被算进评分")
+	for value in [1, 8, 10]:
+		var rating_text := Report.build({}, State.new_meta(), {"feedback": {"rating": value}})
+		check(rating_text.contains("整体可玩性评分（玩家自评）：%d/10" % value), "有效分数没有写入自述")
+	for value in [0, 11, "9", 9.5, true]:
+		check(Report.feedback_error({"rating": value}) != "", "无效分数被当作玩家反馈")
+	var preparation := Report.build(State.new_run("scholar", State.new_meta(), 18), State.new_meta())
+	check(preparation.contains("还在进行**：备劫第 1 日") and not preparation.contains("第 0 日"), "备劫中的玩家报告出现虚构的第零日")
 	var answer := "  第十日卡住了。\n## 自己写的标题\n```\n<script>不是报告事实</script>\n````\n  "
 	var feedback := {"annoying": answer, "unclear": "不知道该带多少粮\n也不知道何时返程", "pacing": "二十天偏长", "other": "不应输出的额外字段"}
 	var before := JSON.stringify(feedback)
