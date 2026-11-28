@@ -3,6 +3,15 @@
   "engine_version": "4.7.2",
   "cases": [
     {
+      "id": "hundred_days_visitor",
+      "entry": "tests/hundred_days_visitor.tscn",
+      "kind": "scene",
+      "tier": "ui",
+      "mode": "window",
+      "timeout_seconds": 180,
+      "success_regex": "(?m)^\\[HUNDRED_DAYS_VISITOR\\] [1-9][0-9]*/[1-9][0-9]* failed=0\\r?$"
+    },
+    {
       "id": "chronicle_letters",
       "entry": "tests/chronicle_letters.gd",
       "kind": "script",

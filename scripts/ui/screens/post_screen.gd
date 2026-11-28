@@ -773,7 +773,12 @@ func _click(pos: Vector2) -> void:
 
 
 func _interact_spot(id: String, pos: Vector2) -> void:
-	if id == "floor_storage":
+	if id == "chronicle_visitor":
+		var letter := str(_spot_info(id).get("event", ""))
+		do_at(id, func():
+			if letter != "" and _spot_info(id).get("event") == letter:
+				Dialogs.chronicle())
+	elif id == "floor_storage":
 		do_at(id, Dialogs.inventory)
 	elif id == "floor_bed":
 		do_at(id, func():
@@ -1140,9 +1145,13 @@ func _update_tags() -> void:
 			used["gate"] = true
 		if _hover != "":
 			var info := _spot_info(_hover)
-			if not info.is_empty():
+			if not info.is_empty() and _hover != "chronicle_visitor":
 				_show_tag("hover", info.tag + Vector3(0, 0.45, 0), info.name)
 				used["hover"] = true
+		var visitor: Dictionary = world.spot_info("chronicle_visitor")
+		if not visitor.is_empty():
+			_show_tag("chronicle_visitor", visitor.tag, visitor.name, -1.0, Hud.GOLD)
+			used["chronicle_visitor"] = true
 	for key in _tags:
 		if not used.has(key):
 			_tags[key].panel.visible = false

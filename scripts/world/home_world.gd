@@ -24,6 +24,8 @@ const DecorationWorld = preload("res://scripts/world/home_decoration.gd")
 const Assets = preload("res://scripts/world/assets.gd")
 const Figure = preload("res://scripts/world/character.gd")
 const CourtyardWork = preload("res://scripts/world/courtyard_work.gd")
+const ChronicleVisitor = preload("res://scripts/world/chronicle_visitor.gd")
+const Chronicle = preload("res://scripts/core/chronicle_story.gd")
 const Surroundings = preload("res://scripts/world/home_surroundings.gd")
 # C1 邻宅氛围工厂运行期加载（缺失不影响宅院本体；由 C1 契约守底）。
 const AmbiencePath := "res://scripts/world/home_ambience.gd"
@@ -94,7 +96,7 @@ func _ready() -> void:
 	for floor_id in ["cellar", "attic", "guest_zhou"]:
 		_floor_rooms[floor_id] = FloorWorld.build(self, floor_id)
 		_floor_rooms[floor_id].root.visible = false
-	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration", "lookout", "drying_tray", "lane_letter"]:
+	for key in ["sacks", "firewood", "wood", "garden", "devices", "extras", "furnish", "decoration", "lookout", "drying_tray", "lane_letter", "chronicle_guest"]:
 		_dynamic[key] = K.node(self, Vector3.ZERO, Vector3.ZERO, key)
 	_dynamic.lane_letter.position = WINDOW_POS + Vector3(-0.33, 1.23, 0)
 	# 菜畦整块的拾取碰撞（菜苗每次重画，碰撞固定在这里；大小随画出来的畦数变，见 _fit_garden）
@@ -353,6 +355,9 @@ func spot_info(id: String) -> Dictionary:
 	if _floor != "courtyard":
 		return FloorWorld.info(_floor, id, _floor_rooms[_floor])
 	match id:
+		ChronicleVisitor.SPOT:
+			var visitor: ChronicleVisitor = spot_nodes.get(id)
+			return {} if visitor == null else {"name": visitor.caption, "stand": ChronicleVisitor.STAND, "tag": visitor.tag, "event": visitor.event_id}
 		"neighbor_home":
 			var info: Dictionary = SPOTS.neighbor_home.duplicate()
 			if bool(NeighborHome.view(_current_run).get("knocked", false)):
@@ -943,6 +948,7 @@ func _update_window(run: Dictionary) -> void:
 ## 按钟点给光：5-8 晨、8-16 午、16-19 暮、19-5 夜。
 func set_time(run: Dictionary) -> void:
 	CourtyardWork.sync_letter(_dynamic.lane_letter, run)
+	_sync_chronicle_guest(run)
 	var cold := int(State.weather(run).cold) if int(run.get("pday", 0)) > 0 else 10
 	var snow := 250 + cold * 30
 	var c := Post.clock(run) if run.has("t") else 720
@@ -995,6 +1001,23 @@ func _apply_ambience_preset(preset: String) -> void:
 		A.apply(n, A.state_for_preset(preset, _amb_ctx))
 
 
+func _sync_chronicle_guest(run: Dictionary) -> void:
+	var letter := {}
+	if _floor == "courtyard" and Chronicle.enabled(run) and not Post.is_night(run) and run.get("fight", {}).is_empty():
+		letter = Chronicle.current_event(run)
+	var visitor: ChronicleVisitor = spot_nodes.get(ChronicleVisitor.SPOT)
+	if visitor != null:
+		if visitor.event_id == str(letter.get("id", "")):
+			return
+		spot_nodes.erase(ChronicleVisitor.SPOT)
+		K.clear(_dynamic.chronicle_guest)
+	if not letter.is_empty():
+		var next := ChronicleVisitor.new()
+		_dynamic.chronicle_guest.add_child(next)
+		next.setup(letter)
+		spot_nodes[ChronicleVisitor.SPOT] = next
+
+
 func _set_lanterns(lit: bool) -> void:
 	if lit == _night:
 		return
@@ -1036,7 +1059,7 @@ func nearest_spot(pos: Vector3, radius := 1.8) -> String:
 		if d < best_d:
 			best = id
 			best_d = d
-	for id in ["floor_cellar", "floor_attic"]:
+	for id in ["floor_cellar", "floor_attic", ChronicleVisitor.SPOT]:
 		if spot_nodes.has(id):
 			var p: Vector3 = spot_info(id).stand
 			var d := Vector2(pos.x - p.x, pos.z - p.z).length()
@@ -1060,6 +1083,7 @@ func nearest_spot(pos: Vector3, radius := 1.8) -> String:
 func pick(cam: Camera3D, screen_pos: Vector2) -> Dictionary:
 	var from := cam.project_ray_origin(screen_pos)
 	var q := PhysicsRayQueryParameters3D.create(from, from + cam.project_ray_normal(screen_pos) * 200.0)
+	q.collide_with_areas = _floor == "courtyard" and spot_nodes.has(ChronicleVisitor.SPOT)
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	if hit.is_empty():
 		return {}
