@@ -1,5 +1,5 @@
 extends Node
-## Actual pointer-driven C3 UI; launch with isolated APPDATA/LOCALAPPDATA and C3_UI_SHOTS.
+## Actual pointer-driven C3 UI; C3_UI_SHOTS can override the snapshot's screenshot directory.
 const State = preload("res://scripts/core/state.gd")
 const Pre = preload("res://scripts/core/pre.gd")
 const Home = preload("res://scripts/core/home.gd")
@@ -71,9 +71,9 @@ func row_button(modal: Node, choice: String) -> Button:
 func shot(name: String) -> void:
 	var dir := OS.get_environment("C3_UI_SHOTS")
 	if dir == "":
-		check(false, "未指定截图目录")
+		dir = ProjectSettings.globalize_path("res://build/test-runs/c3_decoration_ui/shots-%d" % OS.get_process_id())
+	if not check(DirAccess.make_dir_recursive_absolute(dir) == OK, "创建截图目录失败：" + dir):
 		return
-	DirAccess.make_dir_recursive_absolute(dir)
 	RenderingServer.force_draw()
 	check(get_viewport().get_texture().get_image().save_png(dir.path_join(name + ".png")) == OK, "截图保存失败：" + name)
 
