@@ -113,19 +113,24 @@ func test_quick_with_save() -> void:
 	Game.go("title")
 	await frames(6)
 	check(Game.has_save(), "上一局没留下存档")
-	# 有旧卷时菜单最长（多一条「续写此录」）：每一项都得在左下角题名印章上方，不能被盖住
-	var seal_top := INF
+	# 有旧卷时菜单最长，竖排书封印章和每个可见按钮都须留在各自的区域。
+	var seal_bounds := Rect2()
 	for label in main._screen.find_children("*", "Label", true, false):
-		if label.text == "尸 劫":
-			seal_top = label.get_global_rect().position.y
+		if label.is_visible_in_tree() and label.text == "尸\n劫":
+			seal_bounds = label.get_parent().get_global_rect()
+	check(seal_bounds.has_area(), "有旧卷时书封缺少竖排印章")
 	var lowest := ""
 	var lowest_bottom := 0.0
 	for b in main._screen.find_children("*", "Button", true, false):
-		if b.is_visible_in_tree() and b.get_global_rect().end.y > lowest_bottom:
-			lowest_bottom = b.get_global_rect().end.y
+		if not b.is_visible_in_tree():
+			continue
+		var bounds: Rect2 = b.get_global_rect()
+		check(get_viewport().get_visible_rect().encloses(bounds), "标题菜单项超出窗口：" + b.text)
+		check(not seal_bounds.intersects(bounds), "书封印章盖住标题菜单项：" + b.text)
+		if bounds.end.y > lowest_bottom:
+			lowest_bottom = bounds.end.y
 			lowest = b.text
-	check(seal_top < INF and lowest == "退出" and lowest_bottom <= seal_top,
-		"菜单最下一项「%s」下沿 %.0f 压到了题名印章（%.0f）" % [lowest, lowest_bottom, seal_top])
+	check(lowest == "退出", "旧卷菜单末项应为退出，实际为：" + lowest)
 	await click(menu_button("新开一卷"))
 	check(main.has_modal("confirm_new"), "有旧卷时没先确认合卷")
 	await click(button_in(main._modals.get("confirm_new"), "合上旧卷"))
