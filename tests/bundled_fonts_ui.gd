@@ -209,7 +209,7 @@ func test_title_saved() -> void:
 	var menu: Array = []
 	var decorations: Array[Rect2] = []
 	for label in main._screen.find_children("*", "Label", true, false):
-		if label.text == "尸 劫": decorations.append(label.get_parent().get_global_rect())
+		if label.text == "尸\n劫": decorations.append(label.get_parent().get_global_rect())
 		elif label.text == "劫余录": decorations.append(label.get_global_rect())
 	check(decorations.size() == 2, "旧卷标题没有找到题名与印章区域")
 	for candidate in main._screen.find_children("*", "Button", true, false):
@@ -310,7 +310,17 @@ func test_inventory() -> void:
 	text_bounds(modal("inventory"), "存货底部")
 	await shot("inventory-bottom")
 	await click(button(modal("inventory"), "书"))
-	check(Dialogs._inventory_filter == "书", "存货分类按钮未响应")
+	var expected_books: Array[String] = []
+	for id in Game.run.home:
+		if int(Game.run.home[id]) > 0 and Data.item(id).cat == "书":
+			expected_books.append(id)
+	var shown: Array[String] = []
+	for card in modal("inventory").find_children("*", "PanelContainer", true, false):
+		if card.is_visible_in_tree() and card.has_meta("inventory_item"):
+			shown.append(card.get_meta("inventory_item"))
+	expected_books.sort()
+	shown.sort()
+	check(not expected_books.is_empty() and shown == expected_books, "点击书籍分类后，页内物件与本局藏书不符")
 	text_bounds(modal("inventory"), "存货书籍")
 	await shot("inventory-books")
 	finished += 1

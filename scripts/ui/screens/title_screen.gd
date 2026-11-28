@@ -243,7 +243,6 @@ func _seal(text: String) -> Control:
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.add_theme_font_size_override("font_size", 14)
-	l.add_theme_constant_override("line_spacing", -3)
 	l.add_theme_color_override("font_color", Color("#f4dfb5"))
 	p.add_child(l)
 	return p
